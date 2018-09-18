@@ -29,11 +29,11 @@ type DexconApp struct {
 }
 
 // PreparePayload is called when consensus core is preparing a block.
-func (d *DexconApp) PreparePayloads(position types.Position) [][]byte {
+func (d *DexconApp) PreparePayloads(position types.Position) []byte {
 }
 
 // VerifyPayloads verifies if the payloads are valid.
-func (d *DexconApp) VerifyPayloads(payloads [][]byte) bool {
+func (d *DexconApp) VerifyPayloads(payloads []byte) bool {
 }
 
 // BlockConfirmed is called when a block is confirmed and added to lattice.
