@@ -20,28 +20,30 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"net"
 
+	"github.com/dexon-foundation/dexon/crypto/sha3"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/event"
+	"github.com/ethereum/go-ethereum/p2p/discover"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
 // Constants to match up protocol versions and messages
 const (
-	eth62 = 62
-	eth63 = 63
+	dex64 = 64
 )
 
 // ProtocolName is the official short name of the protocol used during capability negotiation.
-var ProtocolName = "eth"
+var ProtocolName = "dex"
 
 // ProtocolVersions are the upported versions of the eth protocol (first is primary).
-var ProtocolVersions = []uint{eth63, eth62}
+var ProtocolVersions = []uint{dex64}
 
 // ProtocolLengths are the number of implemented message corresponding to different protocol versions.
-var ProtocolLengths = []uint64{17, 8}
+var ProtocolLengths = []uint64{18}
 
 const ProtocolMaxMsgSize = 10 * 1024 * 1024 // Maximum cap on the size of a protocol message
 
@@ -62,6 +64,9 @@ const (
 	NodeDataMsg    = 0x0e
 	GetReceiptsMsg = 0x0f
 	ReceiptsMsg    = 0x10
+
+	// Protocol messages belonging to dex/64
+	NotaryNodeInfoMsg = 0x11
 )
 
 type errCode int
@@ -181,3 +186,22 @@ type blockBody struct {
 
 // blockBodiesData is the network packet for block content distribution.
 type blockBodiesData []*blockBody
+
+// TODO(sonic): revisit this msg when dexon core SDK is finalized.
+// notartyNodeInfo is the network packet for notary node ip info.
+type notaryNodeInfo struct {
+	ID        discover.NodeID
+	IP        net.IP
+	UDP       uint16
+	TCP       uint16
+	Round     uint64
+	Sig       []byte
+	Timestamp int64
+}
+
+func (n *notaryNodeInfo) Hash() (h common.Hash) {
+	hw := sha3.NewKeccak256()
+	rlp.Encode(hw, n)
+	hw.Sum(h[:0])
+	return h
+}
