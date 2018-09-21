@@ -22,18 +22,32 @@ import (
 
 	"github.com/dexon-foundation/dexon-consensus-core/common"
 	"github.com/dexon-foundation/dexon-consensus-core/core/types"
+
+	"github.com/ethereum/go-ethereum/core"
 )
 
 // DexconApp implementes the DEXON consensus core application interface.
 type DexconApp struct {
+	txPool *core.TxPool
+
+	witnessResultChan chan types.WitnessResult
+}
+
+func NewDexconApp(txPool *core.TxPool) *DexconApp {
+	return &DexconApp{
+		txPool:            txPool,
+		witnessResultChan: make(chan types.WitnessResult),
+	}
 }
 
 // PreparePayload is called when consensus core is preparing a block.
-func (d *DexconApp) PreparePayloads(position types.Position) []byte {
+func (d *DexconApp) PreparePayload(position types.Position) []byte {
+	return nil
 }
 
 // VerifyPayloads verifies if the payloads are valid.
 func (d *DexconApp) VerifyPayloads(payloads []byte) bool {
+	return true
 }
 
 // BlockConfirmed is called when a block is confirmed and added to lattice.
@@ -53,6 +67,12 @@ func (d *DexconApp) TotalOrderingDeliver(blockHashes common.Hashes, early bool) 
 func (d *DexconApp) DeliverBlock(blockHash common.Hash, timestamp time.Time) {
 }
 
-// NotaryAckDeliver is called when a notary ack is created.
-func (d *DexconApp) NotaryAckDeliver(notaryAck *types.NotaryAck) {
+// BlockProcessedChan returns a channel to receive the block hashes that have
+// finished processing by the application.
+func (d *DexconApp) BlockProcessedChan() <-chan types.WitnessResult {
+	return d.witnessResultChan
+}
+
+// WitnessAckDeliver is called when a notary ack is created.
+func (d *DexconApp) WitnessAckDeliver(notaryAck *types.WitnessAck) {
 }

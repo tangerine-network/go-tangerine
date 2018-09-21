@@ -40,6 +40,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/dashboard"
+	"github.com/ethereum/go-ethereum/dex"
 	"github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/eth/downloader"
 	"github.com/ethereum/go-ethereum/eth/gasprice"
@@ -1330,11 +1331,11 @@ func RegisterEthService(stack *node.Node, cfg *eth.Config) {
 		})
 	} else {
 		err = stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
-			fullNode, err := eth.New(ctx, cfg)
-			if fullNode != nil && cfg.LightServ > 0 {
-				ls, _ := les.NewLesServer(fullNode, cfg)
-				fullNode.AddLesServer(ls)
-			}
+			fullNode, err := dex.New(ctx, cfg)
+			//if fullNode != nil && cfg.LightServ > 0 {
+			//	ls, _ := les.NewLesServer(fullNode, cfg)
+			//	fullNode.AddLesServer(ls)
+			//}
 			return fullNode, err
 		})
 	}
