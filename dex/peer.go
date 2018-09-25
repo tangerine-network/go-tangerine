@@ -34,6 +34,7 @@ var (
 	errClosed            = errors.New("peer set is closed")
 	errAlreadyRegistered = errors.New("peer is already registered")
 	errNotRegistered     = errors.New("peer is not registered")
+	errInvalidRound      = errors.New("invalid round")
 )
 
 const (
@@ -402,12 +403,18 @@ type peerSet struct {
 	peers  map[string]*peer
 	lock   sync.RWMutex
 	closed bool
+
+	// TODO(sonic): revist this map after dexon core SDK is finalized.
+	// use types.ValidatorID? or implement Stringer for types.ValidatorID
+	notaryPeers map[uint64]map[string]*peer
+	round       uint64
 }
 
 // newPeerSet creates a new peer set to track the active participants.
 func newPeerSet() *peerSet {
 	return &peerSet{
-		peers: make(map[string]*peer),
+		peers:       make(map[string]*peer),
+		notaryPeers: make(map[uint64]map[string]*peer),
 	}
 }
 
@@ -492,6 +499,20 @@ func (ps *peerSet) PeersWithoutTx(hash common.Hash) []*peer {
 	return list
 }
 
+// PeersWithoutNotaryNodeInfo retrieves a list of peers that do not have a
+// given info in their set of known hashes.
+func (ps *peerSet) PeersWithoutNotaryNodeInfo(hash common.Hash) []*peer {
+	ps.lock.RLock()
+	defer ps.lock.RUnlock()
+	list := make([]*peer, 0, len(ps.peers))
+	for _, p := range ps.peers {
+		if p.knownInfos.Contains(hash) {
+			list = append(list, p)
+		}
+	}
+	return list
+}
+
 // BestPeer retrieves the known peer with the currently highest total difficulty.
 func (ps *peerSet) BestPeer() *peer {
 	ps.lock.RLock()
@@ -519,4 +540,46 @@ func (ps *peerSet) Close() {
 		p.Disconnect(p2p.DiscQuitting)
 	}
 	ps.closed = true
+}
+
+// AddNotaryPeer adds a peer into notary peer of the given round.
+// Caller of this function need to make sure that the peer is acutally in
+// notary set.
+func (ps *peerSet) AddNotaryPeer(round uint64, p *peer) error {
+	ps.lock.Lock()
+	defer ps.lock.Unlock()
+
+	// TODO(sonic): revisit this round check after dexon core SDK is finalized.
+	if round < ps.round || round > ps.round+2 {
+		return errInvalidRound
+	}
+
+	if _, ok := ps.peers[p.id]; !ok {
+		return errNotRegistered
+	}
+
+	ps.notaryPeers[round][p.id] = p
+	return nil
+}
+
+// NotaryPeers return peers in notary set of the given round.
+func (ps *peerSet) NotaryPeers(round uint64) []*peer {
+	ps.lock.RLock()
+	defer ps.lock.RUnlock()
+
+	list := make([]*peer, 0, len(ps.notaryPeers[round]))
+	for _, p := range ps.notaryPeers[round] {
+		if _, ok := ps.peers[p.id]; ok {
+			list = append(list, p)
+		}
+	}
+	return list
+}
+
+// NextRound moves notary peer set to next round.
+func (ps *peerSet) NextRound() {
+	ps.lock.Lock()
+	defer ps.lock.Unlock()
+	delete(ps.notaryPeers, ps.round)
+	ps.round = ps.round + 1
 }
