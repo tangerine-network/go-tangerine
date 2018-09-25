@@ -46,6 +46,28 @@ var (
 	testBank       = crypto.PubkeyToAddress(testBankKey.PublicKey)
 )
 
+// testP2PServer is a fake, helper p2p server for testing purposes.
+type testP2PServer struct {
+	added   chan *discover.Node
+	removed chan *discover.Node
+}
+
+func (s *testP2PServer) Self() *discover.Node {
+	return &discover.Node{}
+}
+
+func (s *testP2PServer) AddNotaryPeer(node *discover.Node) {
+	if s.added != nil {
+		s.added <- node
+	}
+}
+
+func (s *testP2PServer) RemoveNotaryPeer(node *discover.Node) {
+	if s.removed != nil {
+		s.removed <- node
+	}
+}
+
 // newTestProtocolManager creates a new protocol manager for testing purposes,
 // with the given number of blocks already known, and potential notification
 // channels for different events.
@@ -70,7 +92,7 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 	if err != nil {
 		return nil, nil, err
 	}
-	pm.Start(1000)
+	pm.Start(&testP2PServer{}, 1000)
 	return pm, db, nil
 }
 

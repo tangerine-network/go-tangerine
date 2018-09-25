@@ -22,12 +22,13 @@ import (
 	"math/big"
 	"net"
 
-	"github.com/dexon-foundation/dexon/crypto/sha3"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto/sha3"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/p2p/discover"
+	"github.com/ethereum/go-ethereum/p2p/enode"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -111,6 +112,14 @@ type txPool interface {
 	// SubscribeNewTxsEvent should return an event subscription of
 	// NewTxsEvent and send events to the given channel.
 	SubscribeNewTxsEvent(chan<- core.NewTxsEvent) event.Subscription
+}
+
+type p2pServer interface {
+	Self() *enode.Node
+
+	AddNotaryPeer(*discover.Node)
+
+	RemoveNotaryPeer(*discover.Node)
 }
 
 // statusData is the network packet for the status message.
