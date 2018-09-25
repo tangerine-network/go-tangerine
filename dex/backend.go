@@ -25,6 +25,7 @@ import (
 	"github.com/dexon-foundation/dexon-consensus-core/core/blockdb"
 	ethCrypto "github.com/dexon-foundation/dexon-consensus-core/crypto/eth"
 
+	"github.com/dexon-foundation/dexon/internal/ethapi"
 	"github.com/ethereum/go-ethereum/accounts"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
@@ -33,7 +34,6 @@ import (
 	"github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/internal/ethapi"
 	"github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/p2p"
 	"github.com/ethereum/go-ethereum/params"
