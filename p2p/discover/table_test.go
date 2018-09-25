@@ -147,7 +147,7 @@ func TestTable_IPLimit(t *testing.T) {
 	defer tab.Close()
 
 	for i := 0; i < tableIPLimit+1; i++ {
-		n := nodeAtDistance(tab.self().ID(), i, net.IP{172, 0, 1, byte(i)})
+		n := nodeAtDistance(tab.Self().ID(), i, net.IP{172, 0, 1, byte(i)})
 		tab.addSeenNode(n)
 	}
 	if tab.len() > tableIPLimit {
@@ -165,7 +165,7 @@ func TestTable_BucketIPLimit(t *testing.T) {
 
 	d := 3
 	for i := 0; i < bucketIPLimit+1; i++ {
-		n := nodeAtDistance(tab.self().ID(), d, net.IP{172, 0, 1, byte(i)})
+		n := nodeAtDistance(tab.Self().ID(), d, net.IP{172, 0, 1, byte(i)})
 		tab.addSeenNode(n)
 	}
 	if tab.len() > bucketIPLimit {
@@ -264,7 +264,7 @@ func TestTable_ReadRandomNodesGetAll(t *testing.T) {
 
 		for i := 0; i < len(buf); i++ {
 			ld := cfg.Rand.Intn(len(tab.buckets))
-			fillTable(tab, []*node{nodeAtDistance(tab.self().ID(), ld, intIP(ld))})
+			fillTable(tab, []*node{nodeAtDistance(tab.Self().ID(), ld, intIP(ld))})
 		}
 		gotN := tab.ReadRandomNodes(buf)
 		if gotN != tab.len() {
@@ -312,8 +312,8 @@ func TestTable_addVerifiedNode(t *testing.T) {
 	defer tab.Close()
 
 	// Insert two nodes.
-	n1 := nodeAtDistance(tab.self().ID(), 256, net.IP{88, 77, 66, 1})
-	n2 := nodeAtDistance(tab.self().ID(), 256, net.IP{88, 77, 66, 2})
+	n1 := nodeAtDistance(tab.Self().ID(), 256, net.IP{88, 77, 66, 1})
+	n2 := nodeAtDistance(tab.Self().ID(), 256, net.IP{88, 77, 66, 2})
 	tab.addSeenNode(n1)
 	tab.addSeenNode(n2)
 
@@ -344,8 +344,8 @@ func TestTable_addSeenNode(t *testing.T) {
 	defer tab.Close()
 
 	// Insert two nodes.
-	n1 := nodeAtDistance(tab.self().ID(), 256, net.IP{88, 77, 66, 1})
-	n2 := nodeAtDistance(tab.self().ID(), 256, net.IP{88, 77, 66, 2})
+	n1 := nodeAtDistance(tab.Self().ID(), 256, net.IP{88, 77, 66, 1})
+	n2 := nodeAtDistance(tab.Self().ID(), 256, net.IP{88, 77, 66, 2})
 	tab.addSeenNode(n1)
 	tab.addSeenNode(n2)
 

@@ -75,10 +75,10 @@ func intIP(i int) net.IP {
 
 // fillBucket inserts nodes into the given bucket until it is full.
 func fillBucket(tab *Table, n *node) (last *node) {
-	ld := enode.LogDist(tab.self().ID(), n.ID())
+	ld := enode.LogDist(tab.Self().ID(), n.ID())
 	b := tab.bucket(n.ID())
 	for len(b.entries) < bucketSize {
-		b.entries = append(b.entries, nodeAtDistance(tab.self().ID(), ld, intIP(ld)))
+		b.entries = append(b.entries, nodeAtDistance(tab.Self().ID(), ld, intIP(ld)))
 	}
 	return b.entries[bucketSize-1]
 }

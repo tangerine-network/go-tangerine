@@ -127,7 +127,7 @@ func newTable(t transport, db *enode.DB, bootnodes []*enode.Node) (*Table, error
 	return tab, nil
 }
 
-func (tab *Table) self() *enode.Node {
+func (tab *Table) Self() *enode.Node {
 	return tab.net.self()
 }
 
@@ -258,7 +258,7 @@ func (tab *Table) lookup(targetKey encPubkey, refreshIfEmpty bool) []*node {
 	)
 	// don't query further if we hit ourself.
 	// unlikely to happen often in practice.
-	asked[tab.self().ID()] = true
+	asked[tab.Self().ID()] = true
 
 	for {
 		tab.mutex.Lock()
@@ -419,7 +419,7 @@ func (tab *Table) doRefresh(done chan struct{}) {
 	// Run self lookup to discover new neighbor nodes.
 	// We can only do this if we have a secp256k1 identity.
 	var key ecdsa.PublicKey
-	if err := tab.self().Load((*enode.Secp256k1)(&key)); err == nil {
+	if err := tab.Self().Load((*enode.Secp256k1)(&key)); err == nil {
 		tab.lookup(encodePubkey(&key), false)
 	}
 
@@ -544,7 +544,7 @@ func (tab *Table) len() (n int) {
 
 // bucket returns the bucket for the given node ID hash.
 func (tab *Table) bucket(id enode.ID) *bucket {
-	d := enode.LogDist(tab.self().ID(), id)
+	d := enode.LogDist(tab.Self().ID(), id)
 	if d <= bucketMinDistance {
 		return tab.buckets[0]
 	}
@@ -557,7 +557,7 @@ func (tab *Table) bucket(id enode.ID) *bucket {
 //
 // The caller must not hold tab.mutex.
 func (tab *Table) addSeenNode(n *node) {
-	if n.ID() == tab.self().ID() {
+	if n.ID() == tab.Self().ID() {
 		return
 	}
 
@@ -599,7 +599,7 @@ func (tab *Table) addVerifiedNode(n *node) {
 	if !tab.isInitDone() {
 		return
 	}
-	if n.ID() == tab.self().ID() {
+	if n.ID() == tab.Self().ID() {
 		return
 	}
 

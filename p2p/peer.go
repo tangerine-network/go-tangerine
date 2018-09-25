@@ -434,7 +434,6 @@ type PeerInfo struct {
 		RemoteAddress string `json:"remoteAddress"` // Remote endpoint of the TCP data connection
 		Inbound       bool   `json:"inbound"`
 		Trusted       bool   `json:"trusted"`
-		Notary        bool   `json:"notary"`
 		Static        bool   `json:"static"`
 	} `json:"network"`
 	Protocols map[string]interface{} `json:"protocols"` // Sub-protocol specific metadata fields
@@ -459,7 +458,6 @@ func (p *Peer) Info() *PeerInfo {
 	info.Network.RemoteAddress = p.RemoteAddr().String()
 	info.Network.Inbound = p.rw.is(inboundConn)
 	info.Network.Trusted = p.rw.is(trustedConn)
-	info.Network.Notary = p.rw.is(notaryConn)
 	info.Network.Static = p.rw.is(staticDialedConn)
 
 	// Gather all the running protocol infos

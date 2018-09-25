@@ -221,3 +221,85 @@ func TestGetBlockHeadersDataEncodeDecode(t *testing.T) {
 		}
 	}
 }
+
+func TestRecvNodeMetas(t *testing.T) {
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	p, _ := newTestPeer("peer", dex64, pm, true)
+	defer pm.Stop()
+	defer p.close()
+
+	meta := NodeMeta{
+		ID: nodeID(1),
+	}
+
+	ch := make(chan newMetasEvent)
+	pm.nodeTable.SubscribeNewMetasEvent(ch)
+
+	if err := p2p.Send(p.app, MetaMsg, []interface{}{meta}); err != nil {
+		t.Fatalf("send error: %v", err)
+	}
+
+	select {
+	case event := <-ch:
+		metas := event.Metas
+		if len(metas) != 1 {
+			t.Errorf("wrong number of new metas: got %d, want 1", len(metas))
+		} else if metas[0].Hash() != meta.Hash() {
+			t.Errorf("added wrong meta hash: got %v, want %v", metas[0].Hash(), meta.Hash())
+		}
+	case <-time.After(3 * time.Second):
+		t.Errorf("no newMetasEvent received within 3 seconds")
+	}
+}
+
+func TestSendNodeMetas(t *testing.T) {
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	defer pm.Stop()
+
+	allmetas := make([]*NodeMeta, 100)
+	for nonce := range allmetas {
+		allmetas[nonce] = &NodeMeta{ID: nodeID(int64(nonce))}
+	}
+
+	// Connect several peers. They should all receive the pending transactions.
+	var wg sync.WaitGroup
+	checkmetas := func(p *testPeer) {
+		defer wg.Done()
+		defer p.close()
+		seen := make(map[common.Hash]bool)
+		for _, meta := range allmetas {
+			seen[meta.Hash()] = false
+		}
+		for n := 0; n < len(allmetas) && !t.Failed(); {
+			var metas []*NodeMeta
+			msg, err := p.app.ReadMsg()
+			if err != nil {
+				t.Errorf("%v: read error: %v", p.Peer, err)
+			} else if msg.Code != MetaMsg {
+				t.Errorf("%v: got code %d, want MetaMsg", p.Peer, msg.Code)
+			}
+			if err := msg.Decode(&metas); err != nil {
+				t.Errorf("%v: %v", p.Peer, err)
+			}
+			for _, meta := range metas {
+				hash := meta.Hash()
+				seenmeta, want := seen[hash]
+				if seenmeta {
+					t.Errorf("%v: got meta more than once: %x", p.Peer, hash)
+				}
+				if !want {
+					t.Errorf("%v: got unexpected meta: %x", p.Peer, hash)
+				}
+				seen[hash] = true
+				n++
+			}
+		}
+	}
+	for i := 0; i < 3; i++ {
+		p, _ := newTestPeer(fmt.Sprintf("peer #%d", i), dex64, pm, true)
+		wg.Add(1)
+		go checkmetas(p)
+	}
+	pm.nodeTable.Add(allmetas)
+	wg.Wait()
+}

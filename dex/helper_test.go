@@ -37,7 +37,7 @@ import (
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/event"
 	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/discover"
+	"github.com/dexon-foundation/dexon/p2p/enode"
 	"github.com/dexon-foundation/dexon/params"
 )
 
@@ -48,24 +48,47 @@ var (
 
 // testP2PServer is a fake, helper p2p server for testing purposes.
 type testP2PServer struct {
-	added   chan *discover.Node
-	removed chan *discover.Node
+	mu     sync.Mutex
+	self   *enode.Node
+	direct map[enode.NodeID]*enode.Node
+	group  map[string][]*enode.Node
 }
 
-func (s *testP2PServer) Self() *discover.Node {
-	return &discover.Node{}
-}
-
-func (s *testP2PServer) AddNotaryPeer(node *discover.Node) {
-	if s.added != nil {
-		s.added <- node
+func newTestP2PServer(self *enode.Node) *testP2PServer {
+	return &testP2PServer{
+		self:   self,
+		direct: make(map[enode.NodeID]*enode.Node),
+		group:  make(map[string][]*enode.Node),
 	}
 }
 
-func (s *testP2PServer) RemoveNotaryPeer(node *discover.Node) {
-	if s.removed != nil {
-		s.removed <- node
-	}
+func (s *testP2PServer) Self() *enode.Node {
+	return s.self
+}
+
+func (s *testP2PServer) AddDirectPeer(node *enode.Node) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.direct[node.ID] = node
+}
+
+func (s *testP2PServer) RemoveDirectPeer(node *enode.Node) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.direct, node.ID)
+}
+
+func (s *testP2PServer) AddGroup(
+	name string, nodes []*enode.Node, num uint64) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.group[name] = nodes
+}
+
+func (s *testP2PServer) RemoveGroup(name string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	delete(s.group, name)
 }
 
 // newTestProtocolManager creates a new protocol manager for testing purposes,
@@ -88,11 +111,11 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 		panic(err)
 	}
 
-	pm, err := NewProtocolManager(gspec.Config, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, blockchain, db)
+	pm, err := NewProtocolManager(gspec.Config, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, blockchain, db, &testGovernance{})
 	if err != nil {
 		return nil, nil, err
 	}
-	pm.Start(&testP2PServer{}, 1000)
+	pm.Start(newTestP2PServer(&enode.Node{}), 1000)
 	return pm, db, nil
 }
 
@@ -157,6 +180,29 @@ func newTestTransaction(from *ecdsa.PrivateKey, nonce uint64, datasize int) *typ
 	return tx
 }
 
+// testGovernance is a fake, helper governance for testing purposes
+type testGovernance struct {
+	getChainNumFunc  func(uint64) uint32
+	getNotarySetFunc func(uint32, uint64) map[string]struct{}
+	getDKGSetFunc    func(uint64) map[string]struct{}
+}
+
+func (g *testGovernance) GetChainNum(round uint64) uint32 {
+	return g.getChainNumFunc(round)
+}
+
+func (g *testGovernance) GetNotarySet(chainID uint32, round uint64) map[string]struct{} {
+	return g.getNotarySetFunc(chainID, round)
+}
+
+func (g *testGovernance) GetDKGSet(round uint64) map[string]struct{} {
+	return g.getDKGSetFunc(round)
+}
+
+func (g *testGovernance) SubscribeNewCRSEvent(ch chan core.NewCRSEvent) event.Subscription {
+	return nil
+}
+
 // testPeer is a simulated peer to allow testing direct network calls.
 type testPeer struct {
 	net p2p.MsgReadWriter // Network layer reader/writer to simulate remote messaging
@@ -170,7 +216,7 @@ func newTestPeer(name string, version int, pm *ProtocolManager, shake bool) (*te
 	app, net := p2p.MsgPipe()
 
 	// Generate a random id and create the peer
-	var id discover.NodeID
+	var id enode.NodeID
 	rand.Read(id[:])
 
 	peer := pm.newPeer(version, p2p.NewPeer(id, name, nil), net)
