@@ -180,6 +180,8 @@ type Server struct {
 	removestatic  chan *enode.Node
 	addtrusted    chan *enode.Node
 	removetrusted chan *enode.Node
+	addnotary     chan *enode.Node
+	removenotary  chan *enode.Node
 	posthandshake chan *conn
 	addpeer       chan *conn
 	delpeer       chan peerDrop
@@ -203,6 +205,7 @@ const (
 	staticDialedConn
 	inboundConn
 	trustedConn
+	notaryConn
 )
 
 // conn wraps a network connection with information gathered
@@ -253,6 +256,9 @@ func (f connFlag) String() string {
 	}
 	if f&inboundConn != 0 {
 		s += "-inbound"
+	}
+	if f&notaryConn != 0 {
+		s += "-notary"
 	}
 	if s != "" {
 		s = s[1:]
@@ -340,6 +346,27 @@ func (srv *Server) AddTrustedPeer(node *enode.Node) {
 func (srv *Server) RemoveTrustedPeer(node *enode.Node) {
 	select {
 	case srv.removetrusted <- node:
+	case <-srv.quit:
+	}
+}
+
+// AddNotaryPeer connects to the given node and maintains the connection until the
+// server is shut down. If the connection fails for any reason, the server will
+// attempt to reconnect the peer.
+// AddNotaryPeer also adds the given node to a reserved whitelist which allows the
+// node to always connect, even if the slot are full.
+func (srv *Server) AddNotaryPeer(node *discover.Node) {
+	select {
+	case srv.addnotary <- node:
+	case <-srv.quit:
+	}
+}
+
+// RemoveNotaryPeer disconnects from the given node.
+// RemoveNotaryPeer also removes the given node from the notary peer set.
+func (srv *Server) RemoveNotaryPeer(node *discover.Node) {
+	select {
+	case srv.removenotary <- node:
 	case <-srv.quit:
 	}
 }
@@ -440,6 +467,8 @@ func (srv *Server) Start() (err error) {
 	srv.removestatic = make(chan *enode.Node)
 	srv.addtrusted = make(chan *enode.Node)
 	srv.removetrusted = make(chan *enode.Node)
+	srv.addnotary = make(chan *enode.Node)
+	srv.removenotary = make(chan *enode.Node)
 	srv.peerOp = make(chan peerOpFunc)
 	srv.peerOpDone = make(chan struct{})
 
@@ -610,6 +639,7 @@ func (srv *Server) run(dialstate dialer) {
 		peers        = make(map[enode.ID]*Peer)
 		inboundCount = 0
 		trusted      = make(map[enode.ID]bool, len(srv.TrustedNodes))
+		notary       = make(map[enode.ID]bool)
 		taskdone     = make(chan task, maxActiveDialTasks)
 		runningTasks []task
 		queuedTasks  []task // tasks that can't run yet
@@ -693,6 +723,33 @@ running:
 			if p, ok := peers[n.ID()]; ok {
 				p.rw.set(trustedConn, false)
 			}
+		case n := <-srv.addnotary:
+			// This channel is used by AddNotaryPeer to add to the
+			// ephemeral notary peer list. Add it to the dialer,
+			// it will keep the node connected.
+			srv.log.Trace("Adding notary node", "node", n)
+			notary[n.ID] = true
+			if p, ok := peers[n.ID]; ok {
+				p.rw.set(notaryConn, true)
+			}
+			dialstate.addStatic(n)
+		case n := <-srv.removenotary:
+			// This channel is used by RemoveNotaryPeer to send a
+			// disconnect request to a peer and begin the
+			// stop keeping the node connected.
+			srv.log.Trace("Removing notary node", "node", n)
+			if _, ok := notary[n.ID]; ok {
+				delete(notary, n.ID)
+			}
+
+			if p, ok := peers[n.ID]; ok {
+				p.rw.set(notaryConn, false)
+			}
+
+			dialstate.removeStatic(n)
+			if p, ok := peers[n.ID]; ok {
+				p.Disconnect(DiscRequested)
+			}
 		case op := <-srv.peerOp:
 			// This channel is used by Peers and PeerCount.
 			op(peers)
@@ -711,6 +768,11 @@ running:
 				// Ensure that the trusted flag is set before checking against MaxPeers.
 				c.flags |= trustedConn
 			}
+
+			if notary[c.id] {
+				c.flags |= notaryConn
+			}
+
 			// TODO: track in-progress inbound node IDs (pre-Peer) to avoid dialing them.
 			select {
 			case c.cont <- srv.encHandshakeChecks(peers, inboundCount, c):
@@ -791,9 +853,9 @@ func (srv *Server) protoHandshakeChecks(peers map[enode.ID]*Peer, inboundCount i
 
 func (srv *Server) encHandshakeChecks(peers map[enode.ID]*Peer, inboundCount int, c *conn) error {
 	switch {
-	case !c.is(trustedConn|staticDialedConn) && len(peers) >= srv.MaxPeers:
+	case !c.is(trustedConn|notaryConn|staticDialedConn) && len(peers) >= srv.MaxPeers:
 		return DiscTooManyPeers
-	case !c.is(trustedConn) && c.is(inboundConn) && inboundCount >= srv.maxInboundConns():
+	case !c.is(trustedConn|notaryConn) && c.is(inboundConn) && inboundCount >= srv.maxInboundConns():
 		return DiscTooManyPeers
 	case peers[c.node.ID()] != nil:
 		return DiscAlreadyConnected
