@@ -18,20 +18,15 @@
 package dex
 
 import (
-	"math/big"
-	"sync"
-
 	dexCore "github.com/dexon-foundation/dexon-consensus-core/core"
 	"github.com/dexon-foundation/dexon-consensus-core/core/blockdb"
 	ethCrypto "github.com/dexon-foundation/dexon-consensus-core/crypto/eth"
 
 	"github.com/dexon-foundation/dexon/internal/ethapi"
 	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/bloombits"
-	"github.com/ethereum/go-ethereum/eth"
 	"github.com/ethereum/go-ethereum/ethdb"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/node"
@@ -42,7 +37,7 @@ import (
 
 // Dexon implementes the DEXON fullnode service.
 type Dexon struct {
-	config      *eth.Config
+	config      *Config
 	chainConfig *params.ChainConfig
 
 	// Channel for shutting down the service
@@ -60,9 +55,6 @@ type Dexon struct {
 	bloomRequests chan chan *bloombits.Retrieval // Channel receiving bloom data retrieval requests
 	bloomIndexer  *core.ChainIndexer             // Bloom indexer operating during block imports
 
-	gasPrice  *big.Int
-	etherbase common.Address
-
 	// Dexon consensus.
 	app        *DexconApp
 	governance *DexconGovernance
@@ -72,11 +64,9 @@ type Dexon struct {
 
 	networkID     uint64
 	netRPCService *ethapi.PublicNetAPI
-
-	lock sync.RWMutex // Protects the variadic fields (e.g. gas price and etherbase)
 }
 
-func New(ctx *node.ServiceContext, config *eth.Config) (*Dexon, error) {
+func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	// Consensus.
 	db, err := blockdb.NewLevelDBBackedBlockDB("main.blockdb")
 	if err != nil {
@@ -100,8 +90,6 @@ func New(ctx *node.ServiceContext, config *eth.Config) (*Dexon, error) {
 		accountManager: ctx.AccountManager,
 		shutdownChan:   make(chan bool),
 		networkID:      config.NetworkId,
-		gasPrice:       config.MinerGasPrice,
-		etherbase:      config.Etherbase,
 		bloomRequests:  make(chan chan *bloombits.Retrieval),
 		app:            app,
 		governance:     gov,

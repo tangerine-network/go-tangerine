@@ -14,7 +14,8 @@ func NewDexconGovernance() *DexconGovernance {
 }
 
 // GetValidatorSet returns the current notary set.
-func (d *DexconGovernance) GetNotarySet() map[types.NodeID]struct{} {
+func (d *DexconGovernance) GetNotarySet(
+	blockHeight uint64) map[types.NodeID]struct{} {
 	return make(map[types.NodeID]struct{})
 }
 

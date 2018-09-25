@@ -18,9 +18,6 @@
 package dex
 
 import (
-	"time"
-
-	"github.com/dexon-foundation/dexon-consensus-core/common"
 	"github.com/dexon-foundation/dexon-consensus-core/core/types"
 
 	"github.com/ethereum/go-ethereum/core"
@@ -45,26 +42,13 @@ func (d *DexconApp) PreparePayload(position types.Position) []byte {
 	return nil
 }
 
-// VerifyPayloads verifies if the payloads are valid.
-func (d *DexconApp) VerifyPayloads(payloads []byte) bool {
+// VerifyPayload verifies if the payloads are valid.
+func (d *DexconApp) VerifyPayload(payload []byte) bool {
 	return true
 }
 
-// BlockConfirmed is called when a block is confirmed and added to lattice.
-func (d *DexconApp) BlockConfirmed(block *types.Block) {
-}
-
-// StronglyAcked is called when a block is strongly acked.
-func (d *DexconApp) StronglyAcked(blockHash common.Hash) {
-}
-
-// TotalOrderingDeliver is called when the total ordering algorithm deliver
-// a set of block.
-func (d *DexconApp) TotalOrderingDeliver(blockHashes common.Hashes, early bool) {
-}
-
-// DeliverBlock is called when a block is add to the compaction chain.
-func (d *DexconApp) DeliverBlock(blockHash common.Hash, timestamp time.Time) {
+// BlockDelivered is called when a block is add to the compaction chain.
+func (d *DexconApp) BlockDelivered(block types.Block) {
 }
 
 // BlockProcessedChan returns a channel to receive the block hashes that have
@@ -74,5 +58,5 @@ func (d *DexconApp) BlockProcessedChan() <-chan types.WitnessResult {
 }
 
 // WitnessAckDeliver is called when a notary ack is created.
-func (d *DexconApp) WitnessAckDeliver(notaryAck *types.WitnessAck) {
+func (d *DexconApp) WitnessAckDelivered(notaryAck *types.WitnessAck) {
 }

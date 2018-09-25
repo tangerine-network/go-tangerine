@@ -17,42 +17,28 @@
 package dex
 
 import (
-	"math/big"
 	"os"
 	"os/user"
 	"path/filepath"
 	"runtime"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/consensus/ethash"
+	"github.com/ethereum/go-ethereum/consensus/dexcon"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/eth/downloader"
 	"github.com/ethereum/go-ethereum/eth/gasprice"
-	"github.com/ethereum/go-ethereum/params"
 )
 
 // DefaultConfig contains default settings for use on the Ethereum main net.
 var DefaultConfig = Config{
-	SyncMode: downloader.FastSync,
-	Ethash: ethash.Config{
-		CacheDir:       "ethash",
-		CachesInMem:    2,
-		CachesOnDisk:   3,
-		DatasetsInMem:  1,
-		DatasetsOnDisk: 2,
-	},
+	SyncMode:       downloader.FastSync,
+	Dexcon:         dexcon.Config{},
 	NetworkId:      1,
 	LightPeers:     100,
 	DatabaseCache:  768,
 	TrieCleanCache: 256,
 	TrieDirtyCache: 256,
 	TrieTimeout:    60 * time.Minute,
-	MinerGasFloor:  8000000,
-	MinerGasCeil:   8000000,
-	MinerGasPrice:  big.NewInt(params.GWei),
-	MinerRecommit:  3 * time.Second,
 
 	TxPool: core.DefaultTxPoolConfig,
 	GPO: gasprice.Config{
@@ -69,13 +55,13 @@ func init() {
 		}
 	}
 	if runtime.GOOS == "windows" {
-		DefaultConfig.Ethash.DatasetDir = filepath.Join(home, "AppData", "Ethash")
+		DefaultConfig.DatabaseDir = filepath.Join(home, "AppData", "Dexcon")
 	} else {
-		DefaultConfig.Ethash.DatasetDir = filepath.Join(home, ".ethash")
+		DefaultConfig.DatabaseDir = filepath.Join(home, ".dexcon")
 	}
 }
 
-//go:generate gencodec -type Config -field-override configMarshaling -formats toml -out gen_config.go
+//go:generate gencodec -type Config -formats toml -out gen_config.go
 
 type Config struct {
 	// The genesis block, which is inserted if the database is empty.
@@ -95,22 +81,13 @@ type Config struct {
 	SkipBcVersionCheck bool `toml:"-"`
 	DatabaseHandles    int  `toml:"-"`
 	DatabaseCache      int
+	DatabaseDir        string
 	TrieCleanCache     int
 	TrieDirtyCache     int
 	TrieTimeout        time.Duration
 
-	// Mining-related options
-	Etherbase      common.Address `toml:",omitempty"`
-	MinerNotify    []string       `toml:",omitempty"`
-	MinerExtraData []byte         `toml:",omitempty"`
-	MinerGasFloor  uint64
-	MinerGasCeil   uint64
-	MinerGasPrice  *big.Int
-	MinerRecommit  time.Duration
-	MinerNoverify  bool
-
-	// Ethash options
-	Ethash ethash.Config
+	// Dexcon options
+	Dexcon dexcon.Config
 
 	// Transaction pool options
 	TxPool core.TxPoolConfig
@@ -128,8 +105,4 @@ type Config struct {
 	EWASMInterpreter string
 	// Type of the EVM interpreter ("" for default)
 	EVMInterpreter string
-}
-
-type configMarshaling struct {
-	MinerExtraData hexutil.Bytes
 }

@@ -27,6 +27,10 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
+// Config is the configuration for DEXON consensus.
+type Config struct {
+}
+
 // Dexcon is a delegated proof-of-stake consensus engine.
 type Dexcon struct {
 	config *params.DexconConfig
