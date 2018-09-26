@@ -27,11 +27,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/swarm/storage/feed"
+	"github.com/dexon-foundation/dexon/swarm/storage/feed"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/swarm/log"
-	"github.com/ethereum/go-ethereum/swarm/storage"
+	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/swarm/log"
+	"github.com/dexon-foundation/dexon/swarm/storage"
 )
 
 const (

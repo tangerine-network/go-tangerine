@@ -25,11 +25,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/protocols"
-	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
-	"github.com/ethereum/go-ethereum/swarm/state"
+	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/p2p"
+	"github.com/dexon-foundation/dexon/p2p/protocols"
+	"github.com/dexon-foundation/dexon/p2p/simulations/adapters"
+	"github.com/dexon-foundation/dexon/swarm/state"
 	colorable "github.com/mattn/go-colorable"
 )
 

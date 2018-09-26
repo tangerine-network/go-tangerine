@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/swarm/storage"
-	whisper "github.com/ethereum/go-ethereum/whisper/whisperv6"
+	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/common/hexutil"
+	"github.com/dexon-foundation/dexon/p2p"
+	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/dexon-foundation/dexon/swarm/storage"
+	whisper "github.com/dexon-foundation/dexon/whisper/whisperv6"
 )
 
 const (

@@ -22,14 +22,14 @@ import (
 	"math/big"
 	"net"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto/sha3"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/p2p/discover"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/core"
+	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/dexon-foundation/dexon/crypto/sha3"
+	"github.com/dexon-foundation/dexon/event"
+	"github.com/dexon-foundation/dexon/p2p/discover"
+	"github.com/dexon-foundation/dexon/p2p/enode"
+	"github.com/dexon-foundation/dexon/rlp"
 )
 
 // Constants to match up protocol versions and messages

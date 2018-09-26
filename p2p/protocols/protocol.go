@@ -38,12 +38,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/swarm/spancontext"
-	"github.com/ethereum/go-ethereum/swarm/tracing"
+	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/metrics"
+	"github.com/dexon-foundation/dexon/p2p"
+	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/dexon-foundation/dexon/swarm/spancontext"
+	"github.com/dexon-foundation/dexon/swarm/tracing"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 

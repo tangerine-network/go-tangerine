@@ -24,16 +24,16 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/bitutil"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/common/bitutil"
+	"github.com/dexon-foundation/dexon/core"
+	"github.com/dexon-foundation/dexon/core/rawdb"
+	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/dexon-foundation/dexon/ethdb"
+	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/params"
+	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/dexon-foundation/dexon/trie"
 )
 
 // IndexerConfig includes a set of configs for chain indexers.

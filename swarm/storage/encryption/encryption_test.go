@@ -20,9 +20,9 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/swarm/testutil"
+	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/common/hexutil"
+	"github.com/dexon-foundation/dexon/swarm/testutil"
 	"golang.org/x/crypto/sha3"
 )
 

@@ -19,7 +19,7 @@
 package downloader
 
 import (
-	"github.com/ethereum/go-ethereum/metrics"
+	"github.com/dexon-foundation/dexon/metrics"
 )
 
 var (

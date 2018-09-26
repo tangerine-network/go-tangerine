@@ -26,11 +26,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
+	"github.com/dexon-foundation/dexon/event"
+	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/p2p"
+	"github.com/dexon-foundation/dexon/p2p/enode"
+	"github.com/dexon-foundation/dexon/p2p/simulations/adapters"
 )
 
 var DialBanTimeout = 200 * time.Millisecond

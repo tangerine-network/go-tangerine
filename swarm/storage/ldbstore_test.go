@@ -28,10 +28,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	ch "github.com/ethereum/go-ethereum/swarm/chunk"
-	"github.com/ethereum/go-ethereum/swarm/log"
-	"github.com/ethereum/go-ethereum/swarm/storage/mock/mem"
+	"github.com/dexon-foundation/dexon/common"
+	ch "github.com/dexon-foundation/dexon/swarm/chunk"
+	"github.com/dexon-foundation/dexon/swarm/log"
+	"github.com/dexon-foundation/dexon/swarm/storage/mock/mem"
 	ldberrors "github.com/syndtr/goleveldb/leveldb/errors"
 )
 

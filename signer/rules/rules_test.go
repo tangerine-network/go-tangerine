@@ -22,13 +22,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/internal/ethapi"
-	"github.com/ethereum/go-ethereum/signer/core"
-	"github.com/ethereum/go-ethereum/signer/storage"
+	"github.com/dexon-foundation/dexon/accounts"
+	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/common/hexutil"
+	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/dexon-foundation/dexon/internal/ethapi"
+	"github.com/dexon-foundation/dexon/signer/core"
+	"github.com/dexon-foundation/dexon/signer/storage"
 )
 
 const JS = `

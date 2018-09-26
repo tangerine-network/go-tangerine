@@ -22,11 +22,11 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/internal/ethapi"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/dexon-foundation/dexon/internal/ethapi"
+	"github.com/dexon-foundation/dexon/params"
+	"github.com/dexon-foundation/dexon/rpc"
 )
 
 var maxPrice = big.NewInt(500 * params.GWei)

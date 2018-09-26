@@ -23,16 +23,16 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/contracts/ens"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/swarm/log"
-	"github.com/ethereum/go-ethereum/swarm/network"
-	"github.com/ethereum/go-ethereum/swarm/pss"
-	"github.com/ethereum/go-ethereum/swarm/services/swap"
-	"github.com/ethereum/go-ethereum/swarm/storage"
+	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/contracts/ens"
+	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/dexon-foundation/dexon/node"
+	"github.com/dexon-foundation/dexon/p2p/enode"
+	"github.com/dexon-foundation/dexon/swarm/log"
+	"github.com/dexon-foundation/dexon/swarm/network"
+	"github.com/dexon-foundation/dexon/swarm/pss"
+	"github.com/dexon-foundation/dexon/swarm/services/swap"
+	"github.com/dexon-foundation/dexon/swarm/storage"
 )
 
 const (

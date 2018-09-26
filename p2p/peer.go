@@ -25,12 +25,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common/mclock"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/p2p/enr"
-	"github.com/ethereum/go-ethereum/rlp"
+	"github.com/dexon-foundation/dexon/common/mclock"
+	"github.com/dexon-foundation/dexon/event"
+	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/p2p/enode"
+	"github.com/dexon-foundation/dexon/p2p/enr"
+	"github.com/dexon-foundation/dexon/rlp"
 )
 
 var (

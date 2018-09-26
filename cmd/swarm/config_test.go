@@ -26,11 +26,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dexon-foundation/dexon/cmd/utils"
+	"github.com/dexon-foundation/dexon/rpc"
+	"github.com/dexon-foundation/dexon/swarm"
+	"github.com/dexon-foundation/dexon/swarm/api"
 	"github.com/docker/docker/pkg/reexec"
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ethereum/go-ethereum/swarm"
-	"github.com/ethereum/go-ethereum/swarm/api"
 )
 
 func TestConfigDump(t *testing.T) {

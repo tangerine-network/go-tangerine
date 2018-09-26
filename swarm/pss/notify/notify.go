@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/rlp"
-	"github.com/ethereum/go-ethereum/swarm/log"
-	"github.com/ethereum/go-ethereum/swarm/pss"
+	"github.com/dexon-foundation/dexon/common/hexutil"
+	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/dexon-foundation/dexon/p2p"
+	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/dexon-foundation/dexon/swarm/log"
+	"github.com/dexon-foundation/dexon/swarm/pss"
 )
 
 const (

@@ -26,12 +26,12 @@ import (
 
 	cli "gopkg.in/urfave/cli.v1"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/dashboard"
-	"github.com/ethereum/go-ethereum/dex"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/params"
-	whisper "github.com/ethereum/go-ethereum/whisper/whisperv6"
+	"github.com/dexon-foundation/dexon/cmd/utils"
+	"github.com/dexon-foundation/dexon/dashboard"
+	"github.com/dexon-foundation/dexon/dex"
+	"github.com/dexon-foundation/dexon/node"
+	"github.com/dexon-foundation/dexon/params"
+	whisper "github.com/dexon-foundation/dexon/whisper/whisperv6"
 	"github.com/naoina/toml"
 )
 

@@ -19,12 +19,12 @@ package dexcon
 import (
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/consensus"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/consensus"
+	"github.com/dexon-foundation/dexon/core/state"
+	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/dexon-foundation/dexon/params"
+	"github.com/dexon-foundation/dexon/rpc"
 )
 
 // Config is the configuration for DEXON consensus.

@@ -34,12 +34,12 @@ import (
 
 	"io"
 
+	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/metrics"
+	"github.com/dexon-foundation/dexon/p2p"
+	"github.com/dexon-foundation/dexon/params"
+	"github.com/dexon-foundation/dexon/rpc"
 	"github.com/elastic/gosigar"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/params"
-	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/mohae/deepcopy"
 	"golang.org/x/net/websocket"
 )

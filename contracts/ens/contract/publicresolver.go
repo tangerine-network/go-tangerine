@@ -7,12 +7,12 @@ import (
 	"math/big"
 	"strings"
 
-	ethereum "github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/accounts/abi"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/event"
+	ethereum "github.com/dexon-foundation/dexon"
+	"github.com/dexon-foundation/dexon/accounts/abi"
+	"github.com/dexon-foundation/dexon/accounts/abi/bind"
+	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/dexon-foundation/dexon/event"
 )
 
 // PublicResolverABI is the input ABI used to generate the binding from.

@@ -22,12 +22,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/trie"
+	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/core/rawdb"
+	"github.com/dexon-foundation/dexon/core/state"
+	"github.com/dexon-foundation/dexon/ethdb"
+	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/trie"
 	"golang.org/x/crypto/sha3"
 )
 

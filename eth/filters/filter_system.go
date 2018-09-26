@@ -25,14 +25,14 @@ import (
 	"sync"
 	"time"
 
-	ethereum "github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/rawdb"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/event"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rpc"
+	ethereum "github.com/dexon-foundation/dexon"
+	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/core"
+	"github.com/dexon-foundation/dexon/core/rawdb"
+	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/dexon-foundation/dexon/event"
+	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/rpc"
 )
 
 // Type determines the kind of filter and is used to put the filter in to

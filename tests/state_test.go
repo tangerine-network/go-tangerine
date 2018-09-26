@@ -24,8 +24,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/dexon-foundation/dexon/cmd/utils"
+	"github.com/dexon-foundation/dexon/core/vm"
 )
 
 func TestState(t *testing.T) {

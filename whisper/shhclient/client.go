@@ -19,10 +19,10 @@ package shhclient
 import (
 	"context"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/rpc"
-	whisper "github.com/ethereum/go-ethereum/whisper/whisperv6"
+	"github.com/dexon-foundation/dexon"
+	"github.com/dexon-foundation/dexon/common/hexutil"
+	"github.com/dexon-foundation/dexon/rpc"
+	whisper "github.com/dexon-foundation/dexon/whisper/whisperv6"
 )
 
 // Client defines typed wrappers for the Whisper v6 RPC API.

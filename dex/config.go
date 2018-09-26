@@ -23,10 +23,10 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/ethereum/go-ethereum/consensus/dexcon"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/eth/downloader"
-	"github.com/ethereum/go-ethereum/eth/gasprice"
+	"github.com/dexon-foundation/dexon/consensus/dexcon"
+	"github.com/dexon-foundation/dexon/core"
+	"github.com/dexon-foundation/dexon/eth/downloader"
+	"github.com/dexon-foundation/dexon/eth/gasprice"
 )
 
 // DefaultConfig contains default settings for use on the Ethereum main net.

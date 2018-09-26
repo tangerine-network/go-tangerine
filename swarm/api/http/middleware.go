@@ -7,11 +7,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/swarm/api"
-	"github.com/ethereum/go-ethereum/swarm/log"
-	"github.com/ethereum/go-ethereum/swarm/sctx"
-	"github.com/ethereum/go-ethereum/swarm/spancontext"
+	"github.com/dexon-foundation/dexon/metrics"
+	"github.com/dexon-foundation/dexon/swarm/api"
+	"github.com/dexon-foundation/dexon/swarm/log"
+	"github.com/dexon-foundation/dexon/swarm/sctx"
+	"github.com/dexon-foundation/dexon/swarm/spancontext"
 	"github.com/pborman/uuid"
 )
 

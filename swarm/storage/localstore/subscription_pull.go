@@ -23,9 +23,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/swarm/shed"
-	"github.com/ethereum/go-ethereum/swarm/storage"
+	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/swarm/shed"
+	"github.com/dexon-foundation/dexon/swarm/storage"
 )
 
 // SubscribePull returns a channel that provides chunk addresses and stored times from pull syncing index.

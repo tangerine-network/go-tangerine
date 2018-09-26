@@ -20,7 +20,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/dexon-foundation/dexon/params"
 )
 
 type (

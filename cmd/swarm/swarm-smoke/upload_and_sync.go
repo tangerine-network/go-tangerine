@@ -26,12 +26,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ethereum/go-ethereum/swarm/api"
-	"github.com/ethereum/go-ethereum/swarm/storage"
-	"github.com/ethereum/go-ethereum/swarm/testutil"
+	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/metrics"
+	"github.com/dexon-foundation/dexon/rpc"
+	"github.com/dexon-foundation/dexon/swarm/api"
+	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/dexon-foundation/dexon/swarm/testutil"
 	"github.com/pborman/uuid"
 
 	cli "gopkg.in/urfave/cli.v1"

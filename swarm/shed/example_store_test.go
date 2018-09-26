@@ -26,8 +26,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/ethereum/go-ethereum/swarm/shed"
-	"github.com/ethereum/go-ethereum/swarm/storage"
+	"github.com/dexon-foundation/dexon/swarm/shed"
+	"github.com/dexon-foundation/dexon/swarm/storage"
 	"github.com/syndtr/goleveldb/leveldb"
 )
 

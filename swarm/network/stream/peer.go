@@ -23,14 +23,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/p2p/protocols"
-	"github.com/ethereum/go-ethereum/swarm/log"
-	pq "github.com/ethereum/go-ethereum/swarm/network/priorityqueue"
-	"github.com/ethereum/go-ethereum/swarm/network/stream/intervals"
-	"github.com/ethereum/go-ethereum/swarm/spancontext"
-	"github.com/ethereum/go-ethereum/swarm/state"
-	"github.com/ethereum/go-ethereum/swarm/storage"
+	"github.com/dexon-foundation/dexon/metrics"
+	"github.com/dexon-foundation/dexon/p2p/protocols"
+	"github.com/dexon-foundation/dexon/swarm/log"
+	pq "github.com/dexon-foundation/dexon/swarm/network/priorityqueue"
+	"github.com/dexon-foundation/dexon/swarm/network/stream/intervals"
+	"github.com/dexon-foundation/dexon/swarm/spancontext"
+	"github.com/dexon-foundation/dexon/swarm/state"
+	"github.com/dexon-foundation/dexon/swarm/storage"
 	opentracing "github.com/opentracing/opentracing-go"
 )
 

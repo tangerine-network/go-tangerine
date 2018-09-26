@@ -25,14 +25,14 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p/enode"
-	"github.com/ethereum/go-ethereum/p2p/simulations/adapters"
-	"github.com/ethereum/go-ethereum/swarm/network/simulation"
-	"github.com/ethereum/go-ethereum/swarm/state"
-	"github.com/ethereum/go-ethereum/swarm/storage"
-	"github.com/ethereum/go-ethereum/swarm/testutil"
+	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/node"
+	"github.com/dexon-foundation/dexon/p2p/enode"
+	"github.com/dexon-foundation/dexon/p2p/simulations/adapters"
+	"github.com/dexon-foundation/dexon/swarm/network/simulation"
+	"github.com/dexon-foundation/dexon/swarm/state"
+	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/dexon-foundation/dexon/swarm/testutil"
 )
 
 func TestIntervalsLive(t *testing.T) {

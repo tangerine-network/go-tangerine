@@ -23,10 +23,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ethereum/go-ethereum/swarm/fuse"
+	"github.com/dexon-foundation/dexon/cmd/utils"
+	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/rpc"
+	"github.com/dexon-foundation/dexon/swarm/fuse"
 	"gopkg.in/urfave/cli.v1"
 )
 

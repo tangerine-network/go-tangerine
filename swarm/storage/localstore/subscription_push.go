@@ -20,9 +20,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/swarm/shed"
-	"github.com/ethereum/go-ethereum/swarm/storage"
+	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/swarm/shed"
+	"github.com/dexon-foundation/dexon/swarm/storage"
 )
 
 // SubscribePush returns a channel that provides storage chunks with ordering from push syncing index.

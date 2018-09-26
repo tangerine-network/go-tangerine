@@ -20,7 +20,7 @@ package dex
 import (
 	"github.com/dexon-foundation/dexon-consensus-core/core/types"
 
-	"github.com/ethereum/go-ethereum/core"
+	"github.com/dexon-foundation/dexon/core"
 )
 
 // DexconApp implementes the DEXON consensus core application interface.

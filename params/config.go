@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/dexon-foundation/dexon/common"
 )
 
 // Genesis hashes to enforce below configs on.

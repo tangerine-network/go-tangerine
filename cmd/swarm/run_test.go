@@ -32,16 +32,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dexon-foundation/dexon/accounts"
+	"github.com/dexon-foundation/dexon/accounts/keystore"
+	"github.com/dexon-foundation/dexon/internal/cmdtest"
+	"github.com/dexon-foundation/dexon/node"
+	"github.com/dexon-foundation/dexon/p2p"
+	"github.com/dexon-foundation/dexon/rpc"
+	"github.com/dexon-foundation/dexon/swarm"
+	"github.com/dexon-foundation/dexon/swarm/api"
+	swarmhttp "github.com/dexon-foundation/dexon/swarm/api/http"
 	"github.com/docker/docker/pkg/reexec"
-	"github.com/ethereum/go-ethereum/accounts"
-	"github.com/ethereum/go-ethereum/accounts/keystore"
-	"github.com/ethereum/go-ethereum/internal/cmdtest"
-	"github.com/ethereum/go-ethereum/node"
-	"github.com/ethereum/go-ethereum/p2p"
-	"github.com/ethereum/go-ethereum/rpc"
-	"github.com/ethereum/go-ethereum/swarm"
-	"github.com/ethereum/go-ethereum/swarm/api"
-	swarmhttp "github.com/ethereum/go-ethereum/swarm/api/http"
 )
 
 var loglevel = flag.Int("loglevel", 3, "verbosity of logs")

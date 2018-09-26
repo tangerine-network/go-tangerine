@@ -22,8 +22,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/common"
+	"github.com/dexon-foundation/dexon"
+	"github.com/dexon-foundation/dexon/common"
 )
 
 // Verify that Client implements the ethereum interfaces.

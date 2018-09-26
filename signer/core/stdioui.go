@@ -21,9 +21,9 @@ import (
 	"context"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/internal/ethapi"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/dexon-foundation/dexon/internal/ethapi"
+	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/rpc"
 )
 
 type StdIOUI struct {

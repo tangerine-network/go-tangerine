@@ -22,12 +22,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/internal/ethapi"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/signer/core"
-	"github.com/ethereum/go-ethereum/signer/rules/deps"
-	"github.com/ethereum/go-ethereum/signer/storage"
+	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/internal/ethapi"
+	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/signer/core"
+	"github.com/dexon-foundation/dexon/signer/rules/deps"
+	"github.com/dexon-foundation/dexon/signer/storage"
 	"github.com/robertkrimen/otto"
 )
 

@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/swarm/log"
-	bv "github.com/ethereum/go-ethereum/swarm/network/bitvector"
-	"github.com/ethereum/go-ethereum/swarm/spancontext"
-	"github.com/ethereum/go-ethereum/swarm/storage"
+	"github.com/dexon-foundation/dexon/metrics"
+	"github.com/dexon-foundation/dexon/swarm/log"
+	bv "github.com/dexon-foundation/dexon/swarm/network/bitvector"
+	"github.com/dexon-foundation/dexon/swarm/spancontext"
+	"github.com/dexon-foundation/dexon/swarm/storage"
 	"github.com/opentracing/opentracing-go"
 )
 

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/p2p/discover"
+	"github.com/dexon-foundation/dexon/p2p/discover"
 )
 
 type nodeInfo struct {

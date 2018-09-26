@@ -19,8 +19,8 @@ package main
 import (
 	"os"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/dexon-foundation/dexon/cmd/utils"
+	"github.com/dexon-foundation/dexon/log"
 	cli "gopkg.in/urfave/cli.v1"
 )
 

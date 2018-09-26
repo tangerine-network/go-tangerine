@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
+	"github.com/dexon-foundation/dexon/cmd/utils"
 	"gopkg.in/urfave/cli.v1"
 )
 

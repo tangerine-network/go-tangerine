@@ -22,11 +22,11 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/metrics"
-	"github.com/ethereum/go-ethereum/swarm/log"
-	whisper "github.com/ethereum/go-ethereum/whisper/whisperv6"
+	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/dexon-foundation/dexon/metrics"
+	"github.com/dexon-foundation/dexon/swarm/log"
+	whisper "github.com/dexon-foundation/dexon/whisper/whisperv6"
 )
 
 type KeyStore struct {

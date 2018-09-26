@@ -21,13 +21,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/common/hexutil"
+	"github.com/dexon-foundation/dexon/crypto"
 
-	"github.com/ethereum/go-ethereum/cmd/utils"
-	swarm "github.com/ethereum/go-ethereum/swarm/api/client"
-	"github.com/ethereum/go-ethereum/swarm/storage/feed"
+	"github.com/dexon-foundation/dexon/cmd/utils"
+	swarm "github.com/dexon-foundation/dexon/swarm/api/client"
+	"github.com/dexon-foundation/dexon/swarm/storage/feed"
 	"gopkg.in/urfave/cli.v1"
 )
 
