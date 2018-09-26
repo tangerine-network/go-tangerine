@@ -20,15 +20,15 @@ package dex
 import (
 	dexCore "github.com/dexon-foundation/dexon-consensus-core/core"
 	"github.com/dexon-foundation/dexon-consensus-core/core/blockdb"
-	ethCrypto "github.com/dexon-foundation/dexon-consensus-core/crypto/eth"
+	"github.com/dexon-foundation/dexon-consensus-core/core/crypto/ecdsa"
 
-	"github.com/dexon-foundation/dexon/internal/ethapi"
 	"github.com/dexon-foundation/dexon/accounts"
 	"github.com/dexon-foundation/dexon/consensus"
 	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/core/bloombits"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/event"
+	"github.com/dexon-foundation/dexon/internal/ethapi"
 	"github.com/dexon-foundation/dexon/node"
 	"github.com/dexon-foundation/dexon/p2p"
 	"github.com/dexon-foundation/dexon/params"
@@ -77,12 +77,11 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	network := NewDexconNetwork()
 
 	// TODO(w): replace this with node key.
-	privKey, err := ethCrypto.NewPrivateKey()
+	privKey, err := ecdsa.NewPrivateKey()
 	if err != nil {
 		panic(err)
 	}
-	consensus := dexCore.NewConsensus(
-		app, gov, db, network, privKey, ethCrypto.SigToPub)
+	consensus := dexCore.NewConsensus(app, gov, db, network, privKey)
 
 	dex := &Dexon{
 		config:         config,

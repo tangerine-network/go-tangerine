@@ -1,6 +1,8 @@
 package dex
 
 import (
+	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
+	"github.com/dexon-foundation/dexon-consensus-core/core/crypto"
 	"github.com/dexon-foundation/dexon-consensus-core/core/types"
 )
 
@@ -13,15 +15,23 @@ func NewDexconGovernance() *DexconGovernance {
 	return &DexconGovernance{}
 }
 
-// GetValidatorSet returns the current notary set.
-func (d *DexconGovernance) GetNotarySet(
-	blockHeight uint64) map[types.NodeID]struct{} {
-	return make(map[types.NodeID]struct{})
+// GetConfiguration return the total ordering K constant.
+func (d *DexconGovernance) GetConfiguration(round uint64) *types.Config {
+	return &types.Config{}
 }
 
-// GetTotalOrderingK return the total ordering K constant.
-func (d *DexconGovernance) GetConfiguration(blockHeight uint64) *types.Config {
-	return &types.Config{}
+// GetCRS returns the CRS for a given round.
+func (d *DexconGovernance) GetCRS(round uint64) coreCommon.Hash {
+	return coreCommon.Hash{}
+}
+
+// ProposeCRS send proposals of a new CRS
+func (d *DexconGovernance) ProposeCRS(round uint64, signedCRS []byte) {
+}
+
+// GetValidatorSet returns the current notary set.
+func (d *DexconGovernance) GetNodeSet(round uint64) []crypto.PublicKey {
+	return nil
 }
 
 // AddDKGComplaint adds a DKGComplaint.

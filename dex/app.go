@@ -26,37 +26,25 @@ import (
 // DexconApp implementes the DEXON consensus core application interface.
 type DexconApp struct {
 	txPool *core.TxPool
-
-	witnessResultChan chan types.WitnessResult
 }
 
 func NewDexconApp(txPool *core.TxPool) *DexconApp {
 	return &DexconApp{
-		txPool:            txPool,
-		witnessResultChan: make(chan types.WitnessResult),
+		txPool: txPool,
 	}
 }
 
 // PreparePayload is called when consensus core is preparing a block.
-func (d *DexconApp) PreparePayload(position types.Position) []byte {
-	return nil
+func (d *DexconApp) PrepareBlock(position types.Position) (
+	payload []byte, witnessData []byte) {
+	return nil, nil
 }
 
 // VerifyPayload verifies if the payloads are valid.
-func (d *DexconApp) VerifyPayload(payload []byte) bool {
+func (d *DexconApp) VerifyBlock(block *types.Block) bool {
 	return true
 }
 
 // BlockDelivered is called when a block is add to the compaction chain.
 func (d *DexconApp) BlockDelivered(block types.Block) {
-}
-
-// BlockProcessedChan returns a channel to receive the block hashes that have
-// finished processing by the application.
-func (d *DexconApp) BlockProcessedChan() <-chan types.WitnessResult {
-	return d.witnessResultChan
-}
-
-// WitnessAckDeliver is called when a notary ack is created.
-func (d *DexconApp) WitnessAckDelivered(notaryAck *types.WitnessAck) {
 }
