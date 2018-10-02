@@ -15,13 +15,13 @@ func NewDexconGovernance() *DexconGovernance {
 	return &DexconGovernance{}
 }
 
-// GetConfiguration return the total ordering K constant.
-func (d *DexconGovernance) GetConfiguration(round uint64) *types.Config {
+// Configuration return the total ordering K constant.
+func (d *DexconGovernance) Configuration(round uint64) *types.Config {
 	return &types.Config{}
 }
 
-// GetCRS returns the CRS for a given round.
-func (d *DexconGovernance) GetCRS(round uint64) coreCommon.Hash {
+// CRS returns the CRS for a given round.
+func (d *DexconGovernance) CRS(round uint64) coreCommon.Hash {
 	return coreCommon.Hash{}
 }
 
@@ -29,8 +29,8 @@ func (d *DexconGovernance) GetCRS(round uint64) coreCommon.Hash {
 func (d *DexconGovernance) ProposeCRS(round uint64, signedCRS []byte) {
 }
 
-// GetValidatorSet returns the current notary set.
-func (d *DexconGovernance) GetNodeSet(round uint64) []crypto.PublicKey {
+// NodeSet returns the current notary set.
+func (d *DexconGovernance) NodeSet(round uint64) []crypto.PublicKey {
 	return nil
 }
 
@@ -38,7 +38,7 @@ func (d *DexconGovernance) GetNodeSet(round uint64) []crypto.PublicKey {
 func (d *DexconGovernance) AddDKGComplaint(complaint *types.DKGComplaint) {
 }
 
-// GetDKGComplaints gets all the DKGComplaints of round.
+// DKGComplaints gets all the DKGComplaints of round.
 func (d *DexconGovernance) DKGComplaints(round uint64) []*types.DKGComplaint {
 	return nil
 }
