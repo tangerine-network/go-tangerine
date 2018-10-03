@@ -42,7 +42,7 @@ const abiJSON = `
     "outputs": [
       {
         "name": "",
-        "type": "int256"
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -71,11 +71,25 @@ const abiJSON = `
   {
     "constant": true,
     "inputs": [],
+    "name": "numNotarySet",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
     "name": "phiRatio",
     "outputs": [
       {
         "name": "",
-        "type": "int256"
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -104,11 +118,39 @@ const abiJSON = `
   {
     "constant": true,
     "inputs": [],
+    "name": "roundInterval",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
     "name": "lambdaDKG",
     "outputs": [
       {
         "name": "",
-        "type": "int256"
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "minBlockInterval",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -122,7 +164,7 @@ const abiJSON = `
     "outputs": [
       {
         "name": "",
-        "type": "int256"
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -136,7 +178,7 @@ const abiJSON = `
     "outputs": [
       {
         "name": "",
-        "type": "int256"
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -160,6 +202,20 @@ const abiJSON = `
       {
         "name": "",
         "type": "bytes"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "numDKGSet",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -204,6 +260,20 @@ const abiJSON = `
     "type": "function"
   },
   {
+    "constant": true,
+    "inputs": [],
+    "name": "maxBlockInterval",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "constant": false,
     "inputs": [
       {
@@ -236,10 +306,6 @@ const abiJSON = `
   {
     "constant": false,
     "inputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      },
       {
         "name": "",
         "type": "bytes"
