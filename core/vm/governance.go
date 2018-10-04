@@ -452,7 +452,104 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 
 // State manipulation helper fro the governance contract.
 type StateHelper struct {
+	Address common.Address
 	StateDB StateDB
+}
+
+func (s *StateHelper) getState(loc common.Hash) common.Hash {
+	return s.StateDB.GetState(s.Address, loc)
+}
+
+func (s *StateHelper) setState(loc common.Hash, val common.Hash) {
+	s.StateDB.SetState(s.Address, loc, val)
+}
+
+func (s *StateHelper) getStateBigInt(loc *big.Int) *big.Int {
+	res := s.StateDB.GetState(s.Address, common.BigToHash(loc))
+	return new(big.Int).SetBytes(res.Bytes())
+}
+
+func (s *StateHelper) setStateBigInt(loc *big.Int, val *big.Int) {
+	s.setState(common.BigToHash(loc), common.BigToHash(val))
+}
+
+func (s *StateHelper) getSlotLoc(loc *big.Int) *big.Int {
+	return new(big.Int).SetBytes(crypto.Keccak256(common.BigToHash(loc).Bytes()))
+}
+
+func (s *StateHelper) getMapLoc(pos *big.Int, key []byte) *big.Int {
+	return new(big.Int).SetBytes(crypto.Keccak256(
+		key, common.BigToHash(pos).Bytes()))
+}
+
+func (s *StateHelper) readBytes(loc *big.Int) []byte {
+	// length of the dynamic array (bytes).
+	rawLength := s.getStateBigInt(loc)
+	lengthByte := new(big.Int).Mod(rawLength, big.NewInt(256))
+
+	// bytes length <= 31, lengthByte % 2 == 0
+	// return the high 31 bytes.
+	if new(big.Int).Mod(lengthByte, big.NewInt(2)).Cmp(big.NewInt(0)) == 0 {
+		length := new(big.Int).Div(lengthByte, big.NewInt(2)).Uint64()
+		return rawLength.Bytes()[:length]
+	}
+
+	// actual length = (rawLength - 1) / 2
+	length := new(big.Int).Div(new(big.Int).Sub(rawLength, big.NewInt(1)), big.NewInt(2)).Uint64()
+
+	// data address.
+	dataLoc := s.getSlotLoc(loc)
+
+	// read continiously for length bytes.
+	carry := int64(0)
+	if length%32 > 0 {
+		carry = 1
+	}
+	chunks := int64(length/32) + carry
+	var data []byte
+	for i := int64(0); i < chunks; i++ {
+		loc = new(big.Int).Add(dataLoc, big.NewInt(i))
+		data = append(data, s.getState(common.BigToHash(loc)).Bytes()...)
+	}
+	data = data[:length]
+	return data
+}
+
+func (s *StateHelper) writeBytes(loc *big.Int, data []byte) {
+	length := int64(len(data))
+
+	// short bytes (length <= 31)
+	if length < 32 {
+		data2 := append([]byte(nil), data...)
+		data2 = append(data2, byte(length*2))
+		s.setState(common.BigToHash(loc), common.BytesToHash(data2))
+		return
+	}
+
+	// write 2 * length + 1
+	storedLength := new(big.Int).Add(new(big.Int).Mul(
+		big.NewInt(length), big.NewInt(2)), big.NewInt(1))
+	s.setStateBigInt(loc, storedLength)
+	// write data chunck.
+	dataLoc := s.getSlotLoc(loc)
+	carry := int64(0)
+	if length%32 > 0 {
+		carry = 1
+	}
+	chunks := length/32 + carry
+	for i := int64(0); i < chunks; i++ {
+		loc = new(big.Int).Add(dataLoc, big.NewInt(i))
+		maxLoc := (i + 1) * 32
+		if maxLoc > length {
+			maxLoc = length
+		}
+		data2 := data[i*32 : maxLoc]
+		// Right pad with zeros
+		for len(data2) < 32 {
+			data2 = append(data2, byte(0))
+		}
+		s.setState(common.BigToHash(loc), common.BytesToHash(data2))
+	}
 }
 
 // struct Node {
@@ -470,108 +567,194 @@ type nodeInfo struct {
 }
 
 func (s *StateHelper) nodesLength() *big.Int {
-	return nil
+	return s.getStateBigInt(big.NewInt(0))
 }
 func (s *StateHelper) node(index *big.Int) *nodeInfo {
+	node := new(nodeInfo)
+
+	arrayBaseLoc := s.getSlotLoc(big.NewInt(0))
+	elementBaseLoc := new(big.Int).Add(arrayBaseLoc, new(big.Int).Mul(index, big.NewInt(3)))
+
+	// owner.
+	loc := elementBaseLoc
+	node.owner = common.BytesToAddress(s.getState(common.BigToHash(elementBaseLoc)).Bytes())
+
+	// publicKey.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(1))
+	node.publicKey = s.readBytes(loc)
+
+	// staked.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(2))
+	node.staked = s.getStateBigInt(loc)
+
 	return nil
 }
 func (s *StateHelper) pushNode(n *nodeInfo) {
+	// increase length by 1
+	arrayLength := s.nodesLength()
+	s.setStateBigInt(big.NewInt(0), new(big.Int).Add(arrayLength, big.NewInt(1)))
+
+	s.updateNode(arrayLength, n)
 }
 func (s *StateHelper) updateNode(index *big.Int, n *nodeInfo) {
+	arrayBaseLoc := s.getSlotLoc(big.NewInt(0))
+	elementBaseLoc := new(big.Int).Add(arrayBaseLoc, new(big.Int).Mul(index, big.NewInt(3)))
+
+	// owner.
+	loc := elementBaseLoc
+	s.setState(common.BigToHash(loc), n.owner.Hash())
+
+	// publicKey.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(1))
+	s.writeBytes(loc, n.publicKey)
+
+	// staked.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(2))
+	s.setStateBigInt(loc, n.staked)
 }
 
 // 1: mapping(address => uint256) public offset;
 func (s *StateHelper) offset(addr common.Address) *big.Int {
-	return nil
+	loc := s.getMapLoc(big.NewInt(1), addr.Bytes())
+	return new(big.Int).Sub(s.getStateBigInt(loc), big.NewInt(1))
 }
 func (s *StateHelper) putOffset(addr common.Address, offset *big.Int) {
+	loc := s.getMapLoc(big.NewInt(1), addr.Bytes())
+	s.setStateBigInt(loc, new(big.Int).Add(offset, big.NewInt(1)))
 }
 func (s *StateHelper) deleteOffset(addr common.Address) {
+	loc := s.getMapLoc(big.NewInt(1), addr.Bytes())
+	s.setStateBigInt(loc, big.NewInt(0))
 }
 
 // 2: mapping(uint256 => bytes32) public crs;
 func (s *StateHelper) crs(round *big.Int) common.Hash {
-	return common.Hash{}
+	loc := s.getMapLoc(big.NewInt(2), common.BigToHash(round).Bytes())
+	return s.getState(common.BigToHash(loc))
 }
-func (s *StateHelper) putCRS(round *big.Int, crs []byte) common.Hash {
-	return common.Hash{}
+func (s *StateHelper) putCRS(round *big.Int, crs common.Hash) {
+	loc := s.getMapLoc(big.NewInt(2), common.BigToHash(round).Bytes())
+	s.setState(common.BigToHash(loc), crs)
 }
 
 // 3: mapping(uint256 => bytes[]) public DKGMasterPublicKeys;
 func (s *StateHelper) dkgMasterPublicKeys(round *big.Int) [][]byte {
-	return nil
+	loc := s.getMapLoc(big.NewInt(3), common.BigToHash(round).Bytes())
+
+	arrayLength := s.getStateBigInt(loc)
+	dataLoc := s.getSlotLoc(loc)
+
+	data := make([][]byte, arrayLength.Uint64())
+	for i := int64(0); i < int64(arrayLength.Uint64()); i++ {
+		elementLoc := new(big.Int).Add(dataLoc, big.NewInt(i))
+		data = append(data, s.readBytes(elementLoc))
+	}
+	return data
 }
 func (s *StateHelper) pushDKGMasterPublicKey(round *big.Int, pk []byte) {
+	loc := s.getMapLoc(big.NewInt(3), common.BigToHash(round).Bytes())
+
+	// increase length by 1.
+	arrayLength := s.getStateBigInt(loc)
+	s.setStateBigInt(loc, new(big.Int).Add(arrayLength, big.NewInt(1)))
+
+	// write element.
+	dataLoc := s.getSlotLoc(loc)
+	elementLoc := new(big.Int).Add(dataLoc, arrayLength)
+	s.writeBytes(elementLoc, pk)
 }
 
 // 4: mapping(uint256 => bytes[]) public DKGComplaints;
 func (s *StateHelper) dkgComplaints(round *big.Int) [][]byte {
-	return nil
+	loc := s.getMapLoc(big.NewInt(4), common.BigToHash(round).Bytes())
+
+	arrayLength := s.getStateBigInt(loc)
+	dataLoc := s.getSlotLoc(loc)
+
+	data := make([][]byte, arrayLength.Uint64())
+	for i := int64(0); i < int64(arrayLength.Uint64()); i++ {
+		elementLoc := new(big.Int).Add(dataLoc, big.NewInt(i))
+		data = append(data, s.readBytes(elementLoc))
+	}
+	return data
 }
 func (s *StateHelper) addDKGComplaint(round *big.Int, complaint []byte) {
+	loc := s.getMapLoc(big.NewInt(3), common.BigToHash(round).Bytes())
+
+	// increase length by 1.
+	arrayLength := s.getStateBigInt(loc)
+	s.setStateBigInt(loc, new(big.Int).Add(arrayLength, big.NewInt(1)))
+
+	// write element.
+	dataLoc := s.getSlotLoc(loc)
+	elementLoc := new(big.Int).Add(dataLoc, arrayLength)
+	s.writeBytes(elementLoc, complaint)
 }
 
 // 5: uint256 public round;
 func (s *StateHelper) round() *big.Int {
-	return nil
+	return s.getStateBigInt(big.NewInt(5))
 }
 func (s *StateHelper) incRound() *big.Int {
-	return nil
+	newRound := new(big.Int).Add(s.round(), big.NewInt(1))
+	s.setStateBigInt(big.NewInt(5), newRound)
+	return newRound
 }
 
 // 6: address public governanceMultisig;
 func (s *StateHelper) governanceMultisig() common.Address {
-	return common.Address{}
+	val := s.getState(common.BigToHash(big.NewInt(6)))
+	return common.BytesToAddress(val.Bytes())
 }
 
 // 7: uint256 public numChains;
 func (s *StateHelper) numChains() *big.Int {
-	return nil
+	return s.getStateBigInt(big.NewInt(7))
 }
 
 // 8: uint256 public lambdaBA;
 func (s *StateHelper) lambdaBA() *big.Int {
-	return nil
+	return s.getStateBigInt(big.NewInt(8))
 }
 
 // 9: uint256 public lambdaDKG;
 func (s *StateHelper) lambdaDKG() *big.Int {
-	return nil
+	return s.getStateBigInt(big.NewInt(9))
 }
 
 // 10: uint256 public k;
 func (s *StateHelper) k() *big.Int {
-	return nil
+	return s.getStateBigInt(big.NewInt(10))
 }
 
 // 11: uint256 public phiRatio;  // stored as PhiRatio * 10^6
 func (s *StateHelper) phiRatio() *big.Int {
-	return nil
+	return s.getStateBigInt(big.NewInt(11))
 }
 
 // 12: uint256 public numNotarySet;
 func (s *StateHelper) numNotarySet() *big.Int {
-	return nil
+	return s.getStateBigInt(big.NewInt(12))
 }
 
 // 13: uint256 public numDKGSet;
 func (s *StateHelper) numDKGSet() *big.Int {
-	return nil
+	return s.getStateBigInt(big.NewInt(13))
 }
 
 // 14: uint256 public roundInterval
 func (s *StateHelper) roundInterval() *big.Int {
-	return nil
+	return s.getStateBigInt(big.NewInt(14))
 }
 
 // 15: uint256 public minBlockInterval
 func (s *StateHelper) minBlockInterval() *big.Int {
-	return nil
+	return s.getStateBigInt(big.NewInt(15))
 }
 
 // 16: uint256 public maxBlockInterval
 func (s *StateHelper) maxBlockInterval() *big.Int {
-	return nil
+	return s.getStateBigInt(big.NewInt(16))
 }
 
 type GovernanceContract struct {
@@ -583,7 +766,7 @@ type GovernanceContract struct {
 func NewGovernanceContract(evm *EVM, contract *Contract) *GovernanceContract {
 	return &GovernanceContract{
 		evm:      evm,
-		state:    StateHelper{evm.StateDB},
+		state:    StateHelper{contract.Address(), evm.StateDB},
 		contract: contract,
 	}
 }
@@ -615,7 +798,7 @@ func (g *GovernanceContract) stake(publicKey []byte) ([]byte, error) {
 func (g *GovernanceContract) unstake() ([]byte, error) {
 	caller := g.contract.Caller()
 	offset := g.state.offset(caller)
-	if offset == nil {
+	if offset.Cmp(big.NewInt(0)) < 0 {
 		return nil, errExecutionReverted
 	}
 
@@ -691,7 +874,7 @@ func (g *GovernanceContract) proposeCRS(round *big.Int, signedCRS []byte) ([]byt
 	// Save new CRS into state and increase round.
 	newCRS := crypto.Keccak256(signedCRS)
 	g.state.incRound()
-	g.state.putCRS(round, newCRS)
+	g.state.putCRS(round, common.BytesToHash(newCRS))
 
 	return nil, nil
 }
