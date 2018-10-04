@@ -277,23 +277,23 @@ const abiJSON = `
     "constant": false,
     "inputs": [
       {
-        "name": "",
+        "name": "numChains",
         "type": "int256"
       },
       {
-        "name": "",
+        "name": "lambdaBA",
         "type": "int256"
       },
       {
-        "name": "",
+        "name": "lambdaDKG",
         "type": "int256"
       },
       {
-        "name": "",
+        "name": "K",
         "type": "int256"
       },
       {
-        "name": "",
+        "name": "PhiRatio",
         "type": "int256"
       }
     ],
@@ -321,11 +321,11 @@ const abiJSON = `
     "constant": false,
     "inputs": [
       {
-        "name": "",
+        "name": "round",
         "type": "uint256"
       },
       {
-        "name": "",
+        "name": "publicKey",
         "type": "bytes"
       }
     ],
@@ -339,11 +339,11 @@ const abiJSON = `
     "constant": false,
     "inputs": [
       {
-        "name": "",
+        "name": "round",
         "type": "uint256"
       },
       {
-        "name": "",
+        "name": "complaint",
         "type": "bytes"
       }
     ],
@@ -357,7 +357,7 @@ const abiJSON = `
     "constant": false,
     "inputs": [
       {
-        "name": "",
+        "name": "publicKey",
         "type": "bytes"
       }
     ],
@@ -393,13 +393,17 @@ func init() {
 
 	// Construct dispatch table.
 	for _, method := range abiObject.Methods {
-		sig2Method[method.Sig()] = method
+		sig2Method[string(method.Id())] = method
 	}
 }
 
 // RunGovernanceContract executes governance contract.
 func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 	ret []byte, err error) {
+	if len(input) < 4 {
+		return nil, nil
+	}
+
 	// Parse input.
 	method, exists := sig2Method[string(input[:4])]
 	if !exists {
@@ -407,7 +411,7 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 	}
 
 	// Dispatch method call.
-	g := NewGovernanceContract(evm, contract)
+	g := newGovernanceContract(evm, contract)
 	argument := input[4:]
 
 	switch method.Name {
@@ -430,22 +434,22 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 		return g.proposeCRS(args.Round, args.SignedCRS)
 	case "addDKGMasterPublicKey":
 		args := struct {
-			Round              *big.Int
-			DKGMasterPublicKey []byte
+			Round     *big.Int
+			PublicKey []byte
 		}{}
 		if err := method.Inputs.Unpack(&args, argument); err != nil {
 			return nil, errExecutionReverted
 		}
-		return g.addDKGMasterPublicKey(args.Round, args.DKGMasterPublicKey)
+		return g.addDKGMasterPublicKey(args.Round, args.PublicKey)
 	case "addDKGComplaint":
 		args := struct {
-			Round        *big.Int
-			DKGComplaint []byte
+			Round     *big.Int
+			Complaint []byte
 		}{}
 		if err := method.Inputs.Unpack(&args, argument); err != nil {
 			return nil, errExecutionReverted
 		}
-		return g.addDKGComplaint(args.Round, args.DKGComplaint)
+		return g.addDKGComplaint(args.Round, args.Complaint)
 	}
 	return nil, nil
 }
@@ -521,6 +525,10 @@ func (s *StateHelper) writeBytes(loc *big.Int, data []byte) {
 	// short bytes (length <= 31)
 	if length < 32 {
 		data2 := append([]byte(nil), data...)
+		// Right pad with zeros
+		for len(data2) < 31 {
+			data2 = append(data2, byte(0))
+		}
 		data2 = append(data2, byte(length*2))
 		s.setState(common.BigToHash(loc), common.BytesToHash(data2))
 		return
@@ -757,13 +765,14 @@ func (s *StateHelper) maxBlockInterval() *big.Int {
 	return s.getStateBigInt(big.NewInt(16))
 }
 
+// GovernanceContract represents the governance contract of DEXCON.
 type GovernanceContract struct {
 	evm      *EVM
 	state    StateHelper
 	contract *Contract
 }
 
-func NewGovernanceContract(evm *EVM, contract *Contract) *GovernanceContract {
+func newGovernanceContract(evm *EVM, contract *Contract) *GovernanceContract {
 	return &GovernanceContract{
 		evm:      evm,
 		state:    StateHelper{contract.Address(), evm.StateDB},
@@ -771,7 +780,11 @@ func NewGovernanceContract(evm *EVM, contract *Contract) *GovernanceContract {
 	}
 }
 
-func (G *GovernanceContract) updateConfiguration() ([]byte, error) {
+func (g *GovernanceContract) penalize() {
+	g.contract.UseGas(g.contract.Gas)
+}
+
+func (g *GovernanceContract) updateConfiguration() ([]byte, error) {
 	return nil, nil
 }
 
@@ -780,7 +793,8 @@ func (g *GovernanceContract) stake(publicKey []byte) ([]byte, error) {
 	offset := g.state.offset(caller)
 
 	// Can not stake if already staked.
-	if offset != nil {
+	if offset.Cmp(big.NewInt(0)) >= 0 {
+		g.penalize()
 		return nil, errExecutionReverted
 	}
 
@@ -792,6 +806,8 @@ func (g *GovernanceContract) stake(publicKey []byte) ([]byte, error) {
 		staked:    g.contract.Value(),
 	})
 	g.state.putOffset(caller, offset)
+
+	g.contract.UseGas(21000)
 	return nil, nil
 }
 
@@ -815,7 +831,10 @@ func (g *GovernanceContract) unstake() ([]byte, error) {
 	}
 
 	// Return the staked fund.
+	// TODO(w): use OP_CALL so this show up is internal transaction.
 	g.evm.Transfer(g.evm.StateDB, GovernanceContractAddress, caller, node.staked)
+
+	g.contract.UseGas(21000)
 	return nil, nil
 }
 
@@ -832,6 +851,7 @@ func (g *GovernanceContract) proposeCRS(round *big.Int, signedCRS []byte) ([]byt
 
 	// round should be the next round number, abort otherwise.
 	if new(big.Int).Add(prevRound, big.NewInt(1)).Cmp(round) != 0 {
+		g.penalize()
 		return nil, errExecutionReverted
 	}
 
@@ -868,6 +888,7 @@ func (g *GovernanceContract) proposeCRS(round *big.Int, signedCRS []byte) ([]byt
 		Signature: signedCRS,
 	}
 	if !dkgGPK.VerifySignature(coreCommon.Hash(prevCRS), signature) {
+		g.penalize()
 		return nil, errExecutionReverted
 	}
 
@@ -876,20 +897,28 @@ func (g *GovernanceContract) proposeCRS(round *big.Int, signedCRS []byte) ([]byt
 	g.state.incRound()
 	g.state.putCRS(round, common.BytesToHash(newCRS))
 
+	// To encourage DKG set to propose the correct value, correctly submitting
+	// this should cause nothing.
+	g.contract.UseGas(0)
 	return nil, nil
 }
 
 func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, pk []byte) ([]byte, error) {
 	var dkgMasterPK types.DKGMasterPublicKey
 	if err := rlp.DecodeBytes(pk, &dkgMasterPK); err != nil {
+		g.penalize()
 		return nil, errExecutionReverted
 	}
 	verified, _ := core.VerifyDKGMasterPublicKeySignature(&dkgMasterPK)
 	if !verified {
+		g.penalize()
 		return nil, errExecutionReverted
 	}
 
 	g.state.pushDKGMasterPublicKey(round, pk)
+
+	// DKG operation is expensive.
+	g.contract.UseGas(100000)
 	return nil, nil
 }
 
@@ -900,9 +929,13 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 	}
 	verified, _ := core.VerifyDKGComplaintSignature(&dkgComplaint)
 	if !verified {
+		g.penalize()
 		return nil, errExecutionReverted
 	}
 
 	g.state.addDKGComplaint(round, comp)
+
+	// Set this to relatively high to prevent spamming
+	g.contract.UseGas(10000000)
 	return nil, nil
 }
