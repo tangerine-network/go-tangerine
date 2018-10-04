@@ -23,6 +23,14 @@ func (n *DexconNetwork) BroadcastVote(vote *types.Vote) {
 func (n *DexconNetwork) BroadcastBlock(block *types.Block) {
 }
 
+// BroadcastRandomnessRequest broadcasts rand request to DKG set.
+func (n *DexconNetwork) BroadcastRandomnessRequest(randRequest *types.AgreementResult) {
+}
+
+// BroadcastRandomnessResult broadcasts rand request to Notary set.
+func (n *DexconNetwork) BroadcastRandomnessResult(randResult *types.BlockRandomnessResult) {
+}
+
 // SendDKGPrivateShare sends PrivateShare to a DKG participant.
 func (n *DexconNetwork) SendDKGPrivateShare(
 	pub crypto.PublicKey, prvShare *types.DKGPrivateShare) {

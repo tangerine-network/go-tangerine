@@ -35,9 +35,13 @@ func NewDexconApp(txPool *core.TxPool) *DexconApp {
 }
 
 // PreparePayload is called when consensus core is preparing a block.
-func (d *DexconApp) PrepareBlock(position types.Position) (
-	payload []byte, witnessData []byte) {
-	return nil, nil
+func (d *DexconApp) PreparePayload(position types.Position) []byte {
+	return nil
+}
+
+// PrepareWitness will return the witness data no lower than consensusHeight.
+func (d *DexconApp) PrepareWitness(consensusHeight uint64) types.Witness {
+	return types.Witness{}
 }
 
 // VerifyPayload verifies if the payloads are valid.

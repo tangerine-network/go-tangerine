@@ -23,8 +23,45 @@ const abiJSON = `
 [
   {
     "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "dkgComplaints",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
     "inputs": [],
-    "name": "round",
+    "name": "notarySetSize",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "dkgSetSize",
     "outputs": [
       {
         "name": "",
@@ -62,20 +99,6 @@ const abiJSON = `
       {
         "name": "",
         "type": "bytes32"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "numNotarySet",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
       }
     ],
     "payable": false,
@@ -173,72 +196,35 @@ const abiJSON = `
   },
   {
     "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "dkgMasterPublicKeys",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
     "inputs": [],
     "name": "numChains",
     "outputs": [
       {
         "name": "",
         "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "DKGMasterPublicKeys",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "numDKGSet",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      },
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "DKGComplaints",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bytes"
       }
     ],
     "payable": false,
@@ -277,24 +263,44 @@ const abiJSON = `
     "constant": false,
     "inputs": [
       {
-        "name": "numChains",
-        "type": "int256"
+        "name": "NumChains",
+        "type": "uint256"
       },
       {
-        "name": "lambdaBA",
-        "type": "int256"
+        "name": "LambdaBA",
+        "type": "uint256"
       },
       {
-        "name": "lambdaDKG",
-        "type": "int256"
+        "name": "LambdaDKG",
+        "type": "uint256"
       },
       {
         "name": "K",
-        "type": "int256"
+        "type": "uint256"
       },
       {
         "name": "PhiRatio",
-        "type": "int256"
+        "type": "uint256"
+      },
+      {
+        "name": "NotarySetSize",
+        "type": "uint256"
+      },
+      {
+        "name": "DKGSetSize",
+        "type": "uint256"
+      },
+      {
+        "name": "RoundInterval",
+        "type": "uint256"
+      },
+      {
+        "name": "MinBlockInterval",
+        "type": "uint256"
+      },
+      {
+        "name": "MaxBlockInterval",
+        "type": "uint256"
       }
     ],
     "name": "updateConfiguration",
@@ -307,7 +313,7 @@ const abiJSON = `
     "constant": false,
     "inputs": [
       {
-        "name": "",
+        "name": "SignedCRS",
         "type": "bytes"
       }
     ],
@@ -321,11 +327,11 @@ const abiJSON = `
     "constant": false,
     "inputs": [
       {
-        "name": "round",
+        "name": "Round",
         "type": "uint256"
       },
       {
-        "name": "publicKey",
+        "name": "PublicKey",
         "type": "bytes"
       }
     ],
@@ -339,11 +345,11 @@ const abiJSON = `
     "constant": false,
     "inputs": [
       {
-        "name": "round",
+        "name": "Round",
         "type": "uint256"
       },
       {
-        "name": "complaint",
+        "name": "Complaint",
         "type": "bytes"
       }
     ],
@@ -357,7 +363,7 @@ const abiJSON = `
     "constant": false,
     "inputs": [
       {
-        "name": "publicKey",
+        "name": "PublicKey",
         "type": "bytes"
       }
     ],
@@ -397,6 +403,19 @@ func init() {
 	}
 }
 
+type configParams struct {
+	NumChains        uint32
+	LambdaBA         uint64
+	LambdaDKG        uint64
+	K                int
+	PhiRatio         float32
+	NotarySetSize    uint32
+	DKGSetSize       uint32
+	RoundInterval    uint64
+	MinBlockInterval uint64
+	MaxBlockInterval uint64
+}
+
 // RunGovernanceContract executes governance contract.
 func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 	ret []byte, err error) {
@@ -412,32 +431,35 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 
 	// Dispatch method call.
 	g := newGovernanceContract(evm, contract)
-	argument := input[4:]
+	arguments := input[4:]
 
 	switch method.Name {
+	case "updateConfiguration":
+		var config configParams
+		if err := method.Inputs.Unpack(&config, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		g.updateConfiguration(&config)
 	case "stake":
 		var publicKey []byte
-		if err := method.Inputs.Unpack(&publicKey, argument); err != nil {
+		if err := method.Inputs.Unpack(&publicKey, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
 		return g.stake(publicKey)
 	case "unstake":
 		return g.unstake()
 	case "proposeCRS":
-		args := struct {
-			Round     *big.Int
-			SignedCRS []byte
-		}{}
-		if err := method.Inputs.Unpack(&args, argument); err != nil {
+		var signedCRS []byte
+		if err := method.Inputs.Unpack(&signedCRS, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		return g.proposeCRS(args.Round, args.SignedCRS)
+		return g.proposeCRS(signedCRS)
 	case "addDKGMasterPublicKey":
 		args := struct {
 			Round     *big.Int
 			PublicKey []byte
 		}{}
-		if err := method.Inputs.Unpack(&args, argument); err != nil {
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
 		return g.addDKGMasterPublicKey(args.Round, args.PublicKey)
@@ -446,10 +468,129 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 			Round     *big.Int
 			Complaint []byte
 		}{}
-		if err := method.Inputs.Unpack(&args, argument); err != nil {
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
 		return g.addDKGComplaint(args.Round, args.Complaint)
+
+	case "dkgComplaints":
+		round, index := new(big.Int), new(big.Int)
+		args := []interface{}{&round, &index}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		complaints := g.state.dkgComplaints(round)
+		if int(index.Uint64()) >= len(complaints) {
+			return nil, errExecutionReverted
+		}
+		complaint := complaints[index.Uint64()]
+		res, err := method.Outputs.Pack(complaint)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgMasterPublicKeys":
+		round, index := new(big.Int), new(big.Int)
+		args := []interface{}{&round, &index}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		pks := g.state.dkgMasterPublicKeys(round)
+		if int(index.Uint64()) >= len(pks) {
+			return nil, errExecutionReverted
+		}
+		pk := pks[index.Uint64()]
+		res, err := method.Outputs.Pack(pk)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "crs":
+		round := new(big.Int)
+		if err := method.Inputs.Unpack(&round, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		res, err := method.Outputs.Pack(g.state.crs(round))
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "governanceMultisig":
+		res, err := method.Outputs.Pack(g.state.governanceMultisig())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "k":
+		res, err := method.Outputs.Pack(g.state.k())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "lambdaBA":
+		res, err := method.Outputs.Pack(g.state.lambdaBA())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "lambdaDKG":
+		res, err := method.Outputs.Pack(g.state.lambdaDKG())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "maxBlockInterval":
+		res, err := method.Outputs.Pack(g.state.maxBlockInterval())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "minBlockInterval":
+		res, err := method.Outputs.Pack(g.state.minBlockInterval())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "numChains":
+		res, err := method.Outputs.Pack(g.state.numChains())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgSetSize":
+		res, err := method.Outputs.Pack(g.state.dkgSetSize())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "notarySetSize":
+		res, err := method.Outputs.Pack(g.state.notarySetSize())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "offset":
+		addr := common.Address{}
+		if err := method.Inputs.Unpack(&addr, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		res, err := method.Outputs.Pack(g.state.offset(addr))
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "phiRatio":
+		res, err := method.Outputs.Pack(g.state.phiRatio())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "roundInterval":
+		res, err := method.Outputs.Pack(g.state.roundInterval())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	}
 	return nil, nil
 }
@@ -635,17 +776,27 @@ func (s *StateHelper) deleteOffset(addr common.Address) {
 	s.setStateBigInt(loc, big.NewInt(0))
 }
 
-// 2: mapping(uint256 => bytes32) public crs;
-func (s *StateHelper) crs(round *big.Int) common.Hash {
-	loc := s.getMapLoc(big.NewInt(2), common.BigToHash(round).Bytes())
+// 2: bytes32[] public crs;
+func (s *StateHelper) lenCRS() *big.Int {
+	return s.getStateBigInt(big.NewInt(2))
+}
+func (s *StateHelper) crs(index *big.Int) common.Hash {
+	baseLoc := s.getSlotLoc(big.NewInt(2))
+	loc := new(big.Int).Add(baseLoc, new(big.Int).Mul(index, big.NewInt(32)))
 	return s.getState(common.BigToHash(loc))
 }
-func (s *StateHelper) putCRS(round *big.Int, crs common.Hash) {
-	loc := s.getMapLoc(big.NewInt(2), common.BigToHash(round).Bytes())
+func (s *StateHelper) pushCRS(crs common.Hash) {
+	// increase length by 1.
+	length := s.getStateBigInt(big.NewInt(2))
+	s.setStateBigInt(big.NewInt(2), new(big.Int).Add(length, big.NewInt(1)))
+
+	baseLoc := s.getSlotLoc(big.NewInt(2))
+	loc := new(big.Int).Add(baseLoc, new(big.Int).Mul(length, big.NewInt(32)))
+
 	s.setState(common.BigToHash(loc), crs)
 }
 
-// 3: mapping(uint256 => bytes[]) public DKGMasterPublicKeys;
+// 3: mapping(uint256 => bytes[]) public dkgMasterPublicKeys;
 func (s *StateHelper) dkgMasterPublicKeys(round *big.Int) [][]byte {
 	loc := s.getMapLoc(big.NewInt(3), common.BigToHash(round).Bytes())
 
@@ -672,7 +823,7 @@ func (s *StateHelper) pushDKGMasterPublicKey(round *big.Int, pk []byte) {
 	s.writeBytes(elementLoc, pk)
 }
 
-// 4: mapping(uint256 => bytes[]) public DKGComplaints;
+// 4: mapping(uint256 => bytes[]) public dkgComplaints;
 func (s *StateHelper) dkgComplaints(round *big.Int) [][]byte {
 	loc := s.getMapLoc(big.NewInt(4), common.BigToHash(round).Bytes())
 
@@ -686,8 +837,8 @@ func (s *StateHelper) dkgComplaints(round *big.Int) [][]byte {
 	}
 	return data
 }
-func (s *StateHelper) addDKGComplaint(round *big.Int, complaint []byte) {
-	loc := s.getMapLoc(big.NewInt(3), common.BigToHash(round).Bytes())
+func (s *StateHelper) pushDKGComplaint(round *big.Int, complaint []byte) {
+	loc := s.getMapLoc(big.NewInt(4), common.BigToHash(round).Bytes())
 
 	// increase length by 1.
 	arrayLength := s.getStateBigInt(loc)
@@ -699,70 +850,60 @@ func (s *StateHelper) addDKGComplaint(round *big.Int, complaint []byte) {
 	s.writeBytes(elementLoc, complaint)
 }
 
-// 5: uint256 public round;
-func (s *StateHelper) round() *big.Int {
-	return s.getStateBigInt(big.NewInt(5))
-}
-func (s *StateHelper) incRound() *big.Int {
-	newRound := new(big.Int).Add(s.round(), big.NewInt(1))
-	s.setStateBigInt(big.NewInt(5), newRound)
-	return newRound
-}
-
-// 6: address public governanceMultisig;
+// 5: address public governanceMultisig;
 func (s *StateHelper) governanceMultisig() common.Address {
-	val := s.getState(common.BigToHash(big.NewInt(6)))
+	val := s.getState(common.BigToHash(big.NewInt(5)))
 	return common.BytesToAddress(val.Bytes())
 }
 
-// 7: uint256 public numChains;
+// 6: uint256 public numChains;
 func (s *StateHelper) numChains() *big.Int {
+	return s.getStateBigInt(big.NewInt(6))
+}
+
+// 7: uint256 public lambdaBA;
+func (s *StateHelper) lambdaBA() *big.Int {
 	return s.getStateBigInt(big.NewInt(7))
 }
 
-// 8: uint256 public lambdaBA;
-func (s *StateHelper) lambdaBA() *big.Int {
+// 8: uint256 public lambdaDKG;
+func (s *StateHelper) lambdaDKG() *big.Int {
 	return s.getStateBigInt(big.NewInt(8))
 }
 
-// 9: uint256 public lambdaDKG;
-func (s *StateHelper) lambdaDKG() *big.Int {
+// 9: uint256 public k;
+func (s *StateHelper) k() *big.Int {
 	return s.getStateBigInt(big.NewInt(9))
 }
 
-// 10: uint256 public k;
-func (s *StateHelper) k() *big.Int {
+// 10: uint256 public phiRatio;  // stored as PhiRatio * 10^6
+func (s *StateHelper) phiRatio() *big.Int {
 	return s.getStateBigInt(big.NewInt(10))
 }
 
-// 11: uint256 public phiRatio;  // stored as PhiRatio * 10^6
-func (s *StateHelper) phiRatio() *big.Int {
+// 11: uint256 public notarySetSize;
+func (s *StateHelper) notarySetSize() *big.Int {
 	return s.getStateBigInt(big.NewInt(11))
 }
 
-// 12: uint256 public numNotarySet;
-func (s *StateHelper) numNotarySet() *big.Int {
+// 12: uint256 public dkgSetSize;
+func (s *StateHelper) dkgSetSize() *big.Int {
 	return s.getStateBigInt(big.NewInt(12))
 }
 
-// 13: uint256 public numDKGSet;
-func (s *StateHelper) numDKGSet() *big.Int {
+// 13: uint256 public roundInterval
+func (s *StateHelper) roundInterval() *big.Int {
 	return s.getStateBigInt(big.NewInt(13))
 }
 
-// 14: uint256 public roundInterval
-func (s *StateHelper) roundInterval() *big.Int {
+// 14: uint256 public minBlockInterval
+func (s *StateHelper) minBlockInterval() *big.Int {
 	return s.getStateBigInt(big.NewInt(14))
 }
 
-// 15: uint256 public minBlockInterval
-func (s *StateHelper) minBlockInterval() *big.Int {
-	return s.getStateBigInt(big.NewInt(15))
-}
-
-// 16: uint256 public maxBlockInterval
+// 15: uint256 public maxBlockInterval
 func (s *StateHelper) maxBlockInterval() *big.Int {
-	return s.getStateBigInt(big.NewInt(16))
+	return s.getStateBigInt(big.NewInt(15))
 }
 
 // GovernanceContract represents the governance contract of DEXCON.
@@ -784,7 +925,17 @@ func (g *GovernanceContract) penalize() {
 	g.contract.UseGas(g.contract.Gas)
 }
 
-func (g *GovernanceContract) updateConfiguration() ([]byte, error) {
+func (g *GovernanceContract) updateConfiguration(config *configParams) ([]byte, error) {
+	g.state.setStateBigInt(big.NewInt(6), big.NewInt(int64(config.NumChains)))
+	g.state.setStateBigInt(big.NewInt(7), big.NewInt(int64(config.LambdaBA)))
+	g.state.setStateBigInt(big.NewInt(8), big.NewInt(int64(config.LambdaDKG)))
+	g.state.setStateBigInt(big.NewInt(9), big.NewInt(int64(config.K)))
+	g.state.setStateBigInt(big.NewInt(10), big.NewInt(int64(config.PhiRatio)))
+	g.state.setStateBigInt(big.NewInt(11), big.NewInt(int64(config.NotarySetSize)))
+	g.state.setStateBigInt(big.NewInt(12), big.NewInt(int64(config.DKGSetSize)))
+	g.state.setStateBigInt(big.NewInt(13), big.NewInt(int64(config.RoundInterval)))
+	g.state.setStateBigInt(big.NewInt(14), big.NewInt(int64(config.MinBlockInterval)))
+	g.state.setStateBigInt(big.NewInt(15), big.NewInt(int64(config.MaxBlockInterval)))
 	return nil, nil
 }
 
@@ -838,19 +989,12 @@ func (g *GovernanceContract) unstake() ([]byte, error) {
 	return nil, nil
 }
 
-func (g *GovernanceContract) proposeCRS(round *big.Int, signedCRS []byte) ([]byte, error) {
-	crs := g.state.crs(round)
-
-	// Revert if CRS for that round already exists.
-	if crs != (common.Hash{}) {
-		return nil, errExecutionReverted
-	}
-
-	prevRound := g.state.round()
-	prevCRS := g.state.crs(prevRound)
+func (g *GovernanceContract) proposeCRS(signedCRS []byte) ([]byte, error) {
+	round := g.state.lenCRS()
+	prevCRS := g.state.crs(round)
 
 	// round should be the next round number, abort otherwise.
-	if new(big.Int).Add(prevRound, big.NewInt(1)).Cmp(round) != 0 {
+	if new(big.Int).Add(round, big.NewInt(1)).Cmp(round) != 0 {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -876,7 +1020,7 @@ func (g *GovernanceContract) proposeCRS(round *big.Int, signedCRS []byte) ([]byt
 		dkgComplaints = append(dkgComplaints, x)
 	}
 
-	threshold := int(g.state.numDKGSet().Uint64() / 3)
+	threshold := int(g.state.dkgSetSize().Uint64() / 3)
 
 	dkgGPK, err := core.NewDKGGroupPublicKey(
 		round.Uint64(), dkgMasterPKs, dkgComplaints, threshold)
@@ -894,8 +1038,7 @@ func (g *GovernanceContract) proposeCRS(round *big.Int, signedCRS []byte) ([]byt
 
 	// Save new CRS into state and increase round.
 	newCRS := crypto.Keccak256(signedCRS)
-	g.state.incRound()
-	g.state.putCRS(round, common.BytesToHash(newCRS))
+	g.state.pushCRS(common.BytesToHash(newCRS))
 
 	// To encourage DKG set to propose the correct value, correctly submitting
 	// this should cause nothing.
@@ -940,7 +1083,7 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 		return nil, errExecutionReverted
 	}
 
-	g.state.addDKGComplaint(round, comp)
+	g.state.pushDKGComplaint(round, comp)
 
 	// Set this to relatively high to prevent spamming
 	g.contract.UseGas(10000000)

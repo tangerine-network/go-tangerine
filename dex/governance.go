@@ -26,7 +26,7 @@ func (d *DexconGovernance) CRS(round uint64) coreCommon.Hash {
 }
 
 // ProposeCRS send proposals of a new CRS
-func (d *DexconGovernance) ProposeCRS(round uint64, signedCRS []byte) {
+func (d *DexconGovernance) ProposeCRS(signedCRS []byte) {
 }
 
 // NodeSet returns the current notary set.
