@@ -904,6 +904,13 @@ func (g *GovernanceContract) proposeCRS(round *big.Int, signedCRS []byte) ([]byt
 }
 
 func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, pk []byte) ([]byte, error) {
+	caller := g.contract.Caller()
+	offset := g.state.offset(caller)
+	// Can not add dkg mpk if not staked.
+	if offset.Cmp(big.NewInt(0)) < 0 {
+		return nil, errExecutionReverted
+	}
+
 	var dkgMasterPK types.DKGMasterPublicKey
 	if err := rlp.DecodeBytes(pk, &dkgMasterPK); err != nil {
 		g.penalize()
