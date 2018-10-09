@@ -129,7 +129,7 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte,
 
 		// check if chain block height is sequential
 		if chainLastHeight != position.Height-1 {
-			log.Error("Check confirmed block height fail", "chain", position.ChainID, "height", position.Height-1)
+			log.Error("Check confirmed block height fail", "chain", position.ChainID, "height", position.Height-1, "cache height", chainLastHeight)
 			return nil, fmt.Errorf("check confirmed block height fail")
 		}
 	}
@@ -263,23 +263,32 @@ func (d *DexconApp) PrepareWitness(consensusHeight uint64) (witness coreTypes.Wi
 }
 
 // VerifyBlock verifies if the payloads are valid.
-func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
-	d.insertMu.Lock()
-	defer d.insertMu.Unlock()
-
+func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifyStatus {
 	var witnessData witnessData
 	err := rlp.Decode(bytes.NewReader(block.Witness.Data), &witnessData)
 	if err != nil {
 		log.Error("Witness rlp decode", "error", err)
-		return false
+		return coreTypes.VerifyInvalidBlock
 	}
 
-	// check witness root exist
-	_, err = d.blockchain.StateAt(witnessData.Root)
-	if err != nil {
-		log.Error("Get state root error", "err", err)
-		return false
+	log.Info("Ready to verify witness block", "height", block.Witness.Height)
+
+	for i := 0; i < 3 && err != nil; i++ {
+		// check witness root exist
+		err = nil
+		_, err = d.blockchain.StateAt(witnessData.Root)
+		if err != nil {
+			log.Warn("Sleep 2 seconds and try again", "error", err)
+			time.Sleep(2 * time.Second)
+		}
 	}
+	if err != nil {
+		log.Error("Expect witness root not in stateDB", "err", err)
+		return coreTypes.VerifyRetryLater
+	}
+
+	d.insertMu.Lock()
+	defer d.insertMu.Unlock()
 
 	if block.Position.Height != 0 {
 		chainLastHeight, empty := d.blockchain.GetChainLastConfirmedHeight(block.Position.ChainID)
@@ -288,14 +297,14 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 			chainLastHeight, exist = d.chainHeight[block.Position.ChainID]
 			if !exist {
 				log.Error("Something wrong")
-				return false
+				return coreTypes.VerifyInvalidBlock
 			}
 		}
 
 		// check if chain block height is sequential
 		if chainLastHeight != block.Position.Height-1 {
 			log.Error("Check confirmed block height fail", "chain", block.Position.ChainID, "height", block.Position.Height-1)
-			return false
+			return coreTypes.VerifyRetryLater
 		}
 	}
 
@@ -305,13 +314,13 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 		latestState, err = d.blockchain.State()
 		if err != nil {
 			log.Error("Get current state", "error", err)
-			return false
+			return coreTypes.VerifyInvalidBlock
 		}
 	} else {
 		latestState, err = d.blockchain.StateAt(d.blockchain.GetPendingBlockByHeight(d.lastPendingHeight).Root())
 		if err != nil {
 			log.Error("Get pending state", "error", err)
-			return false
+			return coreTypes.VerifyInvalidBlock
 		}
 	}
 
@@ -319,14 +328,14 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 	err = rlp.Decode(bytes.NewReader(block.Payload), &transactions)
 	if err != nil {
 		log.Error("Payload rlp decode", "error", err)
-		return false
+		return coreTypes.VerifyInvalidBlock
 	}
 
 	// check if nonce is sequential and return first nonce of every address
 	addresses, err := d.validateNonce(transactions)
 	if err != nil {
 		log.Error("Get address nonce", "error", err)
-		return false
+		return coreTypes.VerifyInvalidBlock
 	}
 
 	// check all address nonce
@@ -335,7 +344,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 	for address, firstNonce := range addresses {
 		if !d.checkChain(address, chainNums, chainID) {
 			log.Error("check chain fail", "address", address)
-			return false
+			return coreTypes.VerifyInvalidBlock
 		}
 
 		var expectNonce uint64
@@ -343,7 +352,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 		lastConfirmedNonce, empty, err := d.blockchain.GetLastNonceFromConfirmedBlocks(block.Position.ChainID, address)
 		if err != nil {
 			log.Error("Get last nonce from confirmed blocks", "error", err)
-			return false
+			return coreTypes.VerifyInvalidBlock
 		} else if empty {
 			// get expect nonce from latest state when confirmed block is empty
 			expectNonce = latestState.GetNonce(address)
@@ -353,7 +362,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 
 		if expectNonce != firstNonce {
 			log.Error("Nonce check error", "expect", expectNonce, "firstNonce", firstNonce)
-			return false
+			return coreTypes.VerifyInvalidBlock
 		}
 	}
 
@@ -370,14 +379,14 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 		err := rlp.Decode(bytes.NewReader(block.Payload), &txs)
 		if err != nil {
 			log.Error("Decode confirmed block", "error", err)
-			return false
+			return coreTypes.VerifyInvalidBlock
 		}
 
 		for _, tx := range txs {
 			msg, err := tx.AsMessage(types.MakeSigner(d.blockchain.Config(), new(big.Int)))
 			if err != nil {
 				log.Error("Tx to message", "error", err)
-				return false
+				return coreTypes.VerifyInvalidBlock
 			}
 
 			balance, exist := addressesBalance[msg.From()]
@@ -387,7 +396,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 				balance = new(big.Int).Sub(balance, msg.Value())
 				if balance.Cmp(big.NewInt(0)) <= 0 {
 					log.Error("Replay confirmed tx fail", "reason", "not enough balance")
-					return false
+					return coreTypes.VerifyInvalidBlock
 				}
 				addressesBalance[msg.From()] = balance
 			}
@@ -401,37 +410,37 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 		msg, err := tx.AsMessage(types.MakeSigner(d.blockchain.Config(), new(big.Int)))
 		if err != nil {
 			log.Error("Tx to message", "error", err)
-			return false
+			return coreTypes.VerifyInvalidBlock
 		}
 		balance, _ := addressesBalance[msg.From()]
 		maxGasUsed := new(big.Int).Mul(new(big.Int).SetUint64(msg.Gas()), msg.GasPrice())
 		intrinsicGas, err := core.IntrinsicGas(msg.Data(), msg.To() == nil, true)
 		if err != nil {
 			log.Error("Calculate intrinsic gas fail", "err", err)
-			return false
+			return coreTypes.VerifyInvalidBlock
 		}
 		if big.NewInt(int64(intrinsicGas)).Cmp(maxGasUsed) > 0 {
 			log.Error("Intrinsic gas is larger than (gas limit * gas price)", "intrinsic", intrinsicGas, "maxGasUsed", maxGasUsed)
-			return false
+			return coreTypes.VerifyInvalidBlock
 		}
 
 		balance = new(big.Int).Sub(balance, maxGasUsed)
 		balance = new(big.Int).Sub(balance, msg.Value())
 		if balance.Cmp(big.NewInt(0)) < 0 {
 			log.Error("Tx fail", "reason", "not enough balance")
-			return false
+			return coreTypes.VerifyInvalidBlock
 		}
 
 		blockGasUsed = new(big.Int).Add(blockGasUsed, new(big.Int).SetUint64(tx.Gas()))
 		if blockGasLimit.Cmp(blockGasUsed) < 0 {
 			log.Error("Reach block gas limit", "limit", blockGasLimit)
-			return false
+			return coreTypes.VerifyInvalidBlock
 		}
 
 		addressesBalance[msg.From()] = balance
 	}
 
-	return true
+	return coreTypes.VerifyOK
 }
 
 // BlockDelivered is called when a block is add to the compaction chain.
@@ -479,7 +488,7 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 		Randomness: result.Randomness,
 	}, transactions, nil, nil)
 
-	_, err = d.blockchain.InsertPendingBlocks([]*types.Block{newBlock})
+	_, err = d.blockchain.ProcessPendingBlock(newBlock)
 	if err != nil {
 		log.Error("Insert chain", "error", err)
 		panic(err)
