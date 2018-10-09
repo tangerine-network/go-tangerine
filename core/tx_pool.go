@@ -1157,10 +1157,6 @@ func (pool *TxPool) demoteUnexecutables() {
 	}
 }
 
-func (pool *TxPool) ValidateTx(tx *types.Transaction, local bool) error {
-	return pool.validateTx(tx, local)
-}
-
 // addressByHeartbeat is an account address tagged with its last activity timestamp.
 type addressByHeartbeat struct {
 	address   common.Address

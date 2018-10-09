@@ -24,18 +24,18 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
-
 	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
 
 	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/common/math"
 	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/core/rawdb"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
 	"github.com/dexon-foundation/dexon/ethdb"
+	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/rlp"
 )
 
@@ -116,7 +116,6 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte,
 	currentBlock := d.blockchain.CurrentBlock()
 	gasLimit := core.CalcGasLimit(currentBlock, d.config.GasFloor, d.config.GasCeil)
 	gp := new(core.GasPool).AddGas(gasLimit)
-
 	stateDB, err := state.New(currentBlock.Root(), state.NewDatabase(d.chainDB))
 	if err != nil {
 		return
@@ -125,50 +124,37 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte,
 	chainID := new(big.Int).SetUint64(uint64(position.ChainID))
 	chainSize := new(big.Int).SetUint64(uint64(d.gov.Configuration(position.Round).NumChains))
 	var allTxs types.Transactions
-	var gasUsed uint64
+	var totalGasUsed uint64
 	for addr, txs := range txsMap {
 		// every address's transactions will appear in fixed chain
 		if !d.checkChain(addr, chainSize, chainID) {
 			continue
 		}
 
-		var nonce uint64
-		for i, tx := range txs {
-			// validate start nonce
-			// check undelivered block first
-			// or else check compaction chain state
-			if i == 0 {
-				nonce = tx.Nonce()
-				msg, err := tx.AsMessage(types.MakeSigner(d.blockchain.Config(), currentBlock.Header().Number))
-				if err != nil {
-					return nil, err
-				}
-				undeliveredNonce, exist, err := d.blockchain.GetNonceInConfirmedBlock(position.ChainID, msg.From())
-				if err != nil {
-					return nil, err
-				} else if exist {
-					if msg.Nonce() != undeliveredNonce+1 {
-						break
-					}
-				} else {
-					stateDB, err := d.blockchain.State()
-					if err != nil {
-						return nil, err
-					}
-					if msg.Nonce() != stateDB.GetNonce(msg.From())+1 {
-						break
-					}
-				}
-			} else if tx.Nonce() != nonce+1 { // check if nonce is sequential
-				break
-			}
+		undeliveredTxs, err := d.blockchain.GetConfirmedTxsByAddress(position.ChainID, addr)
+		if err != nil {
+			return nil, err
+		}
 
-			core.ApplyTransaction(d.blockchain.Config(), d.blockchain, nil, gp, stateDB, currentBlock.Header(), tx, &gasUsed, d.vmConfig)
-			if gasUsed > gasLimit {
+		for _, tx := range undeliveredTxs {
+			// confirmed txs must apply successfully
+			var gasUsed uint64
+			gp := new(core.GasPool).AddGas(math.MaxUint64)
+			_, _, err = core.ApplyTransaction(d.blockchain.Config(), d.blockchain, nil, gp, stateDB, currentBlock.Header(), tx, &gasUsed, d.vmConfig)
+			if err != nil {
+				log.Error("apply confirmed transaction error: %v", err)
+				return nil, err
+			}
+		}
+
+		for _, tx := range txs {
+			// apply transaction to calculate total gas used, validate nonce and check available balance
+			_, _, err = core.ApplyTransaction(d.blockchain.Config(), d.blockchain, nil, gp, stateDB, currentBlock.Header(), tx, &totalGasUsed, d.vmConfig)
+			if err != nil || totalGasUsed > gasLimit {
+				log.Debug("apply transaction fail error: %v, totalGasUsed: %d, gasLimit: %d", err, totalGasUsed, gasLimit)
 				break
 			}
 			allTxs = append(allTxs, tx)
-			nonce = tx.Nonce()
 		}
 	}
 	payload, err = rlp.EncodeToBytes(&allTxs)
@@ -221,72 +207,56 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 	currentBlock := d.blockchain.CurrentBlock()
 	chainID := new(big.Int).SetUint64(uint64(block.Position.ChainID))
 	chainSize := new(big.Int).SetUint64(uint64(d.gov.Configuration(block.Position.Round).NumChains))
+	stateDB, err := state.New(currentBlock.Root(), state.NewDatabase(d.chainDB))
+	if err != nil {
+		return false
+	}
 
 	// verify transactions
-	addressNonce := map[common.Address]*struct {
-		Min uint64
-		Max uint64
-	}{}
+	addressMap := map[common.Address]interface{}{}
+	gasLimit := core.CalcGasLimit(currentBlock, d.config.GasFloor, d.config.GasCeil)
+	gp := new(core.GasPool).AddGas(gasLimit)
+	var totalGasUsed uint64
 	for _, transaction := range transactions {
-		if d.txPool.ValidateTx(transaction, false) != nil {
-			return false
-		}
-
 		msg, err := transaction.AsMessage(types.MakeSigner(d.blockchain.Config(), currentBlock.Header().Number))
 		if err != nil {
 			return false
 		}
 
 		if !d.checkChain(msg.From(), chainSize, chainID) {
+			log.Error("%s can not be delivered on chain %d", msg.From().String(), chainID)
 			return false
 		}
 
-		nonce, exist := addressNonce[msg.From()]
+		_, exist := addressMap[msg.From()]
 		if !exist {
-			addressNonce[msg.From()] = &struct {
-				Min uint64
-				Max uint64
-			}{Min: msg.Nonce(), Max: msg.Nonce()}
-		} else if msg.Nonce() != nonce.Max+1 {
-			// address nonce is not sequential
-			return false
-		}
-		nonce.Max++
-	}
-
-	for address, nonce := range addressNonce {
-		undeliveredNonce, exist, err := d.blockchain.GetNonceInConfirmedBlock(block.Position.ChainID, address)
-		if err != nil {
-			return false
-		} else if exist {
-			if nonce.Min != undeliveredNonce+1 {
-				return false
-			}
-		} else {
-			stateDB, err := d.blockchain.State()
+			txs, err := d.blockchain.GetConfirmedTxsByAddress(block.Position.ChainID, msg.From())
 			if err != nil {
+				log.Error("get confirmed txs by address error: %v", err)
 				return false
 			}
-			if nonce.Min != stateDB.GetNonce(address)+1 {
-				return false
+
+			gp := new(core.GasPool).AddGas(math.MaxUint64)
+			for _, tx := range txs {
+				var gasUsed uint64
+				// confirmed txs must apply successfully
+				_, _, err := core.ApplyTransaction(d.blockchain.Config(), d.blockchain, nil, gp, stateDB, currentBlock.Header(), tx, &gasUsed, d.vmConfig)
+				if err != nil {
+					log.Error("apply confirmed transaction error: %v", err)
+					return false
+				}
 			}
+			addressMap[msg.From()] = nil
+		}
+
+		_, _, err = core.ApplyTransaction(d.blockchain.Config(), d.blockchain, nil, gp, stateDB, currentBlock.Header(), transaction, &totalGasUsed, d.vmConfig)
+		if err != nil {
+			log.Error("apply block transaction error: %v", err)
+			return false
 		}
 	}
 
-	gasLimit := core.CalcGasLimit(currentBlock, d.config.GasFloor, d.config.GasCeil)
-	gp := new(core.GasPool).AddGas(gasLimit)
-
-	stateDB, err := state.New(currentBlock.Root(), state.NewDatabase(d.chainDB))
-	if err != nil {
-		return false
-	}
-
-	var gasUsed uint64
-	for _, tx := range transactions {
-		core.ApplyTransaction(d.blockchain.Config(), d.blockchain, nil, gp, stateDB, currentBlock.Header(), tx, &gasUsed, d.vmConfig)
-	}
-
-	if gasUsed > gasLimit+d.config.GasLimitTolerance {
+	if totalGasUsed > gasLimit+d.config.GasLimitTolerance {
 		return false
 	}
 

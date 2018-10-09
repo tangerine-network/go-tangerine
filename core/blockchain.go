@@ -141,9 +141,9 @@ type BlockChain struct {
 	badBlocks      *lru.Cache              // Bad block cache
 	shouldPreserve func(*types.Block) bool // Function used to determine whether should preserve the given block.
 
-	confirmedBlockMu       sync.Mutex
-	confirmedBlock         map[coreCommon.Hash]*coreTypes.Block
-	filteredConfirmedBlock map[uint32]map[coreCommon.Hash]*coreTypes.Block
+	confirmedBlockMu     sync.Mutex
+	confirmedBlocks      map[coreCommon.Hash]*coreTypes.Block
+	chainConfirmedBlocks map[uint32][]*coreTypes.Block
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -165,23 +165,24 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	badBlocks, _ := lru.New(badBlockLimit)
 
 	bc := &BlockChain{
-		chainConfig:            chainConfig,
-		cacheConfig:            cacheConfig,
-		db:                     db,
-		triegc:                 prque.New(nil),
-		stateCache:             state.NewDatabaseWithCache(db, cacheConfig.TrieCleanLimit),
-		quit:                   make(chan struct{}),
-		shouldPreserve:         shouldPreserve,
-		bodyCache:              bodyCache,
-		bodyRLPCache:           bodyRLPCache,
-		receiptsCache:          receiptsCache,
-		blockCache:             blockCache,
-		futureBlocks:           futureBlocks,
-		engine:                 engine,
-		vmConfig:               vmConfig,
-		badBlocks:              badBlocks,
-		confirmedBlock:         make(map[coreCommon.Hash]*coreTypes.Block),
-		filteredConfirmedBlock: make(map[uint32]map[coreCommon.Hash]*coreTypes.Block),
+		chainConfig:          chainConfig,
+		cacheConfig:          cacheConfig,
+		db:                   db,
+		triegc:               prque.New(nil),
+		stateCache:           state.NewDatabase(db),
+		stateCache:           state.NewDatabaseWithCache(db, cacheConfig.TrieCleanLimit),
+		quit:                 make(chan struct{}),
+		shouldPreserve:       shouldPreserve,
+		bodyCache:            bodyCache,
+		bodyRLPCache:         bodyRLPCache,
+		receiptsCache:        receiptsCache,
+		blockCache:           blockCache,
+		futureBlocks:         futureBlocks,
+		engine:               engine,
+		vmConfig:             vmConfig,
+		badBlocks:            badBlocks,
+		confirmedBlocks:      make(map[coreCommon.Hash]*coreTypes.Block),
+		chainConfirmedBlocks: make(map[uint32][]*coreTypes.Block),
 	}
 	bc.SetValidator(NewBlockValidator(chainConfig, bc, engine))
 	bc.SetProcessor(NewStateProcessor(chainConfig, bc, engine))
@@ -229,55 +230,47 @@ func (bc *BlockChain) AddConfirmedBlock(block *coreTypes.Block) {
 	bc.confirmedBlockMu.Lock()
 	defer bc.confirmedBlockMu.Unlock()
 
-	bc.confirmedBlock[block.Hash] = block
-	if bc.filteredConfirmedBlock[block.Position.ChainID] == nil {
-		bc.filteredConfirmedBlock[block.Position.ChainID] = make(map[coreCommon.Hash]*coreTypes.Block)
-	}
-	bc.filteredConfirmedBlock[block.Position.ChainID][block.Hash] = block
+	bc.confirmedBlocks[block.Hash] = block
+	chainBlocks := bc.chainConfirmedBlocks[block.Position.ChainID]
+	bc.chainConfirmedBlocks[block.Position.ChainID] = append(chainBlocks, block)
 }
 
 func (bc *BlockChain) RemoveConfirmedBlock(hash coreCommon.Hash) {
 	bc.confirmedBlockMu.Lock()
 	defer bc.confirmedBlockMu.Unlock()
 
-	block := bc.confirmedBlock[hash]
-	delete(bc.filteredConfirmedBlock[block.Position.ChainID], block.Hash)
-	delete(bc.confirmedBlock, block.Hash)
+	block := bc.confirmedBlocks[hash]
+	delete(bc.confirmedBlocks, block.Hash)
 
-	if len(bc.filteredConfirmedBlock[block.Position.ChainID]) == 0 {
-		bc.filteredConfirmedBlock[block.Position.ChainID] = nil
-	}
+	chainBlocks := bc.chainConfirmedBlocks[block.Position.ChainID]
+	bc.chainConfirmedBlocks[block.Position.ChainID] = chainBlocks[1:]
 }
 
 func (bc *BlockChain) GetConfirmedBlockByHash(hash coreCommon.Hash) *coreTypes.Block {
-	return bc.confirmedBlock[hash]
+	return bc.confirmedBlocks[hash]
 }
 
-func (bc *BlockChain) GetNonceInConfirmedBlock(chainID uint32, address common.Address) (uint64, bool, error) {
-	var nonce uint64
-	var init bool
-	for _, block := range bc.filteredConfirmedBlock[chainID] {
+func (bc *BlockChain) GetConfirmedTxsByAddress(chainID uint32, address common.Address) (types.Transactions, error) {
+	var addressTxs types.Transactions
+	for _, block := range bc.chainConfirmedBlocks[chainID] {
 		var transactions types.Transactions
 		err := rlp.Decode(bytes.NewReader(block.Payload), &transactions)
 		if err != nil {
-			return 0, init, err
+			return nil, err
 		}
 
 		for _, tx := range transactions {
 			msg, err := tx.AsMessage(types.MakeSigner(bc.chainConfig, new(big.Int)))
 			if err != nil {
-				return 0, init, err
+				return nil, err
 			}
 
-			if msg.From() == address && (tx.Nonce() > nonce || !init) {
-				if !init {
-					init = true
-				}
-				nonce = tx.Nonce()
+			if msg.From() == address {
+				addressTxs = append(addressTxs, tx)
 			}
 		}
 	}
-	return nonce, init, nil
+	return addressTxs, nil
 }
 
 // loadLastState loads the last known chain state from the database. This method
