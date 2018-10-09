@@ -160,6 +160,8 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte,
 	blockGasLimit := new(big.Int).SetUint64(core.CalcGasLimit(d.blockchain.CurrentBlock(), d.config.GasFloor, d.config.GasCeil))
 	blockGasUsed := new(big.Int)
 	var allTxs types.Transactions
+
+addressMap:
 	for address, txs := range txsMap {
 		// every address's transactions will appear in fixed chain
 		if !d.checkChain(address, chainNums, chainID) {
@@ -217,8 +219,7 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte,
 
 			blockGasUsed = new(big.Int).Add(blockGasUsed, new(big.Int).SetUint64(tx.Gas()))
 			if blockGasLimit.Cmp(blockGasUsed) < 0 {
-				log.Error("Reach block gas limit", "limit", blockGasLimit, "gasUsed", blockGasUsed)
-				return nil, fmt.Errorf("reach block gas limit %v", blockGasLimit)
+				break addressMap
 			}
 
 			allTxs = append(allTxs, tx)
@@ -238,9 +239,13 @@ func (d *DexconApp) PrepareWitness(consensusHeight uint64) (witness coreTypes.Wi
 	if d.lastPendingHeight == 0 && consensusHeight == 0 {
 		witnessBlock = d.blockchain.CurrentBlock()
 	} else if d.lastPendingHeight >= consensusHeight {
+		d.insertMu.Lock()
 		witnessBlock = d.blockchain.GetPendingBlockByHeight(d.lastPendingHeight)
+		d.insertMu.Unlock()
 	} else if h := <-d.addNotify(consensusHeight); h >= consensusHeight {
+		d.insertMu.Lock()
 		witnessBlock = d.blockchain.GetPendingBlockByHeight(h)
+		d.insertMu.Unlock()
 	} else {
 		log.Error("need pending block")
 		return witness, fmt.Errorf("need pending block")
