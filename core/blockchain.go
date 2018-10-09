@@ -260,10 +260,16 @@ func (bc *BlockChain) RemoveConfirmedBlock(hash coreCommon.Hash) {
 }
 
 func (bc *BlockChain) GetConfirmedBlockByHash(hash coreCommon.Hash) *coreTypes.Block {
+	bc.confirmedBlockMu.Lock()
+	defer bc.confirmedBlockMu.Unlock()
+
 	return bc.confirmedBlocks[hash]
 }
 
 func (bc *BlockChain) GetConfirmedTxsByAddress(chainID uint32, address common.Address) (types.Transactions, error) {
+	bc.confirmedBlockMu.Lock()
+	defer bc.confirmedBlockMu.Unlock()
+
 	var addressTxs types.Transactions
 	for _, block := range bc.chainConfirmedBlocks[chainID] {
 		var transactions types.Transactions
