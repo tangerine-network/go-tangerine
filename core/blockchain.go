@@ -28,10 +28,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/hashicorp/golang-lru"
-
 	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
+	lru "github.com/hashicorp/golang-lru"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/common/mclock"
@@ -1620,10 +1619,11 @@ func (bc *BlockChain) insertPendingBlocks(chain types.Blocks) (int, []interface{
 		proctime := time.Since(bstart)
 
 		// commit state to refresh stateCache
-		_, err = pendingState.Commit(true)
+		root, err := pendingState.Commit(true)
 		if err != nil {
 			return i, nil, nil, fmt.Errorf("pendingState commit error: %v", err)
 		}
+		log.Info("commit pending root", "hash", root)
 
 		// add into pending blocks
 		bc.pendingBlocks[block.NumberU64()] = struct {

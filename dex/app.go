@@ -115,6 +115,41 @@ func (d *DexconApp) checkChain(address common.Address, chainSize, chainID *big.I
 func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte, err error) {
 	d.insertMu.Lock()
 	defer d.insertMu.Unlock()
+
+	if position.Height != 0 {
+		chainLastHeight, empty := d.blockchain.GetChainLastConfirmedHeight(position.ChainID)
+		if empty {
+			var exist bool
+			chainLastHeight, exist = d.chainHeight[position.ChainID]
+			if !exist {
+				log.Error("Something wrong")
+				return nil, fmt.Errorf("something wrong")
+			}
+		}
+
+		// check if chain block height is sequential
+		if chainLastHeight != position.Height-1 {
+			log.Error("Check confirmed block height fail", "chain", position.ChainID, "height", position.Height-1)
+			return nil, fmt.Errorf("check confirmed block height fail")
+		}
+	}
+
+	// set state to the pending height
+	var latestState *state.StateDB
+	if d.lastPendingHeight == 0 {
+		latestState, err = d.blockchain.State()
+		if err != nil {
+			log.Error("Get current state", "error", err)
+			return nil, fmt.Errorf("get current state error %v", err)
+		}
+	} else {
+		latestState, err = d.blockchain.StateAt(d.blockchain.GetPendingBlockByHeight(d.lastPendingHeight).Root())
+		if err != nil {
+			log.Error("Get pending state", "error", err)
+			return nil, fmt.Errorf("get pending state error: %v", err)
+		}
+	}
+
 	txsMap, err := d.txPool.Pending()
 	if err != nil {
 		return
@@ -122,32 +157,70 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte,
 
 	chainID := new(big.Int).SetUint64(uint64(position.ChainID))
 	chainNums := new(big.Int).SetUint64(uint64(d.gov.GetNumChains(position.Round)))
+	blockGasLimit := new(big.Int).SetUint64(core.CalcGasLimit(d.blockchain.CurrentBlock(), d.config.GasFloor, d.config.GasCeil))
+	blockGasUsed := new(big.Int)
 	var allTxs types.Transactions
-	for addr, txs := range txsMap {
+	for address, txs := range txsMap {
 		// every address's transactions will appear in fixed chain
-		if !d.checkChain(addr, chainNums, chainID) {
+		if !d.checkChain(address, chainNums, chainID) {
 			continue
 		}
 
-		var stateDB *state.StateDB
-		if d.lastPendingHeight > 0 {
-			stateDB, err = d.blockchain.StateAt(d.blockchain.GetPendingBlockByHeight(d.lastPendingHeight).Root())
-			if err != nil {
-				return nil, fmt.Errorf("PreparePayload d.blockchain.StateAt err %v", err)
-			}
+		var expectNonce uint64
+		// get last nonce from confirmed blocks
+		lastConfirmedNonce, empty, err := d.blockchain.GetLastNonceFromConfirmedBlocks(position.ChainID, address)
+		if err != nil {
+			log.Error("Get last nonce from confirmed blocks", "error", err)
+			return nil, fmt.Errorf("get last nonce from confirmed blocks error: %v", err)
+		} else if empty {
+			// get expect nonce from latest state when confirmed block is empty
+			expectNonce = latestState.GetNonce(address)
 		} else {
-			stateDB, err = d.blockchain.State()
-			if err != nil {
-				return nil, fmt.Errorf("PreparePayload d.blockchain.State err %v", err)
-			}
+			expectNonce = lastConfirmedNonce + 1
+		}
+
+		if expectNonce != txs[0].Nonce() {
+			log.Warn("Nonce check error", "expect", expectNonce, "nonce", txs[0].Nonce())
+			continue
+		}
+
+		balance := latestState.GetBalance(address)
+		confirmedTxs, err := d.blockchain.GetConfirmedTxsByAddress(position.ChainID, address)
+		if err != nil {
+			return nil, fmt.Errorf("get confirmed txs error: %v", err)
+		}
+
+		for _, tx := range confirmedTxs {
+			maxGasUsed := new(big.Int).Mul(new(big.Int).SetUint64(tx.Gas()), tx.GasPrice())
+			balance = new(big.Int).Sub(balance, maxGasUsed)
+			balance = new(big.Int).Sub(balance, tx.Value())
 		}
 
 		for _, tx := range txs {
-			if tx.Nonce() != stateDB.GetNonce(addr) {
-				log.Debug("Break transaction", "tx.hash", tx.Hash(), "nonce", tx.Nonce(), "expect", stateDB.GetNonce(addr))
+			maxGasUsed := new(big.Int).Mul(new(big.Int).SetUint64(tx.Gas()), tx.GasPrice())
+			intrinsicGas, err := core.IntrinsicGas(tx.Data(), tx.To() == nil, true)
+			if err != nil {
+				log.Error("Calculate intrinsic gas fail", "err", err)
+				return nil, fmt.Errorf("calculate intrinsic gas error: %v", err)
+			}
+			if big.NewInt(int64(intrinsicGas)).Cmp(maxGasUsed) > 0 {
+				log.Warn("Intrinsic gas is larger than (gas limit * gas price)", "intrinsic", intrinsicGas, "maxGasUsed", maxGasUsed)
 				break
 			}
-			log.Debug("Receive transaction", "tx.hash", tx.Hash(), "nonce", tx.Nonce(), "amount", tx.Value())
+
+			balance = new(big.Int).Sub(balance, maxGasUsed)
+			balance = new(big.Int).Sub(balance, tx.Value())
+			if balance.Cmp(big.NewInt(0)) < 0 {
+				log.Error("Tx fail", "reason", "not enough balance")
+				break
+			}
+
+			blockGasUsed = new(big.Int).Add(blockGasUsed, new(big.Int).SetUint64(tx.Gas()))
+			if blockGasLimit.Cmp(blockGasUsed) < 0 {
+				log.Error("Reach block gas limit", "limit", blockGasLimit, "gasUsed", blockGasUsed)
+				return nil, fmt.Errorf("reach block gas limit %v", blockGasLimit)
+			}
+
 			allTxs = append(allTxs, tx)
 		}
 	}
@@ -311,6 +384,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 			if exist {
 				maxGasUsed := new(big.Int).Mul(new(big.Int).SetUint64(msg.Gas()), msg.GasPrice())
 				balance = new(big.Int).Sub(balance, maxGasUsed)
+				balance = new(big.Int).Sub(balance, msg.Value())
 				if balance.Cmp(big.NewInt(0)) <= 0 {
 					log.Error("Replay confirmed tx fail", "reason", "not enough balance")
 					return false
@@ -321,6 +395,8 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 	}
 
 	// validate tx to check available balance
+	blockGasLimit := new(big.Int).SetUint64(core.CalcGasLimit(d.blockchain.CurrentBlock(), d.config.GasFloor, d.config.GasCeil))
+	blockGasUsed := new(big.Int)
 	for _, tx := range transactions {
 		msg, err := tx.AsMessage(types.MakeSigner(d.blockchain.Config(), new(big.Int)))
 		if err != nil {
@@ -329,11 +405,29 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 		}
 		balance, _ := addressesBalance[msg.From()]
 		maxGasUsed := new(big.Int).Mul(new(big.Int).SetUint64(msg.Gas()), msg.GasPrice())
+		intrinsicGas, err := core.IntrinsicGas(msg.Data(), msg.To() == nil, true)
+		if err != nil {
+			log.Error("Calculate intrinsic gas fail", "err", err)
+			return false
+		}
+		if big.NewInt(int64(intrinsicGas)).Cmp(maxGasUsed) > 0 {
+			log.Error("Intrinsic gas is larger than (gas limit * gas price)", "intrinsic", intrinsicGas, "maxGasUsed", maxGasUsed)
+			return false
+		}
+
 		balance = new(big.Int).Sub(balance, maxGasUsed)
-		if balance.Cmp(big.NewInt(0)) <= 0 {
+		balance = new(big.Int).Sub(balance, msg.Value())
+		if balance.Cmp(big.NewInt(0)) < 0 {
 			log.Error("Tx fail", "reason", "not enough balance")
 			return false
 		}
+
+		blockGasUsed = new(big.Int).Add(blockGasUsed, new(big.Int).SetUint64(tx.Gas()))
+		if blockGasLimit.Cmp(blockGasUsed) < 0 {
+			log.Error("Reach block gas limit", "limit", blockGasLimit)
+			return false
+		}
+
 		addressesBalance[msg.From()] = balance
 	}
 
@@ -370,7 +464,6 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 		panic(err)
 	}
 
-	log.Debug("Block proposer id", "hash", block.ProposerID)
 	newBlock := types.NewBlock(&types.Header{
 		Number:             new(big.Int).SetUint64(result.Height),
 		Time:               big.NewInt(result.Timestamp.Unix()),
@@ -379,8 +472,6 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 		WitnessHeight:      block.Witness.Height,
 		WitnessRoot:        witnessData.Root,
 		WitnessReceiptHash: witnessData.ReceiptHash,
-		ChainID:            block.Position.ChainID,
-		ChainBlockHeight:   block.Position.Height,
 		// TODO(bojie): fix it
 		GasLimit:   8000000,
 		DexconMeta: dexconMeta,
@@ -393,7 +484,7 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 		panic(err)
 	}
 
-	log.Debug("Insert pending block success", "height", result.Height)
+	log.Info("Insert pending block success", "height", result.Height)
 	d.chainHeight[block.Position.ChainID] = block.Position.Height
 	d.blockchain.RemoveConfirmedBlock(blockHash)
 	d.notify(result.Height)
