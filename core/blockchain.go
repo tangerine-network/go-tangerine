@@ -148,7 +148,8 @@ type BlockChain struct {
 	addressCounter  map[common.Address]uint64
 	chainLastHeight map[uint32]uint64
 
-	pendingBlocks map[uint64]struct {
+	pendingBlockMu *sync.Mutex
+	pendingBlocks  map[uint64]struct {
 		block    *types.Block
 		receipts types.Receipts
 	}
@@ -193,6 +194,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 			block    *types.Block
 			receipts types.Receipts
 		}),
+		pendingBlockMu:  &sync.Mutex{},
 		addressNonce:    make(map[common.Address]uint64),
 		addressCost:     make(map[common.Address]*big.Int),
 		addressCounter:  make(map[common.Address]uint64),
@@ -1643,7 +1645,9 @@ func (bc *BlockChain) processPendingBlock(block *types.Block, witness *coreTypes
 		case SideStatTy:
 			return 0, nil, nil, fmt.Errorf("insert pending block and fork found")
 		}
+		bc.pendingBlockMu.Lock()
 		delete(bc.pendingBlocks, pendingHeight)
+		bc.pendingBlockMu.Unlock()
 
 		stats.processed++
 		stats.usedGas += pendingIns.block.GasUsed()
@@ -1660,6 +1664,8 @@ func (bc *BlockChain) processPendingBlock(block *types.Block, witness *coreTypes
 }
 
 func (bc *BlockChain) GetPendingBlockByHeight(height uint64) *types.Block {
+	bc.pendingBlockMu.Lock()
+	defer bc.pendingBlockMu.Unlock()
 	return bc.pendingBlocks[height].block
 }
 
