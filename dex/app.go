@@ -142,7 +142,7 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte,
 			gp := new(core.GasPool).AddGas(math.MaxUint64)
 			_, _, err = core.ApplyTransaction(d.blockchain.Config(), d.blockchain, nil, gp, stateDB, currentBlock.Header(), tx, &gasUsed, d.vmConfig)
 			if err != nil {
-				log.Error("apply confirmed transaction error: %v", err)
+				log.Error("apply confirmed transaction", "error", err)
 				return nil, err
 			}
 		}
@@ -151,7 +151,7 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte,
 			// apply transaction to calculate total gas used, validate nonce and check available balance
 			_, _, err = core.ApplyTransaction(d.blockchain.Config(), d.blockchain, nil, gp, stateDB, currentBlock.Header(), tx, &totalGasUsed, d.vmConfig)
 			if err != nil || totalGasUsed > gasLimit {
-				log.Debug("apply transaction fail error: %v, totalGasUsed: %d, gasLimit: %d", err, totalGasUsed, gasLimit)
+				log.Debug("apply transaction fail", "error", err, "totalGasUsed", totalGasUsed, "gasLimit", gasLimit)
 				break
 			}
 			allTxs = append(allTxs, tx)
@@ -224,7 +224,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 		}
 
 		if !d.checkChain(msg.From(), chainSize, chainID) {
-			log.Error("%s can not be delivered on chain %d", msg.From().String(), chainID)
+			log.Error("check chain fail", "from", msg.From().String(), "chainSize", chainSize, "chainID", chainID)
 			return false
 		}
 
@@ -232,7 +232,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 		if !exist {
 			txs, err := d.blockchain.GetConfirmedTxsByAddress(block.Position.ChainID, msg.From())
 			if err != nil {
-				log.Error("get confirmed txs by address error: %v", err)
+				log.Error("get confirmed txs by address", "error", err)
 				return false
 			}
 
@@ -242,7 +242,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 				// confirmed txs must apply successfully
 				_, _, err := core.ApplyTransaction(d.blockchain.Config(), d.blockchain, nil, gp, stateDB, currentBlock.Header(), tx, &gasUsed, d.vmConfig)
 				if err != nil {
-					log.Error("apply confirmed transaction error: %v", err)
+					log.Error("apply confirmed transaction", "error", err)
 					return false
 				}
 			}
@@ -251,7 +251,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 
 		_, _, err = core.ApplyTransaction(d.blockchain.Config(), d.blockchain, nil, gp, stateDB, currentBlock.Header(), transaction, &totalGasUsed, d.vmConfig)
 		if err != nil {
-			log.Error("apply block transaction error: %v", err)
+			log.Error("apply block transaction", "error", err)
 			return false
 		}
 	}
@@ -302,7 +302,7 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 	var transactions types.Transactions
 	err := rlp.Decode(bytes.NewReader(block.Payload), &transactions)
 	if err != nil {
-		log.Error("payload rlp decode error: %v", err)
+		log.Error("payload rlp decode", "error", err)
 		return
 	}
 
@@ -315,7 +315,7 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 			Coinbase:   common.BytesToAddress(block.ProposerID.Hash[:]),
 		}, transactions, nil, nil)})
 	if err != nil {
-		log.Error("insert chain error: %v", err)
+		log.Error("insert chain", "error", err)
 		return
 	}
 
