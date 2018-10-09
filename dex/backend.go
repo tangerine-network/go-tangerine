@@ -18,17 +18,23 @@
 package dex
 
 import (
+	"fmt"
+
 	dexCore "github.com/dexon-foundation/dexon-consensus-core/core"
 	"github.com/dexon-foundation/dexon-consensus-core/core/blockdb"
 	"github.com/dexon-foundation/dexon-consensus-core/core/crypto/ecdsa"
 
 	"github.com/dexon-foundation/dexon/accounts"
 	"github.com/dexon-foundation/dexon/consensus"
+	"github.com/dexon-foundation/dexon/consensus/dexcon"
 	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/core/bloombits"
+	"github.com/dexon-foundation/dexon/core/rawdb"
+	"github.com/dexon-foundation/dexon/core/vm"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/event"
 	"github.com/dexon-foundation/dexon/internal/ethapi"
+	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/node"
 	"github.com/dexon-foundation/dexon/p2p"
 	"github.com/dexon-foundation/dexon/params"
@@ -72,7 +78,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	if err != nil {
 		panic(err)
 	}
-	app := NewDexconApp(nil)
 	gov := NewDexconGovernance()
 	network := NewDexconNetwork()
 
@@ -81,8 +86,26 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	if err != nil {
 		panic(err)
 	}
-	consensus := dexCore.NewConsensus(app, gov, db, network, privKey)
 
+	chainDb, err := CreateDB(ctx, config, "chaindata")
+	if err != nil {
+		return nil, err
+	}
+	chainConfig, genesisHash, genesisErr := core.SetupGenesisBlock(chainDb,
+		config.Genesis)
+	if _, ok := genesisErr.(*params.ConfigCompatError); genesisErr != nil && !ok {
+		return nil, genesisErr
+	}
+	log.Info("Initialised chain configuration", "config", chainConfig)
+
+	if !config.SkipBcVersionCheck {
+		bcVersion := rawdb.ReadDatabaseVersion(chainDb)
+		if bcVersion != nil && *bcVersion != core.BlockChainVersion {
+			return nil, fmt.Errorf("Blockchain DB version mismatch (%d / %d).\n",
+				bcVersion, core.BlockChainVersion)
+		}
+		rawdb.WriteDatabaseVersion(chainDb, core.BlockChainVersion)
+	}
 	dex := &Dexon{
 		config:         config,
 		eventMux:       ctx.EventMux,
@@ -90,12 +113,39 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 		shutdownChan:   make(chan bool),
 		networkID:      config.NetworkId,
 		bloomRequests:  make(chan chan *bloombits.Retrieval),
-		app:            app,
 		governance:     gov,
 		network:        network,
 		blockdb:        db,
-		consensus:      consensus,
+		engine:         dexcon.New(&params.DexconConfig{}),
 	}
+
+	var (
+		vmConfig = vm.Config{
+			EnablePreimageRecording: config.EnablePreimageRecording,
+			EWASMInterpreter:        config.EWASMInterpreter,
+			EVMInterpreter:          config.EVMInterpreter,
+		}
+		cacheConfig = &core.CacheConfig{Disabled: config.NoPruning, TrieCleanLimit: config.TrieCleanCache, TrieDirtyLimit: config.TrieDirtyCache, TrieTimeLimit: config.TrieTimeout}
+	)
+	dex.blockchain, err = core.NewBlockChain(chainDb, cacheConfig, dex.chainConfig, dex.engine, vmConfig, nil)
+
+	// Rewind the chain in case of an incompatible config upgrade.
+	if compat, ok := genesisErr.(*params.ConfigCompatError); ok {
+		log.Warn("Rewinding chain to upgrade configuration", "err", compat)
+		dex.blockchain.SetHead(compat.RewindTo)
+		rawdb.WriteChainConfig(chainDb, genesisHash, chainConfig)
+	}
+	dex.bloomIndexer.Start(dex.blockchain)
+
+	if config.TxPool.Journal != "" {
+		config.TxPool.Journal = ctx.ResolvePath(config.TxPool.Journal)
+	}
+	dex.txPool = core.NewTxPool(config.TxPool, dex.chainConfig, dex.blockchain)
+
+	dex.app = NewDexconApp(dex.txPool, dex.blockchain, gov, chainDb, config, vmConfig)
+
+	dex.consensus = dexCore.NewConsensus(dex.app, gov, db, network, privKey)
+
 	return dex, nil
 }
 
@@ -113,4 +163,16 @@ func (s *Dexon) Start(server *p2p.Server) error {
 
 func (s *Dexon) Stop() error {
 	return nil
+}
+
+// CreateDB creates the chain database.
+func CreateDB(ctx *node.ServiceContext, config *Config, name string) (ethdb.Database, error) {
+	db, err := ctx.OpenDatabase(name, config.DatabaseCache, config.DatabaseHandles)
+	if err != nil {
+		return nil, err
+	}
+	if db, ok := db.(*ethdb.LDBDatabase); ok {
+		db.Meter("eth/db/chaindata/")
+	}
+	return db, nil
 }

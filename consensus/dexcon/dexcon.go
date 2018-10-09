@@ -27,6 +27,8 @@ import (
 	"github.com/dexon-foundation/dexon/rpc"
 )
 
+var blockReward = big.NewInt(5e+18)
+
 // Config is the configuration for DEXON consensus.
 type Config struct {
 }
@@ -99,7 +101,10 @@ func (d *Dexcon) Prepare(chain consensus.ChainReader, header *types.Header) erro
 // Finalize implements consensus.Engine, ensuring no uncles are set, nor block
 // rewards given, and returns the final block.
 func (d *Dexcon) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
-	return nil, nil
+	state.AddBalance(header.Coinbase, blockReward)
+	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
+
+	return types.NewBlock(header, txs, uncles, receipts), nil
 }
 
 // Seal implements consensus.Engine, attempting to create a sealed block using
