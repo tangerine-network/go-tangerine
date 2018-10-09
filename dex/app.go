@@ -496,6 +496,9 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 
 // BlockConfirmed is called when a block is confirmed and added to lattice.
 func (d *DexconApp) BlockConfirmed(block coreTypes.Block) {
+	d.insertMu.Lock()
+	defer d.insertMu.Unlock()
+
 	d.blockchain.AddConfirmedBlock(&block)
 }
 
