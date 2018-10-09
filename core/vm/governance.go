@@ -219,6 +219,29 @@ const abiJSON = `
   },
   {
     "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "dkgFinalizeds",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
     "inputs": [],
     "name": "numChains",
     "outputs": [
@@ -249,6 +272,25 @@ const abiJSON = `
     "constant": true,
     "inputs": [],
     "name": "maxBlockInterval",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "dkgFinalizedsCount",
     "outputs": [
       {
         "name": "",
@@ -331,6 +373,24 @@ const abiJSON = `
         "type": "uint256"
       },
       {
+        "name": "Complaint",
+        "type": "bytes"
+      }
+    ],
+    "name": "addDKGComplaint",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "Round",
+        "type": "uint256"
+      },
+      {
         "name": "PublicKey",
         "type": "bytes"
       }
@@ -349,11 +409,11 @@ const abiJSON = `
         "type": "uint256"
       },
       {
-        "name": "Complaint",
+        "name": "Finalize",
         "type": "bytes"
       }
     ],
-    "name": "addDKGComplaint",
+    "name": "addDKGFinalize",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
@@ -401,6 +461,10 @@ func init() {
 	for _, method := range abiObject.Methods {
 		sig2Method[string(method.Id())] = method
 	}
+}
+
+func nodeIDToAddress(nodeID types.NodeID) common.Address {
+	return common.BytesToAddress(nodeID.Bytes()[12:])
 }
 
 type configParams struct {
@@ -454,15 +518,6 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 			return nil, errExecutionReverted
 		}
 		return g.proposeCRS(signedCRS)
-	case "addDKGMasterPublicKey":
-		args := struct {
-			Round     *big.Int
-			PublicKey []byte
-		}{}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.addDKGMasterPublicKey(args.Round, args.PublicKey)
 	case "addDKGComplaint":
 		args := struct {
 			Round     *big.Int
@@ -472,6 +527,28 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 			return nil, errExecutionReverted
 		}
 		return g.addDKGComplaint(args.Round, args.Complaint)
+	case "addDKGMasterPublicKey":
+		args := struct {
+			Round     *big.Int
+			PublicKey []byte
+		}{}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.addDKGMasterPublicKey(args.Round, args.PublicKey)
+	case "addDKGFinalize":
+		args := struct {
+			Round    *big.Int
+			Finalize []byte
+		}{}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.addDKGFinalize(args.Round, args.Finalize)
+
+	// --------------------------------
+	// Solidity auto generated methods.
+	// --------------------------------
 
 	case "dkgComplaints":
 		round, index := new(big.Int), new(big.Int)
@@ -485,6 +562,29 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 		}
 		complaint := complaints[index.Uint64()]
 		res, err := method.Outputs.Pack(complaint)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgFinalizeds":
+		round, addr := new(big.Int), common.Address{}
+		args := []interface{}{&round, &addr}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		finalized := g.state.dkgFinalized(round, addr)
+		res, err := method.Outputs.Pack(finalized)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgFinalizedsCount":
+		round := new(big.Int)
+		if err := method.Inputs.Unpack(&round, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		count := g.state.dkgFinalizedsCount(round)
+		res, err := method.Outputs.Pack(count)
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -595,6 +695,28 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 	return nil, nil
 }
 
+// Storage position enums.
+const (
+	nodesLoc = iota
+	offsetLoc
+	crsLoc
+	dkgMasterPublicKeysLoc
+	dkgComplaintsLoc
+	dkgFinailizedLoc
+	dkgFinalizedsCountLoc
+	governanceMultisigLoc
+	numChainsLoc
+	lambdaBALoc
+	lambdaDKGLoc
+	kLoc
+	phiRatioLoc
+	notarySetSizeLoc
+	dkgSetSizeLoc
+	roundIntervalLoc
+	minBlockIntervalLoc
+	maxBlockIntervalLoc
+)
+
 // State manipulation helper fro the governance contract.
 type StateHelper struct {
 	Address common.Address
@@ -701,13 +823,43 @@ func (s *StateHelper) writeBytes(loc *big.Int, data []byte) {
 	}
 }
 
+func (s *StateHelper) read2DByteArray(pos, index *big.Int) [][]byte {
+	baseLoc := s.getSlotLoc(pos)
+	loc := new(big.Int).Add(baseLoc, index)
+
+	arrayLength := s.getStateBigInt(loc)
+	dataLoc := s.getSlotLoc(loc)
+
+	data := [][]byte{}
+	for i := int64(0); i < int64(arrayLength.Uint64()); i++ {
+		elementLoc := new(big.Int).Add(dataLoc, big.NewInt(i))
+		data = append(data, s.readBytes(elementLoc))
+	}
+
+	return data
+}
+func (s *StateHelper) appendTo2DByteArray(pos, index *big.Int, data []byte) {
+	// Find the loc of the last element.
+	baseLoc := s.getSlotLoc(pos)
+	loc := new(big.Int).Add(baseLoc, index)
+
+	// increase length by 1.
+	arrayLength := s.getStateBigInt(loc)
+	s.setStateBigInt(loc, new(big.Int).Add(arrayLength, big.NewInt(1)))
+
+	// write element.
+	dataLoc := s.getSlotLoc(loc)
+	elementLoc := new(big.Int).Add(dataLoc, arrayLength)
+	s.writeBytes(elementLoc, data)
+}
+
 // struct Node {
 //     address owner;
 //     bytes publicKey;
 //     uint256 staked;
 // }
 //
-// 0: Node[] nodes;
+// Node[] nodes;
 
 type nodeInfo struct {
 	owner     common.Address
@@ -716,12 +868,12 @@ type nodeInfo struct {
 }
 
 func (s *StateHelper) nodesLength() *big.Int {
-	return s.getStateBigInt(big.NewInt(0))
+	return s.getStateBigInt(big.NewInt(nodesLoc))
 }
 func (s *StateHelper) node(index *big.Int) *nodeInfo {
 	node := new(nodeInfo)
 
-	arrayBaseLoc := s.getSlotLoc(big.NewInt(0))
+	arrayBaseLoc := s.getSlotLoc(big.NewInt(nodesLoc))
 	elementBaseLoc := new(big.Int).Add(arrayBaseLoc, new(big.Int).Mul(index, big.NewInt(3)))
 
 	// owner.
@@ -741,12 +893,12 @@ func (s *StateHelper) node(index *big.Int) *nodeInfo {
 func (s *StateHelper) pushNode(n *nodeInfo) {
 	// increase length by 1
 	arrayLength := s.nodesLength()
-	s.setStateBigInt(big.NewInt(0), new(big.Int).Add(arrayLength, big.NewInt(1)))
+	s.setStateBigInt(big.NewInt(nodesLoc), new(big.Int).Add(arrayLength, big.NewInt(1)))
 
 	s.updateNode(arrayLength, n)
 }
 func (s *StateHelper) updateNode(index *big.Int, n *nodeInfo) {
-	arrayBaseLoc := s.getSlotLoc(big.NewInt(0))
+	arrayBaseLoc := s.getSlotLoc(big.NewInt(nodesLoc))
 	elementBaseLoc := new(big.Int).Add(arrayBaseLoc, new(big.Int).Mul(index, big.NewInt(3)))
 
 	// owner.
@@ -762,148 +914,137 @@ func (s *StateHelper) updateNode(index *big.Int, n *nodeInfo) {
 	s.setStateBigInt(loc, n.staked)
 }
 
-// 1: mapping(address => uint256) public offset;
+// mapping(address => uint256) public offset;
 func (s *StateHelper) offset(addr common.Address) *big.Int {
-	loc := s.getMapLoc(big.NewInt(1), addr.Bytes())
+	loc := s.getMapLoc(big.NewInt(offsetLoc), addr.Bytes())
 	return new(big.Int).Sub(s.getStateBigInt(loc), big.NewInt(1))
 }
 func (s *StateHelper) putOffset(addr common.Address, offset *big.Int) {
-	loc := s.getMapLoc(big.NewInt(1), addr.Bytes())
+	loc := s.getMapLoc(big.NewInt(offsetLoc), addr.Bytes())
 	s.setStateBigInt(loc, new(big.Int).Add(offset, big.NewInt(1)))
 }
 func (s *StateHelper) deleteOffset(addr common.Address) {
-	loc := s.getMapLoc(big.NewInt(1), addr.Bytes())
+	loc := s.getMapLoc(big.NewInt(offsetLoc), addr.Bytes())
 	s.setStateBigInt(loc, big.NewInt(0))
 }
 
-// 2: bytes32[] public crs;
+// bytes32[] public crs;
 func (s *StateHelper) lenCRS() *big.Int {
-	return s.getStateBigInt(big.NewInt(2))
+	return s.getStateBigInt(big.NewInt(crsLoc))
 }
 func (s *StateHelper) crs(index *big.Int) common.Hash {
-	baseLoc := s.getSlotLoc(big.NewInt(2))
-	loc := new(big.Int).Add(baseLoc, new(big.Int).Mul(index, big.NewInt(32)))
+	baseLoc := s.getSlotLoc(big.NewInt(crsLoc))
+	loc := new(big.Int).Add(baseLoc, index)
 	return s.getState(common.BigToHash(loc))
 }
 func (s *StateHelper) pushCRS(crs common.Hash) {
 	// increase length by 1.
-	length := s.getStateBigInt(big.NewInt(2))
-	s.setStateBigInt(big.NewInt(2), new(big.Int).Add(length, big.NewInt(1)))
+	length := s.getStateBigInt(big.NewInt(crsLoc))
+	s.setStateBigInt(big.NewInt(crsLoc), new(big.Int).Add(length, big.NewInt(1)))
 
-	baseLoc := s.getSlotLoc(big.NewInt(2))
-	loc := new(big.Int).Add(baseLoc, new(big.Int).Mul(length, big.NewInt(32)))
+	baseLoc := s.getSlotLoc(big.NewInt(crsLoc))
+	loc := new(big.Int).Add(baseLoc, length)
 
 	s.setState(common.BigToHash(loc), crs)
 }
 
-// 3: mapping(uint256 => bytes[]) public dkgMasterPublicKeys;
+// bytes[][] public dkgMasterPublicKeys;
 func (s *StateHelper) dkgMasterPublicKeys(round *big.Int) [][]byte {
-	loc := s.getMapLoc(big.NewInt(3), common.BigToHash(round).Bytes())
-
-	arrayLength := s.getStateBigInt(loc)
-	dataLoc := s.getSlotLoc(loc)
-
-	data := make([][]byte, arrayLength.Uint64())
-	for i := int64(0); i < int64(arrayLength.Uint64()); i++ {
-		elementLoc := new(big.Int).Add(dataLoc, big.NewInt(i))
-		data = append(data, s.readBytes(elementLoc))
-	}
-	return data
+	return s.read2DByteArray(big.NewInt(dkgMasterPublicKeysLoc), round)
 }
 func (s *StateHelper) pushDKGMasterPublicKey(round *big.Int, pk []byte) {
-	loc := s.getMapLoc(big.NewInt(3), common.BigToHash(round).Bytes())
-
-	// increase length by 1.
-	arrayLength := s.getStateBigInt(loc)
-	s.setStateBigInt(loc, new(big.Int).Add(arrayLength, big.NewInt(1)))
-
-	// write element.
-	dataLoc := s.getSlotLoc(loc)
-	elementLoc := new(big.Int).Add(dataLoc, arrayLength)
-	s.writeBytes(elementLoc, pk)
+	s.appendTo2DByteArray(big.NewInt(dkgMasterPublicKeysLoc), round, pk)
 }
 
-// 4: mapping(uint256 => bytes[]) public dkgComplaints;
+// bytes[][] public dkgComplaints;
 func (s *StateHelper) dkgComplaints(round *big.Int) [][]byte {
-	loc := s.getMapLoc(big.NewInt(4), common.BigToHash(round).Bytes())
-
-	arrayLength := s.getStateBigInt(loc)
-	dataLoc := s.getSlotLoc(loc)
-
-	data := make([][]byte, arrayLength.Uint64())
-	for i := int64(0); i < int64(arrayLength.Uint64()); i++ {
-		elementLoc := new(big.Int).Add(dataLoc, big.NewInt(i))
-		data = append(data, s.readBytes(elementLoc))
-	}
-	return data
+	return s.read2DByteArray(big.NewInt(dkgComplaintsLoc), round)
 }
 func (s *StateHelper) pushDKGComplaint(round *big.Int, complaint []byte) {
-	loc := s.getMapLoc(big.NewInt(4), common.BigToHash(round).Bytes())
-
-	// increase length by 1.
-	arrayLength := s.getStateBigInt(loc)
-	s.setStateBigInt(loc, new(big.Int).Add(arrayLength, big.NewInt(1)))
-
-	// write element.
-	dataLoc := s.getSlotLoc(loc)
-	elementLoc := new(big.Int).Add(dataLoc, arrayLength)
-	s.writeBytes(elementLoc, complaint)
+	s.appendTo2DByteArray(big.NewInt(dkgComplaintsLoc), round, complaint)
 }
 
-// 5: address public governanceMultisig;
+// mapping(address => bool)[] public dkgFinalized;
+func (s *StateHelper) dkgFinalized(round *big.Int, addr common.Address) bool {
+	baseLoc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinailizedLoc)), round)
+	mapLoc := s.getMapLoc(baseLoc, addr.Bytes())
+	return s.getStateBigInt(mapLoc).Cmp(big.NewInt(0)) != 0
+}
+func (s *StateHelper) putDKGFinalized(round *big.Int, addr common.Address, finalized bool) {
+	baseLoc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinailizedLoc)), round)
+	mapLoc := s.getMapLoc(baseLoc, addr.Bytes())
+	res := big.NewInt(0)
+	if finalized {
+		res = big.NewInt(1)
+	}
+	s.setStateBigInt(mapLoc, res)
+}
+
+// uint256[] public dkgFinalizedsCount;
+func (s *StateHelper) dkgFinalizedsCount(round *big.Int) *big.Int {
+	loc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinalizedsCountLoc)), round)
+	return s.getStateBigInt(loc)
+}
+func (s *StateHelper) incDKGFinalizedsCount(round *big.Int) {
+	loc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinalizedsCountLoc)), round)
+	count := s.getStateBigInt(loc)
+	s.setStateBigInt(loc, new(big.Int).Add(count, big.NewInt(1)))
+}
+
+// address public governanceMultisig;
 func (s *StateHelper) governanceMultisig() common.Address {
-	val := s.getState(common.BigToHash(big.NewInt(5)))
+	val := s.getState(common.BigToHash(big.NewInt(governanceMultisigLoc)))
 	return common.BytesToAddress(val.Bytes())
 }
 
-// 6: uint256 public numChains;
+// uint256 public numChains;
 func (s *StateHelper) numChains() *big.Int {
-	return s.getStateBigInt(big.NewInt(6))
+	return s.getStateBigInt(big.NewInt(numChainsLoc))
 }
 
-// 7: uint256 public lambdaBA;
+// uint256 public lambdaBA;
 func (s *StateHelper) lambdaBA() *big.Int {
-	return s.getStateBigInt(big.NewInt(7))
+	return s.getStateBigInt(big.NewInt(lambdaBALoc))
 }
 
-// 8: uint256 public lambdaDKG;
+// uint256 public lambdaDKG;
 func (s *StateHelper) lambdaDKG() *big.Int {
-	return s.getStateBigInt(big.NewInt(8))
+	return s.getStateBigInt(big.NewInt(lambdaDKGLoc))
 }
 
-// 9: uint256 public k;
+// uint256 public k;
 func (s *StateHelper) k() *big.Int {
-	return s.getStateBigInt(big.NewInt(9))
+	return s.getStateBigInt(big.NewInt(kLoc))
 }
 
-// 10: uint256 public phiRatio;  // stored as PhiRatio * 10^6
+// uint256 public phiRatio;  // stored as PhiRatio * 10^6
 func (s *StateHelper) phiRatio() *big.Int {
-	return s.getStateBigInt(big.NewInt(10))
+	return s.getStateBigInt(big.NewInt(phiRatioLoc))
 }
 
-// 11: uint256 public notarySetSize;
+// uint256 public notarySetSize;
 func (s *StateHelper) notarySetSize() *big.Int {
-	return s.getStateBigInt(big.NewInt(11))
+	return s.getStateBigInt(big.NewInt(notarySetSizeLoc))
 }
 
-// 12: uint256 public dkgSetSize;
+// uint256 public dkgSetSize;
 func (s *StateHelper) dkgSetSize() *big.Int {
-	return s.getStateBigInt(big.NewInt(12))
+	return s.getStateBigInt(big.NewInt(dkgSetSizeLoc))
 }
 
-// 13: uint256 public roundInterval
+// uint256 public roundInterval
 func (s *StateHelper) roundInterval() *big.Int {
-	return s.getStateBigInt(big.NewInt(13))
+	return s.getStateBigInt(big.NewInt(roundIntervalLoc))
 }
 
-// 14: uint256 public minBlockInterval
+// uint256 public minBlockInterval
 func (s *StateHelper) minBlockInterval() *big.Int {
-	return s.getStateBigInt(big.NewInt(14))
+	return s.getStateBigInt(big.NewInt(minBlockIntervalLoc))
 }
 
-// 15: uint256 public maxBlockInterval
+// uint256 public maxBlockInterval
 func (s *StateHelper) maxBlockInterval() *big.Int {
-	return s.getStateBigInt(big.NewInt(15))
+	return s.getStateBigInt(big.NewInt(maxBlockIntervalLoc))
 }
 
 // GovernanceContract represents the governance contract of DEXCON.
@@ -1046,9 +1187,54 @@ func (g *GovernanceContract) proposeCRS(signedCRS []byte) ([]byte, error) {
 	return nil, nil
 }
 
+func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byte, error) {
+	caller := g.contract.Caller()
+
+	// Finalized caller is not allowed to propose complaint.
+	if g.state.dkgFinalized(round, caller) {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
+
+	// Calculate 2f
+	threshold := new(big.Int).Mul(
+		big.NewInt(2),
+		new(big.Int).Div(g.state.dkgSetSize(), big.NewInt(3)))
+
+	// If 2f + 1 of DKG set is finalized, one can not propose complaint anymore.
+	if g.state.dkgFinalizedsCount(round).Cmp(threshold) > 0 {
+		return nil, errExecutionReverted
+	}
+
+	var dkgComplaint types.DKGComplaint
+	if err := rlp.DecodeBytes(comp, &dkgComplaint); err != nil {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
+	verified, _ := core.VerifyDKGComplaintSignature(&dkgComplaint)
+	if !verified {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
+
+	// Verify that the message is sent from the caller.
+	signer := nodeIDToAddress(dkgComplaint.ProposerID)
+	if signer != caller {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
+
+	g.state.pushDKGComplaint(round, comp)
+
+	// Set this to relatively high to prevent spamming
+	g.contract.UseGas(10000000)
+	return nil, nil
+}
+
 func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, pk []byte) ([]byte, error) {
 	caller := g.contract.Caller()
 	offset := g.state.offset(caller)
+
 	// Can not add dkg mpk if not staked.
 	if offset.Cmp(big.NewInt(0)) < 0 {
 		return nil, errExecutionReverted
@@ -1065,6 +1251,13 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, pk []byte) ([
 		return nil, errExecutionReverted
 	}
 
+	// Verify that the message is sent from the caller.
+	signer := nodeIDToAddress(dkgMasterPK.ProposerID)
+	if signer != caller {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
+
 	g.state.pushDKGMasterPublicKey(round, pk)
 
 	// DKG operation is expensive.
@@ -1072,20 +1265,33 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, pk []byte) ([
 	return nil, nil
 }
 
-func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byte, error) {
-	var dkgComplaint types.DKGComplaint
-	if err := rlp.DecodeBytes(comp, &dkgComplaint); err != nil {
+func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]byte, error) {
+	caller := g.contract.Caller()
+
+	var dkgFinalize types.DKGFinalize
+	if err := rlp.DecodeBytes(finalize, &dkgFinalize); err != nil {
+		g.penalize()
 		return nil, errExecutionReverted
 	}
-	verified, _ := core.VerifyDKGComplaintSignature(&dkgComplaint)
+	verified, _ := core.VerifyDKGFinalizeSignature(&dkgFinalize)
 	if !verified {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
 
-	g.state.pushDKGComplaint(round, comp)
+	// Verify that the message is sent from the caller.
+	signer := nodeIDToAddress(dkgFinalize.ProposerID)
+	if signer != caller {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
 
-	// Set this to relatively high to prevent spamming
-	g.contract.UseGas(10000000)
+	if !g.state.dkgFinalized(round, caller) {
+		g.state.putDKGFinalized(round, caller, true)
+		g.state.incDKGFinalizedsCount(round)
+	}
+
+	// DKG operation is expensive.
+	g.contract.UseGas(100000)
 	return nil, nil
 }

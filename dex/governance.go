@@ -35,7 +35,7 @@ func (d *DexconGovernance) NodeSet(round uint64) []crypto.PublicKey {
 }
 
 // AddDKGComplaint adds a DKGComplaint.
-func (d *DexconGovernance) AddDKGComplaint(complaint *types.DKGComplaint) {
+func (d *DexconGovernance) AddDKGComplaint(round uint64, complaint *types.DKGComplaint) {
 }
 
 // DKGComplaints gets all the DKGComplaints of round.
@@ -44,10 +44,19 @@ func (d *DexconGovernance) DKGComplaints(round uint64) []*types.DKGComplaint {
 }
 
 // AddDKGMasterPublicKey adds a DKGMasterPublicKey.
-func (d *DexconGovernance) AddDKGMasterPublicKey(masterPublicKey *types.DKGMasterPublicKey) {
+func (d *DexconGovernance) AddDKGMasterPublicKey(round uint64, masterPublicKey *types.DKGMasterPublicKey) {
 }
 
 // DKGMasterPublicKeys gets all the DKGMasterPublicKey of round.
 func (d *DexconGovernance) DKGMasterPublicKeys(round uint64) []*types.DKGMasterPublicKey {
 	return nil
+}
+
+// AddDKGFinalize adds a DKG finalize message.
+func (d *DexconGovernance) AddDKGFinalize(round uint64, final *types.DKGFinalize) {
+}
+
+// IsDKGFinal checks if DKG is final.
+func (d *DexconGovernance) IsDKGFinal(round uint64) bool {
+	return false
 }

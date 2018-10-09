@@ -39,8 +39,8 @@ func (n *DexconNetwork) BroadcastDKGPartialSignature(
 	psig *types.DKGPartialSignature) {
 }
 
-// BroadcastRandomnessRequest broadcasts rand request to DKG set.
-func (n *DexconNetwork) BroadcastRandomnessRequest(randRequest *types.AgreementResult) {
+// BroadcastAgreementResult broadcasts rand request to DKG set.
+func (n *DexconNetwork) BroadcastAgreementResult(randRequest *types.AgreementResult) {
 
 }
 
