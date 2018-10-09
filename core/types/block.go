@@ -90,6 +90,8 @@ type Header struct {
 	WitnessHeight      uint64             `json:"witnessHeight"      gencodec:"required"`
 	WitnessRoot        common.Hash        `json:"WitnessRoot"        gencodec:"required"`
 	WitnessReceiptHash common.Hash        `json:"WitnessReceiptHash" gencodec:"required"`
+	ChainID            uint32             `json:"chainID"            gencodec:"required"`
+	ChainBlockHeight   uint64             `json:"chainBlockHeight"   gencodec:"required"`
 }
 
 // field type overrides for gencodec

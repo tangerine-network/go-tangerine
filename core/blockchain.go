@@ -254,6 +254,9 @@ func (bc *BlockChain) RemoveConfirmedBlock(hash coreCommon.Hash) {
 
 	chainBlocks := bc.chainConfirmedBlocks[block.Position.ChainID]
 	bc.chainConfirmedBlocks[block.Position.ChainID] = chainBlocks[1:]
+	if len(bc.chainConfirmedBlocks[block.Position.ChainID]) == 0 {
+		delete(bc.chainConfirmedBlocks, block.Position.ChainID)
+	}
 }
 
 func (bc *BlockChain) GetConfirmedBlockByHash(hash coreCommon.Hash) *coreTypes.Block {
@@ -281,6 +284,51 @@ func (bc *BlockChain) GetConfirmedTxsByAddress(chainID uint32, address common.Ad
 		}
 	}
 	return addressTxs, nil
+}
+
+func (bc *BlockChain) GetLastNonceFromConfirmedBlocks(chainID uint32, address common.Address) (uint64, bool, error) {
+	chainBlocks, exist := bc.chainConfirmedBlocks[chainID]
+	if !exist {
+		return 0, true, nil
+	}
+
+	for i := len(chainBlocks) - 1; i >= 0; i-- {
+		var transactions types.Transactions
+		err := rlp.Decode(bytes.NewReader(chainBlocks[i].Payload), &transactions)
+		if err != nil {
+			return 0, true, err
+		}
+
+		for _, tx := range transactions {
+			msg, err := tx.AsMessage(types.MakeSigner(bc.chainConfig, new(big.Int)))
+			if err != nil {
+				return 0, true, err
+			}
+
+			if msg.From() == address {
+				return msg.Nonce(), false, nil
+			}
+		}
+	}
+
+	return 0, true, nil
+}
+
+func (bc *BlockChain) GetChainLastConfirmedHeight(chainID uint32) (uint64, bool) {
+	bc.confirmedBlockMu.Lock()
+	defer bc.confirmedBlockMu.Unlock()
+
+	chainBlocks := bc.chainConfirmedBlocks[chainID]
+	size := len(chainBlocks)
+	if size == 0 {
+		return 0, true
+	}
+
+	return chainBlocks[size-1].Position.Height, false
+}
+
+func (bc *BlockChain) GetConfirmedBlocksByChainID(chainID uint32) []*coreTypes.Block {
+	return bc.chainConfirmedBlocks[chainID]
 }
 
 // loadLastState loads the last known chain state from the database. This method
@@ -1459,7 +1507,7 @@ func (bc *BlockChain) insertSidechain(block *types.Block, it *insertIterator) (i
 	return 0, nil, nil, nil
 }
 
-func (bc *BlockChain) InsertPendingBlock(chain types.Blocks) (int, error) {
+func (bc *BlockChain) InsertPendingBlocks(chain types.Blocks) (int, error) {
 	n, events, logs, err := bc.insertPendingBlocks(chain)
 	bc.PostChainEvents(events, logs)
 	return n, err
