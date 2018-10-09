@@ -30,7 +30,7 @@ import (
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
-	lru "github.com/hashicorp/golang-lru"
+	"github.com/hashicorp/golang-lru"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/common/math"
@@ -142,9 +142,11 @@ type BlockChain struct {
 	badBlocks      *lru.Cache              // Bad block cache
 	shouldPreserve func(*types.Block) bool // Function used to determine whether should preserve the given block.
 
-	confirmedBlockMu     sync.Mutex
-	confirmedBlocks      map[coreCommon.Hash]*coreTypes.Block
-	chainConfirmedBlocks map[uint32][]*coreTypes.Block
+	confirmedBlocks map[coreCommon.Hash]*blockInfo
+	addressNonce    map[common.Address]uint64
+	addressCost     map[common.Address]*big.Int
+	addressCounter  map[common.Address]uint64
+	chainLastHeight map[uint32]uint64
 
 	pendingBlocks map[uint64]struct {
 		block    *types.Block
@@ -171,28 +173,30 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	badBlocks, _ := lru.New(badBlockLimit)
 
 	bc := &BlockChain{
-		chainConfig:          chainConfig,
-		cacheConfig:          cacheConfig,
-		db:                   db,
-		triegc:               prque.New(nil),
-		stateCache:           state.NewDatabase(db),
-		stateCache:           state.NewDatabaseWithCache(db, cacheConfig.TrieCleanLimit),
-		quit:                 make(chan struct{}),
-		shouldPreserve:       shouldPreserve,
-		bodyCache:            bodyCache,
-		bodyRLPCache:         bodyRLPCache,
-		receiptsCache:        receiptsCache,
-		blockCache:           blockCache,
-		futureBlocks:         futureBlocks,
-		engine:               engine,
-		vmConfig:             vmConfig,
-		badBlocks:            badBlocks,
-		confirmedBlocks:      make(map[coreCommon.Hash]*coreTypes.Block),
-		chainConfirmedBlocks: make(map[uint32][]*coreTypes.Block),
+		chainConfig:     chainConfig,
+		cacheConfig:     cacheConfig,
+		db:              db,
+		triegc:          prque.New(nil),
+		stateCache:      state.NewDatabaseWithCache(db, cacheConfig.TrieCleanLimit),
+		quit:            make(chan struct{}),
+		shouldPreserve:  shouldPreserve,
+		bodyCache:       bodyCache,
+		bodyRLPCache:    bodyRLPCache,
+		receiptsCache:   receiptsCache,
+		blockCache:      blockCache,
+		futureBlocks:    futureBlocks,
+		engine:          engine,
+		vmConfig:        vmConfig,
+		badBlocks:       badBlocks,
+		confirmedBlocks: make(map[coreCommon.Hash]*blockInfo),
 		pendingBlocks: make(map[uint64]struct {
 			block    *types.Block
 			receipts types.Receipts
 		}),
+		addressNonce:    make(map[common.Address]uint64),
+		addressCost:     make(map[common.Address]*big.Int),
+		addressCounter:  make(map[common.Address]uint64),
+		chainLastHeight: make(map[uint32]uint64),
 	}
 	bc.SetValidator(NewDexonBlockValidator(chainConfig, bc, engine))
 	bc.SetProcessor(NewStateProcessor(chainConfig, bc, engine))
@@ -236,105 +240,79 @@ func (bc *BlockChain) GetVMConfig() *vm.Config {
 	return &bc.vmConfig
 }
 
-func (bc *BlockChain) AddConfirmedBlock(block *coreTypes.Block) {
-	bc.confirmedBlockMu.Lock()
-	defer bc.confirmedBlockMu.Unlock()
+type blockInfo struct {
+	addresses map[common.Address]interface{}
+	block     *coreTypes.Block
+}
 
-	bc.confirmedBlocks[block.Hash] = block
-	chainBlocks := bc.chainConfirmedBlocks[block.Position.ChainID]
-	bc.chainConfirmedBlocks[block.Position.ChainID] = append(chainBlocks, block)
+func (bc *BlockChain) AddConfirmedBlock(block *coreTypes.Block) error {
+	var transactions types.Transactions
+	err := rlp.Decode(bytes.NewReader(block.Payload), &transactions)
+	if err != nil {
+		return err
+	}
+
+	addressMap := map[common.Address]interface{}{}
+	for _, tx := range transactions {
+		msg, err := tx.AsMessage(types.MakeSigner(bc.Config(), new(big.Int)))
+		if err != nil {
+			return err
+		}
+		addressMap[msg.From()] = nil
+
+		// get latest nonce in block
+		bc.addressNonce[msg.From()] = msg.Nonce()
+
+		// calculate max cost in confirmed blocks
+		if bc.addressCost[msg.From()] == nil {
+			bc.addressCost[msg.From()] = tx.Cost()
+		} else {
+			bc.addressCost[msg.From()] = new(big.Int).Add(bc.addressCost[msg.From()], tx.Cost())
+		}
+	}
+
+	for addr := range addressMap {
+		bc.addressCounter[addr]++
+	}
+
+	bc.confirmedBlocks[block.Hash] = &blockInfo{
+		addresses: addressMap,
+		block:     block,
+	}
+	bc.chainLastHeight[block.Position.ChainID] = block.Position.Height
+	return nil
 }
 
 func (bc *BlockChain) RemoveConfirmedBlock(hash coreCommon.Hash) {
-	bc.confirmedBlockMu.Lock()
-	defer bc.confirmedBlockMu.Unlock()
-
-	block := bc.confirmedBlocks[hash]
-	delete(bc.confirmedBlocks, block.Hash)
-
-	chainBlocks := bc.chainConfirmedBlocks[block.Position.ChainID]
-	bc.chainConfirmedBlocks[block.Position.ChainID] = chainBlocks[1:]
-	if len(bc.chainConfirmedBlocks[block.Position.ChainID]) == 0 {
-		delete(bc.chainConfirmedBlocks, block.Position.ChainID)
+	blockInfo := bc.confirmedBlocks[hash]
+	for addr := range blockInfo.addresses {
+		bc.addressCounter[addr]--
+		if bc.addressCounter[addr] == 0 {
+			delete(bc.addressCounter, addr)
+			delete(bc.addressCost, addr)
+			delete(bc.addressNonce, addr)
+		}
 	}
+
+	delete(bc.confirmedBlocks, hash)
 }
 
 func (bc *BlockChain) GetConfirmedBlockByHash(hash coreCommon.Hash) *coreTypes.Block {
-	bc.confirmedBlockMu.Lock()
-	defer bc.confirmedBlockMu.Unlock()
-
-	return bc.confirmedBlocks[hash]
+	return bc.confirmedBlocks[hash].block
 }
 
-func (bc *BlockChain) GetConfirmedTxsByAddress(chainID uint32, address common.Address) (types.Transactions, error) {
-	bc.confirmedBlockMu.Lock()
-	defer bc.confirmedBlockMu.Unlock()
-
-	var addressTxs types.Transactions
-	for _, block := range bc.chainConfirmedBlocks[chainID] {
-		var transactions types.Transactions
-		err := rlp.Decode(bytes.NewReader(block.Payload), &transactions)
-		if err != nil {
-			return nil, err
-		}
-
-		for _, tx := range transactions {
-			msg, err := tx.AsMessage(types.MakeSigner(bc.chainConfig, new(big.Int)))
-			if err != nil {
-				return nil, err
-			}
-
-			if msg.From() == address {
-				addressTxs = append(addressTxs, tx)
-			}
-		}
-	}
-	return addressTxs, nil
+func (bc *BlockChain) GetLastNonceInConfirmedBlocks(address common.Address) (uint64, bool) {
+	nonce, exist := bc.addressNonce[address]
+	return nonce, exist
 }
 
-func (bc *BlockChain) GetLastNonceFromConfirmedBlocks(chainID uint32, address common.Address) (uint64, bool, error) {
-	chainBlocks, exist := bc.chainConfirmedBlocks[chainID]
-	if !exist {
-		return 0, true, nil
-	}
-
-	for i := len(chainBlocks) - 1; i >= 0; i-- {
-		var transactions types.Transactions
-		err := rlp.Decode(bytes.NewReader(chainBlocks[i].Payload), &transactions)
-		if err != nil {
-			return 0, true, err
-		}
-
-		for _, tx := range transactions {
-			msg, err := tx.AsMessage(types.MakeSigner(bc.chainConfig, new(big.Int)))
-			if err != nil {
-				return 0, true, err
-			}
-
-			if msg.From() == address {
-				return msg.Nonce(), false, nil
-			}
-		}
-	}
-
-	return 0, true, nil
+func (bc *BlockChain) GetCostInConfirmedBlocks(address common.Address) (*big.Int, bool) {
+	cost, exist := bc.addressCost[address]
+	return cost, exist
 }
 
-func (bc *BlockChain) GetChainLastConfirmedHeight(chainID uint32) (uint64, bool) {
-	bc.confirmedBlockMu.Lock()
-	defer bc.confirmedBlockMu.Unlock()
-
-	chainBlocks := bc.chainConfirmedBlocks[chainID]
-	size := len(chainBlocks)
-	if size == 0 {
-		return 0, true
-	}
-
-	return chainBlocks[size-1].Position.Height, false
-}
-
-func (bc *BlockChain) GetConfirmedBlocksByChainID(chainID uint32) []*coreTypes.Block {
-	return bc.chainConfirmedBlocks[chainID]
+func (bc *BlockChain) GetChainLastConfirmedHeight(chainID uint32) uint64 {
+	return bc.chainLastHeight[chainID]
 }
 
 // loadLastState loads the last known chain state from the database. This method
@@ -1615,11 +1593,10 @@ func (bc *BlockChain) processPendingBlock(block *types.Block, witness *coreTypes
 	proctime := time.Since(bstart)
 
 	// commit state to refresh stateCache
-	root, err := pendingState.Commit(true)
+	_, err = pendingState.Commit(true)
 	if err != nil {
 		return 0, nil, nil, fmt.Errorf("pendingState commit error: %v", err)
 	}
-	log.Info("Commit pending root", "hash", root)
 
 	// add into pending blocks
 	bc.pendingBlocks[block.NumberU64()] = struct {
@@ -1641,7 +1618,6 @@ func (bc *BlockChain) processPendingBlock(block *types.Block, witness *coreTypes
 		}
 
 		// Write the block to the chain and get the status.
-		log.Debug("Insert pending block", "height", pendingHeight)
 		status, err := bc.WriteBlockWithState(pendingIns.block, pendingIns.receipts, s)
 		if err != nil {
 			return 0, events, coalescedLogs, fmt.Errorf("WriteBlockWithState error: %v", err)
