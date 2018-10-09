@@ -105,7 +105,8 @@ func (d *Dexcon) Prepare(chain consensus.ChainReader, header *types.Header) erro
 // Finalize implements consensus.Engine, ensuring no uncles are set, nor block
 // rewards given, and returns the final block.
 func (d *Dexcon) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
-	blockReward := big.NewInt(100000000000)
+	// TODO(Bojie): remove it and get value from config
+	blockReward := big.NewInt(1e+18)
 	reward := new(big.Int).Div(blockReward, new(big.Int).SetUint64(uint64(d.config.NumChains)))
 	state.AddBalance(header.Coinbase, reward)
 	header.Root = state.IntermediateRoot(true)
