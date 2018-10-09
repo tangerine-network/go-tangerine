@@ -129,14 +129,15 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte,
 
 	// set state to the pending height
 	var latestState *state.StateDB
-	if d.lastPendingHeight == 0 {
+	lastPendingBlock := d.blockchain.GetPendingBlockByHeight(d.lastPendingHeight)
+	if d.lastPendingHeight == 0 || lastPendingBlock == nil {
 		latestState, err = d.blockchain.State()
 		if err != nil {
 			log.Error("Get current state", "error", err)
 			return nil, fmt.Errorf("get current state error %v", err)
 		}
 	} else {
-		latestState, err = d.blockchain.StateAt(d.blockchain.GetPendingBlockByHeight(d.lastPendingHeight).Root())
+		latestState, err = d.blockchain.StateAt(lastPendingBlock.Root())
 		if err != nil {
 			log.Error("Get pending state", "error", err)
 			return nil, fmt.Errorf("get pending state error: %v", err)
@@ -286,14 +287,15 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 
 	// set state to the pending height
 	var latestState *state.StateDB
-	if d.lastPendingHeight == 0 {
+	lastPendingBlock := d.blockchain.GetPendingBlockByHeight(d.lastPendingHeight)
+	if d.lastPendingHeight == 0 || lastPendingBlock == nil {
 		latestState, err = d.blockchain.State()
 		if err != nil {
 			log.Error("Get current state", "error", err)
 			return coreTypes.VerifyInvalidBlock
 		}
 	} else {
-		latestState, err = d.blockchain.StateAt(d.blockchain.GetPendingBlockByHeight(d.lastPendingHeight).Root())
+		latestState, err = d.blockchain.StateAt(lastPendingBlock.Root())
 		if err != nil {
 			log.Error("Get pending state", "error", err)
 			return coreTypes.VerifyInvalidBlock
