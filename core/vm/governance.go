@@ -6,17 +6,17 @@ import (
 
 	"github.com/dexon-foundation/dexon/accounts/abi"
 	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/rlp"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
 	"github.com/dexon-foundation/dexon-consensus-core/core"
 	coreCrypto "github.com/dexon-foundation/dexon-consensus-core/core/crypto"
-	"github.com/dexon-foundation/dexon-consensus-core/core/types"
+	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
 )
 
 var GovernanceContractAddress = common.BytesToAddress([]byte{0XED}) // Reverse of DEX0
-var multisigAddress = common.BytesToAddress([]byte("0x....."))
 var minStake = big.NewInt(10000000000000)
 
 const abiJSON = `
@@ -155,6 +155,20 @@ const abiJSON = `
   {
     "constant": true,
     "inputs": [],
+    "name": "owner",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
     "name": "lambdaDKG",
     "outputs": [
       {
@@ -257,20 +271,6 @@ const abiJSON = `
   {
     "constant": true,
     "inputs": [],
-    "name": "governanceMultisig",
-    "outputs": [
-      {
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
     "name": "maxBlockInterval",
     "outputs": [
       {
@@ -300,6 +300,29 @@ const abiJSON = `
     "payable": false,
     "stateMutability": "view",
     "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [],
+    "name": "ConfigurationChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "round",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "crs",
+        "type": "bytes32"
+      }
+    ],
+    "name": "CRSProposed",
+    "type": "event"
   },
   {
     "constant": false,
@@ -447,6 +470,7 @@ const abiJSON = `
 
 var abiObject abi.ABI
 var sig2Method map[string]abi.Method
+var events map[string]abi.Event
 
 func init() {
 	// Parse governance contract ABI.
@@ -461,9 +485,16 @@ func init() {
 	for _, method := range abiObject.Methods {
 		sig2Method[string(method.Id())] = method
 	}
+
+	events = make(map[string]abi.Event)
+
+	// Event cache.
+	for _, event := range abiObject.Events {
+		events[event.Name] = event
+	}
 }
 
-func nodeIDToAddress(nodeID types.NodeID) common.Address {
+func nodeIDToAddress(nodeID coreTypes.NodeID) common.Address {
 	return common.BytesToAddress(nodeID.Bytes()[12:])
 }
 
@@ -615,8 +646,8 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 			return nil, errExecutionReverted
 		}
 		return res, nil
-	case "governanceMultisig":
-		res, err := method.Outputs.Pack(g.state.governanceMultisig())
+	case "owner":
+		res, err := method.Outputs.Pack(g.state.owner())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -704,7 +735,7 @@ const (
 	dkgComplaintsLoc
 	dkgFinailizedLoc
 	dkgFinalizedsCountLoc
-	governanceMultisigLoc
+	ownerLoc
 	numChainsLoc
 	lambdaBALoc
 	lambdaDKGLoc
@@ -991,9 +1022,9 @@ func (s *StateHelper) incDKGFinalizedsCount(round *big.Int) {
 	s.setStateBigInt(loc, new(big.Int).Add(count, big.NewInt(1)))
 }
 
-// address public governanceMultisig;
-func (s *StateHelper) governanceMultisig() common.Address {
-	val := s.getState(common.BigToHash(big.NewInt(governanceMultisigLoc)))
+// address public owner;
+func (s *StateHelper) owner() common.Address {
+	val := s.getState(common.BigToHash(big.NewInt(ownerLoc)))
 	return common.BytesToAddress(val.Bytes())
 }
 
@@ -1047,6 +1078,22 @@ func (s *StateHelper) maxBlockInterval() *big.Int {
 	return s.getStateBigInt(big.NewInt(maxBlockIntervalLoc))
 }
 
+func (s *StateHelper) emitConfigurationChangedEvent() {
+	s.StateDB.AddLog(&types.Log{
+		Address: s.Address,
+		Topics:  []common.Hash{events["ConfigurationChanged"].Id()},
+		Data:    []byte{},
+	})
+}
+
+func (s *StateHelper) emitCRSProposed(round *big.Int, crs common.Hash) {
+	s.StateDB.AddLog(&types.Log{
+		Address: s.Address,
+		Topics:  []common.Hash{events["CRSProposed"].Id(), common.BigToHash(round)},
+		Data:    crs.Bytes(),
+	})
+}
+
 // GovernanceContract represents the governance contract of DEXCON.
 type GovernanceContract struct {
 	evm      *EVM
@@ -1067,16 +1114,23 @@ func (g *GovernanceContract) penalize() {
 }
 
 func (g *GovernanceContract) updateConfiguration(config *configParams) ([]byte, error) {
-	g.state.setStateBigInt(big.NewInt(6), big.NewInt(int64(config.NumChains)))
-	g.state.setStateBigInt(big.NewInt(7), big.NewInt(int64(config.LambdaBA)))
-	g.state.setStateBigInt(big.NewInt(8), big.NewInt(int64(config.LambdaDKG)))
-	g.state.setStateBigInt(big.NewInt(9), big.NewInt(int64(config.K)))
-	g.state.setStateBigInt(big.NewInt(10), big.NewInt(int64(config.PhiRatio)))
-	g.state.setStateBigInt(big.NewInt(11), big.NewInt(int64(config.NotarySetSize)))
-	g.state.setStateBigInt(big.NewInt(12), big.NewInt(int64(config.DKGSetSize)))
-	g.state.setStateBigInt(big.NewInt(13), big.NewInt(int64(config.RoundInterval)))
-	g.state.setStateBigInt(big.NewInt(14), big.NewInt(int64(config.MinBlockInterval)))
-	g.state.setStateBigInt(big.NewInt(15), big.NewInt(int64(config.MaxBlockInterval)))
+	// Only owner can update configuration.
+	if g.contract.Caller() != g.state.owner() {
+		return nil, errExecutionReverted
+	}
+
+	g.state.setStateBigInt(big.NewInt(numChainsLoc), big.NewInt(int64(config.NumChains)))
+	g.state.setStateBigInt(big.NewInt(lambdaBALoc), big.NewInt(int64(config.LambdaBA)))
+	g.state.setStateBigInt(big.NewInt(lambdaDKGLoc), big.NewInt(int64(config.LambdaDKG)))
+	g.state.setStateBigInt(big.NewInt(kLoc), big.NewInt(int64(config.K)))
+	g.state.setStateBigInt(big.NewInt(phiRatioLoc), big.NewInt(int64(config.PhiRatio)))
+	g.state.setStateBigInt(big.NewInt(notarySetSizeLoc), big.NewInt(int64(config.NotarySetSize)))
+	g.state.setStateBigInt(big.NewInt(dkgSetSizeLoc), big.NewInt(int64(config.DKGSetSize)))
+	g.state.setStateBigInt(big.NewInt(roundIntervalLoc), big.NewInt(int64(config.RoundInterval)))
+	g.state.setStateBigInt(big.NewInt(minBlockIntervalLoc), big.NewInt(int64(config.MinBlockInterval)))
+	g.state.setStateBigInt(big.NewInt(maxBlockIntervalLoc), big.NewInt(int64(config.MaxBlockInterval)))
+
+	g.state.emitConfigurationChangedEvent()
 	return nil, nil
 }
 
@@ -1142,9 +1196,9 @@ func (g *GovernanceContract) proposeCRS(signedCRS []byte) ([]byte, error) {
 
 	// Prepare DKGMasterPublicKeys.
 	// TODO(w): make sure DKGMasterPKs are unique.
-	var dkgMasterPKs []*types.DKGMasterPublicKey
+	var dkgMasterPKs []*coreTypes.DKGMasterPublicKey
 	for _, pk := range g.state.dkgMasterPublicKeys(round) {
-		x := new(types.DKGMasterPublicKey)
+		x := new(coreTypes.DKGMasterPublicKey)
 		if err := rlp.DecodeBytes(pk, x); err != nil {
 			panic(err)
 		}
@@ -1152,9 +1206,9 @@ func (g *GovernanceContract) proposeCRS(signedCRS []byte) ([]byte, error) {
 	}
 
 	// Prepare DKGComplaints.
-	var dkgComplaints []*types.DKGComplaint
+	var dkgComplaints []*coreTypes.DKGComplaint
 	for _, comp := range g.state.dkgComplaints(round) {
-		x := new(types.DKGComplaint)
+		x := new(coreTypes.DKGComplaint)
 		if err := rlp.DecodeBytes(comp, x); err != nil {
 			panic(err)
 		}
@@ -1179,7 +1233,10 @@ func (g *GovernanceContract) proposeCRS(signedCRS []byte) ([]byte, error) {
 
 	// Save new CRS into state and increase round.
 	newCRS := crypto.Keccak256(signedCRS)
-	g.state.pushCRS(common.BytesToHash(newCRS))
+	crs := common.BytesToHash(newCRS)
+
+	g.state.pushCRS(crs)
+	g.state.emitCRSProposed(g.state.lenCRS(), crs)
 
 	// To encourage DKG set to propose the correct value, correctly submitting
 	// this should cause nothing.
@@ -1206,7 +1263,7 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 		return nil, errExecutionReverted
 	}
 
-	var dkgComplaint types.DKGComplaint
+	var dkgComplaint coreTypes.DKGComplaint
 	if err := rlp.DecodeBytes(comp, &dkgComplaint); err != nil {
 		g.penalize()
 		return nil, errExecutionReverted
@@ -1240,7 +1297,7 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, pk []byte) ([
 		return nil, errExecutionReverted
 	}
 
-	var dkgMasterPK types.DKGMasterPublicKey
+	var dkgMasterPK coreTypes.DKGMasterPublicKey
 	if err := rlp.DecodeBytes(pk, &dkgMasterPK); err != nil {
 		g.penalize()
 		return nil, errExecutionReverted
@@ -1268,7 +1325,7 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, pk []byte) ([
 func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]byte, error) {
 	caller := g.contract.Caller()
 
-	var dkgFinalize types.DKGFinalize
+	var dkgFinalize coreTypes.DKGFinalize
 	if err := rlp.DecodeBytes(finalize, &dkgFinalize); err != nil {
 		g.penalize()
 		return nil, errExecutionReverted
