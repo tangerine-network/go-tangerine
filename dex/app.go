@@ -19,6 +19,7 @@ package dex
 
 import (
 	"bytes"
+	"github.com/dexon-foundation/dexon/core/rawdb"
 	"math/big"
 	"sync"
 	"time"
@@ -27,7 +28,6 @@ import (
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/core/rawdb"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
@@ -179,8 +179,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 
 	// verify transactions
 	for _, transaction := range transactions {
-		tx, _, _, _ := rawdb.ReadTransaction(d.chainDB, transaction.Hash())
-		if tx == nil || d.txPool.ValidateTx(transaction, false) != nil {
+		if d.txPool.ValidateTx(transaction, false) != nil {
 			return false
 		}
 	}
@@ -218,9 +217,16 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 	} else if witnessBlock.ReceiptHash() != witnessData.ReceiptHash {
 		// invalid receipt root of witness data
 		return false
-	} else if witnessBlock.TxHash() != witnessData.ReceiptHash {
+	} else if witnessBlock.TxHash() != witnessData.TxHash {
 		// invalid tx root of witness data
 		return false
+	}
+
+	for _, transaction := range witnessBlock.Transactions() {
+		tx, _, _, _ := rawdb.ReadTransaction(d.chainDB, transaction.Hash())
+		if tx == nil {
+			return false
+		}
 	}
 
 	return true
