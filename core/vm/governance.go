@@ -74,6 +74,33 @@ const abiJSON = `
   },
   {
     "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "nodes",
+    "outputs": [
+      {
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "name": "publicKey",
+        "type": "bytes"
+      },
+      {
+        "name": "staked",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
     "inputs": [],
     "name": "lambdaBA",
     "outputs": [
@@ -581,6 +608,16 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 	// Solidity auto generated methods.
 	// --------------------------------
 
+	case "crs":
+		round := new(big.Int)
+		if err := method.Inputs.Unpack(&round, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		res, err := method.Outputs.Pack(g.state.crs(round))
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	case "dkgComplaints":
 		round, index := new(big.Int), new(big.Int)
 		args := []interface{}{&round, &index}
@@ -636,18 +673,8 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 			return nil, errExecutionReverted
 		}
 		return res, nil
-	case "crs":
-		round := new(big.Int)
-		if err := method.Inputs.Unpack(&round, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		res, err := method.Outputs.Pack(g.state.crs(round))
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "owner":
-		res, err := method.Outputs.Pack(g.state.owner())
+	case "dkgSetSize":
+		res, err := method.Outputs.Pack(g.state.dkgSetSize())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -688,8 +715,13 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 			return nil, errExecutionReverted
 		}
 		return res, nil
-	case "dkgSetSize":
-		res, err := method.Outputs.Pack(g.state.dkgSetSize())
+	case "nodes":
+		index := new(big.Int)
+		if err := method.Inputs.Unpack(&index, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		info := g.state.node(index)
+		res, err := method.Outputs.Pack(info.owner, info.publicKey, info.staked)
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -706,6 +738,12 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 			return nil, errExecutionReverted
 		}
 		res, err := method.Outputs.Pack(g.state.offset(addr))
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "owner":
+		res, err := method.Outputs.Pack(g.state.owner())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
