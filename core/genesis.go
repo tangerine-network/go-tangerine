@@ -261,6 +261,9 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 			govStateHelper.Stake(addr, account.PublicKey, account.Staked)
 		}
 	}
+	// Governance configuration.
+	govStateHelper.UpdateConfiguration(g.Config.Dexcon)
+
 	root := statedb.IntermediateRoot(false)
 	head := &types.Header{
 		Number:     new(big.Int).SetUint64(g.Number),

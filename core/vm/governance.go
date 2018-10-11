@@ -8,6 +8,7 @@ import (
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/dexon-foundation/dexon/params"
 	"github.com/dexon-foundation/dexon/rlp"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
@@ -525,19 +526,6 @@ func nodeIDToAddress(nodeID coreTypes.NodeID) common.Address {
 	return common.BytesToAddress(nodeID.Bytes()[12:])
 }
 
-type configParams struct {
-	NumChains        uint32
-	LambdaBA         uint64
-	LambdaDKG        uint64
-	K                int
-	PhiRatio         float32
-	NotarySetSize    uint32
-	DKGSetSize       uint32
-	RoundInterval    uint64
-	MinBlockInterval uint64
-	MaxBlockInterval uint64
-}
-
 // RunGovernanceContract executes governance contract.
 func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 	ret []byte, err error) {
@@ -557,11 +545,11 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 
 	switch method.Name {
 	case "updateConfiguration":
-		var config configParams
-		if err := method.Inputs.Unpack(&config, arguments); err != nil {
+		var cfg params.DexconConfig
+		if err := method.Inputs.Unpack(&cfg, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		g.updateConfiguration(&config)
+		g.updateConfiguration(&cfg)
 	case "stake":
 		var publicKey []byte
 		if err := method.Inputs.Unpack(&publicKey, arguments); err != nil {
@@ -1112,21 +1100,36 @@ func (s *GovernanceStateHelper) dkgSetSize() *big.Int {
 	return s.getStateBigInt(big.NewInt(dkgSetSizeLoc))
 }
 
-// uint256 public roundInterval
+// uint256 public roundInterval;
 func (s *GovernanceStateHelper) roundInterval() *big.Int {
 	return s.getStateBigInt(big.NewInt(roundIntervalLoc))
 }
 
-// uint256 public minBlockInterval
+// uint256 public minBlockInterval;
 func (s *GovernanceStateHelper) minBlockInterval() *big.Int {
 	return s.getStateBigInt(big.NewInt(minBlockIntervalLoc))
 }
 
-// uint256 public maxBlockInterval
+// uint256 public maxBlockInterval;
 func (s *GovernanceStateHelper) maxBlockInterval() *big.Int {
 	return s.getStateBigInt(big.NewInt(maxBlockIntervalLoc))
 }
 
+// UpdateConfiguration updates system configuration.
+func (s *GovernanceStateHelper) UpdateConfiguration(cfg *params.DexconConfig) {
+	s.setStateBigInt(big.NewInt(numChainsLoc), big.NewInt(int64(cfg.NumChains)))
+	s.setStateBigInt(big.NewInt(lambdaBALoc), big.NewInt(int64(cfg.LambdaBA)))
+	s.setStateBigInt(big.NewInt(lambdaDKGLoc), big.NewInt(int64(cfg.LambdaDKG)))
+	s.setStateBigInt(big.NewInt(kLoc), big.NewInt(int64(cfg.K)))
+	s.setStateBigInt(big.NewInt(phiRatioLoc), big.NewInt(int64(cfg.PhiRatio)))
+	s.setStateBigInt(big.NewInt(notarySetSizeLoc), big.NewInt(int64(cfg.NotarySetSize)))
+	s.setStateBigInt(big.NewInt(dkgSetSizeLoc), big.NewInt(int64(cfg.DKGSetSize)))
+	s.setStateBigInt(big.NewInt(roundIntervalLoc), big.NewInt(int64(cfg.RoundInterval)))
+	s.setStateBigInt(big.NewInt(minBlockIntervalLoc), big.NewInt(int64(cfg.MinBlockInterval)))
+	s.setStateBigInt(big.NewInt(maxBlockIntervalLoc), big.NewInt(int64(cfg.MaxBlockInterval)))
+}
+
+// event ConfigurationChanged();
 func (s *GovernanceStateHelper) emitConfigurationChangedEvent() {
 	s.StateDB.AddLog(&types.Log{
 		Address: s.Address,
@@ -1135,6 +1138,7 @@ func (s *GovernanceStateHelper) emitConfigurationChangedEvent() {
 	})
 }
 
+// event CRSProposed(uint256 round, bytes32 crs);
 func (s *GovernanceStateHelper) emitCRSProposed(round *big.Int, crs common.Hash) {
 	s.StateDB.AddLog(&types.Log{
 		Address: s.Address,
@@ -1162,23 +1166,13 @@ func (g *GovernanceContract) penalize() {
 	g.contract.UseGas(g.contract.Gas)
 }
 
-func (g *GovernanceContract) updateConfiguration(config *configParams) ([]byte, error) {
+func (g *GovernanceContract) updateConfiguration(config *params.DexconConfig) ([]byte, error) {
 	// Only owner can update configuration.
 	if g.contract.Caller() != g.state.owner() {
 		return nil, errExecutionReverted
 	}
 
-	g.state.setStateBigInt(big.NewInt(numChainsLoc), big.NewInt(int64(config.NumChains)))
-	g.state.setStateBigInt(big.NewInt(lambdaBALoc), big.NewInt(int64(config.LambdaBA)))
-	g.state.setStateBigInt(big.NewInt(lambdaDKGLoc), big.NewInt(int64(config.LambdaDKG)))
-	g.state.setStateBigInt(big.NewInt(kLoc), big.NewInt(int64(config.K)))
-	g.state.setStateBigInt(big.NewInt(phiRatioLoc), big.NewInt(int64(config.PhiRatio)))
-	g.state.setStateBigInt(big.NewInt(notarySetSizeLoc), big.NewInt(int64(config.NotarySetSize)))
-	g.state.setStateBigInt(big.NewInt(dkgSetSizeLoc), big.NewInt(int64(config.DKGSetSize)))
-	g.state.setStateBigInt(big.NewInt(roundIntervalLoc), big.NewInt(int64(config.RoundInterval)))
-	g.state.setStateBigInt(big.NewInt(minBlockIntervalLoc), big.NewInt(int64(config.MinBlockInterval)))
-	g.state.setStateBigInt(big.NewInt(maxBlockIntervalLoc), big.NewInt(int64(config.MaxBlockInterval)))
-
+	g.state.UpdateConfiguration(config)
 	g.state.emitConfigurationChangedEvent()
 	return nil, nil
 }

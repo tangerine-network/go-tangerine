@@ -54,7 +54,7 @@ var (
 		ByzantiumBlock:      big.NewInt(4370000),
 		ConstantinopleBlock: big.NewInt(7280000),
 		PetersburgBlock:     big.NewInt(7280000),
-		Ethash:              new(EthashConfig),
+		Dexcon:              &DexconConfig{},
 	}
 
 	// MainnetTrustedCheckpoint contains the light client trusted checkpoint for the main network.
@@ -228,12 +228,32 @@ func (c *CliqueConfig) String() string {
 
 // DexconConfig is the consensus engine configs for DEXON consensus.
 type DexconConfig struct {
-	GovernanceContractAddress string
+	NumChains        uint32  `json:"numChains"`
+	LambdaBA         uint64  `json:"lambdaBA"`
+	LambdaDKG        uint64  `json:"lambdaDKG"`
+	K                int     `json:"k"`
+	PhiRatio         float32 `json:"phiRatio"`
+	NotarySetSize    uint32  `json:"notarySetSize"`
+	DKGSetSize       uint32  `json:"dkgSetSize"`
+	RoundInterval    uint64  `json:"roundInterval"`
+	MinBlockInterval uint64  `json:"minBlockInterval"`
+	MaxBlockInterval uint64  `json:"maxBlockInterval"`
 }
 
 // String implements the stringer interface, returning the consensus engine details.
-func (c *DexconConfig) String() string {
-	return "dexcon"
+func (d *DexconConfig) String() string {
+	return fmt.Sprintf("{NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v MaxBlockInterval: %v",
+		d.NumChains,
+		d.LambdaBA,
+		d.LambdaDKG,
+		d.K,
+		d.PhiRatio,
+		d.NotarySetSize,
+		d.DKGSetSize,
+		d.RoundInterval,
+		d.MinBlockInterval,
+		d.MaxBlockInterval,
+	)
 }
 
 // String implements the fmt.Stringer interface.
