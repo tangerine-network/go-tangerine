@@ -1424,12 +1424,6 @@ func (g *GovernanceContract) stake(publicKey []byte) ([]byte, error) {
 		return nil, errExecutionReverted
 	}
 
-	// Make sure the public key belongs to the caller.
-	if crypto.PubkeyToAddress(*pk) != caller {
-		g.penalize()
-		return nil, errExecutionReverted
-	}
-
 	offset = g.state.NodesLength()
 	g.state.PushNode(&nodeInfo{
 		Owner:     caller,
