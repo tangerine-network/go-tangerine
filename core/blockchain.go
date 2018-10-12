@@ -18,6 +18,7 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -26,6 +27,9 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
+	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/common/mclock"
@@ -136,6 +140,10 @@ type BlockChain struct {
 
 	badBlocks      *lru.Cache              // Bad block cache
 	shouldPreserve func(*types.Block) bool // Function used to determine whether should preserve the given block.
+
+	confirmedBlockMu       sync.Mutex
+	confirmedBlock         map[coreCommon.Hash]*coreTypes.Block
+	filteredConfirmedBlock map[uint32]map[coreCommon.Hash]*coreTypes.Block
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -213,6 +221,54 @@ func (bc *BlockChain) getProcInterrupt() bool {
 // GetVMConfig returns the block chain VM config.
 func (bc *BlockChain) GetVMConfig() *vm.Config {
 	return &bc.vmConfig
+}
+
+func (bc *BlockChain) AddConfirmedBlock(block *coreTypes.Block) {
+	bc.confirmedBlockMu.Lock()
+	defer bc.confirmedBlockMu.Unlock()
+
+	bc.confirmedBlock[block.Hash] = block
+	bc.filteredConfirmedBlock[block.Position.ChainID][block.Hash] = block
+}
+
+func (bc *BlockChain) RemoveConfirmedBlock(hash coreCommon.Hash) {
+	bc.confirmedBlockMu.Lock()
+	defer bc.confirmedBlockMu.Unlock()
+
+	block := bc.confirmedBlock[hash]
+	delete(bc.filteredConfirmedBlock[block.Position.ChainID], block.Hash)
+	delete(bc.confirmedBlock, block.Hash)
+}
+
+func (bc *BlockChain) GetConfirmedBlockByHash(hash coreCommon.Hash) *coreTypes.Block {
+	return bc.confirmedBlock[hash]
+}
+
+func (bc *BlockChain) GetNonceInConfirmedBlock(chainID uint32, address common.Address) (uint64, bool, error) {
+	var nonce uint64
+	var init bool
+	for _, block := range bc.filteredConfirmedBlock[chainID] {
+		var transactions types.Transactions
+		err := rlp.Decode(bytes.NewReader(block.Payload), &transactions)
+		if err != nil {
+			return 0, init, err
+		}
+
+		for _, tx := range transactions {
+			msg, err := tx.AsMessage(types.MakeSigner(bc.chainConfig, new(big.Int)))
+			if err != nil {
+				return 0, init, err
+			}
+
+			if msg.From() == address && (tx.Nonce() > nonce || !init) {
+				if !init {
+					init = true
+				}
+				nonce = tx.Nonce()
+			}
+		}
+	}
+	return nonce, init, nil
 }
 
 // loadLastState loads the last known chain state from the database. This method

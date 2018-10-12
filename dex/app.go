@@ -19,11 +19,10 @@ package dex
 
 import (
 	"bytes"
+	"github.com/dexon-foundation/dexon/core/rawdb"
 	"math/big"
 	"sync"
 	"time"
-
-	"github.com/dexon-foundation/dexon/core/rawdb"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
@@ -119,12 +118,43 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte)
 			continue
 		}
 
-		for _, tx := range txs {
+		var nonce uint64
+		for i, tx := range txs {
+			// validate start nonce
+			// check undelivered block first
+			// or else check compaction chain state
+			if i == 0 {
+				nonce = tx.Nonce()
+				msg, err := tx.AsMessage(types.MakeSigner(nil, currentBlock.Header().Number))
+				if err != nil {
+					return
+				}
+				undeliveredNonce, exist, err := d.blockchain.GetNonceInConfirmedBlock(position.ChainID, msg.From())
+				if err != nil {
+					return
+				} else if exist {
+					if msg.Nonce() != undeliveredNonce+1 {
+						break
+					}
+				} else {
+					stateDB, err := d.blockchain.State()
+					if err != nil {
+						return
+					}
+					if msg.Nonce() != stateDB.GetNonce(msg.From())+1 {
+						break
+					}
+				}
+			} else if tx.Nonce() != nonce+1 { // check if nonce is sequential
+				break
+			}
+
 			core.ApplyTransaction(d.blockchain.Config(), d.blockchain, nil, gp, stateDB, currentBlock.Header(), tx, &gasUsed, d.vmConfig)
 			if gasUsed > gasLimit {
 				break
 			}
 			allTxs = append(allTxs, tx)
+			nonce = tx.Nonce()
 		}
 	}
 	payload, err = rlp.EncodeToBytes(&allTxs)
@@ -179,14 +209,54 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 		return false
 	}
 
+	currentBlock := d.blockchain.CurrentBlock()
+
 	// verify transactions
+	addressNonce := map[common.Address]*struct {
+		Min uint64
+		Max uint64
+	}{}
 	for _, transaction := range transactions {
 		if d.txPool.ValidateTx(transaction, false) != nil {
 			return false
 		}
+
+		msg, err := transaction.AsMessage(types.MakeSigner(nil, currentBlock.Header().Number))
+		if err != nil {
+			return false
+		}
+		nonce, exist := addressNonce[msg.From()]
+		if !exist {
+			addressNonce[msg.From()] = &struct {
+				Min uint64
+				Max uint64
+			}{Min: msg.Nonce(), Max: msg.Nonce()}
+		} else if msg.Nonce() != nonce.Max+1 {
+			// address nonce is not sequential
+			return false
+		}
+		nonce.Max++
 	}
 
-	currentBlock := d.blockchain.CurrentBlock()
+	for address, nonce := range addressNonce {
+		undeliveredNonce, exist, err := d.blockchain.GetNonceInConfirmedBlock(block.Position.ChainID, address)
+		if err != nil {
+			return false
+		} else if exist {
+			if nonce.Min != undeliveredNonce+1 {
+				return false
+			}
+		} else {
+			stateDB, err := d.blockchain.State()
+			if err != nil {
+				return false
+			}
+			if nonce.Min != stateDB.GetNonce(address)+1 {
+				return false
+			}
+		}
+	}
+
 	gasLimit := core.CalcGasLimit(currentBlock, d.config.GasFloor, d.config.GasCeil)
 	gp := new(core.GasPool).AddGas(gasLimit)
 
@@ -234,31 +304,38 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 	return true
 }
 
-func (d *DexconApp) BlockConfirmed(block coreTypes.Block) {
-}
-
 // BlockDelivered is called when a block is add to the compaction chain.
 func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.FinalizationResult) {
-	/*
-		var transactions types.Transactions
-		err := rlp.Decode(bytes.NewReader(block.Payload), &transactions)
-		if err != nil {
-			return
-		}
+	block := d.blockchain.GetConfirmedBlockByHash(blockHash)
+	if block == nil {
+		// do something
+		return
+	}
 
-		_, err = d.blockchain.InsertChain(
-			[]*types.Block{types.NewBlock(&types.Header{
-				ParentHash: common.Hash(block.ParentHash),
-				Number:     new(big.Int).SetUint64(result.Height),
-				Time:       new(big.Int).SetInt64(result.Timestamp.Unix()),
-				TxHash:     types.DeriveSha(transactions),
-				Coinbase:   common.BytesToAddress(block.ProposerID.Hash[:]),
-			}, transactions, nil, nil)})
-		if err != nil {
-			// do something
-			return
-		}
+	var transactions types.Transactions
+	err := rlp.Decode(bytes.NewReader(block.Payload), &transactions)
+	if err != nil {
+		return
+	}
 
-		d.notify(result.Height)
-	*/
+	_, err = d.blockchain.InsertChain(
+		[]*types.Block{types.NewBlock(&types.Header{
+			ParentHash: common.Hash(block.ParentHash),
+			Number:     new(big.Int).SetUint64(result.Height),
+			Time:       new(big.Int).SetInt64(result.Timestamp.Unix()),
+			TxHash:     types.DeriveSha(transactions),
+			Coinbase:   common.BytesToAddress(block.ProposerID.Hash[:]),
+		}, transactions, nil, nil)})
+	if err != nil {
+		// do something
+		return
+	}
+
+	d.blockchain.RemoveConfirmedBlock(blockHash)
+	d.notify(result.Height)
+}
+
+// BlockConfirmed is called when a block is confirmed and added to lattice.
+func (d *DexconApp) BlockConfirmed(block coreTypes.Block) {
+	d.blockchain.AddConfirmedBlock(&block)
 }
