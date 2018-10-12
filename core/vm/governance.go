@@ -14,6 +14,7 @@ import (
 	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
 	"github.com/dexon-foundation/dexon-consensus-core/core"
 	coreCrypto "github.com/dexon-foundation/dexon-consensus-core/core/crypto"
+	"github.com/dexon-foundation/dexon-consensus-core/core/crypto/ecdsa"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
 )
 
@@ -573,10 +574,6 @@ func init() {
 	}
 }
 
-func nodeIDToAddress(nodeID coreTypes.NodeID) common.Address {
-	return common.BytesToAddress(nodeID.Bytes()[12:])
-}
-
 // RunGovernanceContract executes governance contract.
 func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 	ret []byte, err error) {
@@ -717,12 +714,12 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 		if err := method.Inputs.Unpack(&args, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		pks := g.state.DKGMasterPublicKeys(round)
-		if int(index.Uint64()) >= len(pks) {
+		mpks := g.state.DKGMasterPublicKeys(round)
+		if int(index.Uint64()) >= len(mpks) {
 			return nil, errExecutionReverted
 		}
-		pk := pks[index.Uint64()]
-		res, err := method.Outputs.Pack(pk)
+		mpk := mpks[index.Uint64()]
+		res, err := method.Outputs.Pack(mpk)
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -1097,6 +1094,9 @@ func (s *GovernanceStateHelper) CRS(index *big.Int) common.Hash {
 	loc := new(big.Int).Add(baseLoc, index)
 	return s.getState(common.BigToHash(loc))
 }
+func (s *GovernanceStateHelper) CurrentCRS() common.Hash {
+	return s.CRS(new(big.Int).Sub(s.LenCRS(), big.NewInt(1)))
+}
 func (s *GovernanceStateHelper) PushCRS(crs common.Hash) {
 	// increase length by 1.
 	length := s.getStateBigInt(big.NewInt(crsLoc))
@@ -1112,8 +1112,8 @@ func (s *GovernanceStateHelper) PushCRS(crs common.Hash) {
 func (s *GovernanceStateHelper) DKGMasterPublicKeys(round *big.Int) [][]byte {
 	return s.read2DByteArray(big.NewInt(dkgMasterPublicKeysLoc), round)
 }
-func (s *GovernanceStateHelper) PushDKGMasterPublicKey(round *big.Int, pk []byte) {
-	s.appendTo2DByteArray(big.NewInt(dkgMasterPublicKeysLoc), round, pk)
+func (s *GovernanceStateHelper) PushDKGMasterPublicKey(round *big.Int, mpk []byte) {
+	s.appendTo2DByteArray(big.NewInt(dkgMasterPublicKeysLoc), round, mpk)
 }
 
 // bytes[][] public dkgComplaints;
@@ -1288,7 +1288,27 @@ func (g *GovernanceContract) penalize() {
 	g.contract.UseGas(g.contract.Gas)
 }
 
+func (g *GovernanceContract) inDKGSet(nodeID coreTypes.NodeID) bool {
+	target := coreTypes.NewDKGSetTarget(coreCommon.Hash(g.state.CurrentCRS()))
+	ns := coreTypes.NewNodeSet()
+
+	for _, x := range g.state.Nodes() {
+		mpk := ecdsa.NewPublicKeyFromByteSlice(x.PublicKey)
+		ns.Add(coreTypes.NewNodeID(mpk))
+	}
+
+	dkgSet := ns.GetSubSet(int(g.state.DKGSetSize().Uint64()), target)
+	_, ok := dkgSet[nodeID]
+	return ok
+}
+
 func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byte, error) {
+	nextRound := g.state.LenCRS()
+	if round.Cmp(nextRound) != 0 {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
+
 	caller := g.contract.Caller()
 
 	// Finalized caller is not allowed to propose complaint.
@@ -1312,15 +1332,15 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 		g.penalize()
 		return nil, errExecutionReverted
 	}
-	verified, _ := core.VerifyDKGComplaintSignature(&dkgComplaint)
-	if !verified {
+
+	// DKGComplaint must belongs to someone in DKG set.
+	if !g.inDKGSet(dkgComplaint.ProposerID) {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
 
-	// Verify that the message is sent from the caller.
-	signer := nodeIDToAddress(dkgComplaint.ProposerID)
-	if signer != caller {
+	verified, _ := core.VerifyDKGComplaintSignature(&dkgComplaint)
+	if !verified {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -1332,7 +1352,13 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 	return nil, nil
 }
 
-func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, pk []byte) ([]byte, error) {
+func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) ([]byte, error) {
+	nextRound := g.state.LenCRS()
+	if round.Cmp(nextRound) != 0 {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
+
 	caller := g.contract.Caller()
 	offset := g.state.Offset(caller)
 
@@ -1342,24 +1368,24 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, pk []byte) ([
 	}
 
 	var dkgMasterPK coreTypes.DKGMasterPublicKey
-	if err := rlp.DecodeBytes(pk, &dkgMasterPK); err != nil {
+	if err := rlp.DecodeBytes(mpk, &dkgMasterPK); err != nil {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
+
+	// DKGMasterPublicKey must belongs to someone in DKG set.
+	if !g.inDKGSet(dkgMasterPK.ProposerID) {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
+
 	verified, _ := core.VerifyDKGMasterPublicKeySignature(&dkgMasterPK)
 	if !verified {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
 
-	// Verify that the message is sent from the caller.
-	signer := nodeIDToAddress(dkgMasterPK.ProposerID)
-	if signer != caller {
-		g.penalize()
-		return nil, errExecutionReverted
-	}
-
-	g.state.PushDKGMasterPublicKey(round, pk)
+	g.state.PushDKGMasterPublicKey(round, mpk)
 
 	// DKG operation is expensive.
 	g.contract.UseGas(100000)
@@ -1367,6 +1393,12 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, pk []byte) ([
 }
 
 func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]byte, error) {
+	nextRound := g.state.LenCRS()
+	if round.Cmp(nextRound) != 0 {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
+
 	caller := g.contract.Caller()
 
 	var dkgFinalize coreTypes.DKGFinalize
@@ -1374,15 +1406,15 @@ func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]
 		g.penalize()
 		return nil, errExecutionReverted
 	}
-	verified, _ := core.VerifyDKGFinalizeSignature(&dkgFinalize)
-	if !verified {
+
+	// DKGFInalize must belongs to someone in DKG set.
+	if !g.inDKGSet(dkgFinalize.ProposerID) {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
 
-	// Verify that the message is sent from the caller.
-	signer := nodeIDToAddress(dkgFinalize.ProposerID)
-	if signer != caller {
+	verified, _ := core.VerifyDKGFinalizeSignature(&dkgFinalize)
+	if !verified {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -1414,12 +1446,6 @@ func (g *GovernanceContract) stake(publicKey []byte) ([]byte, error) {
 
 	// Can not stake if already staked.
 	if offset.Cmp(big.NewInt(0)) >= 0 {
-		g.penalize()
-		return nil, errExecutionReverted
-	}
-
-	pk, err := crypto.DecompressPubkey(publicKey)
-	if err != nil {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -1476,9 +1502,9 @@ func (g *GovernanceContract) proposeCRS(signedCRS []byte) ([]byte, error) {
 	// Prepare DKGMasterPublicKeys.
 	// TODO(w): make sure DKGMasterPKs are unique.
 	var dkgMasterPKs []*coreTypes.DKGMasterPublicKey
-	for _, pk := range g.state.DKGMasterPublicKeys(round) {
+	for _, mpk := range g.state.DKGMasterPublicKeys(round) {
 		x := new(coreTypes.DKGMasterPublicKey)
-		if err := rlp.DecodeBytes(pk, x); err != nil {
+		if err := rlp.DecodeBytes(mpk, x); err != nil {
 			panic(err)
 		}
 		dkgMasterPKs = append(dkgMasterPKs, x)
