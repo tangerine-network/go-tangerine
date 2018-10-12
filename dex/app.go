@@ -19,7 +19,7 @@ package dex
 
 import (
 	"bytes"
-	"github.com/dexon-foundation/dexon/core/rawdb"
+	"fmt"
 	"math/big"
 	"sync"
 	"time"
@@ -29,6 +29,7 @@ import (
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core"
+	"github.com/dexon-foundation/dexon/core/rawdb"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
@@ -51,6 +52,12 @@ type DexconApp struct {
 
 type notify struct {
 	results []chan bool
+}
+
+type witnessData struct {
+	Root        common.Hash
+	TxHash      common.Hash
+	ReceiptHash common.Hash
 }
 
 func NewDexconApp(txPool *core.TxPool, blockchain *core.BlockChain, gov *DexconGovernance, chainDB ethdb.Database, config *Config, vmConfig vm.Config) *DexconApp {
@@ -92,8 +99,13 @@ func (d *DexconApp) notify(height uint64) {
 	}
 }
 
+func (d *DexconApp) checkChain(address common.Address, chainSize, chainID *big.Int) bool {
+	addrModChainSize := new(big.Int)
+	return addrModChainSize.Mod(address.Big(), chainSize).Cmp(chainID) == 0
+}
+
 // PreparePayload is called when consensus core is preparing payload for block.
-func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte) {
+func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte, err error) {
 	txsMap, err := d.txPool.Pending()
 	if err != nil {
 		return
@@ -113,8 +125,8 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte)
 	var allTxs types.Transactions
 	var gasUsed uint64
 	for addr, txs := range txsMap {
-		addrModChainSize := new(big.Int)
-		if addrModChainSize.Mod(addr.Big(), chainSize).Cmp(chainID) != 0 {
+		// every address's transactions will appear in fixed chain
+		if !d.checkChain(addr, chainSize, chainID) {
 			continue
 		}
 
@@ -127,11 +139,11 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte)
 				nonce = tx.Nonce()
 				msg, err := tx.AsMessage(types.MakeSigner(nil, currentBlock.Header().Number))
 				if err != nil {
-					return
+					return nil, err
 				}
 				undeliveredNonce, exist, err := d.blockchain.GetNonceInConfirmedBlock(position.ChainID, msg.From())
 				if err != nil {
-					return
+					return nil, err
 				} else if exist {
 					if msg.Nonce() != undeliveredNonce+1 {
 						break
@@ -139,7 +151,7 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte)
 				} else {
 					stateDB, err := d.blockchain.State()
 					if err != nil {
-						return
+						return nil, err
 					}
 					if msg.Nonce() != stateDB.GetNonce(msg.From())+1 {
 						break
@@ -159,20 +171,14 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte)
 	}
 	payload, err = rlp.EncodeToBytes(&allTxs)
 	if err != nil {
-		// do something
 		return
 	}
 
 	return
 }
 
-type WitnessData struct {
-	Root        common.Hash
-	TxHash      common.Hash
-	ReceiptHash common.Hash
-}
-
-func (d *DexconApp) PrepareWitness(consensusHeight uint64) (witness coreTypes.Witness) {
+// PrepareWitness will return the witness data no lower than consensusHeight.
+func (d *DexconApp) PrepareWitness(consensusHeight uint64) (witness coreTypes.Witness, err error) {
 	var currentBlock *types.Block
 	currentBlock = d.blockchain.CurrentBlock()
 	if currentBlock.NumberU64() < consensusHeight {
@@ -180,11 +186,12 @@ func (d *DexconApp) PrepareWitness(consensusHeight uint64) (witness coreTypes.Wi
 		if <-d.addNotify(consensusHeight) {
 			currentBlock = d.blockchain.CurrentBlock()
 		} else {
-			// do something if notify fail
+			err = fmt.Errorf("fail to wait notification")
+			return
 		}
 	}
 
-	witnessData, err := rlp.EncodeToBytes(&WitnessData{
+	witnessData, err := rlp.EncodeToBytes(&witnessData{
 		Root:        currentBlock.Root(),
 		TxHash:      currentBlock.TxHash(),
 		ReceiptHash: currentBlock.ReceiptHash(),
@@ -197,7 +204,7 @@ func (d *DexconApp) PrepareWitness(consensusHeight uint64) (witness coreTypes.Wi
 		Timestamp: time.Unix(currentBlock.Time().Int64(), 0),
 		Height:    currentBlock.NumberU64(),
 		Data:      witnessData,
-	}
+	}, nil
 }
 
 // VerifyBlock verifies if the payloads are valid.
@@ -210,6 +217,8 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 	}
 
 	currentBlock := d.blockchain.CurrentBlock()
+	chainID := new(big.Int).SetUint64(uint64(block.Position.ChainID))
+	chainSize := new(big.Int).SetUint64(uint64(d.gov.Configuration(block.Position.Round).NumChains))
 
 	// verify transactions
 	addressNonce := map[common.Address]*struct {
@@ -225,6 +234,11 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 		if err != nil {
 			return false
 		}
+
+		if !d.checkChain(msg.From(), chainSize, chainID) {
+			return false
+		}
+
 		nonce, exist := addressNonce[msg.From()]
 		if !exist {
 			addressNonce[msg.From()] = &struct {
@@ -274,7 +288,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 		return false
 	}
 
-	witnessData := WitnessData{}
+	witnessData := witnessData{}
 	err = rlp.Decode(bytes.NewReader(block.Witness.Data), &witnessData)
 	if err != nil {
 		return false
