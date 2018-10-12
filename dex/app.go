@@ -19,11 +19,13 @@ package dex
 
 import (
 	"bytes"
-	"github.com/dexon-foundation/dexon/core/rawdb"
 	"math/big"
 	"sync"
 	"time"
 
+	"github.com/dexon-foundation/dexon/core/rawdb"
+
+	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
 
 	"github.com/dexon-foundation/dexon/common"
@@ -232,26 +234,31 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 	return true
 }
 
+func (d *DexconApp) BlockConfirmed(block coreTypes.Block) {
+}
+
 // BlockDelivered is called when a block is add to the compaction chain.
-func (d *DexconApp) BlockDelivered(block coreTypes.Block) {
-	var transactions types.Transactions
-	err := rlp.Decode(bytes.NewReader(block.Payload), &transactions)
-	if err != nil {
-		return
-	}
+func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.FinalizationResult) {
+	/*
+		var transactions types.Transactions
+		err := rlp.Decode(bytes.NewReader(block.Payload), &transactions)
+		if err != nil {
+			return
+		}
 
-	_, err = d.blockchain.InsertChain(
-		[]*types.Block{types.NewBlock(&types.Header{
-			ParentHash: common.Hash(block.ParentHash),
-			Number:     new(big.Int).SetUint64(block.ConsensusHeight),
-			Time:       new(big.Int).SetInt64(block.ConsensusTimestamp.Unix()),
-			TxHash:     types.DeriveSha(transactions),
-			Coinbase:   common.BytesToAddress(block.ProposerID.Hash[:]),
-		}, transactions, nil, nil)})
-	if err != nil {
-		// do something
-		return
-	}
+		_, err = d.blockchain.InsertChain(
+			[]*types.Block{types.NewBlock(&types.Header{
+				ParentHash: common.Hash(block.ParentHash),
+				Number:     new(big.Int).SetUint64(result.Height),
+				Time:       new(big.Int).SetInt64(result.Timestamp.Unix()),
+				TxHash:     types.DeriveSha(transactions),
+				Coinbase:   common.BytesToAddress(block.ProposerID.Hash[:]),
+			}, transactions, nil, nil)})
+		if err != nil {
+			// do something
+			return
+		}
 
-	d.notify(block.ConsensusHeight)
+		d.notify(result.Height)
+	*/
 }
