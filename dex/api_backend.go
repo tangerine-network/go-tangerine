@@ -29,6 +29,7 @@ import (
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
+	"github.com/dexon-foundation/dexon/eth/downloader"
 	"github.com/dexon-foundation/dexon/eth/gasprice"
 
 	"github.com/dexon-foundation/dexon/ethdb"
@@ -181,9 +182,9 @@ func (b *DexAPIBackend) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.S
 	return b.dex.TxPool().SubscribeNewTxsEvent(ch)
 }
 
-//func (b *DexAPIBackend) Downloader() *downloader.Downloader {
-//	return b.dex.Downloader()
-//}
+func (b *DexAPIBackend) Downloader() *downloader.Downloader {
+	return b.dex.Downloader()
+}
 
 func (b *DexAPIBackend) ProtocolVersion() int {
 	return b.dex.DexVersion()

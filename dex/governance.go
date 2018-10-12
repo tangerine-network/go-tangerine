@@ -4,19 +4,30 @@ import (
 	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
 	"github.com/dexon-foundation/dexon-consensus-core/core/crypto"
 	"github.com/dexon-foundation/dexon-consensus-core/core/types"
+	"github.com/dexon-foundation/dexon/core/vm"
 )
 
 type DexconGovernance struct {
+	b *DexAPIBackend
 }
 
 // NewDexconGovernance retruns a governance implementation of the DEXON
 // consensus governance interface.
-func NewDexconGovernance() *DexconGovernance {
-	return &DexconGovernance{}
+func NewDexconGovernance(backend *DexAPIBackend) *DexconGovernance {
+	return &DexconGovernance{
+		b: backend,
+	}
 }
 
 // Configuration return the total ordering K constant.
 func (d *DexconGovernance) Configuration(round uint64) *types.Config {
+	state, _, err := d.b.StateAndHeaderByNumber(ctx, blockNr)
+	if state == nil || err != nil {
+		return nil, err
+	}
+
+	s := vm.GovernanceStateHelper{state}
+
 	return &types.Config{}
 }
 

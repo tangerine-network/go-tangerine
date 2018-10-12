@@ -776,20 +776,19 @@ const (
 
 // State manipulation helper fro the governance contract.
 type GovernanceStateHelper struct {
-	Address common.Address
 	StateDB StateDB
 }
 
 func (s *GovernanceStateHelper) getState(loc common.Hash) common.Hash {
-	return s.StateDB.GetState(s.Address, loc)
+	return s.StateDB.GetState(GovernanceContractAddress, loc)
 }
 
 func (s *GovernanceStateHelper) setState(loc common.Hash, val common.Hash) {
-	s.StateDB.SetState(s.Address, loc, val)
+	s.StateDB.SetState(GovernanceContractAddress, loc, val)
 }
 
 func (s *GovernanceStateHelper) getStateBigInt(loc *big.Int) *big.Int {
-	res := s.StateDB.GetState(s.Address, common.BigToHash(loc))
+	res := s.StateDB.GetState(GovernanceContractAddress, common.BigToHash(loc))
 	return new(big.Int).SetBytes(res.Bytes())
 }
 
@@ -1115,6 +1114,22 @@ func (s *GovernanceStateHelper) maxBlockInterval() *big.Int {
 	return s.getStateBigInt(big.NewInt(maxBlockIntervalLoc))
 }
 
+// GetConfiguration returns the current configuration.
+func (s *GovernanceStateHelper) GetConfiguration() *params.DexconConfig {
+	return &params.DexconConfig{
+		NumChains:        uint32(s.getStateBigInt(big.NewInt(numChainsLoc)).Uint64()),
+		LambdaBA:         s.getStateBigInt(big.NewInt(lambdaBALoc)).Uint64(),
+		LambdaDKG:        s.getStateBigInt(big.NewInt(lambdaDKGLoc)).Uint64(),
+		K:                int(s.getStateBigInt(big.NewInt(kLoc)).Uint64()),
+		PhiRatio:         float32(s.getStateBigInt(big.NewInt(phiRatioLoc)).Uint64()) / 1000000.0,
+		NotarySetSize:    uint32(s.getStateBigInt(big.NewInt(notarySetSizeLoc)).Uint64()),
+		DKGSetSize:       uint32(s.getStateBigInt(big.NewInt(dkgSetSizeLoc)).Uint64()),
+		RoundInterval:    s.getStateBigInt(big.NewInt(roundIntervalLoc)).Uint64(),
+		MinBlockInterval: s.getStateBigInt(big.NewInt(minBlockIntervalLoc)).Uint64(),
+		MaxBlockInterval: s.getStateBigInt(big.NewInt(maxBlockIntervalLoc)).Uint64(),
+	}
+}
+
 // UpdateConfiguration updates system configuration.
 func (s *GovernanceStateHelper) UpdateConfiguration(cfg *params.DexconConfig) {
 	s.setStateBigInt(big.NewInt(numChainsLoc), big.NewInt(int64(cfg.NumChains)))
@@ -1132,7 +1147,7 @@ func (s *GovernanceStateHelper) UpdateConfiguration(cfg *params.DexconConfig) {
 // event ConfigurationChanged();
 func (s *GovernanceStateHelper) emitConfigurationChangedEvent() {
 	s.StateDB.AddLog(&types.Log{
-		Address: s.Address,
+		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{events["ConfigurationChanged"].Id()},
 		Data:    []byte{},
 	})
@@ -1141,7 +1156,7 @@ func (s *GovernanceStateHelper) emitConfigurationChangedEvent() {
 // event CRSProposed(uint256 round, bytes32 crs);
 func (s *GovernanceStateHelper) emitCRSProposed(round *big.Int, crs common.Hash) {
 	s.StateDB.AddLog(&types.Log{
-		Address: s.Address,
+		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{events["CRSProposed"].Id(), common.BigToHash(round)},
 		Data:    crs.Bytes(),
 	})
@@ -1157,7 +1172,7 @@ type GovernanceContract struct {
 func newGovernanceContract(evm *EVM, contract *Contract) *GovernanceContract {
 	return &GovernanceContract{
 		evm:      evm,
-		state:    GovernanceStateHelper{contract.Address(), evm.StateDB},
+		state:    GovernanceStateHelper{evm.StateDB},
 		contract: contract,
 	}
 }

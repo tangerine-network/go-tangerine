@@ -31,6 +31,8 @@ import (
 	"github.com/dexon-foundation/dexon/core/bloombits"
 	"github.com/dexon-foundation/dexon/core/rawdb"
 	"github.com/dexon-foundation/dexon/core/vm"
+	"github.com/dexon-foundation/dexon/dex/gasprice"
+	"github.com/dexon-foundation/dexon/eth/downloader"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/event"
 	"github.com/dexon-foundation/dexon/internal/ethapi"
@@ -64,6 +66,8 @@ type Dexon struct {
 	bloomRequests chan chan *bloombits.Retrieval // Channel receiving bloom data retrieval requests
 	bloomIndexer  *core.ChainIndexer             // Bloom indexer operating during block imports
 
+	APIBackend *DexAPIBackend
+
 	// Dexon consensus.
 	app        *DexconApp
 	governance *DexconGovernance
@@ -81,7 +85,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	if err != nil {
 		panic(err)
 	}
-	gov := NewDexconGovernance()
 	network := NewDexconNetwork()
 
 	// TODO(w): replace this with node key.
@@ -116,7 +119,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 		shutdownChan:   make(chan bool),
 		networkID:      config.NetworkId,
 		bloomRequests:  make(chan chan *bloombits.Retrieval),
-		governance:     gov,
 		network:        network,
 		blockdb:        db,
 		engine:         dexcon.New(&params.DexconConfig{}),
@@ -145,9 +147,16 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	}
 	dex.txPool = core.NewTxPool(config.TxPool, dex.chainConfig, dex.blockchain)
 
-	dex.app = NewDexconApp(dex.txPool, dex.blockchain, gov, chainDb, config, vmConfig)
+	dex.APIBackend = &DexAPIBackend{dexon, nil}
+	gpoParams := config.GPO
+	//if gpoParams.Default == nil {
+	//  gpoParams.Default = config.MinerGasPrice
+	//}
+	dex.APIBackend.gpo = gasprice.NewOracle(dex.APIBackend, gpoParams)
 
-	dex.consensus = dexCore.NewConsensus(dex.app, gov, db, network, privKey)
+	dex.governance = NewDexconGovernance(dex.APIBackend)
+	dex.app = NewDexconApp(dex.txPool, dex.blockchain, dex.governance, chainDb, config, vmConfig)
+	dex.consensus = dexCore.NewConsensus(dex.app, dex.governance, db, network, privKey)
 
 	return dex, nil
 }
@@ -180,10 +189,11 @@ func CreateDB(ctx *node.ServiceContext, config *Config, name string) (ethdb.Data
 	return db, nil
 }
 
-func (d *Dexon) AccountManager() *accounts.Manager { return d.accountManager }
-func (d *Dexon) BlockChain() *core.BlockChain      { return d.blockchain }
-func (d *Dexon) TxPool() *core.TxPool              { return d.txPool }
-func (d *Dexon) DexVersion() int                   { return int(d.protocolManager.SubProtocols[0].Version) }
-func (d *Dexon) EventMux() *event.TypeMux          { return d.eventMux }
-func (d *Dexon) Engine() consensus.Engine          { return d.engine }
-func (d *Dexon) ChainDb() ethdb.Database           { return d.chainDb }
+func (d *Dexon) AccountManager() *accounts.Manager  { return d.accountManager }
+func (d *Dexon) BlockChain() *core.BlockChain       { return d.blockchain }
+func (d *Dexon) TxPool() *core.TxPool               { return d.txPool }
+func (d *Dexon) DexVersion() int                    { return int(d.protocolManager.SubProtocols[0].Version) }
+func (d *Dexon) EventMux() *event.TypeMux           { return d.eventMux }
+func (d *Dexon) Engine() consensus.Engine           { return d.engine }
+func (d *Dexon) ChainDb() ethdb.Database            { return d.chainDb }
+func (d *Dexon) Downloader() *downloader.Downloader { return d.protocolManager.downloader }
