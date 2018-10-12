@@ -17,6 +17,7 @@
 package dex
 
 import (
+	"math/big"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -112,6 +113,10 @@ type Config struct {
 
 	// Type of the EWASM interpreter ("" for detault)
 	EWASMInterpreter string
+
 	// Type of the EVM interpreter ("" for default)
 	EVMInterpreter string
+
+	// RPCGasCap is the global gas cap for eth-call variants.
+	RPCGasCap *big.Int `toml:",omitempty"`
 }

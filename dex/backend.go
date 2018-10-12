@@ -48,8 +48,11 @@ type Dexon struct {
 
 	// Channel for shutting down the service
 	shutdownChan chan bool // Channel for shutting down the Ethereum
-	txPool       *core.TxPool
-	blockchain   *core.BlockChain
+
+	// Handlers
+	txPool          *core.TxPool
+	blockchain      *core.BlockChain
+	protocolManager *ProtocolManager
 
 	// DB interfaces
 	chainDb ethdb.Database // Block chain database
@@ -176,3 +179,11 @@ func CreateDB(ctx *node.ServiceContext, config *Config, name string) (ethdb.Data
 	}
 	return db, nil
 }
+
+func (d *Dexon) AccountManager() *accounts.Manager { return d.accountManager }
+func (d *Dexon) BlockChain() *core.BlockChain      { return d.blockchain }
+func (d *Dexon) TxPool() *core.TxPool              { return d.txPool }
+func (d *Dexon) DexVersion() int                   { return int(d.protocolManager.SubProtocols[0].Version) }
+func (d *Dexon) EventMux() *event.TypeMux          { return d.eventMux }
+func (d *Dexon) Engine() consensus.Engine          { return d.engine }
+func (d *Dexon) ChainDb() ethdb.Database           { return d.chainDb }
