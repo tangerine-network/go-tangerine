@@ -6,49 +6,53 @@ import (
 )
 
 type DexconNetwork struct {
-	receiveChan chan interface{}
+	pm *ProtocolManager
 }
 
-func NewDexconNetwork() *DexconNetwork {
-	return &DexconNetwork{
-		receiveChan: make(chan interface{}),
-	}
+func NewDexconNetwork(pm *ProtocolManager) *DexconNetwork {
+	return &DexconNetwork{pm: pm}
 }
 
 // BroadcastVote broadcasts vote to all nodes in DEXON network.
 func (n *DexconNetwork) BroadcastVote(vote *types.Vote) {
+	n.pm.BroadcastVote(vote)
 }
 
 // BroadcastBlock broadcasts block to all nodes in DEXON network.
 func (n *DexconNetwork) BroadcastBlock(block *types.Block) {
+	n.pm.BroadcastLatticeBlock(block)
 }
 
 // SendDKGPrivateShare sends PrivateShare to a DKG participant.
 func (n *DexconNetwork) SendDKGPrivateShare(
 	pub crypto.PublicKey, prvShare *types.DKGPrivateShare) {
+	n.pm.SendDKGPrivateShare(pub, prvShare)
 }
 
 // BroadcastDKGPrivateShare broadcasts PrivateShare to all DKG participants.
 func (n *DexconNetwork) BroadcastDKGPrivateShare(
 	prvShare *types.DKGPrivateShare) {
+	n.pm.BroadcastDKGPrivateShare(prvShare)
 }
 
 // BroadcastDKGPartialSignature broadcasts partialSignature to all
 // DKG participants.
 func (n *DexconNetwork) BroadcastDKGPartialSignature(
 	psig *types.DKGPartialSignature) {
+	n.pm.BroadcastDKGPartialSignature(psig)
 }
 
 // BroadcastAgreementResult broadcasts rand request to DKG set.
 func (n *DexconNetwork) BroadcastAgreementResult(randRequest *types.AgreementResult) {
-
+	n.pm.BroadcastAgreementResult(randRequest)
 }
 
 // BroadcastRandomnessResult broadcasts rand request to Notary set.
 func (n *DexconNetwork) BroadcastRandomnessResult(randResult *types.BlockRandomnessResult) {
+	n.pm.BroadcastRandomnessResult(randResult)
 }
 
 // ReceiveChan returns a channel to receive messages from DEXON network.
 func (n *DexconNetwork) ReceiveChan() <-chan interface{} {
-	return n.receiveChan
+	return n.pm.ReceiveChan()
 }

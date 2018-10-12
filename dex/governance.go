@@ -10,10 +10,13 @@ import (
 	coreCrypto "github.com/dexon-foundation/dexon-consensus-core/core/crypto"
 	coreEcdsa "github.com/dexon-foundation/dexon-consensus-core/core/crypto/ecdsa"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
+
 	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
 	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/dexon-foundation/dexon/event"
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/params"
 	"github.com/dexon-foundation/dexon/rlp"
@@ -275,4 +278,21 @@ func (d *DexconGovernance) IsDKGFinal(round uint64) bool {
 	threshold := 2*s.DKGSetSize().Uint64()/3 + 1
 	count := s.DKGFinalizedsCount(big.NewInt(int64(round))).Uint64()
 	return count >= threshold
+}
+
+// TODO(sonic): finish these
+func (d *DexconGovernance) GetChainNum(uint64) uint32 {
+	return 3
+}
+
+func (d *DexconGovernance) GetNotarySet(uint32, uint64) map[string]struct{} {
+	return nil
+}
+
+func (d *DexconGovernance) GetDKGSet(uint64) map[string]struct{} {
+	return nil
+}
+
+func (d *DexconGovernance) SubscribeNewCRSEvent(ch chan core.NewCRSEvent) event.Subscription {
+	return nil
 }

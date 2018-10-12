@@ -20,13 +20,18 @@ import (
 	"fmt"
 	"io"
 	"math/big"
+	"time"
 
+	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
+	"github.com/dexon-foundation/dexon-consensus-core/core/crypto"
+	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/event"
 	"github.com/dexon-foundation/dexon/p2p/enode"
 	"github.com/dexon-foundation/dexon/rlp"
+	"golang.org/x/crypto/sha3"
 )
 
 // Constants to match up protocol versions and messages
@@ -41,7 +46,7 @@ var ProtocolName = "dex"
 var ProtocolVersions = []uint{dex64}
 
 // ProtocolLengths are the number of implemented message corresponding to different protocol versions.
-var ProtocolLengths = []uint64{18}
+var ProtocolLengths = []uint64{38}
 
 const ProtocolMaxMsgSize = 10 * 1024 * 1024 // Maximum cap on the size of a protocol message
 
@@ -65,6 +70,13 @@ const (
 
 	// Protocol messages belonging to dex/64
 	MetaMsg = 0x11
+
+	LatticeBlockMsg        = 0x20
+	VoteMsg                = 0x21
+	AgreementMsg           = 0x22
+	RandomnessMsg          = 0x23
+	DKGPrivateShareMsg     = 0x24
+	DKGPartialSignatureMsg = 0x25
 )
 
 type errCode int
@@ -206,3 +218,123 @@ type blockBody struct {
 
 // blockBodiesData is the network packet for block content distribution.
 type blockBodiesData []*blockBody
+
+func rlpHash(x interface{}) (h common.Hash) {
+	hw := sha3.NewLegacyKeccak256()
+	rlp.Encode(hw, x)
+	hw.Sum(h[:0])
+	return h
+}
+
+type rlpDKGPrivateShare struct {
+	ProposerID   coreTypes.NodeID
+	ReceiverID   coreTypes.NodeID
+	Round        uint64
+	PrivateShare []byte
+	Signature    crypto.Signature
+}
+
+func toRLPDKGPrivateShare(ps *coreTypes.DKGPrivateShare) *rlpDKGPrivateShare {
+	return &rlpDKGPrivateShare{
+		ProposerID:   ps.ProposerID,
+		ReceiverID:   ps.ReceiverID,
+		Round:        ps.Round,
+		PrivateShare: ps.PrivateShare.Bytes(),
+		Signature:    ps.Signature,
+	}
+}
+
+func fromRLPDKGPrivateShare(rps *rlpDKGPrivateShare) *coreTypes.DKGPrivateShare {
+	ps := &coreTypes.DKGPrivateShare{
+		ProposerID: rps.ProposerID,
+		ReceiverID: rps.ReceiverID,
+		Round:      rps.Round,
+		Signature:  rps.Signature,
+	}
+	ps.PrivateShare.SetBytes(rps.PrivateShare)
+	return ps
+}
+
+type rlpWitness struct {
+	Timestamp uint64
+	Height    uint64
+	Data      []byte
+}
+
+type rlpFinalizeResult struct {
+	Randomness []byte
+	Timestamp  uint64
+	Height     uint64
+}
+
+type rlpLatticeBlock struct {
+	ProposerID   coreTypes.NodeID        `json:"proposer_id"`
+	ParentHash   coreCommon.Hash         `json:"parent_hash"`
+	Hash         coreCommon.Hash         `json:"hash"`
+	Position     coreTypes.Position      `json:"position"`
+	Timestamp    uint64                  `json:"timestamps"`
+	Acks         coreCommon.SortedHashes `json:"acks"`
+	Payload      []byte                  `json:"payload"`
+	Witness      rlpWitness
+	Finalization rlpFinalizeResult
+	Signature    crypto.Signature `json:"signature"`
+	CRSSignature crypto.Signature `json:"crs_signature"`
+}
+
+func toRLPLatticeBlock(b *coreTypes.Block) *rlpLatticeBlock {
+	return &rlpLatticeBlock{
+		ProposerID: b.ProposerID,
+		ParentHash: b.ParentHash,
+		Hash:       b.Hash,
+		Position:   b.Position,
+		Timestamp:  toMillisecond(b.Timestamp),
+		Acks:       b.Acks,
+		Payload:    b.Payload,
+		Witness: rlpWitness{
+			Timestamp: toMillisecond(b.Witness.Timestamp),
+			Height:    b.Witness.Height,
+			Data:      b.Witness.Data,
+		},
+		Finalization: rlpFinalizeResult{
+			Randomness: b.Finalization.Randomness,
+			Timestamp:  toMillisecond(b.Finalization.Timestamp),
+			Height:     b.Finalization.Height,
+		},
+		Signature:    b.Signature,
+		CRSSignature: b.CRSSignature,
+	}
+}
+
+func fromRLPLatticeBlock(rb *rlpLatticeBlock) *coreTypes.Block {
+	return &coreTypes.Block{
+		ProposerID: rb.ProposerID,
+		ParentHash: rb.ParentHash,
+		Hash:       rb.Hash,
+		Position:   rb.Position,
+		Timestamp:  fromMillisecond(rb.Timestamp),
+		Acks:       rb.Acks,
+		Payload:    rb.Payload,
+		Witness: coreTypes.Witness{
+			Timestamp: fromMillisecond(rb.Witness.Timestamp),
+			Height:    rb.Witness.Height,
+			Data:      rb.Witness.Data,
+		},
+		Finalization: coreTypes.FinalizationResult{
+			Randomness: rb.Finalization.Randomness,
+			Timestamp:  fromMillisecond(rb.Finalization.Timestamp),
+			Height:     rb.Finalization.Height,
+		},
+		Signature:    rb.Signature,
+		CRSSignature: rb.CRSSignature,
+	}
+}
+
+func fromMillisecond(s uint64) time.Time {
+	sec := int64(s / 1000)
+	nsec := int64((s % 1000) * 1000000)
+	return time.Unix(sec, nsec)
+}
+
+func toMillisecond(t time.Time) uint64 {
+	return uint64(t.UnixNano() / 1000000)
+}

@@ -85,7 +85,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	if err != nil {
 		panic(err)
 	}
-	network := NewDexconNetwork()
 
 	chainDb, err := CreateDB(ctx, config, "chaindata")
 	if err != nil {
@@ -116,7 +115,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 		networkID:      config.NetworkId,
 		bloomRequests:  make(chan chan *bloombits.Retrieval),
 		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
-		network:        network,
 		blockdb:        db,
 		engine:         dexcon.New(&params.DexconConfig{}),
 	}
@@ -154,9 +152,18 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	dex.governance = NewDexconGovernance(dex.APIBackend, dex.chainConfig, config.PrivateKey)
 	dex.app = NewDexconApp(dex.txPool, dex.blockchain, dex.governance, chainDb, config, vmConfig)
 
-	privKey := coreEcdsa.NewPrivateKeyFromECDSA(config.PrivateKey)
-	dex.consensus = dexCore.NewConsensus(dex.app, dex.governance, db, network, privKey)
+	pm, err := NewProtocolManager(dex.chainConfig, config.SyncMode,
+		config.NetworkId, dex.eventMux, dex.txPool, dex.engine, dex.blockchain,
+		chainDb, dex.governance)
+	if err != nil {
+		return nil, err
+	}
 
+	dex.protocolManager = pm
+	dex.network = NewDexconNetwork(pm)
+
+	privKey := coreEcdsa.NewPrivateKeyFromECDSA(config.PrivateKey)
+	dex.consensus = dexCore.NewConsensus(dex.app, dex.governance, db, dex.network, privKey)
 	return dex, nil
 }
 
@@ -168,7 +175,24 @@ func (s *Dexon) APIs() []rpc.API {
 	return nil
 }
 
-func (s *Dexon) Start(server *p2p.Server) error {
+func (s *Dexon) Start(srvr *p2p.Server) error {
+	// Start the bloom bits servicing goroutines
+	s.startBloomHandlers(params.BloomBitsBlocks)
+
+	// Start the RPC service
+	s.netRPCService = ethapi.NewPublicNetAPI(srvr, s.NetVersion())
+
+	// Figure out a max peers count based on the server limits
+	maxPeers := srvr.MaxPeers
+	if s.config.LightServ > 0 {
+		if s.config.LightPeers >= srvr.MaxPeers {
+			return fmt.Errorf("invalid peer config: light peer count (%d) >= total peer count (%d)", s.config.LightPeers, srvr.MaxPeers)
+		}
+		maxPeers -= s.config.LightPeers
+	}
+	// Start the networking layer and the light server if requested
+	s.protocolManager.Start(srvr, maxPeers)
+
 	return nil
 }
 
@@ -196,3 +220,4 @@ func (d *Dexon) EventMux() *event.TypeMux           { return d.eventMux }
 func (d *Dexon) Engine() consensus.Engine           { return d.engine }
 func (d *Dexon) ChainDb() ethdb.Database            { return d.chainDb }
 func (d *Dexon) Downloader() *downloader.Downloader { return d.protocolManager.downloader }
+func (d *Dexon) NetVersion() uint64                 { return d.networkID }

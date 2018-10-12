@@ -18,9 +18,15 @@ package dex
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
+
+	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
+	coreCrypto "github.com/dexon-foundation/dexon-consensus-core/core/crypto"
+	"github.com/dexon-foundation/dexon-consensus-core/core/crypto/dkg"
+	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/types"
@@ -302,4 +308,497 @@ func TestSendNodeMetas(t *testing.T) {
 	}
 	pm.nodeTable.Add(allmetas)
 	wg.Wait()
+}
+
+func TestRecvLatticeBlock(t *testing.T) {
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	p, _ := newTestPeer("peer", dex64, pm, true)
+	defer pm.Stop()
+	defer p.close()
+
+	block := coreTypes.Block{
+		ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
+		ParentHash: coreCommon.Hash{1, 1, 1, 1, 1},
+		Hash:       coreCommon.Hash{2, 2, 2, 2, 2},
+		Position: coreTypes.Position{
+			ChainID: 11,
+			Round:   12,
+			Height:  13,
+		},
+		Timestamp: fromMillisecond(toMillisecond(time.Now())),
+		Acks: coreCommon.NewSortedHashes(coreCommon.Hashes([]coreCommon.Hash{
+			coreCommon.Hash{101}, coreCommon.Hash{100}, coreCommon.Hash{102},
+		})),
+		Payload: []byte{3, 3, 3, 3, 3},
+		Witness: coreTypes.Witness{
+			Timestamp: fromMillisecond(toMillisecond(time.Now())),
+			Height:    13,
+			Data:      []byte{4, 4, 4, 4, 4},
+		},
+		Finalization: coreTypes.FinalizationResult{
+			Randomness: []byte{5, 5, 5, 5, 5},
+			Timestamp:  fromMillisecond(toMillisecond(time.Now())),
+			Height:     13,
+		},
+		Signature: coreCrypto.Signature{
+			Type:      "signature",
+			Signature: []byte("signature"),
+		},
+		CRSSignature: coreCrypto.Signature{
+			Type:      "crs-signature",
+			Signature: []byte("crs-signature"),
+		},
+	}
+
+	if err := p2p.Send(p.app, LatticeBlockMsg, toRLPLatticeBlock(&block)); err != nil {
+		t.Fatalf("send error: %v", err)
+	}
+
+	ch := pm.ReceiveChan()
+	select {
+	case msg := <-ch:
+		rb := msg.(*coreTypes.Block)
+		if !reflect.DeepEqual(rb, &block) {
+			t.Errorf("block mismatch")
+		}
+	case <-time.After(3 * time.Second):
+		t.Errorf("no newMetasEvent received within 3 seconds")
+	}
+}
+
+func TestSendLatticeBlock(t *testing.T) {
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	p, _ := newTestPeer("peer", dex64, pm, true)
+	defer pm.Stop()
+	defer p.close()
+
+	block := coreTypes.Block{
+		ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
+		ParentHash: coreCommon.Hash{1, 1, 1, 1, 1},
+		Hash:       coreCommon.Hash{2, 2, 2, 2, 2},
+		Position: coreTypes.Position{
+			ChainID: 11,
+			Round:   12,
+			Height:  13,
+		},
+		Timestamp: fromMillisecond(toMillisecond(time.Now())),
+		Acks: coreCommon.NewSortedHashes(coreCommon.Hashes([]coreCommon.Hash{
+			coreCommon.Hash{101}, coreCommon.Hash{100}, coreCommon.Hash{102},
+		})),
+		Payload: []byte{3, 3, 3, 3, 3},
+		Witness: coreTypes.Witness{
+			Timestamp: fromMillisecond(toMillisecond(time.Now())),
+			Height:    13,
+			Data:      []byte{4, 4, 4, 4, 4},
+		},
+		Finalization: coreTypes.FinalizationResult{
+			Randomness: []byte{5, 5, 5, 5, 5},
+			Timestamp:  fromMillisecond(toMillisecond(time.Now())),
+			Height:     13,
+		},
+		Signature: coreCrypto.Signature{
+			Type:      "signature",
+			Signature: []byte("signature"),
+		},
+		CRSSignature: coreCrypto.Signature{
+			Type:      "crs-signature",
+			Signature: []byte("crs-signature"),
+		},
+	}
+
+	pm.BroadcastLatticeBlock(&block)
+	msg, err := p.app.ReadMsg()
+	if err != nil {
+		t.Errorf("%v: read error: %v", p.Peer, err)
+	} else if msg.Code != LatticeBlockMsg {
+		t.Errorf("%v: got code %d, want %d", p.Peer, msg.Code, LatticeBlockMsg)
+	}
+
+	var rb rlpLatticeBlock
+	if err := msg.Decode(&rb); err != nil {
+		t.Errorf("%v: %v", p.Peer, err)
+	}
+
+	if !reflect.DeepEqual(fromRLPLatticeBlock(&rb), &block) {
+		t.Errorf("block mismatch")
+	}
+}
+
+func TestRecvVote(t *testing.T) {
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	p, _ := newTestPeer("peer", dex64, pm, true)
+	defer pm.Stop()
+	defer p.close()
+
+	vote := coreTypes.Vote{
+		ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
+		Period:     10,
+		Position: coreTypes.Position{
+			ChainID: 11,
+			Round:   12,
+			Height:  13,
+		},
+		Signature: coreCrypto.Signature{
+			Type:      "123",
+			Signature: []byte("sig"),
+		},
+	}
+
+	if err := p2p.Send(p.app, VoteMsg, vote); err != nil {
+		t.Fatalf("send error: %v", err)
+	}
+
+	ch := pm.ReceiveChan()
+
+	select {
+	case msg := <-ch:
+		rvote := msg.(*coreTypes.Vote)
+		if rlpHash(rvote) != rlpHash(vote) {
+			t.Errorf("vote mismatch")
+		}
+	case <-time.After(1 * time.Second):
+		t.Errorf("no vote received within 1 seconds")
+	}
+}
+
+func TestSendVote(t *testing.T) {
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	defer pm.Stop()
+
+	vote := coreTypes.Vote{
+		ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
+		Period:     10,
+		Position: coreTypes.Position{
+			ChainID: 1,
+			Round:   10,
+			Height:  13,
+		},
+		Signature: coreCrypto.Signature{
+			Type:      "123",
+			Signature: []byte("sig"),
+		},
+	}
+
+	// Connect several peers. They should all receive the pending transactions.
+	var wg sync.WaitGroup
+	checkvote := func(p *testPeer, isReceiver bool) {
+		defer wg.Done()
+		defer p.close()
+		if !isReceiver {
+			go func() {
+				time.Sleep(100 * time.Millisecond)
+				p.close()
+			}()
+		}
+
+		msg, err := p.app.ReadMsg()
+		if !isReceiver {
+			if err != p2p.ErrPipeClosed {
+				t.Errorf("err mismatch: got %v, want %v (not receiver peer)",
+					err, p2p.ErrPipeClosed)
+			}
+			return
+		}
+
+		var v coreTypes.Vote
+		if err != nil {
+			t.Errorf("%v: read error: %v", p.Peer, err)
+		} else if msg.Code != VoteMsg {
+			t.Errorf("%v: got code %d, want %d", p.Peer, msg.Code, VoteMsg)
+		}
+		if err := msg.Decode(&v); err != nil {
+			t.Errorf("%v: %v", p.Peer, err)
+		}
+		if !reflect.DeepEqual(v, vote) {
+			t.Errorf("vote mismatch")
+		}
+	}
+
+	testPeers := []struct {
+		label      *peerLabel
+		isReceiver bool
+	}{
+		{
+			label:      &peerLabel{set: notaryset, chainID: 1, round: 10},
+			isReceiver: true,
+		},
+		{
+			label:      &peerLabel{set: notaryset, chainID: 1, round: 10},
+			isReceiver: true,
+		},
+		{
+			label:      nil,
+			isReceiver: false,
+		},
+		{
+			label:      &peerLabel{set: notaryset, chainID: 1, round: 11},
+			isReceiver: false,
+		},
+		{
+			label:      &peerLabel{set: notaryset, chainID: 2, round: 10},
+			isReceiver: false,
+		},
+		{
+			label:      &peerLabel{set: dkgset, chainID: 1, round: 10},
+			isReceiver: false,
+		},
+	}
+
+	for i, tt := range testPeers {
+		p, _ := newTestPeer(fmt.Sprintf("peer #%d", i), dex64, pm, true)
+		if tt.label != nil {
+			pm.peers.addDirectPeer(p.id, *tt.label)
+		}
+		wg.Add(1)
+		go checkvote(p, tt.isReceiver)
+	}
+	pm.BroadcastVote(&vote)
+	wg.Wait()
+}
+
+type mockPublicKey []byte
+
+func (p mockPublicKey) VerifySignature(hash coreCommon.Hash, signature coreCrypto.Signature) bool {
+	return true
+}
+
+func (p mockPublicKey) Bytes() []byte {
+	return append([]byte{1}, p...)
+}
+
+func TestRecvDKGPrivateShare(t *testing.T) {
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	p, _ := newTestPeer("peer1", dex64, pm, true)
+	defer pm.Stop()
+	defer p.close()
+
+	// TODO(sonic): polish this
+	privkey := dkg.NewPrivateKey()
+	privateShare := coreTypes.DKGPrivateShare{
+		ProposerID:   coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
+		ReceiverID:   coreTypes.NodeID{coreCommon.Hash{3, 4, 5}},
+		Round:        10,
+		PrivateShare: *privkey,
+		Signature: coreCrypto.Signature{
+			Type:      "DKGPrivateShare",
+			Signature: []byte("DKGPrivateShare"),
+		},
+	}
+
+	if err := p2p.Send(
+		p.app, DKGPrivateShareMsg, toRLPDKGPrivateShare(&privateShare)); err != nil {
+		t.Fatalf("send error: %v", err)
+	}
+
+	ch := pm.ReceiveChan()
+	select {
+	case msg := <-ch:
+		rps := msg.(*coreTypes.DKGPrivateShare)
+		if !reflect.DeepEqual(
+			toRLPDKGPrivateShare(rps), toRLPDKGPrivateShare(&privateShare)) {
+			t.Errorf("vote mismatch")
+		}
+	case <-time.After(1 * time.Second):
+		t.Errorf("no dkg received within 1 seconds")
+	}
+}
+
+func TestSendDKGPrivateShare(t *testing.T) {
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	p1, _ := newTestPeer("peer1", dex64, pm, true)
+	p2, _ := newTestPeer("peer2", dex64, pm, true)
+	defer pm.Stop()
+	defer p1.close()
+
+	// TODO(sonic): polish this
+	privkey := dkg.NewPrivateKey()
+	privateShare := coreTypes.DKGPrivateShare{
+		ProposerID:   coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
+		ReceiverID:   coreTypes.NodeID{coreCommon.Hash{3, 4, 5}},
+		Round:        10,
+		PrivateShare: *privkey,
+		Signature: coreCrypto.Signature{
+			Type:      "DKGPrivateShare",
+			Signature: []byte("DKGPrivateShare"),
+		},
+	}
+
+	go pm.SendDKGPrivateShare(mockPublicKey(p1.ID().Bytes()), &privateShare)
+	msg, err := p1.app.ReadMsg()
+	if err != nil {
+		t.Errorf("%v: read error: %v", p1.Peer, err)
+	} else if msg.Code != DKGPrivateShareMsg {
+		t.Errorf("%v: got code %d, want %d", p1.Peer, msg.Code, DKGPrivateShareMsg)
+	}
+
+	var rps rlpDKGPrivateShare
+	if err := msg.Decode(&rps); err != nil {
+		t.Errorf("%v: %v", p1.Peer, err)
+	}
+
+	expected := toRLPDKGPrivateShare(&privateShare)
+	if !reflect.DeepEqual(rps, *expected) {
+		t.Errorf("DKG private share mismatch")
+	}
+
+	go func() {
+		time.Sleep(500 * time.Millisecond)
+		p2.close()
+	}()
+
+	msg, err = p2.app.ReadMsg()
+	if err != p2p.ErrPipeClosed {
+		t.Errorf("err mismatch: got %v, want %v (not receiver peer)",
+			err, p2p.ErrPipeClosed)
+	}
+}
+
+func TestRecvAgreement(t *testing.T) {
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	p, _ := newTestPeer("peer", dex64, pm, true)
+	defer pm.Stop()
+	defer p.close()
+
+	// TODO(sonic): polish this
+	vote := coreTypes.Vote{
+		ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
+		Period:     10,
+		Position: coreTypes.Position{
+			ChainID: 1,
+			Round:   10,
+			Height:  13,
+		},
+		Signature: coreCrypto.Signature{
+			Type:      "123",
+			Signature: []byte("sig"),
+		},
+	}
+
+	agreement := coreTypes.AgreementResult{
+		BlockHash: coreCommon.Hash{9, 9, 9},
+		Round:     13,
+		Position:  vote.Position,
+		Votes:     []coreTypes.Vote{vote},
+	}
+
+	if err := p2p.Send(p.app, AgreementMsg, &agreement); err != nil {
+		t.Fatalf("send error: %v", err)
+	}
+
+	ch := pm.ReceiveChan()
+	select {
+	case msg := <-ch:
+		a := msg.(*coreTypes.AgreementResult)
+		if !reflect.DeepEqual(a, &agreement) {
+			t.Errorf("agreement mismatch")
+		}
+	case <-time.After(1 * time.Second):
+		t.Errorf("no agreement received within 1 seconds")
+	}
+}
+
+func TestSendAgreement(t *testing.T) {
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	p, _ := newTestPeer("peer", dex64, pm, true)
+	defer pm.Stop()
+	defer p.close()
+
+	// TODO(sonic): polish this
+	vote := coreTypes.Vote{
+		ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
+		Period:     10,
+		Position: coreTypes.Position{
+			ChainID: 1,
+			Round:   10,
+			Height:  13,
+		},
+		Signature: coreCrypto.Signature{
+			Type:      "123",
+			Signature: []byte("sig"),
+		},
+	}
+
+	agreement := coreTypes.AgreementResult{
+		BlockHash: coreCommon.Hash{9, 9, 9},
+		Round:     13,
+		Position:  vote.Position,
+		Votes:     []coreTypes.Vote{vote},
+	}
+
+	pm.BroadcastAgreementResult(&agreement)
+	msg, err := p.app.ReadMsg()
+	if err != nil {
+		t.Errorf("%v: read error: %v", p.Peer, err)
+	} else if msg.Code != AgreementMsg {
+		t.Errorf("%v: got code %d, want %d", p.Peer, msg.Code, AgreementMsg)
+	}
+
+	var a coreTypes.AgreementResult
+	if err := msg.Decode(&a); err != nil {
+		t.Errorf("%v: %v", p.Peer, err)
+	}
+
+	if !reflect.DeepEqual(a, agreement) {
+		t.Errorf("agreement mismatch")
+	}
+}
+
+func TestRecvRandomness(t *testing.T) {
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	p, _ := newTestPeer("peer", dex64, pm, true)
+	defer pm.Stop()
+	defer p.close()
+
+	// TODO(sonic): polish this
+	randomness := coreTypes.BlockRandomnessResult{
+		BlockHash:  coreCommon.Hash{8, 8, 8},
+		Round:      17,
+		Randomness: []byte{7, 7, 7, 7},
+	}
+
+	if err := p2p.Send(p.app, RandomnessMsg, &randomness); err != nil {
+		t.Fatalf("send error: %v", err)
+	}
+
+	ch := pm.ReceiveChan()
+	select {
+	case msg := <-ch:
+		r := msg.(*coreTypes.BlockRandomnessResult)
+		if !reflect.DeepEqual(r, &randomness) {
+			t.Errorf("randomness mismatch")
+		}
+	case <-time.After(1 * time.Second):
+		t.Errorf("no randomness received within 1 seconds")
+	}
+}
+
+func TestSendRandomness(t *testing.T) {
+	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	p, _ := newTestPeer("peer", dex64, pm, true)
+	defer pm.Stop()
+	defer p.close()
+
+	// TODO(sonic): polish this
+	randomness := coreTypes.BlockRandomnessResult{
+		BlockHash:  coreCommon.Hash{8, 8, 8},
+		Round:      17,
+		Randomness: []byte{7, 7, 7, 7},
+	}
+
+	pm.BroadcastRandomnessResult(&randomness)
+	msg, err := p.app.ReadMsg()
+	if err != nil {
+		t.Errorf("%v: read error: %v", p.Peer, err)
+	} else if msg.Code != RandomnessMsg {
+		t.Errorf("%v: got code %d, want %d", p.Peer, msg.Code, RandomnessMsg)
+	}
+
+	var r coreTypes.BlockRandomnessResult
+	if err := msg.Decode(&r); err != nil {
+		t.Errorf("%v: %v", p.Peer, err)
+	}
+
+	if !reflect.DeepEqual(r, randomness) {
+		t.Errorf("agreement mismatch")
+	}
 }
