@@ -210,6 +210,25 @@ const abiJSON = `
   },
   {
     "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "roundHeight",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
     "inputs": [],
     "name": "minBlockInterval",
     "outputs": [
@@ -356,6 +375,20 @@ const abiJSON = `
     "constant": false,
     "inputs": [
       {
+        "name": "newOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
         "name": "NumChains",
         "type": "uint256"
       },
@@ -397,6 +430,24 @@ const abiJSON = `
       }
     ],
     "name": "updateConfiguration",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "round",
+        "type": "uint256"
+      },
+      {
+        "name": "height",
+        "type": "uint256"
+      }
+    ],
+    "name": "snapshotRound",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
@@ -544,26 +595,6 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 	arguments := input[4:]
 
 	switch method.Name {
-	case "updateConfiguration":
-		var cfg params.DexconConfig
-		if err := method.Inputs.Unpack(&cfg, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		g.updateConfiguration(&cfg)
-	case "stake":
-		var publicKey []byte
-		if err := method.Inputs.Unpack(&publicKey, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.stake(publicKey)
-	case "unstake":
-		return g.unstake()
-	case "proposeCRS":
-		var signedCRS []byte
-		if err := method.Inputs.Unpack(&signedCRS, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.proposeCRS(signedCRS)
 	case "addDKGComplaint":
 		args := struct {
 			Round     *big.Int
@@ -591,6 +622,41 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 			return nil, errExecutionReverted
 		}
 		return g.addDKGFinalize(args.Round, args.Finalize)
+	case "proposeCRS":
+		var signedCRS []byte
+		if err := method.Inputs.Unpack(&signedCRS, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.proposeCRS(signedCRS)
+	case "stake":
+		var publicKey []byte
+		if err := method.Inputs.Unpack(&publicKey, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.stake(publicKey)
+	case "snapshotRound":
+		args := struct {
+			Round  *big.Int
+			Height *big.Int
+		}{}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.snapshotRound(args.Round, args.Height)
+	case "transferOwnership":
+		var newOwner common.Address
+		if err := method.Inputs.Unpack(&newOwner, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.transferOwnership(newOwner)
+	case "unstake":
+		return g.unstake()
+	case "updateConfiguration":
+		var cfg params.DexconConfig
+		if err := method.Inputs.Unpack(&cfg, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		g.updateConfiguration(&cfg)
 
 	// --------------------------------
 	// Solidity auto generated methods.
@@ -601,7 +667,7 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 		if err := method.Inputs.Unpack(&round, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		res, err := method.Outputs.Pack(g.state.crs(round))
+		res, err := method.Outputs.Pack(g.state.CRS(round))
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -612,7 +678,7 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 		if err := method.Inputs.Unpack(&args, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		complaints := g.state.dkgComplaints(round)
+		complaints := g.state.DKGComplaints(round)
 		if int(index.Uint64()) >= len(complaints) {
 			return nil, errExecutionReverted
 		}
@@ -628,7 +694,7 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 		if err := method.Inputs.Unpack(&args, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		finalized := g.state.dkgFinalized(round, addr)
+		finalized := g.state.DKGFinalized(round, addr)
 		res, err := method.Outputs.Pack(finalized)
 		if err != nil {
 			return nil, errExecutionReverted
@@ -639,7 +705,7 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 		if err := method.Inputs.Unpack(&round, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		count := g.state.dkgFinalizedsCount(round)
+		count := g.state.DKGFinalizedsCount(round)
 		res, err := method.Outputs.Pack(count)
 		if err != nil {
 			return nil, errExecutionReverted
@@ -651,7 +717,7 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 		if err := method.Inputs.Unpack(&args, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		pks := g.state.dkgMasterPublicKeys(round)
+		pks := g.state.DKGMasterPublicKeys(round)
 		if int(index.Uint64()) >= len(pks) {
 			return nil, errExecutionReverted
 		}
@@ -662,43 +728,43 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 		}
 		return res, nil
 	case "dkgSetSize":
-		res, err := method.Outputs.Pack(g.state.dkgSetSize())
+		res, err := method.Outputs.Pack(g.state.DKGSetSize())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
 		return res, nil
 	case "k":
-		res, err := method.Outputs.Pack(g.state.k())
+		res, err := method.Outputs.Pack(g.state.K())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
 		return res, nil
 	case "lambdaBA":
-		res, err := method.Outputs.Pack(g.state.lambdaBA())
+		res, err := method.Outputs.Pack(g.state.LambdaBA())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
 		return res, nil
 	case "lambdaDKG":
-		res, err := method.Outputs.Pack(g.state.lambdaDKG())
+		res, err := method.Outputs.Pack(g.state.LambdaDKG())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
 		return res, nil
 	case "maxBlockInterval":
-		res, err := method.Outputs.Pack(g.state.maxBlockInterval())
+		res, err := method.Outputs.Pack(g.state.MaxBlockInterval())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
 		return res, nil
 	case "minBlockInterval":
-		res, err := method.Outputs.Pack(g.state.minBlockInterval())
+		res, err := method.Outputs.Pack(g.state.MinBlockInterval())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
 		return res, nil
 	case "numChains":
-		res, err := method.Outputs.Pack(g.state.numChains())
+		res, err := method.Outputs.Pack(g.state.NumChains())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -708,14 +774,14 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 		if err := method.Inputs.Unpack(&index, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		info := g.state.node(index)
-		res, err := method.Outputs.Pack(info.owner, info.publicKey, info.staked)
+		info := g.state.Node(index)
+		res, err := method.Outputs.Pack(info.Owner, info.PublicKey, info.Staked)
 		if err != nil {
 			return nil, errExecutionReverted
 		}
 		return res, nil
 	case "notarySetSize":
-		res, err := method.Outputs.Pack(g.state.notarySetSize())
+		res, err := method.Outputs.Pack(g.state.NotarySetSize())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -725,25 +791,35 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 		if err := method.Inputs.Unpack(&addr, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		res, err := method.Outputs.Pack(g.state.offset(addr))
+		res, err := method.Outputs.Pack(g.state.Offset(addr))
 		if err != nil {
 			return nil, errExecutionReverted
 		}
 		return res, nil
 	case "owner":
-		res, err := method.Outputs.Pack(g.state.owner())
+		res, err := method.Outputs.Pack(g.state.Owner())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
 		return res, nil
 	case "phiRatio":
-		res, err := method.Outputs.Pack(g.state.phiRatio())
+		res, err := method.Outputs.Pack(g.state.PhiRatio())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "RoundHeight":
+		round := new(big.Int)
+		if err := method.Inputs.Unpack(&round, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		res, err := method.Outputs.Pack(g.state.RoundHeight(round))
 		if err != nil {
 			return nil, errExecutionReverted
 		}
 		return res, nil
 	case "roundInterval":
-		res, err := method.Outputs.Pack(g.state.roundInterval())
+		res, err := method.Outputs.Pack(g.state.RoundInterval())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -754,7 +830,8 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 
 // Storage position enums.
 const (
-	nodesLoc = iota
+	RoundHeightLoc = iota
+	nodesLoc
 	offsetLoc
 	crsLoc
 	dkgMasterPublicKeysLoc
@@ -909,6 +986,26 @@ func (s *GovernanceStateHelper) appendTo2DByteArray(pos, index *big.Int, data []
 	s.writeBytes(elementLoc, data)
 }
 
+// uint256[] public RoundHeight;
+func (s *GovernanceStateHelper) LenRoundHeight() *big.Int {
+	return s.getStateBigInt(big.NewInt(RoundHeightLoc))
+}
+func (s *GovernanceStateHelper) RoundHeight(round *big.Int) *big.Int {
+	baseLoc := s.getSlotLoc(big.NewInt(RoundHeightLoc))
+	loc := new(big.Int).Add(baseLoc, round)
+	return s.getStateBigInt(loc)
+}
+func (s *GovernanceStateHelper) PushRoundHeight(height *big.Int) {
+	// increase length by 1.
+	length := s.getStateBigInt(big.NewInt(RoundHeightLoc))
+	s.setStateBigInt(big.NewInt(RoundHeightLoc), new(big.Int).Add(length, big.NewInt(1)))
+
+	baseLoc := s.getSlotLoc(big.NewInt(RoundHeightLoc))
+	loc := new(big.Int).Add(baseLoc, length)
+
+	s.setStateBigInt(loc, height)
+}
+
 // struct Node {
 //     address owner;
 //     bytes publicKey;
@@ -918,26 +1015,15 @@ func (s *GovernanceStateHelper) appendTo2DByteArray(pos, index *big.Int, data []
 // Node[] nodes;
 
 type nodeInfo struct {
-	owner     common.Address
-	publicKey []byte
-	staked    *big.Int
+	Owner     common.Address
+	PublicKey []byte
+	Staked    *big.Int
 }
 
-// Stake is a helper function for creating genesis state.
-func (s *GovernanceStateHelper) Stake(addr common.Address, publicKey []byte, staked *big.Int) {
-	offset := s.nodesLength()
-	s.pushNode(&nodeInfo{
-		owner:     addr,
-		publicKey: publicKey,
-		staked:    staked,
-	})
-	s.putOffset(addr, offset)
-}
-
-func (s *GovernanceStateHelper) nodesLength() *big.Int {
+func (s *GovernanceStateHelper) NodesLength() *big.Int {
 	return s.getStateBigInt(big.NewInt(nodesLoc))
 }
-func (s *GovernanceStateHelper) node(index *big.Int) *nodeInfo {
+func (s *GovernanceStateHelper) Node(index *big.Int) *nodeInfo {
 	node := new(nodeInfo)
 
 	arrayBaseLoc := s.getSlotLoc(big.NewInt(nodesLoc))
@@ -945,66 +1031,73 @@ func (s *GovernanceStateHelper) node(index *big.Int) *nodeInfo {
 
 	// owner.
 	loc := elementBaseLoc
-	node.owner = common.BytesToAddress(s.getState(common.BigToHash(elementBaseLoc)).Bytes())
+	node.Owner = common.BytesToAddress(s.getState(common.BigToHash(elementBaseLoc)).Bytes())
 
 	// publicKey.
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(1))
-	node.publicKey = s.readBytes(loc)
+	node.PublicKey = s.readBytes(loc)
 
 	// staked.
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(2))
-	node.staked = s.getStateBigInt(loc)
+	node.Staked = s.getStateBigInt(loc)
 
 	return nil
 }
-func (s *GovernanceStateHelper) pushNode(n *nodeInfo) {
+func (s *GovernanceStateHelper) PushNode(n *nodeInfo) {
 	// increase length by 1
-	arrayLength := s.nodesLength()
+	arrayLength := s.NodesLength()
 	s.setStateBigInt(big.NewInt(nodesLoc), new(big.Int).Add(arrayLength, big.NewInt(1)))
 
-	s.updateNode(arrayLength, n)
+	s.UpdateNode(arrayLength, n)
 }
-func (s *GovernanceStateHelper) updateNode(index *big.Int, n *nodeInfo) {
+func (s *GovernanceStateHelper) UpdateNode(index *big.Int, n *nodeInfo) {
 	arrayBaseLoc := s.getSlotLoc(big.NewInt(nodesLoc))
 	elementBaseLoc := new(big.Int).Add(arrayBaseLoc, new(big.Int).Mul(index, big.NewInt(3)))
 
 	// owner.
 	loc := elementBaseLoc
-	s.setState(common.BigToHash(loc), n.owner.Hash())
+	s.setState(common.BigToHash(loc), n.Owner.Hash())
 
 	// publicKey.
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(1))
-	s.writeBytes(loc, n.publicKey)
+	s.writeBytes(loc, n.PublicKey)
 
 	// staked.
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(2))
-	s.setStateBigInt(loc, n.staked)
+	s.setStateBigInt(loc, n.Staked)
+}
+func (s *GovernanceStateHelper) Nodes() []*nodeInfo {
+	var nodes []*nodeInfo
+	for i := int64(0); i < int64(s.NodesLength().Uint64()); i++ {
+		nodes = append(nodes, s.Node(big.NewInt(i)))
+	}
+	return nodes
 }
 
 // mapping(address => uint256) public offset;
-func (s *GovernanceStateHelper) offset(addr common.Address) *big.Int {
+func (s *GovernanceStateHelper) Offset(addr common.Address) *big.Int {
 	loc := s.getMapLoc(big.NewInt(offsetLoc), addr.Bytes())
 	return new(big.Int).Sub(s.getStateBigInt(loc), big.NewInt(1))
 }
-func (s *GovernanceStateHelper) putOffset(addr common.Address, offset *big.Int) {
+func (s *GovernanceStateHelper) PutOffset(addr common.Address, offset *big.Int) {
 	loc := s.getMapLoc(big.NewInt(offsetLoc), addr.Bytes())
 	s.setStateBigInt(loc, new(big.Int).Add(offset, big.NewInt(1)))
 }
-func (s *GovernanceStateHelper) deleteOffset(addr common.Address) {
+func (s *GovernanceStateHelper) DeleteOffset(addr common.Address) {
 	loc := s.getMapLoc(big.NewInt(offsetLoc), addr.Bytes())
 	s.setStateBigInt(loc, big.NewInt(0))
 }
 
 // bytes32[] public crs;
-func (s *GovernanceStateHelper) lenCRS() *big.Int {
+func (s *GovernanceStateHelper) LenCRS() *big.Int {
 	return s.getStateBigInt(big.NewInt(crsLoc))
 }
-func (s *GovernanceStateHelper) crs(index *big.Int) common.Hash {
+func (s *GovernanceStateHelper) CRS(index *big.Int) common.Hash {
 	baseLoc := s.getSlotLoc(big.NewInt(crsLoc))
 	loc := new(big.Int).Add(baseLoc, index)
 	return s.getState(common.BigToHash(loc))
 }
-func (s *GovernanceStateHelper) pushCRS(crs common.Hash) {
+func (s *GovernanceStateHelper) PushCRS(crs common.Hash) {
 	// increase length by 1.
 	length := s.getStateBigInt(big.NewInt(crsLoc))
 	s.setStateBigInt(big.NewInt(crsLoc), new(big.Int).Add(length, big.NewInt(1)))
@@ -1016,28 +1109,28 @@ func (s *GovernanceStateHelper) pushCRS(crs common.Hash) {
 }
 
 // bytes[][] public dkgMasterPublicKeys;
-func (s *GovernanceStateHelper) dkgMasterPublicKeys(round *big.Int) [][]byte {
+func (s *GovernanceStateHelper) DKGMasterPublicKeys(round *big.Int) [][]byte {
 	return s.read2DByteArray(big.NewInt(dkgMasterPublicKeysLoc), round)
 }
-func (s *GovernanceStateHelper) pushDKGMasterPublicKey(round *big.Int, pk []byte) {
+func (s *GovernanceStateHelper) PushDKGMasterPublicKey(round *big.Int, pk []byte) {
 	s.appendTo2DByteArray(big.NewInt(dkgMasterPublicKeysLoc), round, pk)
 }
 
 // bytes[][] public dkgComplaints;
-func (s *GovernanceStateHelper) dkgComplaints(round *big.Int) [][]byte {
+func (s *GovernanceStateHelper) DKGComplaints(round *big.Int) [][]byte {
 	return s.read2DByteArray(big.NewInt(dkgComplaintsLoc), round)
 }
-func (s *GovernanceStateHelper) pushDKGComplaint(round *big.Int, complaint []byte) {
+func (s *GovernanceStateHelper) PushDKGComplaint(round *big.Int, complaint []byte) {
 	s.appendTo2DByteArray(big.NewInt(dkgComplaintsLoc), round, complaint)
 }
 
 // mapping(address => bool)[] public dkgFinalized;
-func (s *GovernanceStateHelper) dkgFinalized(round *big.Int, addr common.Address) bool {
+func (s *GovernanceStateHelper) DKGFinalized(round *big.Int, addr common.Address) bool {
 	baseLoc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinailizedLoc)), round)
 	mapLoc := s.getMapLoc(baseLoc, addr.Bytes())
 	return s.getStateBigInt(mapLoc).Cmp(big.NewInt(0)) != 0
 }
-func (s *GovernanceStateHelper) putDKGFinalized(round *big.Int, addr common.Address, finalized bool) {
+func (s *GovernanceStateHelper) PutDKGFinalized(round *big.Int, addr common.Address, finalized bool) {
 	baseLoc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinailizedLoc)), round)
 	mapLoc := s.getMapLoc(baseLoc, addr.Bytes())
 	res := big.NewInt(0)
@@ -1048,74 +1141,88 @@ func (s *GovernanceStateHelper) putDKGFinalized(round *big.Int, addr common.Addr
 }
 
 // uint256[] public dkgFinalizedsCount;
-func (s *GovernanceStateHelper) dkgFinalizedsCount(round *big.Int) *big.Int {
+func (s *GovernanceStateHelper) DKGFinalizedsCount(round *big.Int) *big.Int {
 	loc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinalizedsCountLoc)), round)
 	return s.getStateBigInt(loc)
 }
-func (s *GovernanceStateHelper) incDKGFinalizedsCount(round *big.Int) {
+func (s *GovernanceStateHelper) IncDKGFinalizedsCount(round *big.Int) {
 	loc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinalizedsCountLoc)), round)
 	count := s.getStateBigInt(loc)
 	s.setStateBigInt(loc, new(big.Int).Add(count, big.NewInt(1)))
 }
 
 // address public owner;
-func (s *GovernanceStateHelper) owner() common.Address {
+func (s *GovernanceStateHelper) Owner() common.Address {
 	val := s.getState(common.BigToHash(big.NewInt(ownerLoc)))
 	return common.BytesToAddress(val.Bytes())
 }
+func (s *GovernanceStateHelper) SetOwner(newOwner common.Address) {
+	s.setState(common.BigToHash(big.NewInt(ownerLoc)), newOwner.Hash())
+}
 
 // uint256 public numChains;
-func (s *GovernanceStateHelper) numChains() *big.Int {
+func (s *GovernanceStateHelper) NumChains() *big.Int {
 	return s.getStateBigInt(big.NewInt(numChainsLoc))
 }
 
 // uint256 public lambdaBA;
-func (s *GovernanceStateHelper) lambdaBA() *big.Int {
+func (s *GovernanceStateHelper) LambdaBA() *big.Int {
 	return s.getStateBigInt(big.NewInt(lambdaBALoc))
 }
 
 // uint256 public lambdaDKG;
-func (s *GovernanceStateHelper) lambdaDKG() *big.Int {
+func (s *GovernanceStateHelper) LambdaDKG() *big.Int {
 	return s.getStateBigInt(big.NewInt(lambdaDKGLoc))
 }
 
 // uint256 public k;
-func (s *GovernanceStateHelper) k() *big.Int {
+func (s *GovernanceStateHelper) K() *big.Int {
 	return s.getStateBigInt(big.NewInt(kLoc))
 }
 
 // uint256 public phiRatio;  // stored as PhiRatio * 10^6
-func (s *GovernanceStateHelper) phiRatio() *big.Int {
+func (s *GovernanceStateHelper) PhiRatio() *big.Int {
 	return s.getStateBigInt(big.NewInt(phiRatioLoc))
 }
 
 // uint256 public notarySetSize;
-func (s *GovernanceStateHelper) notarySetSize() *big.Int {
+func (s *GovernanceStateHelper) NotarySetSize() *big.Int {
 	return s.getStateBigInt(big.NewInt(notarySetSizeLoc))
 }
 
 // uint256 public dkgSetSize;
-func (s *GovernanceStateHelper) dkgSetSize() *big.Int {
+func (s *GovernanceStateHelper) DKGSetSize() *big.Int {
 	return s.getStateBigInt(big.NewInt(dkgSetSizeLoc))
 }
 
 // uint256 public roundInterval;
-func (s *GovernanceStateHelper) roundInterval() *big.Int {
+func (s *GovernanceStateHelper) RoundInterval() *big.Int {
 	return s.getStateBigInt(big.NewInt(roundIntervalLoc))
 }
 
 // uint256 public minBlockInterval;
-func (s *GovernanceStateHelper) minBlockInterval() *big.Int {
+func (s *GovernanceStateHelper) MinBlockInterval() *big.Int {
 	return s.getStateBigInt(big.NewInt(minBlockIntervalLoc))
 }
 
 // uint256 public maxBlockInterval;
-func (s *GovernanceStateHelper) maxBlockInterval() *big.Int {
+func (s *GovernanceStateHelper) MaxBlockInterval() *big.Int {
 	return s.getStateBigInt(big.NewInt(maxBlockIntervalLoc))
 }
 
-// GetConfiguration returns the current configuration.
-func (s *GovernanceStateHelper) GetConfiguration() *params.DexconConfig {
+// Stake is a helper function for creating genesis state.
+func (s *GovernanceStateHelper) Stake(addr common.Address, publicKey []byte, staked *big.Int) {
+	offset := s.NodesLength()
+	s.PushNode(&nodeInfo{
+		Owner:     addr,
+		PublicKey: publicKey,
+		Staked:    staked,
+	})
+	s.PutOffset(addr, offset)
+}
+
+// Configuration returns the current configuration.
+func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
 	return &params.DexconConfig{
 		NumChains:        uint32(s.getStateBigInt(big.NewInt(numChainsLoc)).Uint64()),
 		LambdaBA:         s.getStateBigInt(big.NewInt(lambdaBALoc)).Uint64(),
@@ -1181,143 +1288,11 @@ func (g *GovernanceContract) penalize() {
 	g.contract.UseGas(g.contract.Gas)
 }
 
-func (g *GovernanceContract) updateConfiguration(config *params.DexconConfig) ([]byte, error) {
-	// Only owner can update configuration.
-	if g.contract.Caller() != g.state.owner() {
-		return nil, errExecutionReverted
-	}
-
-	g.state.UpdateConfiguration(config)
-	g.state.emitConfigurationChangedEvent()
-	return nil, nil
-}
-
-func (g *GovernanceContract) stake(publicKey []byte) ([]byte, error) {
-	caller := g.contract.Caller()
-	offset := g.state.offset(caller)
-
-	// Can not stake if already staked.
-	if offset.Cmp(big.NewInt(0)) >= 0 {
-		g.penalize()
-		return nil, errExecutionReverted
-	}
-
-	pk, err := crypto.DecompressPubkey(publicKey)
-	if err != nil {
-		g.penalize()
-		return nil, errExecutionReverted
-	}
-
-	// Make sure the public key belongs to the caller.
-	if crypto.PubkeyToAddress(*pk) != caller {
-		g.penalize()
-		return nil, errExecutionReverted
-	}
-
-	offset = g.state.nodesLength()
-	g.state.pushNode(&nodeInfo{
-		owner:     caller,
-		publicKey: publicKey,
-		staked:    g.contract.Value(),
-	})
-	g.state.putOffset(caller, offset)
-
-	g.contract.UseGas(21000)
-	return nil, nil
-}
-
-func (g *GovernanceContract) unstake() ([]byte, error) {
-	caller := g.contract.Caller()
-	offset := g.state.offset(caller)
-	if offset.Cmp(big.NewInt(0)) < 0 {
-		return nil, errExecutionReverted
-	}
-
-	node := g.state.node(offset)
-	length := g.state.nodesLength()
-	lastIndex := new(big.Int).Sub(length, big.NewInt(1))
-
-	// Delete the node.
-	if offset != lastIndex {
-		lastNode := g.state.node(lastIndex)
-		g.state.updateNode(offset, lastNode)
-		g.state.putOffset(lastNode.owner, offset)
-		g.state.deleteOffset(caller)
-	}
-
-	// Return the staked fund.
-	// TODO(w): use OP_CALL so this show up is internal transaction.
-	g.evm.Transfer(g.evm.StateDB, GovernanceContractAddress, caller, node.staked)
-
-	g.contract.UseGas(21000)
-	return nil, nil
-}
-
-func (g *GovernanceContract) proposeCRS(signedCRS []byte) ([]byte, error) {
-	round := g.state.lenCRS()
-	prevCRS := g.state.crs(round)
-
-	// round should be the next round number, abort otherwise.
-	if new(big.Int).Add(round, big.NewInt(1)).Cmp(round) != 0 {
-		g.penalize()
-		return nil, errExecutionReverted
-	}
-
-	// Prepare DKGMasterPublicKeys.
-	// TODO(w): make sure DKGMasterPKs are unique.
-	var dkgMasterPKs []*coreTypes.DKGMasterPublicKey
-	for _, pk := range g.state.dkgMasterPublicKeys(round) {
-		x := new(coreTypes.DKGMasterPublicKey)
-		if err := rlp.DecodeBytes(pk, x); err != nil {
-			panic(err)
-		}
-		dkgMasterPKs = append(dkgMasterPKs, x)
-	}
-
-	// Prepare DKGComplaints.
-	var dkgComplaints []*coreTypes.DKGComplaint
-	for _, comp := range g.state.dkgComplaints(round) {
-		x := new(coreTypes.DKGComplaint)
-		if err := rlp.DecodeBytes(comp, x); err != nil {
-			panic(err)
-		}
-		dkgComplaints = append(dkgComplaints, x)
-	}
-
-	threshold := int(g.state.dkgSetSize().Uint64() / 3)
-
-	dkgGPK, err := core.NewDKGGroupPublicKey(
-		round.Uint64(), dkgMasterPKs, dkgComplaints, threshold)
-	if err != nil {
-		return nil, errExecutionReverted
-	}
-	signature := coreCrypto.Signature{
-		Type:      "bls",
-		Signature: signedCRS,
-	}
-	if !dkgGPK.VerifySignature(coreCommon.Hash(prevCRS), signature) {
-		g.penalize()
-		return nil, errExecutionReverted
-	}
-
-	// Save new CRS into state and increase round.
-	newCRS := crypto.Keccak256(signedCRS)
-	crs := common.BytesToHash(newCRS)
-
-	g.state.pushCRS(crs)
-	g.state.emitCRSProposed(g.state.lenCRS(), crs)
-
-	// To encourage DKG set to propose the correct value, correctly submitting
-	// this should cause nothing.
-	g.contract.UseGas(0)
-	return nil, nil
-}
-
 func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byte, error) {
 	caller := g.contract.Caller()
 
 	// Finalized caller is not allowed to propose complaint.
-	if g.state.dkgFinalized(round, caller) {
+	if g.state.DKGFinalized(round, caller) {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -1325,10 +1300,10 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 	// Calculate 2f
 	threshold := new(big.Int).Mul(
 		big.NewInt(2),
-		new(big.Int).Div(g.state.dkgSetSize(), big.NewInt(3)))
+		new(big.Int).Div(g.state.DKGSetSize(), big.NewInt(3)))
 
 	// If 2f + 1 of DKG set is finalized, one can not propose complaint anymore.
-	if g.state.dkgFinalizedsCount(round).Cmp(threshold) > 0 {
+	if g.state.DKGFinalizedsCount(round).Cmp(threshold) > 0 {
 		return nil, errExecutionReverted
 	}
 
@@ -1350,7 +1325,7 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 		return nil, errExecutionReverted
 	}
 
-	g.state.pushDKGComplaint(round, comp)
+	g.state.PushDKGComplaint(round, comp)
 
 	// Set this to relatively high to prevent spamming
 	g.contract.UseGas(10000000)
@@ -1359,7 +1334,7 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 
 func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, pk []byte) ([]byte, error) {
 	caller := g.contract.Caller()
-	offset := g.state.offset(caller)
+	offset := g.state.Offset(caller)
 
 	// Can not add dkg mpk if not staked.
 	if offset.Cmp(big.NewInt(0)) < 0 {
@@ -1384,7 +1359,7 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, pk []byte) ([
 		return nil, errExecutionReverted
 	}
 
-	g.state.pushDKGMasterPublicKey(round, pk)
+	g.state.PushDKGMasterPublicKey(round, pk)
 
 	// DKG operation is expensive.
 	g.contract.UseGas(100000)
@@ -1412,12 +1387,166 @@ func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]
 		return nil, errExecutionReverted
 	}
 
-	if !g.state.dkgFinalized(round, caller) {
-		g.state.putDKGFinalized(round, caller, true)
-		g.state.incDKGFinalizedsCount(round)
+	if !g.state.DKGFinalized(round, caller) {
+		g.state.PutDKGFinalized(round, caller, true)
+		g.state.IncDKGFinalizedsCount(round)
 	}
 
 	// DKG operation is expensive.
 	g.contract.UseGas(100000)
+	return nil, nil
+}
+
+func (g *GovernanceContract) updateConfiguration(config *params.DexconConfig) ([]byte, error) {
+	// Only owner can update configuration.
+	if g.contract.Caller() != g.state.Owner() {
+		return nil, errExecutionReverted
+	}
+
+	g.state.UpdateConfiguration(config)
+	g.state.emitConfigurationChangedEvent()
+	return nil, nil
+}
+
+func (g *GovernanceContract) stake(publicKey []byte) ([]byte, error) {
+	caller := g.contract.Caller()
+	offset := g.state.Offset(caller)
+
+	// Can not stake if already staked.
+	if offset.Cmp(big.NewInt(0)) >= 0 {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
+
+	pk, err := crypto.DecompressPubkey(publicKey)
+	if err != nil {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
+
+	// Make sure the public key belongs to the caller.
+	if crypto.PubkeyToAddress(*pk) != caller {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
+
+	offset = g.state.NodesLength()
+	g.state.PushNode(&nodeInfo{
+		Owner:     caller,
+		PublicKey: publicKey,
+		Staked:    g.contract.Value(),
+	})
+	g.state.PutOffset(caller, offset)
+
+	g.contract.UseGas(21000)
+	return nil, nil
+}
+
+func (g *GovernanceContract) unstake() ([]byte, error) {
+	caller := g.contract.Caller()
+	offset := g.state.Offset(caller)
+	if offset.Cmp(big.NewInt(0)) < 0 {
+		return nil, errExecutionReverted
+	}
+
+	node := g.state.Node(offset)
+	length := g.state.NodesLength()
+	lastIndex := new(big.Int).Sub(length, big.NewInt(1))
+
+	// Delete the node.
+	if offset != lastIndex {
+		lastNode := g.state.Node(lastIndex)
+		g.state.UpdateNode(offset, lastNode)
+		g.state.PutOffset(lastNode.Owner, offset)
+		g.state.DeleteOffset(caller)
+	}
+
+	// Return the staked fund.
+	// TODO(w): use OP_CALL so this show up is internal transaction.
+	g.evm.Transfer(g.evm.StateDB, GovernanceContractAddress, caller, node.Staked)
+
+	g.contract.UseGas(21000)
+	return nil, nil
+}
+
+func (g *GovernanceContract) proposeCRS(signedCRS []byte) ([]byte, error) {
+	round := g.state.LenCRS()
+	prevCRS := g.state.CRS(round)
+
+	// round should be the next round number, abort otherwise.
+	if new(big.Int).Add(round, big.NewInt(1)).Cmp(round) != 0 {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
+
+	// Prepare DKGMasterPublicKeys.
+	// TODO(w): make sure DKGMasterPKs are unique.
+	var dkgMasterPKs []*coreTypes.DKGMasterPublicKey
+	for _, pk := range g.state.DKGMasterPublicKeys(round) {
+		x := new(coreTypes.DKGMasterPublicKey)
+		if err := rlp.DecodeBytes(pk, x); err != nil {
+			panic(err)
+		}
+		dkgMasterPKs = append(dkgMasterPKs, x)
+	}
+
+	// Prepare DKGComplaints.
+	var dkgComplaints []*coreTypes.DKGComplaint
+	for _, comp := range g.state.DKGComplaints(round) {
+		x := new(coreTypes.DKGComplaint)
+		if err := rlp.DecodeBytes(comp, x); err != nil {
+			panic(err)
+		}
+		dkgComplaints = append(dkgComplaints, x)
+	}
+
+	threshold := int(g.state.DKGSetSize().Uint64() / 3)
+
+	dkgGPK, err := core.NewDKGGroupPublicKey(
+		round.Uint64(), dkgMasterPKs, dkgComplaints, threshold)
+	if err != nil {
+		return nil, errExecutionReverted
+	}
+	signature := coreCrypto.Signature{
+		Type:      "bls",
+		Signature: signedCRS,
+	}
+	if !dkgGPK.VerifySignature(coreCommon.Hash(prevCRS), signature) {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
+
+	// Save new CRS into state and increase round.
+	newCRS := crypto.Keccak256(signedCRS)
+	crs := common.BytesToHash(newCRS)
+
+	g.state.PushCRS(crs)
+	g.state.emitCRSProposed(g.state.LenCRS(), crs)
+
+	// To encourage DKG set to propose the correct value, correctly submitting
+	// this should cause nothing.
+	g.contract.UseGas(0)
+	return nil, nil
+}
+
+func (g *GovernanceContract) transferOwnership(newOwner common.Address) ([]byte, error) {
+	// Only owner can update configuration.
+	if g.contract.Caller() != g.state.Owner() {
+		return nil, errExecutionReverted
+	}
+	g.state.SetOwner(newOwner)
+	return nil, nil
+}
+
+func (g *GovernanceContract) snapshotRound(round, height *big.Int) ([]byte, error) {
+	// TODO(w): validate if this mapping is correct.
+
+	// Only allow updating the next round.
+	nextRound := g.state.LenRoundHeight()
+	if round.Cmp(nextRound) != 0 {
+		return nil, errExecutionReverted
+	}
+
+	g.state.PushRoundHeight(height)
 	return nil, nil
 }

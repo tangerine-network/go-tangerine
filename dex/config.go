@@ -26,8 +26,8 @@ import (
 
 	"github.com/dexon-foundation/dexon/consensus/dexcon"
 	"github.com/dexon-foundation/dexon/core"
+	"github.com/dexon-foundation/dexon/dex/gasprice"
 	"github.com/dexon-foundation/dexon/eth/downloader"
-	"github.com/dexon-foundation/dexon/eth/gasprice"
 )
 
 // DefaultConfig contains default settings for use on the Ethereum main net.

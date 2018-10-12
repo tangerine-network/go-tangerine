@@ -147,7 +147,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	}
 	dex.txPool = core.NewTxPool(config.TxPool, dex.chainConfig, dex.blockchain)
 
-	dex.APIBackend = &DexAPIBackend{dexon, nil}
+	dex.APIBackend = &DexAPIBackend{dex, nil}
 	gpoParams := config.GPO
 	//if gpoParams.Default == nil {
 	//  gpoParams.Default = config.MinerGasPrice
