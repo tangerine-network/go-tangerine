@@ -549,6 +549,7 @@ const abiJSON = `
 `
 
 var abiObject abi.ABI
+var GovernanceContractName2Method map[string]abi.Method
 var sig2Method map[string]abi.Method
 var events map[string]abi.Event
 
@@ -560,10 +561,12 @@ func init() {
 	}
 
 	sig2Method = make(map[string]abi.Method)
+	GovernanceContractName2Method = make(map[string]abi.Method)
 
 	// Construct dispatch table.
 	for _, method := range abiObject.Methods {
 		sig2Method[string(method.Id())] = method
+		GovernanceContractName2Method[method.Name] = method
 	}
 
 	events = make(map[string]abi.Event)
@@ -1564,9 +1567,11 @@ func (g *GovernanceContract) snapshotRound(round, height *big.Int) ([]byte, erro
 	// Only allow updating the next round.
 	nextRound := g.state.LenRoundHeight()
 	if round.Cmp(nextRound) != 0 {
+		g.penalize()
 		return nil, errExecutionReverted
 	}
 
 	g.state.PushRoundHeight(height)
+	g.contract.UseGas(100000)
 	return nil, nil
 }

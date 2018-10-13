@@ -10,22 +10,32 @@ import (
 	coreCrypto "github.com/dexon-foundation/dexon-consensus-core/core/crypto"
 	coreEcdsa "github.com/dexon-foundation/dexon-consensus-core/core/crypto/ecdsa"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
+	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
+	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/params"
 	"github.com/dexon-foundation/dexon/rlp"
 	"github.com/dexon-foundation/dexon/rpc"
 )
 
 type DexconGovernance struct {
-	b          *DexAPIBackend
-	privateKey *ecdsa.PrivateKey
+	b           *DexAPIBackend
+	chainConfig *params.ChainConfig
+	privateKey  *ecdsa.PrivateKey
+	address     common.Address
 }
 
 // NewDexconGovernance retruns a governance implementation of the DEXON
 // consensus governance interface.
-func NewDexconGovernance(backend *DexAPIBackend, privKey *ecdsa.PrivateKey) *DexconGovernance {
+func NewDexconGovernance(backend *DexAPIBackend, chainConfig *params.ChainConfig,
+	privKey *ecdsa.PrivateKey) *DexconGovernance {
 	return &DexconGovernance{
-		b:          backend,
-		privateKey: privKey,
+		b:           backend,
+		chainConfig: chainConfig,
+		privateKey:  privKey,
+		address:     crypto.PubkeyToAddress(privKey.PublicKey),
 	}
 }
 
@@ -90,6 +100,19 @@ func (d *DexconGovernance) CRS(round uint64) coreCommon.Hash {
 
 // ProposeCRS send proposals of a new CRS
 func (d *DexconGovernance) ProposeCRS(signedCRS []byte) {
+	method := vm.GovernanceContractName2Method["proposeCRS"]
+
+	res, err := method.Inputs.Pack(signedCRS)
+	if err != nil {
+		log.Error("failed to pack proposeCRS input: %s", err)
+		return
+	}
+
+	data := append(method.Id(), res...)
+	err = d.sendGovTx(context.Background(), data)
+	if err != nil {
+		log.Error("failed to send proposeCRS tx: %s", err)
+	}
 }
 
 // NodeSet returns the current notary set.
@@ -103,12 +126,73 @@ func (d *DexconGovernance) NodeSet(round uint64) []coreCrypto.PublicKey {
 	return pks
 }
 
+func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
+	gasPrice, err := d.b.SuggestPrice(ctx)
+	if err != nil {
+		return err
+	}
+
+	nonce, err := d.b.GetPoolNonce(ctx, d.address)
+	if err != nil {
+		return err
+	}
+
+	tx := types.NewTransaction(
+		nonce,
+		vm.GovernanceContractAddress,
+		big.NewInt(0),
+		uint64(200000),
+		gasPrice,
+		data)
+
+	signer := types.NewEIP155Signer(d.chainConfig.ChainID)
+
+	tx, err = types.SignTx(tx, signer, d.privateKey)
+	if err != nil {
+		return err
+	}
+	return d.b.SendTx(ctx, tx)
+}
+
 // NotifyRoundHeight register the mapping between round and height.
 func (d *DexconGovernance) NotifyRoundHeight(targetRound, consensusHeight uint64) {
+	method := vm.GovernanceContractName2Method["snapshotRound"]
+
+	res, err := method.Inputs.Pack(
+		big.NewInt(int64(targetRound)), big.NewInt(int64(consensusHeight)))
+	if err != nil {
+		log.Error("failed to pack snapshotRound input: %s", err)
+		return
+	}
+
+	data := append(method.Id(), res...)
+	err = d.sendGovTx(context.Background(), data)
+	if err != nil {
+		log.Error("failed to send snapshotRound tx: %s", err)
+	}
 }
 
 // AddDKGComplaint adds a DKGComplaint.
 func (d *DexconGovernance) AddDKGComplaint(round uint64, complaint *coreTypes.DKGComplaint) {
+	method := vm.GovernanceContractName2Method["addDKGComplaint"]
+
+	encoded, err := rlp.EncodeToBytes(complaint)
+	if err != nil {
+		log.Error("failed to RLP encode complaint to bytes: %s", err)
+		return
+	}
+
+	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	if err != nil {
+		log.Error("failed to pack addDKGComplaint input: %s", err)
+		return
+	}
+
+	data := append(method.Id(), res...)
+	err = d.sendGovTx(context.Background(), data)
+	if err != nil {
+		log.Error("failed to send addDKGComplaint tx: %s", err)
+	}
 }
 
 // DKGComplaints gets all the DKGComplaints of round.
@@ -127,6 +211,25 @@ func (d *DexconGovernance) DKGComplaints(round uint64) []*coreTypes.DKGComplaint
 
 // AddDKGMasterPublicKey adds a DKGMasterPublicKey.
 func (d *DexconGovernance) AddDKGMasterPublicKey(round uint64, masterPublicKey *coreTypes.DKGMasterPublicKey) {
+	method := vm.GovernanceContractName2Method["addDKGMasterPublicKey"]
+
+	encoded, err := rlp.EncodeToBytes(masterPublicKey)
+	if err != nil {
+		log.Error("failed to RLP encode mpk to bytes: %s", err)
+		return
+	}
+
+	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	if err != nil {
+		log.Error("failed to pack addDKGMasterPublicKey input: %s", err)
+		return
+	}
+
+	data := append(method.Id(), res...)
+	err = d.sendGovTx(context.Background(), data)
+	if err != nil {
+		log.Error("failed to send addDKGMasterPublicKey tx: %s", err)
+	}
 }
 
 // DKGMasterPublicKeys gets all the DKGMasterPublicKey of round.
@@ -145,6 +248,25 @@ func (d *DexconGovernance) DKGMasterPublicKeys(round uint64) []*coreTypes.DKGMas
 
 // AddDKGFinalize adds a DKG finalize message.
 func (d *DexconGovernance) AddDKGFinalize(round uint64, final *coreTypes.DKGFinalize) {
+	method := vm.GovernanceContractName2Method["addDKGFinalize"]
+
+	encoded, err := rlp.EncodeToBytes(final)
+	if err != nil {
+		log.Error("failed to RLP encode finalize to bytes: %s", err)
+		return
+	}
+
+	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	if err != nil {
+		log.Error("failed to pack addDKGFinalize input: %s", err)
+		return
+	}
+
+	data := append(method.Id(), res...)
+	err = d.sendGovTx(context.Background(), data)
+	if err != nil {
+		log.Error("failed to send addDKGFinalize tx: %s", err)
+	}
 }
 
 // IsDKGFinal checks if DKG is final.

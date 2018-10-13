@@ -148,7 +148,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	//}
 	dex.APIBackend.gpo = gasprice.NewOracle(dex.APIBackend, gpoParams)
 
-	dex.governance = NewDexconGovernance(dex.APIBackend, config.PrivateKey)
+	dex.governance = NewDexconGovernance(dex.APIBackend, dex.chainConfig, config.PrivateKey)
 	dex.app = NewDexconApp(dex.txPool, dex.blockchain, dex.governance, chainDb, config, vmConfig)
 
 	privKey := coreEcdsa.NewPrivateKeyFromECDSA(config.PrivateKey)
