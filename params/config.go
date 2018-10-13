@@ -228,6 +228,7 @@ func (c *CliqueConfig) String() string {
 
 // DexconConfig is the consensus engine configs for DEXON consensus.
 type DexconConfig struct {
+	GenesisCRSText   string  `json:"genesisCRSText"`
 	NumChains        uint32  `json:"numChains"`
 	LambdaBA         uint64  `json:"lambdaBA"`
 	LambdaDKG        uint64  `json:"lambdaDKG"`
@@ -242,7 +243,8 @@ type DexconConfig struct {
 
 // String implements the stringer interface, returning the consensus engine details.
 func (d *DexconConfig) String() string {
-	return fmt.Sprintf("{NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v MaxBlockInterval: %v",
+	return fmt.Sprintf("{GenesisCRSText: %v NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v MaxBlockInterval: %v",
+		d.GenesisCRSText,
 		d.NumChains,
 		d.LambdaBA,
 		d.LambdaDKG,
