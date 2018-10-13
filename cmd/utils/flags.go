@@ -1295,6 +1295,7 @@ func RegisterDexService(stack *node.Node, cfg *dex.Config) {
 		//})
 	} else {
 		err = stack.Register(func(ctx *node.ServiceContext) (node.Service, error) {
+			cfg.PrivateKey = ctx.ServerConfig.PrivateKey
 			fullNode, err := dex.New(ctx, cfg)
 			//if fullNode != nil && cfg.LightServ > 0 {
 			//	ls, _ := les.NewLesServer(fullNode, cfg)

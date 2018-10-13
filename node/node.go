@@ -172,6 +172,7 @@ func (n *Node) Start() error {
 		ctx := &ServiceContext{
 			config:         n.config,
 			services:       make(map[reflect.Type]Service),
+			ServerConfig:   &n.serverConfig,
 			EventMux:       n.eventmux,
 			AccountManager: n.accman,
 		}

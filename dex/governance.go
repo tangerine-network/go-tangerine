@@ -2,12 +2,13 @@ package dex
 
 import (
 	"context"
+	"crypto/ecdsa"
 	"math/big"
 	"time"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
 	coreCrypto "github.com/dexon-foundation/dexon-consensus-core/core/crypto"
-	"github.com/dexon-foundation/dexon-consensus-core/core/crypto/ecdsa"
+	coreEcdsa "github.com/dexon-foundation/dexon-consensus-core/core/crypto/ecdsa"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
 	"github.com/dexon-foundation/dexon/rlp"
@@ -15,14 +16,16 @@ import (
 )
 
 type DexconGovernance struct {
-	b *DexAPIBackend
+	b          *DexAPIBackend
+	privateKey *ecdsa.PrivateKey
 }
 
 // NewDexconGovernance retruns a governance implementation of the DEXON
 // consensus governance interface.
-func NewDexconGovernance(backend *DexAPIBackend) *DexconGovernance {
+func NewDexconGovernance(backend *DexAPIBackend, privKey *ecdsa.PrivateKey) *DexconGovernance {
 	return &DexconGovernance{
-		b: backend,
+		b:          backend,
+		privateKey: privKey,
 	}
 }
 
@@ -95,9 +98,13 @@ func (d *DexconGovernance) NodeSet(round uint64) []coreCrypto.PublicKey {
 	var pks []coreCrypto.PublicKey
 
 	for _, n := range s.Nodes() {
-		pks = append(pks, ecdsa.NewPublicKeyFromByteSlice(n.PublicKey))
+		pks = append(pks, coreEcdsa.NewPublicKeyFromByteSlice(n.PublicKey))
 	}
 	return pks
+}
+
+// NotifyRoundHeight register the mapping between round and height.
+func (d *DexconGovernance) NotifyRoundHeight(targetRound, consensusHeight uint64) {
 }
 
 // AddDKGComplaint adds a DKGComplaint.

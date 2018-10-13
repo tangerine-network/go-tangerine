@@ -22,7 +22,7 @@ import (
 
 	dexCore "github.com/dexon-foundation/dexon-consensus-core/core"
 	"github.com/dexon-foundation/dexon-consensus-core/core/blockdb"
-	"github.com/dexon-foundation/dexon-consensus-core/core/crypto/ecdsa"
+	coreEcdsa "github.com/dexon-foundation/dexon-consensus-core/core/crypto/ecdsa"
 
 	"github.com/dexon-foundation/dexon/accounts"
 	"github.com/dexon-foundation/dexon/consensus"
@@ -87,12 +87,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	}
 	network := NewDexconNetwork()
 
-	// TODO(w): replace this with node key.
-	privKey, err := ecdsa.NewPrivateKey()
-	if err != nil {
-		panic(err)
-	}
-
 	chainDb, err := CreateDB(ctx, config, "chaindata")
 	if err != nil {
 		return nil, err
@@ -154,8 +148,10 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	//}
 	dex.APIBackend.gpo = gasprice.NewOracle(dex.APIBackend, gpoParams)
 
-	dex.governance = NewDexconGovernance(dex.APIBackend)
+	dex.governance = NewDexconGovernance(dex.APIBackend, config.PrivateKey)
 	dex.app = NewDexconApp(dex.txPool, dex.blockchain, dex.governance, chainDb, config, vmConfig)
+
+	privKey := coreEcdsa.NewPrivateKeyFromECDSA(config.PrivateKey)
 	dex.consensus = dexCore.NewConsensus(dex.app, dex.governance, db, network, privKey)
 
 	return dex, nil
