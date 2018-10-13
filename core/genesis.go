@@ -32,7 +32,6 @@ import (
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/params"
@@ -248,13 +247,6 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 
 		// Stake in governance state.
 		if account.Staked.Cmp(big.NewInt(0)) > 0 {
-			pk, err := crypto.DecompressPubkey(account.PublicKey)
-			if err != nil {
-				panic(err)
-			}
-			if crypto.PubkeyToAddress(*pk) != addr {
-				panic(fmt.Errorf("public key does not belones to %s", addr))
-			}
 			govStateHelper.Stake(addr, account.PublicKey, account.Staked)
 		}
 	}

@@ -108,11 +108,14 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	}
 	dex := &Dexon{
 		config:         config,
+		chainDb:        chainDb,
+		chainConfig:    chainConfig,
 		eventMux:       ctx.EventMux,
 		accountManager: ctx.AccountManager,
 		shutdownChan:   make(chan bool),
 		networkID:      config.NetworkId,
 		bloomRequests:  make(chan chan *bloombits.Retrieval),
+		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
 		network:        network,
 		blockdb:        db,
 		engine:         dexcon.New(&params.DexconConfig{}),
@@ -143,9 +146,9 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 
 	dex.APIBackend = &DexAPIBackend{dex, nil}
 	gpoParams := config.GPO
-	//if gpoParams.Default == nil {
-	//  gpoParams.Default = config.MinerGasPrice
-	//}
+	if gpoParams.Default == nil {
+		gpoParams.Default = config.DefaultGasPrice
+	}
 	dex.APIBackend.gpo = gasprice.NewOracle(dex.APIBackend, gpoParams)
 
 	dex.governance = NewDexconGovernance(dex.APIBackend, dex.chainConfig, config.PrivateKey)

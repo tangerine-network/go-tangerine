@@ -92,40 +92,6 @@ func (d *DexconGovernance) Configuration(round uint64) *coreTypes.Config {
 	}
 }
 
-// CRS returns the CRS for a given round.
-func (d *DexconGovernance) CRS(round uint64) coreCommon.Hash {
-	s := d.getGovStateAtRound(round)
-	return coreCommon.Hash(s.CRS(big.NewInt(int64(round))))
-}
-
-// ProposeCRS send proposals of a new CRS
-func (d *DexconGovernance) ProposeCRS(signedCRS []byte) {
-	method := vm.GovernanceContractName2Method["proposeCRS"]
-
-	res, err := method.Inputs.Pack(signedCRS)
-	if err != nil {
-		log.Error("failed to pack proposeCRS input: %s", err)
-		return
-	}
-
-	data := append(method.Id(), res...)
-	err = d.sendGovTx(context.Background(), data)
-	if err != nil {
-		log.Error("failed to send proposeCRS tx: %s", err)
-	}
-}
-
-// NodeSet returns the current notary set.
-func (d *DexconGovernance) NodeSet(round uint64) []coreCrypto.PublicKey {
-	s := d.getGovStateAtRound(round)
-	var pks []coreCrypto.PublicKey
-
-	for _, n := range s.Nodes() {
-		pks = append(pks, coreEcdsa.NewPublicKeyFromByteSlice(n.PublicKey))
-	}
-	return pks
-}
-
 func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
 	gasPrice, err := d.b.SuggestPrice(ctx)
 	if err != nil {
@@ -154,6 +120,40 @@ func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
 	return d.b.SendTx(ctx, tx)
 }
 
+// CRS returns the CRS for a given round.
+func (d *DexconGovernance) CRS(round uint64) coreCommon.Hash {
+	s := d.getGovStateAtRound(round)
+	return coreCommon.Hash(s.CRS(big.NewInt(int64(round))))
+}
+
+// ProposeCRS send proposals of a new CRS
+func (d *DexconGovernance) ProposeCRS(signedCRS []byte) {
+	method := vm.GovernanceContractName2Method["proposeCRS"]
+
+	res, err := method.Inputs.Pack(signedCRS)
+	if err != nil {
+		log.Error("failed to pack proposeCRS input", "err", err)
+		return
+	}
+
+	data := append(method.Id(), res...)
+	err = d.sendGovTx(context.Background(), data)
+	if err != nil {
+		log.Error("failed to send proposeCRS tx", "err", err)
+	}
+}
+
+// NodeSet returns the current notary set.
+func (d *DexconGovernance) NodeSet(round uint64) []coreCrypto.PublicKey {
+	s := d.getGovStateAtRound(round)
+	var pks []coreCrypto.PublicKey
+
+	for _, n := range s.Nodes() {
+		pks = append(pks, coreEcdsa.NewPublicKeyFromByteSlice(n.PublicKey))
+	}
+	return pks
+}
+
 // NotifyRoundHeight register the mapping between round and height.
 func (d *DexconGovernance) NotifyRoundHeight(targetRound, consensusHeight uint64) {
 	method := vm.GovernanceContractName2Method["snapshotRound"]
@@ -161,14 +161,14 @@ func (d *DexconGovernance) NotifyRoundHeight(targetRound, consensusHeight uint64
 	res, err := method.Inputs.Pack(
 		big.NewInt(int64(targetRound)), big.NewInt(int64(consensusHeight)))
 	if err != nil {
-		log.Error("failed to pack snapshotRound input: %s", err)
+		log.Error("failed to pack snapshotRound input", "err", err)
 		return
 	}
 
 	data := append(method.Id(), res...)
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
-		log.Error("failed to send snapshotRound tx: %s", err)
+		log.Error("failed to send snapshotRound tx", "err", err)
 	}
 }
 
@@ -178,20 +178,20 @@ func (d *DexconGovernance) AddDKGComplaint(round uint64, complaint *coreTypes.DK
 
 	encoded, err := rlp.EncodeToBytes(complaint)
 	if err != nil {
-		log.Error("failed to RLP encode complaint to bytes: %s", err)
+		log.Error("failed to RLP encode complaint to bytes", "err", err)
 		return
 	}
 
 	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
 	if err != nil {
-		log.Error("failed to pack addDKGComplaint input: %s", err)
+		log.Error("failed to pack addDKGComplaint input", "err", err)
 		return
 	}
 
 	data := append(method.Id(), res...)
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
-		log.Error("failed to send addDKGComplaint tx: %s", err)
+		log.Error("failed to send addDKGComplaint tx", "err", err)
 	}
 }
 
@@ -215,20 +215,20 @@ func (d *DexconGovernance) AddDKGMasterPublicKey(round uint64, masterPublicKey *
 
 	encoded, err := rlp.EncodeToBytes(masterPublicKey)
 	if err != nil {
-		log.Error("failed to RLP encode mpk to bytes: %s", err)
+		log.Error("failed to RLP encode mpk to bytes", "err", err)
 		return
 	}
 
 	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
 	if err != nil {
-		log.Error("failed to pack addDKGMasterPublicKey input: %s", err)
+		log.Error("failed to pack addDKGMasterPublicKey input", "err", err)
 		return
 	}
 
 	data := append(method.Id(), res...)
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
-		log.Error("failed to send addDKGMasterPublicKey tx: %s", err)
+		log.Error("failed to send addDKGMasterPublicKey tx", "err", err)
 	}
 }
 
@@ -252,20 +252,20 @@ func (d *DexconGovernance) AddDKGFinalize(round uint64, final *coreTypes.DKGFina
 
 	encoded, err := rlp.EncodeToBytes(final)
 	if err != nil {
-		log.Error("failed to RLP encode finalize to bytes: %s", err)
+		log.Error("failed to RLP encode finalize to bytes", "err", err)
 		return
 	}
 
 	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
 	if err != nil {
-		log.Error("failed to pack addDKGFinalize input: %s", err)
+		log.Error("failed to pack addDKGFinalize input", "err", err)
 		return
 	}
 
 	data := append(method.Id(), res...)
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
-		log.Error("failed to send addDKGFinalize tx: %s", err)
+		log.Error("failed to send addDKGFinalize tx", "err", err)
 	}
 }
 

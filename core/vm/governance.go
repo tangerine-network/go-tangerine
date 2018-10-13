@@ -1041,7 +1041,7 @@ func (s *GovernanceStateHelper) Node(index *big.Int) *nodeInfo {
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(2))
 	node.Staked = s.getStateBigInt(loc)
 
-	return nil
+	return node
 }
 func (s *GovernanceStateHelper) PushNode(n *nodeInfo) {
 	// increase length by 1
