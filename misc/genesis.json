@@ -1,0 +1,51 @@
+{
+  "config": {
+    "chainId": 1,
+    "homesteadBlock": 1,
+    "eip150Block": 2,
+    "eip150Hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "eip155Block": 3,
+    "eip158Block": 3,
+    "dexcon": {
+      "numChain": 4,
+      "lambdaBA": 250,
+      "lambdaDKG": 2500,
+      "k": 0,
+      "phiRatio": 667000,
+      "notarySetSize": 4,
+      "dkgSetSize": 4,
+      "roundInterval": 600000,
+      "minBlockInterval": 900,
+      "maxBlockInterval": 1100
+    }
+  },
+  "nonce": "0x42",
+  "timestamp": "0x596a5b14",
+  "extraData": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "gasLimit": "0x2fefd800",
+  "difficulty": "0x20000",
+  "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "coinbase": "0x0000000000000000000000000000000000000000",
+  "alloc": {
+    "0x15bE695Bb823d51130924EF587B5ec5b85EF1531": {
+      "balance": "1000000000000000000000",
+      "staked": "500000000000000000000",
+      "publicKey": "0x03b14eb5acedce8fdf96d62468fd35e15ef4812cea6c08429bcd13fb8be492b63b"
+    },
+    "0x900415b2aE1Cd28460E88741860d9fD3B1D3cD14": {
+      "balance": "1000000000000000000000",
+      "staked": "500000000000000000000",
+      "publicKey": "0x024e7574e0591a1246d68c1f7fb7821a9c97958e9f5a6521a19e546bf8fb7b3ff2"
+    },
+    "0xd1f700DBF6882A53bE172Fca8ee70414211AF58E": {
+      "balance": "1000000000000000000000",
+      "staked": "500000000000000000000",
+      "publicKey": "0x031115acabff977cf2362bdec5b7f8fec2d3bfcad0b355c98595a1e92df24148ac"
+    },
+    "0x24F7C8133C6996446f6343FD321d9dB70115DB6E": {
+      "balance": "1000000000000000000000",
+      "staked": "500000000000000000000",
+      "publicKey": "0x02ee69fa89ffa168d756cae888a17b7c0369998016fc14776c483bcb955a6db823"
+    }
+  }
+}
