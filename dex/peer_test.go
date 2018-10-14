@@ -16,7 +16,7 @@ func TestPeerSetBuildAndForgetNotaryConn(t *testing.T) {
 	table := newNodeTable()
 
 	gov := &testGovernance{
-		getChainNumFunc: func(uint64) uint32 {
+		numChainsFunc: func(uint64) uint32 {
 			return 3
 		},
 	}
@@ -37,7 +37,7 @@ func TestPeerSetBuildAndForgetNotaryConn(t *testing.T) {
 		[]enode.ID{nodeID(0), nodeID(2), nodeID(6)},
 	}
 
-	gov.getNotarySetFunc = func(cid uint32, round uint64) map[string]struct{} {
+	gov.notarySetFunc = func(cid uint32, round uint64) map[string]struct{} {
 		m := map[uint64][][]enode.ID{
 			10: round10,
 			11: round11,
@@ -317,7 +317,7 @@ func TestPeerSetBuildDKGConn(t *testing.T) {
 
 	gov := &testGovernance{}
 
-	gov.getDKGSetFunc = func(round uint64) map[string]struct{} {
+	gov.dkgSetFunc = func(round uint64) map[string]struct{} {
 		m := map[uint64][]enode.ID{
 			10: []enode.ID{nodeID(0), nodeID(1), nodeID(2)},
 			11: []enode.ID{nodeID(1), nodeID(2), nodeID(5)},

@@ -182,25 +182,21 @@ func newTestTransaction(from *ecdsa.PrivateKey, nonce uint64, datasize int) *typ
 
 // testGovernance is a fake, helper governance for testing purposes
 type testGovernance struct {
-	getChainNumFunc  func(uint64) uint32
-	getNotarySetFunc func(uint32, uint64) map[string]struct{}
-	getDKGSetFunc    func(uint64) map[string]struct{}
+	numChainsFunc func(uint64) uint32
+	notarySetFunc func(uint32, uint64) map[string]struct{}
+	dkgSetFunc    func(uint64) map[string]struct{}
 }
 
-func (g *testGovernance) GetChainNum(round uint64) uint32 {
-	return g.getChainNumFunc(round)
+func (g *testGovernance) GetNumChains(round uint64) uint32 {
+	return g.numChainsFunc(round)
 }
 
-func (g *testGovernance) GetNotarySet(chainID uint32, round uint64) map[string]struct{} {
-	return g.getNotarySetFunc(chainID, round)
+func (g *testGovernance) NotarySet(chainID uint32, round uint64) map[string]struct{} {
+	return g.notarySetFunc(chainID, round)
 }
 
-func (g *testGovernance) GetDKGSet(round uint64) map[string]struct{} {
-	return g.getDKGSetFunc(round)
-}
-
-func (g *testGovernance) SubscribeNewCRSEvent(ch chan core.NewCRSEvent) event.Subscription {
-	return nil
+func (g *testGovernance) DKGSet(round uint64) map[string]struct{} {
+	return g.dkgSetFunc(round)
 }
 
 // testPeer is a simulated peer to allow testing direct network calls.

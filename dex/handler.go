@@ -26,7 +26,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dexon-foundation/dexon-consensus-core/core/crypto"
+	coreCrypto "github.com/dexon-foundation/dexon-consensus-core/core/crypto"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
 
 	"github.com/dexon-foundation/dexon/common"
@@ -240,7 +240,7 @@ func (pm *ProtocolManager) Start(srvr p2pServer, maxPeers int) {
 
 	// run the peer set loop
 	pm.crsCh = make(chan core.NewCRSEvent)
-	pm.crsSub = pm.gov.SubscribeNewCRSEvent(pm.crsCh)
+	// pm.crsSub = pm.gov.SubscribeNewCRSEvent(pm.crsCh)
 	go pm.peerSetLoop()
 
 	// start sync handlers
@@ -680,7 +680,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	case msg.Code == LatticeBlockMsg:
 		var rb rlpLatticeBlock
 		if err := msg.Decode(&rb); err != nil {
-			fmt.Println("decode lattice block error", err)
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 		pm.receiveCh <- fromRLPLatticeBlock(&rb)
@@ -815,7 +814,7 @@ func (pm *ProtocolManager) BroadcastLatticeBlock(block *coreTypes.Block) {
 
 // TODO(sonic): try to reduce traffic
 func (pm *ProtocolManager) SendDKGPrivateShare(
-	pub crypto.PublicKey, privateShare *coreTypes.DKGPrivateShare) {
+	pub coreCrypto.PublicKey, privateShare *coreTypes.DKGPrivateShare) {
 	id := discover.MustBytesID(pub.Bytes()[1:])
 	if p := pm.peers.Peer(id.String()); p != nil {
 		p.AsyncSendDKGPrivateShare(privateShare)

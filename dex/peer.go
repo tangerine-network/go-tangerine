@@ -785,8 +785,8 @@ func (ps *peerSet) BuildNotaryConn(round uint64) {
 	ps.notaryHistory[round] = struct{}{}
 
 	selfID := ps.srvr.Self().ID.String()
-	for chainID := uint32(0); chainID < ps.gov.GetChainNum(round); chainID++ {
-		s := ps.gov.GetNotarySet(chainID, round)
+	for chainID := uint32(0); chainID < ps.gov.GetNumChains(round); chainID++ {
+		s := ps.gov.NotarySet(chainID, round)
 
 		// not in notary set, add group
 		if _, ok := s[selfID]; !ok {
@@ -825,8 +825,8 @@ func (ps *peerSet) ForgetNotaryConn(round uint64) {
 
 func (ps *peerSet) forgetNotaryConn(round uint64) {
 	selfID := ps.srvr.Self().ID.String()
-	for chainID := uint32(0); chainID < ps.gov.GetChainNum(round); chainID++ {
-		s := ps.gov.GetNotarySet(chainID, round)
+	for chainID := uint32(0); chainID < ps.gov.GetNumChains(round); chainID++ {
+		s := ps.gov.NotarySet(chainID, round)
 		if _, ok := s[selfID]; !ok {
 			ps.srvr.RemoveGroup(notarySetName(chainID, round))
 			continue
@@ -852,7 +852,7 @@ func (ps *peerSet) BuildDKGConn(round uint64) {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
 	selfID := ps.srvr.Self().ID.String()
-	s := ps.gov.GetDKGSet(round)
+	s := ps.gov.DKGSet(round)
 	if _, ok := s[selfID]; !ok {
 		return
 	}
@@ -882,7 +882,7 @@ func (ps *peerSet) ForgetDKGConn(round uint64) {
 
 func (ps *peerSet) forgetDKGConn(round uint64) {
 	selfID := ps.srvr.Self().ID.String()
-	s := ps.gov.GetDKGSet(round)
+	s := ps.gov.DKGSet(round)
 	if _, ok := s[selfID]; !ok {
 		return
 	}

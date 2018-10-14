@@ -12,12 +12,11 @@ import (
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
 
 	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
 	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/event"
 	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/p2p/discover"
 	"github.com/dexon-foundation/dexon/params"
 	"github.com/dexon-foundation/dexon/rlp"
 	"github.com/dexon-foundation/dexon/rpc"
@@ -280,19 +279,64 @@ func (d *DexconGovernance) IsDKGFinal(round uint64) bool {
 	return count >= threshold
 }
 
-// TODO(sonic): finish these
-func (d *DexconGovernance) GetChainNum(uint64) uint32 {
-	return 3
+func (d *DexconGovernance) GetNumChains(round uint64) uint32 {
+	return d.Configuration(round).NumChains
 }
 
-func (d *DexconGovernance) GetNotarySet(uint32, uint64) map[string]struct{} {
-	return nil
+func (d *DexconGovernance) NotarySet(chainID uint32, round uint64) map[string]struct{} {
+	id2Key := map[coreTypes.NodeID]coreCrypto.PublicKey{}
+
+	nodeSet := coreTypes.NewNodeSet()
+	for _, key := range d.NodeSet(round) {
+		id := coreTypes.NewNodeID(key)
+		id2Key[id] = key
+		nodeSet.Add(id)
+	}
+
+	cfg := d.Configuration(round)
+	crs := d.CRS(round)
+
+	notarySet := nodeSet.GetSubSet(
+		int(cfg.NotarySetSize), coreTypes.NewNotarySetTarget(crs, chainID))
+
+	r := map[string]struct{}{}
+	for id := range notarySet {
+		compressed := id2Key[id]
+		// 33 bytes pubkey to 65 bytes pubkey
+		key, err := crypto.DecompressPubkey(compressed.Bytes())
+		if err != nil {
+			continue
+		}
+		r[discover.PubkeyID(key).String()] = struct{}{}
+	}
+	return r
 }
 
-func (d *DexconGovernance) GetDKGSet(uint64) map[string]struct{} {
-	return nil
-}
+func (d *DexconGovernance) DKGSet(round uint64) map[string]struct{} {
+	id2Key := map[coreTypes.NodeID]coreCrypto.PublicKey{}
 
-func (d *DexconGovernance) SubscribeNewCRSEvent(ch chan core.NewCRSEvent) event.Subscription {
-	return nil
+	nodeSet := coreTypes.NewNodeSet()
+	for _, key := range d.NodeSet(round) {
+		id := coreTypes.NewNodeID(key)
+		id2Key[id] = key
+		nodeSet.Add(id)
+	}
+
+	cfg := d.Configuration(round)
+	crs := d.CRS(round)
+
+	dkgSet := nodeSet.GetSubSet(
+		int(cfg.DKGSetSize), coreTypes.NewDKGSetTarget(crs))
+
+	r := map[string]struct{}{}
+	for id := range dkgSet {
+		compressed := id2Key[id]
+		// 33 bytes pubkey to 65 bytes pubkey
+		key, err := crypto.DecompressPubkey(compressed.Bytes())
+		if err != nil {
+			continue
+		}
+		r[discover.PubkeyID(key).String()] = struct{}{}
+	}
+	return r
 }

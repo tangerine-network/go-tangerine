@@ -124,13 +124,11 @@ type txPool interface {
 }
 
 type governance interface {
-	GetChainNum(uint64) uint32
+	GetNumChains(uint64) uint32
 
-	GetNotarySet(uint32, uint64) map[string]struct{}
+	NotarySet(uint32, uint64) map[string]struct{}
 
-	GetDKGSet(uint64) map[string]struct{}
-
-	SubscribeNewCRSEvent(ch chan core.NewCRSEvent) event.Subscription
+	DKGSet(uint64) map[string]struct{}
 }
 
 type p2pServer interface {
