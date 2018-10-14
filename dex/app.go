@@ -20,6 +20,7 @@ package dex
 import (
 	"bytes"
 	"fmt"
+	"github.com/dexon-foundation/dexon/log"
 	"math/big"
 	"sync"
 	"time"
@@ -137,7 +138,7 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte,
 			// or else check compaction chain state
 			if i == 0 {
 				nonce = tx.Nonce()
-				msg, err := tx.AsMessage(types.MakeSigner(nil, currentBlock.Header().Number))
+				msg, err := tx.AsMessage(types.MakeSigner(d.blockchain.Config(), currentBlock.Header().Number))
 				if err != nil {
 					return nil, err
 				}
@@ -230,7 +231,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) bool {
 			return false
 		}
 
-		msg, err := transaction.AsMessage(types.MakeSigner(nil, currentBlock.Header().Number))
+		msg, err := transaction.AsMessage(types.MakeSigner(d.blockchain.Config(), currentBlock.Header().Number))
 		if err != nil {
 			return false
 		}
@@ -323,12 +324,14 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 	block := d.blockchain.GetConfirmedBlockByHash(blockHash)
 	if block == nil {
 		// do something
+		log.Error("can not get confirmed block")
 		return
 	}
 
 	var transactions types.Transactions
 	err := rlp.Decode(bytes.NewReader(block.Payload), &transactions)
 	if err != nil {
+		log.Error("payload rlp decode error: %v", err)
 		return
 	}
 
@@ -341,7 +344,7 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 			Coinbase:   common.BytesToAddress(block.ProposerID.Hash[:]),
 		}, transactions, nil, nil)})
 	if err != nil {
-		// do something
+		log.Error("insert chain error: %v", err)
 		return
 	}
 
