@@ -8,7 +8,7 @@
     "eip158Block": 0,
     "dexcon": {
       "genesisCRSText": "In DEXON, we trust.",
-      "numChain": 3,
+      "numChains": 3,
       "lambdaBA": 250,
       "lambdaDKG": 2500,
       "k": 0,
