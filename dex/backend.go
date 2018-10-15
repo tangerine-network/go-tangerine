@@ -166,7 +166,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	dex.network = NewDexconNetwork(pm)
 
 	privKey := coreEcdsa.NewPrivateKeyFromECDSA(config.PrivateKey)
-	dex.consensus = dexCore.NewConsensus(time.Now().Add(10*time.Second),
+	dMoment := time.Date(2018, 10, 15, 6, 0, 0, 0, time.UTC)
+	dex.consensus = dexCore.NewConsensus(dMoment,
 		dex.app, dex.governance, db, dex.network, privKey)
 	return dex, nil
 }
