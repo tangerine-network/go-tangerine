@@ -119,7 +119,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 		bloomRequests:  make(chan chan *bloombits.Retrieval),
 		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
 		blockdb:        db,
-		engine:         dexcon.New(&params.DexconConfig{}),
+		engine:         dexcon.New(chainConfig.Dexcon),
 	}
 
 	var (
