@@ -173,7 +173,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 }
 
 func (s *Dexon) Protocols() []p2p.Protocol {
-	return nil
+	return s.protocolManager.SubProtocols
 }
 
 func (s *Dexon) APIs() []rpc.API {
