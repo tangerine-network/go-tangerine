@@ -1,11 +1,11 @@
 {
   "config": {
     "chainId": 1,
-    "homesteadBlock": 1,
-    "eip150Block": 2,
+    "homesteadBlock": 0,
+    "eip150Block": 0,
     "eip150Hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
-    "eip155Block": 3,
-    "eip158Block": 3,
+    "eip155Block": 0,
+    "eip158Block": 0,
     "dexcon": {
       "genesisCRSText": "In DEXON, we trust.",
       "numChain": 4,
