@@ -19,6 +19,7 @@ package dex
 
 import (
 	"fmt"
+	"path/filepath"
 	"time"
 
 	dexCore "github.com/dexon-foundation/dexon-consensus-core/core"
@@ -82,7 +83,8 @@ type Dexon struct {
 
 func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	// Consensus.
-	db, err := blockdb.NewLevelDBBackedBlockDB("main.blockdb")
+	blockDBPath := filepath.Join(ctx.Config.DataDir, "dexcon", "blockdb")
+	db, err := blockdb.NewLevelDBBackedBlockDB(blockDBPath)
 	if err != nil {
 		panic(err)
 	}

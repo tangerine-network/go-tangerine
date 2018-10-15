@@ -30,8 +30,8 @@ import (
 // the protocol stack, that is passed to all constructors to be optionally used;
 // as well as utility methods to operate on the service environment.
 type ServiceContext struct {
-	config         *Config
 	services       map[reflect.Type]Service // Index of the already constructed services
+	Config         *Config
 	ServerConfig   *p2p.Config
 	EventMux       *event.TypeMux    // Event multiplexer used for decoupled notifications
 	AccountManager *accounts.Manager // Account manager created by the node.
@@ -41,10 +41,10 @@ type ServiceContext struct {
 // if no previous can be found) from within the node's data directory. If the
 // node is an ephemeral one, a memory database is returned.
 func (ctx *ServiceContext) OpenDatabase(name string, cache int, handles int) (ethdb.Database, error) {
-	if ctx.config.DataDir == "" {
+	if ctx.Config.DataDir == "" {
 		return ethdb.NewMemDatabase(), nil
 	}
-	db, err := ethdb.NewLDBDatabase(ctx.config.ResolvePath(name), cache, handles)
+	db, err := ethdb.NewLDBDatabase(ctx.Config.ResolvePath(name), cache, handles)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (ctx *ServiceContext) OpenDatabase(name string, cache int, handles int) (et
 // and if the user actually uses persistent storage. It will return an empty string
 // for emphemeral storage and the user's own input for absolute paths.
 func (ctx *ServiceContext) ResolvePath(path string) string {
-	return ctx.config.ResolvePath(path)
+	return ctx.Config.ResolvePath(path)
 }
 
 // Service retrieves a currently running service registered of a specific type.
