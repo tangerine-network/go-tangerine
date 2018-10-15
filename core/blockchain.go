@@ -165,21 +165,23 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	badBlocks, _ := lru.New(badBlockLimit)
 
 	bc := &BlockChain{
-		chainConfig:    chainConfig,
-		cacheConfig:    cacheConfig,
-		db:             db,
-		triegc:         prque.New(nil),
-		stateCache:     state.NewDatabaseWithCache(db, cacheConfig.TrieCleanLimit),
-		quit:           make(chan struct{}),
-		shouldPreserve: shouldPreserve,
-		bodyCache:      bodyCache,
-		bodyRLPCache:   bodyRLPCache,
-		receiptsCache:  receiptsCache,
-		blockCache:     blockCache,
-		futureBlocks:   futureBlocks,
-		engine:         engine,
-		vmConfig:       vmConfig,
-		badBlocks:      badBlocks,
+		chainConfig:            chainConfig,
+		cacheConfig:            cacheConfig,
+		db:                     db,
+		triegc:                 prque.New(nil),
+		stateCache:             state.NewDatabaseWithCache(db, cacheConfig.TrieCleanLimit),
+		quit:                   make(chan struct{}),
+		shouldPreserve:         shouldPreserve,
+		bodyCache:              bodyCache,
+		bodyRLPCache:           bodyRLPCache,
+		receiptsCache:          receiptsCache,
+		blockCache:             blockCache,
+		futureBlocks:           futureBlocks,
+		engine:                 engine,
+		vmConfig:               vmConfig,
+		badBlocks:              badBlocks,
+		confirmedBlock:         make(map[coreCommon.Hash]*coreTypes.Block),
+		filteredConfirmedBlock: make(map[uint32]map[coreCommon.Hash]*coreTypes.Block),
 	}
 	bc.SetValidator(NewBlockValidator(chainConfig, bc, engine))
 	bc.SetProcessor(NewStateProcessor(chainConfig, bc, engine))
