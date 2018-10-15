@@ -8,13 +8,13 @@
     "eip158Block": 0,
     "dexcon": {
       "genesisCRSText": "In DEXON, we trust.",
-      "numChain": 4,
+      "numChain": 3,
       "lambdaBA": 250,
       "lambdaDKG": 2500,
       "k": 0,
       "phiRatio": 667000,
       "notarySetSize": 4,
-      "dkgSetSize": 4,
+      "dkgSetSize": 7,
       "roundInterval": 600000,
       "minBlockInterval": 900,
       "maxBlockInterval": 1100
@@ -47,6 +47,21 @@
       "balance": "1000000000000000000000",
       "staked": "500000000000000000000",
       "publicKey": "0x030be934e3078764278ded0102e5c726d8db18a4d3104efe67ed3ed600e05efeef"
+    },
+    "0x1d9055b16489A742d873c5D2e1e34b50661AeE8c": {
+      "balance": "1000000000000000000000",
+      "staked": "500000000000000000000",
+      "publicKey": "0x03ac5de037df890780a7538d3bd8481109e850edbf6d202b6d60f8d096b5fb8c8b"
+    },
+    "0xF382F8BdF168Ba8EA6F07184641c1604Ec735a4c": {
+      "balance": "1000000000000000000000",
+      "staked": "500000000000000000000",
+      "publicKey": "0x02fe12385b136ce35935227688e93defb03cd6a1ace14414afd162cad0be5ec326"
+    },
+    "0xD57dDa4a389247423f60582AD68B739FaFD2C439": {
+      "balance": "1000000000000000000000",
+      "staked": "500000000000000000000",
+      "publicKey": "0x0315ea2646aa13ae6d0eddf07032e36688de9f8c7bf02192deb0fcdcaa7ec9666f"
     }
   }
 }
