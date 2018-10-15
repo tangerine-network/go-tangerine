@@ -33,6 +33,7 @@ import (
 	"github.com/dexon-foundation/dexon/consensus"
 	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/eth/downloader"
 	"github.com/dexon-foundation/dexon/eth/fetcher"
 	"github.com/dexon-foundation/dexon/ethdb"
@@ -130,6 +131,7 @@ func NewProtocolManager(
 		newPeerCh:   make(chan *peer),
 		noMorePeers: make(chan struct{}),
 		txsyncCh:    make(chan *txsync),
+		metasyncCh:  make(chan *metasync),
 		quitSync:    make(chan struct{}),
 		receiveCh:   make(chan interface{}, 1024),
 	}
@@ -222,8 +224,6 @@ func (pm *ProtocolManager) Start(srvr p2pServer, maxPeers int) {
 	pm.srvr = srvr
 	pm.peers = newPeerSet(pm.gov, pm.srvr, pm.nodeTable)
 
-	// if our self in node set build the node info
-
 	// broadcast transactions
 	pm.txsCh = make(chan core.NewTxsEvent, txChanSize)
 	pm.txsSub = pm.txpool.SubscribeNewTxsEvent(pm.txsCh)
@@ -247,6 +247,36 @@ func (pm *ProtocolManager) Start(srvr p2pServer, maxPeers int) {
 	go pm.syncer()
 	go pm.txsyncLoop()
 	go pm.metasyncLoop()
+
+}
+
+func (pm *ProtocolManager) addSelfMeta() {
+	pm.nodeTable.Add([]*NodeMeta{pm.makeSelfNodeMeta()})
+}
+
+func (pm *ProtocolManager) makeSelfNodeMeta() *NodeMeta {
+	self := pm.srvr.Self()
+	meta := &NodeMeta{
+		ID:        self.ID(),
+		IP:        self.IP(),
+		UDP:       self.UDP(),
+		TCP:       self.TCP(),
+		Timestamp: uint64(time.Now().Unix()),
+	}
+
+	h := rlpHash([]interface{}{
+		meta.ID,
+		meta.IP,
+		meta.UDP,
+		meta.TCP,
+		meta.Timestamp,
+	})
+	sig, err := crypto.Sign(h[:], pm.srvr.GetPrivateKey())
+	if err != nil {
+		panic(err)
+	}
+	meta.Sig = sig
+	return meta
 }
 
 func (pm *ProtocolManager) Stop() {

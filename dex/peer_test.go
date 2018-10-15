@@ -6,13 +6,18 @@ import (
 	"testing"
 
 	mapset "github.com/deckarep/golang-set"
+	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/p2p/discover"
 	"github.com/dexon-foundation/dexon/p2p/enode"
 )
 
 func TestPeerSetBuildAndForgetNotaryConn(t *testing.T) {
 	self := discover.Node{ID: nodeID(0)}
-	server := newTestP2PServer(&self)
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := newTestP2PServer(&self, key)
 	table := newNodeTable()
 
 	gov := &testGovernance{
@@ -49,7 +54,6 @@ func TestPeerSetBuildAndForgetNotaryConn(t *testing.T) {
 	ps := newPeerSet(gov, server, table)
 	peer1 := newDummyPeer(nodeID(1))
 	peer2 := newDummyPeer(nodeID(2))
-	var err error
 	err = ps.Register(peer1)
 	if err != nil {
 		t.Error(err)
@@ -312,7 +316,11 @@ func TestPeerSetBuildAndForgetNotaryConn(t *testing.T) {
 
 func TestPeerSetBuildDKGConn(t *testing.T) {
 	self := discover.Node{ID: nodeID(0)}
-	server := newTestP2PServer(&self)
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatal(err)
+	}
+	server := newTestP2PServer(&self, key)
 	table := newNodeTable()
 
 	gov := &testGovernance{}
@@ -329,7 +337,6 @@ func TestPeerSetBuildDKGConn(t *testing.T) {
 	ps := newPeerSet(gov, server, table)
 	peer1 := newDummyPeer(nodeID(1))
 	peer2 := newDummyPeer(nodeID(2))
-	var err error
 	err = ps.Register(peer1)
 	if err != nil {
 		t.Error(err)
