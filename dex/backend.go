@@ -19,6 +19,7 @@ package dex
 
 import (
 	"fmt"
+	"time"
 
 	dexCore "github.com/dexon-foundation/dexon-consensus-core/core"
 	"github.com/dexon-foundation/dexon-consensus-core/core/blockdb"
@@ -163,7 +164,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	dex.network = NewDexconNetwork(pm)
 
 	privKey := coreEcdsa.NewPrivateKeyFromECDSA(config.PrivateKey)
-	dex.consensus = dexCore.NewConsensus(dex.app, dex.governance, db, dex.network, privKey)
+	dex.consensus = dexCore.NewConsensus(time.Now().Add(10*time.Second),
+		dex.app, dex.governance, db, dex.network, privKey)
 	return dex, nil
 }
 
