@@ -11,7 +11,7 @@ for i in $(seq 1 7); do
   rm -rf $datadir
   $GETH --datadir=$datadir init genesis.json
   cp test$i.nodekey $datadir/geth/nodekey
-  $GETH --datadir=$datadir --port=$((21000 + $i)) > geth.$i.log 2>&1 &
+  $GETH --verbosity=4 --datadir=$datadir --port=$((28000 + $i)) > geth.$i.log 2>&1 &
 done
 
 tail -f geth.*.log

@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sort"
 	"strings"
 
 	"github.com/dexon-foundation/dexon/common"
@@ -230,6 +231,20 @@ func (g *Genesis) configOrDefault(ghash common.Hash) *params.ChainConfig {
 	}
 }
 
+type AllocKey []common.Address
+
+func (a AllocKey) Len() int {
+	return len(a)
+}
+
+func (a AllocKey) Less(i int, j int) bool {
+	return bytes.Compare(a[i][:], a[j][:]) < 0
+}
+
+func (a AllocKey) Swap(i int, j int) {
+	a[i], a[j] = a[j], a[i]
+}
+
 // ToBlock creates the genesis block and writes state of a genesis specification
 // to the given database (or discards it if nil).
 func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
@@ -238,6 +253,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	}
 	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
 	govStateHelper := vm.GovernanceStateHelper{statedb}
+
 	for addr, account := range g.Alloc {
 		statedb.AddBalance(addr, new(big.Int).Sub(account.Balance, account.Staked))
 		statedb.SetCode(addr, account.Code)
@@ -245,8 +261,17 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		for key, value := range account.Storage {
 			statedb.SetState(addr, key, value)
 		}
+	}
 
-		// Stake in governance state.
+	// Stake in governance state.
+	keys := AllocKey{}
+	for addr := range g.Alloc {
+		keys = append(keys, addr)
+	}
+	sort.Sort(keys)
+
+	for _, addr := range keys {
+		account := g.Alloc[addr]
 		if account.Staked.Cmp(big.NewInt(0)) > 0 {
 			govStateHelper.Stake(addr, account.PublicKey, account.Staked)
 		}
