@@ -406,6 +406,7 @@ func TestSendLatticeBlock(t *testing.T) {
 		},
 	}
 
+	waitForRegister(pm, 1)
 	pm.BroadcastLatticeBlock(&block)
 	msg, err := p.app.ReadMsg()
 	if err != nil {
@@ -552,6 +553,7 @@ func TestSendVote(t *testing.T) {
 		wg.Add(1)
 		go checkvote(p, tt.isReceiver)
 	}
+	waitForRegister(pm, len(testPeers))
 	pm.BroadcastVote(&vote)
 	wg.Wait()
 }
@@ -725,6 +727,7 @@ func TestSendAgreement(t *testing.T) {
 		Votes:     []coreTypes.Vote{vote},
 	}
 
+	waitForRegister(pm, 1)
 	pm.BroadcastAgreementResult(&agreement)
 	msg, err := p.app.ReadMsg()
 	if err != nil {
@@ -785,6 +788,7 @@ func TestSendRandomness(t *testing.T) {
 		Randomness: []byte{7, 7, 7, 7},
 	}
 
+	waitForRegister(pm, 1)
 	pm.BroadcastRandomnessResult(&randomness)
 	msg, err := p.app.ReadMsg()
 	if err != nil {
@@ -800,5 +804,13 @@ func TestSendRandomness(t *testing.T) {
 
 	if !reflect.DeepEqual(r, randomness) {
 		t.Errorf("agreement mismatch")
+	}
+}
+
+func waitForRegister(pm *ProtocolManager, num int) {
+	for {
+		if pm.peers.Len() >= num {
+			return
+		}
 	}
 }
