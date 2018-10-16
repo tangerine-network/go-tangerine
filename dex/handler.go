@@ -823,13 +823,7 @@ func (pm *ProtocolManager) BroadcastMetas(metas []*NodeMeta) {
 }
 
 func (pm *ProtocolManager) BroadcastVote(vote *coreTypes.Vote) {
-	label := peerLabel{
-		set:     notaryset,
-		chainID: vote.Position.ChainID,
-		round:   vote.Position.Round,
-	}
-
-	for _, peer := range pm.peers.PeersWithoutVote(rlpHash(vote), label) {
+	for _, peer := range pm.peers.allPeers() {
 		peer.AsyncSendVote(vote)
 	}
 }
