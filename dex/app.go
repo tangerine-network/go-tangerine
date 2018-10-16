@@ -20,10 +20,11 @@ package dex
 import (
 	"bytes"
 	"fmt"
-	"github.com/dexon-foundation/dexon/log"
 	"math/big"
 	"sync"
 	"time"
+
+	"github.com/dexon-foundation/dexon/log"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"

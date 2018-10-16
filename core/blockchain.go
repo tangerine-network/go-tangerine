@@ -230,6 +230,9 @@ func (bc *BlockChain) AddConfirmedBlock(block *coreTypes.Block) {
 	defer bc.confirmedBlockMu.Unlock()
 
 	bc.confirmedBlock[block.Hash] = block
+	if bc.filteredConfirmedBlock[block.Position.ChainID] == nil {
+		bc.filteredConfirmedBlock[block.Position.ChainID] = make(map[coreCommon.Hash]*coreTypes.Block)
+	}
 	bc.filteredConfirmedBlock[block.Position.ChainID][block.Hash] = block
 }
 
@@ -240,6 +243,10 @@ func (bc *BlockChain) RemoveConfirmedBlock(hash coreCommon.Hash) {
 	block := bc.confirmedBlock[hash]
 	delete(bc.filteredConfirmedBlock[block.Position.ChainID], block.Hash)
 	delete(bc.confirmedBlock, block.Hash)
+
+	if len(bc.filteredConfirmedBlock[block.Position.ChainID]) == 0 {
+		bc.filteredConfirmedBlock[block.Position.ChainID] = nil
+	}
 }
 
 func (bc *BlockChain) GetConfirmedBlockByHash(hash coreCommon.Hash) *coreTypes.Block {
