@@ -127,6 +127,8 @@ type txPool interface {
 type governance interface {
 	GetNumChains(uint64) uint32
 
+	LenCRS() uint64
+
 	NotarySet(uint64, uint32) (map[string]struct{}, error)
 
 	DKGSet(uint64) (map[string]struct{}, error)

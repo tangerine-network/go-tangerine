@@ -7,6 +7,7 @@ import (
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/crypto/sha3"
 	"github.com/dexon-foundation/dexon/event"
+	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/p2p/enode"
 	"github.com/dexon-foundation/dexon/rlp"
 )
@@ -59,6 +60,8 @@ func (t *nodeTable) Add(metas []*NodeMeta) {
 		}
 		t.entry[meta.ID] = meta
 		newMetas = append(newMetas, meta)
+		log.Trace("add new node meta", "id", meta.ID[:8],
+			"ip", meta.IP, "udp", meta.UDP, "tcp", meta.TCP)
 	}
 	t.feed.Send(newMetasEvent{newMetas})
 }

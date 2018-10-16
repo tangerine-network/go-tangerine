@@ -132,6 +132,11 @@ func (d *DexconGovernance) CRS(round uint64) coreCommon.Hash {
 	return coreCommon.Hash(s.CRS(big.NewInt(int64(round))))
 }
 
+func (d *DexconGovernance) LenCRS() uint64 {
+	s := d.getGovState()
+	return s.LenCRS().Uint64()
+}
+
 // ProposeCRS send proposals of a new CRS
 func (d *DexconGovernance) ProposeCRS(signedCRS []byte) {
 	method := vm.GovernanceContractName2Method["proposeCRS"]

@@ -778,6 +778,7 @@ func (ps *peerSet) Close() {
 func (ps *peerSet) BuildNotaryConn(round uint64) {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
+	defer ps.dumpPeerLabel(fmt.Sprintf("BuildNotaryConn: %d", round))
 
 	if _, ok := ps.notaryHistory[round]; ok {
 		return
@@ -816,9 +817,21 @@ func (ps *peerSet) BuildNotaryConn(round uint64) {
 	}
 }
 
+func (ps *peerSet) dumpPeerLabel(s string) {
+	log.Trace(s, "peer num", len(ps.peers))
+	for id, labels := range ps.peer2Labels {
+		_, ok := ps.peers[id]
+		for label := range labels {
+			log.Trace(s, "connected", ok, "id", id[:16],
+				"round", label.round, "cid", label.chainID, "set", label.set)
+		}
+	}
+}
+
 func (ps *peerSet) ForgetNotaryConn(round uint64) {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
+	defer ps.dumpPeerLabel(fmt.Sprintf("ForgetNotaryConn: %d", round))
 
 	// forget all the rounds before the given round
 	for r := range ps.notaryHistory {
@@ -862,6 +875,7 @@ func notarySetName(chainID uint32, round uint64) string {
 func (ps *peerSet) BuildDKGConn(round uint64) {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
+	defer ps.dumpPeerLabel(fmt.Sprintf("BuildDKGConn: %d", round))
 	selfID := ps.srvr.Self().ID.String()
 	s, err := ps.gov.DKGSet(round)
 	if err != nil {
@@ -886,6 +900,7 @@ func (ps *peerSet) BuildDKGConn(round uint64) {
 func (ps *peerSet) ForgetDKGConn(round uint64) {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
+	defer ps.dumpPeerLabel(fmt.Sprintf("ForgetDKGConn: %d", round))
 
 	// forget all the rounds before the given round
 	for r := range ps.dkgHistory {
@@ -919,6 +934,7 @@ func (ps *peerSet) forgetDKGConn(round uint64) {
 
 // make sure the ps.lock is hold
 func (ps *peerSet) addDirectPeer(id string, label peerLabel) {
+	log.Trace("peerSet addDirectPeer", "id", id[:8], "round", label.round, "cid", label.chainID)
 	// if the peer exists add the label
 	if p, ok := ps.peers[id]; ok {
 		p.addLabel(label)
