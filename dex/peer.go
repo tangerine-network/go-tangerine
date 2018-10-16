@@ -27,6 +27,7 @@ import (
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/p2p"
 	"github.com/dexon-foundation/dexon/p2p/discover"
 	"github.com/dexon-foundation/dexon/rlp"
@@ -786,7 +787,12 @@ func (ps *peerSet) BuildNotaryConn(round uint64) {
 
 	selfID := ps.srvr.Self().ID.String()
 	for chainID := uint32(0); chainID < ps.gov.GetNumChains(round); chainID++ {
-		s := ps.gov.NotarySet(chainID, round)
+		s, err := ps.gov.NotarySet(round, chainID)
+		if err != nil {
+			log.Error("get notary set fail",
+				"round", round, "chain id", chainID, "err", err)
+			continue
+		}
 
 		// not in notary set, add group
 		if _, ok := s[selfID]; !ok {
@@ -826,7 +832,12 @@ func (ps *peerSet) ForgetNotaryConn(round uint64) {
 func (ps *peerSet) forgetNotaryConn(round uint64) {
 	selfID := ps.srvr.Self().ID.String()
 	for chainID := uint32(0); chainID < ps.gov.GetNumChains(round); chainID++ {
-		s := ps.gov.NotarySet(chainID, round)
+		s, err := ps.gov.NotarySet(round, chainID)
+		if err != nil {
+			log.Error("get notary set fail",
+				"round", round, "chain id", chainID, "err", err)
+			continue
+		}
 		if _, ok := s[selfID]; !ok {
 			ps.srvr.RemoveGroup(notarySetName(chainID, round))
 			continue
@@ -852,7 +863,12 @@ func (ps *peerSet) BuildDKGConn(round uint64) {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
 	selfID := ps.srvr.Self().ID.String()
-	s := ps.gov.DKGSet(round)
+	s, err := ps.gov.DKGSet(round)
+	if err != nil {
+		log.Error("get dkg set fail", "round", round)
+		return
+	}
+
 	if _, ok := s[selfID]; !ok {
 		return
 	}
@@ -882,7 +898,11 @@ func (ps *peerSet) ForgetDKGConn(round uint64) {
 
 func (ps *peerSet) forgetDKGConn(round uint64) {
 	selfID := ps.srvr.Self().ID.String()
-	s := ps.gov.DKGSet(round)
+	s, err := ps.gov.DKGSet(round)
+	if err != nil {
+		log.Error("get dkg set fail", "round", round)
+		return
+	}
 	if _, ok := s[selfID]; !ok {
 		return
 	}

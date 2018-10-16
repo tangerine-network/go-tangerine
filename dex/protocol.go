@@ -127,9 +127,9 @@ type txPool interface {
 type governance interface {
 	GetNumChains(uint64) uint32
 
-	NotarySet(uint32, uint64) map[string]struct{}
+	NotarySet(uint64, uint32) (map[string]struct{}, error)
 
-	DKGSet(uint64) map[string]struct{}
+	DKGSet(uint64) (map[string]struct{}, error)
 }
 
 type p2pServer interface {

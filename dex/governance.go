@@ -7,6 +7,7 @@ import (
 	"time"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
+	dexCore "github.com/dexon-foundation/dexon-consensus-core/core"
 	coreCrypto "github.com/dexon-foundation/dexon-consensus-core/core/crypto"
 	coreEcdsa "github.com/dexon-foundation/dexon-consensus-core/core/crypto/ecdsa"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
@@ -23,22 +24,25 @@ import (
 )
 
 type DexconGovernance struct {
-	b           *DexAPIBackend
-	chainConfig *params.ChainConfig
-	privateKey  *ecdsa.PrivateKey
-	address     common.Address
+	b            *DexAPIBackend
+	chainConfig  *params.ChainConfig
+	privateKey   *ecdsa.PrivateKey
+	address      common.Address
+	nodeSetCache *dexCore.NodeSetCache
 }
 
 // NewDexconGovernance retruns a governance implementation of the DEXON
 // consensus governance interface.
 func NewDexconGovernance(backend *DexAPIBackend, chainConfig *params.ChainConfig,
 	privKey *ecdsa.PrivateKey) *DexconGovernance {
-	return &DexconGovernance{
+	g := &DexconGovernance{
 		b:           backend,
 		chainConfig: chainConfig,
 		privateKey:  privKey,
 		address:     crypto.PubkeyToAddress(privKey.PublicKey),
 	}
+	g.nodeSetCache = dexCore.NewNodeSetCache(g)
+	return g
 }
 
 func (d *DexconGovernance) getRoundHeight(ctx context.Context, round uint64) (uint64, error) {
@@ -283,60 +287,41 @@ func (d *DexconGovernance) GetNumChains(round uint64) uint32 {
 	return d.Configuration(round).NumChains
 }
 
-func (d *DexconGovernance) NotarySet(chainID uint32, round uint64) map[string]struct{} {
-	id2Key := map[coreTypes.NodeID]coreCrypto.PublicKey{}
-
-	nodeSet := coreTypes.NewNodeSet()
-	for _, key := range d.NodeSet(round) {
-		id := coreTypes.NewNodeID(key)
-		id2Key[id] = key
-		nodeSet.Add(id)
+func (d *DexconGovernance) NotarySet(
+	round uint64, chainID uint32) (map[string]struct{}, error) {
+	notarySet, err := d.nodeSetCache.GetNotarySet(round, chainID)
+	if err != nil {
+		return nil, err
 	}
 
-	cfg := d.Configuration(round)
-	crs := d.CRS(round)
-
-	notarySet := nodeSet.GetSubSet(
-		int(cfg.NotarySetSize), coreTypes.NewNotarySetTarget(crs, chainID))
-
-	r := map[string]struct{}{}
+	r := make(map[string]struct{}, len(notarySet))
 	for id := range notarySet {
-		compressed := id2Key[id]
-		// 33 bytes pubkey to 65 bytes pubkey
-		key, err := crypto.DecompressPubkey(compressed.Bytes())
-		if err != nil {
-			continue
+		if key, exists := d.nodeSetCache.GetPublicKey(id); exists {
+			uncompressedKey, err := crypto.DecompressPubkey(key.Bytes())
+			if err != nil {
+				log.Error("decompress key fail", "err", err)
+			}
+			r[discover.PubkeyID(uncompressedKey).String()] = struct{}{}
 		}
-		r[discover.PubkeyID(key).String()] = struct{}{}
 	}
-	return r
+	return r, nil
 }
 
-func (d *DexconGovernance) DKGSet(round uint64) map[string]struct{} {
-	id2Key := map[coreTypes.NodeID]coreCrypto.PublicKey{}
-
-	nodeSet := coreTypes.NewNodeSet()
-	for _, key := range d.NodeSet(round) {
-		id := coreTypes.NewNodeID(key)
-		id2Key[id] = key
-		nodeSet.Add(id)
+func (d *DexconGovernance) DKGSet(round uint64) (map[string]struct{}, error) {
+	dkgSet, err := d.nodeSetCache.GetDKGSet(round)
+	if err != nil {
+		return nil, err
 	}
 
-	cfg := d.Configuration(round)
-	crs := d.CRS(round)
-
-	dkgSet := nodeSet.GetSubSet(
-		int(cfg.DKGSetSize), coreTypes.NewDKGSetTarget(crs))
-
-	r := map[string]struct{}{}
+	r := make(map[string]struct{}, len(dkgSet))
 	for id := range dkgSet {
-		compressed := id2Key[id]
-		// 33 bytes pubkey to 65 bytes pubkey
-		key, err := crypto.DecompressPubkey(compressed.Bytes())
-		if err != nil {
-			continue
+		if key, exists := d.nodeSetCache.GetPublicKey(id); exists {
+			uncompressedKey, err := crypto.DecompressPubkey(key.Bytes())
+			if err != nil {
+				log.Error("decompress key fail", "err", err)
+			}
+			r[discover.PubkeyID(uncompressedKey).String()] = struct{}{}
 		}
-		r[discover.PubkeyID(key).String()] = struct{}{}
 	}
-	return r
+	return r, nil
 }

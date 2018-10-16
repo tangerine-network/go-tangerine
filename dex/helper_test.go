@@ -183,19 +183,20 @@ func newTestTransaction(from *ecdsa.PrivateKey, nonce uint64, datasize int) *typ
 // testGovernance is a fake, helper governance for testing purposes
 type testGovernance struct {
 	numChainsFunc func(uint64) uint32
-	notarySetFunc func(uint32, uint64) map[string]struct{}
-	dkgSetFunc    func(uint64) map[string]struct{}
+	notarySetFunc func(uint64, uint32) (map[string]struct{}, error)
+	dkgSetFunc    func(uint64) (map[string]struct{}, error)
 }
 
 func (g *testGovernance) GetNumChains(round uint64) uint32 {
 	return g.numChainsFunc(round)
 }
 
-func (g *testGovernance) NotarySet(chainID uint32, round uint64) map[string]struct{} {
-	return g.notarySetFunc(chainID, round)
+func (g *testGovernance) NotarySet(
+	round uint64, chainID uint32) (map[string]struct{}, error) {
+	return g.notarySetFunc(round, chainID)
 }
 
-func (g *testGovernance) DKGSet(round uint64) map[string]struct{} {
+func (g *testGovernance) DKGSet(round uint64) (map[string]struct{}, error) {
 	return g.dkgSetFunc(round)
 }
 
