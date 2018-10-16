@@ -8,13 +8,13 @@
     "eip158Block": 0,
     "dexcon": {
       "genesisCRSText": "In DEXON, we trust.",
-      "numChains": 3,
+      "numChains": 1,
       "lambdaBA": 250,
       "lambdaDKG": 2500,
       "k": 0,
       "phiRatio": 667000,
       "notarySetSize": 4,
-      "dkgSetSize": 7,
+      "dkgSetSize": 4,
       "roundInterval": 600000,
       "minBlockInterval": 900,
       "maxBlockInterval": 1100
@@ -28,40 +28,25 @@
   "mixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
   "coinbase": "0x0000000000000000000000000000000000000000",
   "alloc": {
-    "0x24F7C8133C6996446f6343FD321d9dB70115DB6E": {
+    "0x7C3c31B19395A5e2627F921Cc2802560B71f1caB": {
       "balance": "1000000000000000000000",
       "staked": "500000000000000000000",
-      "publicKey": "0x02ee69fa89ffa168d756cae888a17b7c0369998016fc14776c483bcb955a6db823"
+      "publicKey": "0x025477069c1fe7cc2825cdb55d161eb6608c8bb125a55bc746d4cf745e60b08bb1"
     },
-    "0x99281d5aFC2F6101D1D451892B4fCB280406daf3": {
+    "0x9b507545785F22982F5C25f9e7a8f881423A6348": {
       "balance": "1000000000000000000000",
       "staked": "500000000000000000000",
-      "publicKey": "0x021f6cabbfc264ee9e242921d0de0d901a900ca2c451fe5257bc4db02869bbbd55"
+      "publicKey": "0x02d723ec266a229e0f8cc4a907776ce09152ef73c55a55c0fb289c182efea1ed74"
     },
-    "0x28Da0D80213e15F26bE1dE695C3C0ECE82EeF95E": {
+    "0xCC275C8712Cb4c5d02f1c9E0EE7810e474e6350B": {
       "balance": "1000000000000000000000",
       "staked": "500000000000000000000",
-      "publicKey": "0x035aeb928cf45dbd2ebd6f02e7ac47daddfd0491ba0e038c895e2186f9a01b262b"
+      "publicKey": "0x03a6ab84d92f9f9684e2f6ddeff736f428a88ca5aca2873ea60557aedcf452db90"
     },
-    "0x5fa3d3d095eBD1943763312770AfB284c057a5c6": {
+    "0x6177f5C9Dd006A7026A14139CdDDB013025098Bf": {
       "balance": "1000000000000000000000",
       "staked": "500000000000000000000",
-      "publicKey": "0x030be934e3078764278ded0102e5c726d8db18a4d3104efe67ed3ed600e05efeef"
-    },
-    "0x1d9055b16489A742d873c5D2e1e34b50661AeE8c": {
-      "balance": "1000000000000000000000",
-      "staked": "500000000000000000000",
-      "publicKey": "0x03ac5de037df890780a7538d3bd8481109e850edbf6d202b6d60f8d096b5fb8c8b"
-    },
-    "0xF382F8BdF168Ba8EA6F07184641c1604Ec735a4c": {
-      "balance": "1000000000000000000000",
-      "staked": "500000000000000000000",
-      "publicKey": "0x02fe12385b136ce35935227688e93defb03cd6a1ace14414afd162cad0be5ec326"
-    },
-    "0xD57dDa4a389247423f60582AD68B739FaFD2C439": {
-      "balance": "1000000000000000000000",
-      "staked": "500000000000000000000",
-      "publicKey": "0x0315ea2646aa13ae6d0eddf07032e36688de9f8c7bf02192deb0fcdcaa7ec9666f"
+      "publicKey": "0x03cac6efc54d32b52b13b8ba01c902c125dbdd0657707277e1320868ef2a1599e6"
     }
   }
 }

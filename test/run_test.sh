@@ -6,7 +6,7 @@ pkill -9 -f geth
 
 bootnode -nodekey bootnode.key --verbosity=9 > bootnode.log 2>&1 &
 
-for i in $(seq 1 7); do
+for i in $(seq 0 3); do
   datadir=$PWD/Dexon.$i
   rm -rf $datadir
   $GETH --datadir=$datadir init genesis.json
