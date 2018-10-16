@@ -245,7 +245,7 @@ type DexconConfig struct {
 
 // String implements the stringer interface, returning the consensus engine details.
 func (d *DexconConfig) String() string {
-	return fmt.Sprintf("{GenesisCRSText: %v NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v MaxBlockInterval: %v",
+	return fmt.Sprintf("{GenesisCRSText: %v NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v MaxBlockInterval: %v BlockReward: %v",
 		d.GenesisCRSText,
 		d.NumChains,
 		d.LambdaBA,
@@ -257,6 +257,7 @@ func (d *DexconConfig) String() string {
 		d.RoundInterval,
 		d.MinBlockInterval,
 		d.MaxBlockInterval,
+		d.BlockReward,
 	)
 }
 

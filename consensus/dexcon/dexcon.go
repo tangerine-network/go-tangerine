@@ -59,7 +59,13 @@ func (d *Dexcon) VerifyHeader(chain consensus.ChainReader, header *types.Header,
 // method returns a quit channel to abort the operations and a results channel to
 // retrieve the async verifications (the order is that of the input slice).
 func (d *Dexcon) VerifyHeaders(chain consensus.ChainReader, headers []*types.Header, seals []bool) (chan<- struct{}, <-chan error) {
-	return make(chan struct{}), make(chan error)
+	abort, results := make(chan struct{}), make(chan error)
+	go func() {
+		for range headers {
+			results <- nil
+		}
+	}()
+	return abort, results
 }
 
 // verifyHeader checks whether a header conforms to the consensus rules.The
@@ -99,9 +105,10 @@ func (d *Dexcon) Prepare(chain consensus.ChainReader, header *types.Header) erro
 // Finalize implements consensus.Engine, ensuring no uncles are set, nor block
 // rewards given, and returns the final block.
 func (d *Dexcon) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
-	reward := new(big.Int).Div(d.config.BlockReward, new(big.Int).SetUint64(uint64(d.config.NumChains)))
+	blockReward := big.NewInt(100000000000)
+	reward := new(big.Int).Div(blockReward, new(big.Int).SetUint64(uint64(d.config.NumChains)))
 	state.AddBalance(header.Coinbase, reward)
-	header.Root = state.IntermediateRoot(chain.Config().IsEIP158(header.Number))
+	header.Root = state.IntermediateRoot(true)
 
 	return types.NewBlock(header, txs, uncles, receipts), nil
 }

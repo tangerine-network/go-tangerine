@@ -79,6 +79,9 @@ func (b *DexAPIBackend) BlockByNumber(ctx context.Context, blockNr rpc.BlockNumb
 }
 
 func (b *DexAPIBackend) StateAndHeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*state.StateDB, *types.Header, error) {
+	if blockNr == rpc.PendingBlockNumber {
+		blockNr = rpc.BlockNumber(b.dex.blockchain.CurrentBlock().Header().Number.Uint64())
+	}
 	header, err := b.HeaderByNumber(ctx, blockNr)
 	if header == nil || err != nil {
 		return nil, nil, err

@@ -109,6 +109,10 @@ func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
 		return err
 	}
 
+	if nonce > 0 {
+		nonce += 1
+	}
+
 	tx := types.NewTransaction(
 		nonce,
 		vm.GovernanceContractAddress,

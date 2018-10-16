@@ -1540,7 +1540,7 @@ func (g *GovernanceContract) proposeCRS(signedCRS []byte) ([]byte, error) {
 		dkgComplaints = append(dkgComplaints, x)
 	}
 
-	threshold := int(g.state.DKGSetSize().Uint64() / 3 + 1)
+	threshold := int(g.state.DKGSetSize().Uint64()/3 + 1)
 
 	dkgGPK, err := core.NewDKGGroupPublicKey(
 		round.Uint64(), dkgMasterPKs, dkgComplaints, threshold)

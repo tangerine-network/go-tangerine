@@ -308,11 +308,12 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 
 	_, err = d.blockchain.InsertChain(
 		[]*types.Block{types.NewBlock(&types.Header{
-			ParentHash: common.Hash(block.ParentHash),
+			ParentHash: d.blockchain.CurrentBlock().Hash(),
 			Number:     new(big.Int).SetUint64(result.Height),
-			Time:       new(big.Int).SetInt64(result.Timestamp.Unix()),
+			Time:       big.NewInt(result.Timestamp.Unix()),
 			TxHash:     types.DeriveSha(transactions),
 			Coinbase:   common.BytesToAddress(block.ProposerID.Hash[:]),
+			GasLimit:   800000,
 		}, transactions, nil, nil)})
 	if err != nil {
 		log.Error("insert chain", "error", err)
