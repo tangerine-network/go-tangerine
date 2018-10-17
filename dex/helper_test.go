@@ -111,7 +111,14 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 		panic(err)
 	}
 
-	pm, err := NewProtocolManager(gspec.Config, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, blockchain, db, &testGovernance{})
+	tgov := &testGovernance{
+		numChainsFunc: func(uint64) uint32 { return 3 },
+		lenCRSFunc:    func() uint64 { return 1 },
+		dkgSetFunc:    func(uint64) (map[string]struct{}, error) { return nil, nil },
+		notarySetFunc: func(uint64, uint32) (map[string]struct{}, error) { return nil, nil },
+	}
+
+	pm, err := NewProtocolManager(gspec.Config, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, blockchain, db, tgov)
 	if err != nil {
 		return nil, nil, err
 	}

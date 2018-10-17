@@ -824,8 +824,16 @@ func (pm *ProtocolManager) BroadcastMetas(metas []*NodeMeta) {
 }
 
 func (pm *ProtocolManager) BroadcastVote(vote *coreTypes.Vote) {
-	for _, peer := range pm.peers.allPeers() {
-		peer.AsyncSendVote(vote)
+	label := peerLabel{
+		set:     notaryset,
+		chainID: vote.Position.ChainID,
+		round:   vote.Position.Round,
+	}
+	h := rlpHash(vote)
+	for _, peer := range pm.peers.PeersWithLabel(label) {
+		if !peer.knownVotes.Contains(h) {
+			peer.AsyncSendVote(vote)
+		}
 	}
 }
 
@@ -923,11 +931,9 @@ func (pm *ProtocolManager) peerSetLoop() {
 	round := pm.gov.LenCRS() - 1
 	log.Trace("first len crs", "len", round+1, "round", round)
 	if round >= 1 {
-		pm.peers.BuildNotaryConn(round - 1)
-		pm.peers.BuildDKGConn(round - 1)
+		pm.peers.BuildConnection(round - 1)
 	}
-	pm.peers.BuildNotaryConn(round)
-	pm.peers.BuildDKGConn(round)
+	pm.peers.BuildConnection(round)
 
 	for {
 		select {
@@ -938,21 +944,16 @@ func (pm *ProtocolManager) peerSetLoop() {
 				break
 			}
 			if newRound == round+1 {
-				pm.peers.BuildNotaryConn(newRound)
-				pm.peers.BuildDKGConn(newRound)
-				pm.peers.ForgetNotaryConn(round - 1)
-				pm.peers.ForgetDKGConn(round - 1)
+				pm.peers.BuildConnection(newRound)
+				pm.peers.ForgetConnection(round - 1)
 			} else {
 				// just forget all network connection and rebuild.
-				pm.peers.ForgetNotaryConn(round)
-				pm.peers.ForgetDKGConn(round)
+				pm.peers.ForgetConnection(round)
 
 				if newRound >= 1 {
-					pm.peers.BuildNotaryConn(newRound - 1)
-					pm.peers.BuildDKGConn(newRound - 1)
+					pm.peers.BuildConnection(newRound - 1)
 				}
-				pm.peers.BuildNotaryConn(newRound)
-				pm.peers.BuildDKGConn(newRound)
+				pm.peers.BuildConnection(newRound)
 			}
 			round = newRound
 		case <-time.After(5 * time.Second):

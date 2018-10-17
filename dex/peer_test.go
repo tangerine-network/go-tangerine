@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"testing"
 
-	mapset "github.com/deckarep/golang-set"
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/p2p/discover"
 	"github.com/dexon-foundation/dexon/p2p/enode"
@@ -67,18 +66,6 @@ func TestPeerSetBuildAndForgetNotaryConn(t *testing.T) {
 	// build round 10
 	ps.BuildNotaryConn(10)
 
-	err = checkLabels(peer1, []peerLabel{
-		peerLabel{notaryset, 0, 10},
-	})
-	if err != nil {
-		t.Error(err)
-	}
-	err = checkLabels(peer2, []peerLabel{
-		peerLabel{notaryset, 0, 10},
-	})
-	if err != nil {
-		t.Error(err)
-	}
 	err = checkPeer2Labels(ps, map[string][]peerLabel{
 		nodeID(1).String(): []peerLabel{
 			peerLabel{notaryset, 0, 10},
@@ -111,20 +98,6 @@ func TestPeerSetBuildAndForgetNotaryConn(t *testing.T) {
 	// build round 11
 	ps.BuildNotaryConn(11)
 
-	err = checkLabels(peer1, []peerLabel{
-		peerLabel{notaryset, 0, 10},
-		peerLabel{notaryset, 0, 11},
-	})
-	if err != nil {
-		t.Error(err)
-	}
-	err = checkLabels(peer2, []peerLabel{
-		peerLabel{notaryset, 0, 10},
-		peerLabel{notaryset, 2, 11},
-	})
-	if err != nil {
-		t.Error(err)
-	}
 	err = checkPeer2Labels(ps, map[string][]peerLabel{
 		nodeID(1).String(): []peerLabel{
 			peerLabel{notaryset, 0, 10},
@@ -166,21 +139,6 @@ func TestPeerSetBuildAndForgetNotaryConn(t *testing.T) {
 	// build round 12
 	ps.BuildNotaryConn(12)
 
-	err = checkLabels(peer1, []peerLabel{
-		peerLabel{notaryset, 0, 10},
-		peerLabel{notaryset, 0, 11},
-	})
-	if err != nil {
-		t.Error(err)
-	}
-	err = checkLabels(peer2, []peerLabel{
-		peerLabel{notaryset, 0, 10},
-		peerLabel{notaryset, 2, 11},
-		peerLabel{notaryset, 2, 12},
-	})
-	if err != nil {
-		t.Error(err)
-	}
 	err = checkPeer2Labels(ps, map[string][]peerLabel{
 		nodeID(1).String(): []peerLabel{
 			peerLabel{notaryset, 0, 10},
@@ -237,16 +195,6 @@ func TestPeerSetBuildAndForgetNotaryConn(t *testing.T) {
 	// forget round 11
 	ps.ForgetNotaryConn(11)
 
-	err = checkLabels(peer1, []peerLabel{})
-	if err != nil {
-		t.Error(err)
-	}
-	err = checkLabels(peer2, []peerLabel{
-		peerLabel{notaryset, 2, 12},
-	})
-	if err != nil {
-		t.Error(err)
-	}
 	err = checkPeer2Labels(ps, map[string][]peerLabel{
 		nodeID(2).String(): []peerLabel{
 			peerLabel{notaryset, 2, 12},
@@ -288,14 +236,6 @@ func TestPeerSetBuildAndForgetNotaryConn(t *testing.T) {
 
 	// forget round 12
 	ps.ForgetNotaryConn(12)
-	err = checkLabels(peer1, []peerLabel{})
-	if err != nil {
-		t.Error(err)
-	}
-	err = checkLabels(peer2, []peerLabel{})
-	if err != nil {
-		t.Error(err)
-	}
 	err = checkPeer2Labels(ps, map[string][]peerLabel{})
 	if err != nil {
 		t.Error(err)
@@ -350,18 +290,6 @@ func TestPeerSetBuildDKGConn(t *testing.T) {
 	// build round 10
 	ps.BuildDKGConn(10)
 
-	err = checkLabels(peer1, []peerLabel{
-		peerLabel{dkgset, 0, 10},
-	})
-	if err != nil {
-		t.Error(err)
-	}
-	err = checkLabels(peer2, []peerLabel{
-		peerLabel{dkgset, 0, 10},
-	})
-	if err != nil {
-		t.Error(err)
-	}
 	err = checkPeer2Labels(ps, map[string][]peerLabel{
 		nodeID(1).String(): []peerLabel{
 			peerLabel{dkgset, 0, 10},
@@ -387,18 +315,6 @@ func TestPeerSetBuildDKGConn(t *testing.T) {
 	// build round 11
 	ps.BuildDKGConn(11)
 
-	err = checkLabels(peer1, []peerLabel{
-		peerLabel{dkgset, 0, 10},
-	})
-	if err != nil {
-		t.Error(err)
-	}
-	err = checkLabels(peer2, []peerLabel{
-		peerLabel{dkgset, 0, 10},
-	})
-	if err != nil {
-		t.Error(err)
-	}
 	err = checkPeer2Labels(ps, map[string][]peerLabel{
 		nodeID(1).String(): []peerLabel{
 			peerLabel{dkgset, 0, 10},
@@ -424,18 +340,6 @@ func TestPeerSetBuildDKGConn(t *testing.T) {
 	// build round 12
 	ps.BuildDKGConn(12)
 
-	err = checkLabels(peer1, []peerLabel{
-		peerLabel{dkgset, 0, 10},
-	})
-	if err != nil {
-		t.Error(err)
-	}
-	err = checkLabels(peer2, []peerLabel{
-		peerLabel{dkgset, 0, 10},
-	})
-	if err != nil {
-		t.Error(err)
-	}
 	err = checkPeer2Labels(ps, map[string][]peerLabel{
 		nodeID(1).String(): []peerLabel{
 			peerLabel{dkgset, 0, 10},
@@ -467,14 +371,6 @@ func TestPeerSetBuildDKGConn(t *testing.T) {
 	// forget round 11
 	ps.ForgetDKGConn(11)
 
-	err = checkLabels(peer1, []peerLabel{})
-	if err != nil {
-		t.Error(err)
-	}
-	err = checkLabels(peer2, []peerLabel{})
-	if err != nil {
-		t.Error(err)
-	}
 	err = checkPeer2Labels(ps, map[string][]peerLabel{
 		nodeID(3).String(): []peerLabel{
 			peerLabel{dkgset, 0, 12},
@@ -499,14 +395,6 @@ func TestPeerSetBuildDKGConn(t *testing.T) {
 
 	// forget round 12
 	ps.ForgetDKGConn(12)
-	err = checkLabels(peer1, []peerLabel{})
-	if err != nil {
-		t.Error(err)
-	}
-	err = checkLabels(peer2, []peerLabel{})
-	if err != nil {
-		t.Error(err)
-	}
 	err = checkPeer2Labels(ps, map[string][]peerLabel{})
 	if err != nil {
 		t.Error(err)
@@ -519,20 +407,6 @@ func TestPeerSetBuildDKGConn(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-}
-
-func checkLabels(p *peer, want []peerLabel) error {
-	if p.labels.Cardinality() != len(want) {
-		return fmt.Errorf("num of labels mismatch: got %d, want %d",
-			p.labels.Cardinality(), len(want))
-	}
-
-	for _, label := range want {
-		if !p.labels.Contains(label) {
-			return fmt.Errorf("label %+v not exist", label)
-		}
-	}
-	return nil
 }
 
 func checkPeer2Labels(ps *peerSet, want map[string][]peerLabel) error {
@@ -629,8 +503,5 @@ func newTestNodeSet(nodes []enode.ID) map[string]struct{} {
 }
 
 func newDummyPeer(id enode.ID) *peer {
-	return &peer{
-		labels: mapset.NewSet(),
-		id:     id.String(),
-	}
+	return &peer{id: id.String()}
 }
