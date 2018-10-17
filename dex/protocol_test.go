@@ -33,6 +33,7 @@ import (
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/eth/downloader"
 	"github.com/dexon-foundation/dexon/p2p"
+	"github.com/dexon-foundation/dexon/p2p/discover"
 	"github.com/dexon-foundation/dexon/rlp"
 )
 
@@ -558,14 +559,17 @@ func TestSendVote(t *testing.T) {
 	wg.Wait()
 }
 
-type mockPublicKey []byte
+type mockPublicKey struct {
+	id enode.ID
+}
 
-func (p mockPublicKey) VerifySignature(hash coreCommon.Hash, signature coreCrypto.Signature) bool {
+func (p *mockPublicKey) VerifySignature(hash coreCommon.Hash, signature coreCrypto.Signature) bool {
 	return true
 }
 
-func (p mockPublicKey) Bytes() []byte {
-	return append([]byte{1}, p...)
+func (p *mockPublicKey) Bytes() []byte {
+	b, _ := p.id.Pubkey()
+	return crypto.CompressPubkey(b)
 }
 
 func TestRecvDKGPrivateShare(t *testing.T) {
@@ -625,7 +629,7 @@ func TestSendDKGPrivateShare(t *testing.T) {
 		},
 	}
 
-	go pm.SendDKGPrivateShare(mockPublicKey(p1.ID().Bytes()), &privateShare)
+	go pm.SendDKGPrivateShare(&mockPublicKey{p1.ID()}, &privateShare)
 	msg, err := p1.app.ReadMsg()
 	if err != nil {
 		t.Errorf("%v: read error: %v", p1.Peer, err)
@@ -678,7 +682,6 @@ func TestRecvAgreement(t *testing.T) {
 
 	agreement := coreTypes.AgreementResult{
 		BlockHash: coreCommon.Hash{9, 9, 9},
-		Round:     13,
 		Position:  vote.Position,
 		Votes:     []coreTypes.Vote{vote},
 	}
@@ -722,7 +725,6 @@ func TestSendAgreement(t *testing.T) {
 
 	agreement := coreTypes.AgreementResult{
 		BlockHash: coreCommon.Hash{9, 9, 9},
-		Round:     13,
 		Position:  vote.Position,
 		Votes:     []coreTypes.Vote{vote},
 	}
@@ -754,8 +756,12 @@ func TestRecvRandomness(t *testing.T) {
 
 	// TODO(sonic): polish this
 	randomness := coreTypes.BlockRandomnessResult{
-		BlockHash:  coreCommon.Hash{8, 8, 8},
-		Round:      17,
+		BlockHash: coreCommon.Hash{8, 8, 8},
+		Position: coreTypes.Position{
+			ChainID: 1,
+			Round:   10,
+			Height:  13,
+		},
 		Randomness: []byte{7, 7, 7, 7},
 	}
 
@@ -783,8 +789,12 @@ func TestSendRandomness(t *testing.T) {
 
 	// TODO(sonic): polish this
 	randomness := coreTypes.BlockRandomnessResult{
-		BlockHash:  coreCommon.Hash{8, 8, 8},
-		Round:      17,
+		BlockHash: coreCommon.Hash{8, 8, 8},
+		Position: coreTypes.Position{
+			ChainID: 1,
+			Round:   10,
+			Height:  13,
+		},
 		Randomness: []byte{7, 7, 7, 7},
 	}
 

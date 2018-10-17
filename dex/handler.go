@@ -823,6 +823,16 @@ func (pm *ProtocolManager) BroadcastMetas(metas []*NodeMeta) {
 	}
 }
 
+// TODO(sonic): block size is big, try not to send to all peers
+// to reduce traffic
+func (pm *ProtocolManager) BroadcastLatticeBlock(block *coreTypes.Block) {
+	hash := rlpHash(toRLPLatticeBlock(block))
+	for _, peer := range pm.peers.PeersWithoutLatticeBlock(hash) {
+		peer.AsyncSendLatticeBlock(block)
+	}
+}
+
+// BroadcastVote broadcasts the given vote to all peers in same notary set
 func (pm *ProtocolManager) BroadcastVote(vote *coreTypes.Vote) {
 	label := peerLabel{
 		set:     notaryset,
@@ -837,53 +847,71 @@ func (pm *ProtocolManager) BroadcastVote(vote *coreTypes.Vote) {
 	}
 }
 
-// TODO(sonic): try to reduce traffic
-func (pm *ProtocolManager) BroadcastLatticeBlock(block *coreTypes.Block) {
-	hash := rlpHash(toRLPLatticeBlock(block))
-	for _, peer := range pm.peers.PeersWithoutLatticeBlock(hash) {
-		peer.AsyncSendLatticeBlock(block)
-	}
-}
-
-// TODO(sonic): try to reduce traffic
-func (pm *ProtocolManager) SendDKGPrivateShare(
-	pub coreCrypto.PublicKey, privateShare *coreTypes.DKGPrivateShare) {
-	id := discover.MustBytesID(pub.Bytes()[1:])
-	if p := pm.peers.Peer(id.String()); p != nil {
-		p.AsyncSendDKGPrivateShare(privateShare)
-	}
-}
-
-// TODO(sonic): try to reduce traffic
-func (pm *ProtocolManager) BroadcastDKGPrivateShare(
-	privateShare *coreTypes.DKGPrivateShare) {
-	for _, peer := range pm.peers.allPeers() {
-		peer.AsyncSendDKGPrivateShare(privateShare)
-	}
-}
-
-// TODO(sonic): try to reduce traffic
 func (pm *ProtocolManager) BroadcastAgreementResult(
 	agreement *coreTypes.AgreementResult) {
+	// send to dkg nodes first (direct)
+	label := peerLabel{
+		set:   dkgset,
+		round: agreement.Position.Round,
+	}
+	for _, peer := range pm.peers.PeersWithLabel(label) {
+		peer.AsyncSendAgreement(agreement)
+	}
+
+	// TODO(sonic): send to some of other nodes (gossip)
 	for _, peer := range pm.peers.PeersWithoutAgreement(rlpHash(agreement)) {
 		peer.AsyncSendAgreement(agreement)
 	}
 }
 
-// TODO(sonic): try to reduce traffic
 func (pm *ProtocolManager) BroadcastRandomnessResult(
 	randomness *coreTypes.BlockRandomnessResult) {
-	// random pick n peers
+	// send to notary nodes first (direct)
+	label := peerLabel{
+		set:     notaryset,
+		chainID: randomness.Position.ChainID,
+		round:   randomness.Position.Round,
+	}
+	for _, peer := range pm.peers.PeersWithLabel(label) {
+		peer.AsyncSendRandomness(randomness)
+	}
+
+	// TODO(sonic): send to some of other nodes (gossip)
 	for _, peer := range pm.peers.PeersWithoutRandomness(rlpHash(randomness)) {
 		peer.AsyncSendRandomness(randomness)
 	}
 }
 
-// TODO(sonic): try to reduce traffic
+func (pm *ProtocolManager) SendDKGPrivateShare(
+	pub coreCrypto.PublicKey, privateShare *coreTypes.DKGPrivateShare) {
+	uncompressedKey, err := crypto.DecompressPubkey(pub.Bytes())
+	if err != nil {
+		log.Error("decompress key fail", "err", err)
+	}
+	id := discover.PubkeyID(uncompressedKey)
+	if p := pm.peers.Peer(id.String()); p != nil {
+		p.AsyncSendDKGPrivateShare(privateShare)
+	}
+}
+
+func (pm *ProtocolManager) BroadcastDKGPrivateShare(
+	privateShare *coreTypes.DKGPrivateShare) {
+	label := peerLabel{set: dkgset, round: privateShare.Round}
+	h := rlpHash(toRLPDKGPrivateShare(privateShare))
+	for _, peer := range pm.peers.PeersWithLabel(label) {
+		if !peer.knownDKGPrivateShares.Contains(h) {
+			peer.AsyncSendDKGPrivateShare(privateShare)
+		}
+	}
+}
+
 func (pm *ProtocolManager) BroadcastDKGPartialSignature(
 	psig *coreTypes.DKGPartialSignature) {
-	for _, peer := range pm.peers.PeersWithoutDKGPartialSignature(rlpHash(psig)) {
-		peer.AsyncSendDKGPartialSignature(psig)
+	label := peerLabel{set: dkgset, round: psig.Round}
+	for _, peer := range pm.peers.PeersWithLabel(label) {
+		if !peer.knownDKGPartialSignatures.Contains(rlpHash(psig)) {
+			peer.AsyncSendDKGPartialSignature(psig)
+		}
 	}
 }
 
