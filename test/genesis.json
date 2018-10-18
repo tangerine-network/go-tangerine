@@ -17,7 +17,8 @@
       "dkgSetSize": 4,
       "roundInterval": 99999999999,
       "minBlockInterval": 900,
-      "maxBlockInterval": 1100
+      "maxBlockInterval": 1100,
+      "blockReward": "1000000000000000000"
     }
   },
   "nonce": "0x42",

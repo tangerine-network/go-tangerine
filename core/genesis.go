@@ -255,6 +255,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	govStateHelper := vm.GovernanceStateHelper{statedb}
 
 	for addr, account := range g.Alloc {
+		fmt.Println(account)
 		statedb.AddBalance(addr, new(big.Int).Sub(account.Balance, account.Staked))
 		statedb.SetCode(addr, account.Code)
 		statedb.SetNonce(addr, account.Nonce)

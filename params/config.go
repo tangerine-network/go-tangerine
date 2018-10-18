@@ -21,6 +21,7 @@ import (
 	"math/big"
 
 	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/common/math"
 )
 
 // Genesis hashes to enforce below configs on.
@@ -227,6 +228,8 @@ func (c *CliqueConfig) String() string {
 	return "clique"
 }
 
+//go:generate gencodec -type DexconConfig -field-override dexconConfigSpecMarshaling -out gen_dexcon_config.go
+
 // DexconConfig is the consensus engine configs for DEXON consensus.
 type DexconConfig struct {
 	GenesisCRSText   string   `json:"genesisCRSText"`
@@ -241,6 +244,10 @@ type DexconConfig struct {
 	MinBlockInterval uint64   `json:"minBlockInterval"`
 	MaxBlockInterval uint64   `json:"maxBlockInterval"`
 	BlockReward      *big.Int `json:"blockReward"`
+}
+
+type dexconConfigSpecMarshaling struct {
+	BlockReward *math.HexOrDecimal256
 }
 
 // String implements the stringer interface, returning the consensus engine details.
