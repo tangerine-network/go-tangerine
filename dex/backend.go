@@ -25,6 +25,7 @@ import (
 	dexCore "github.com/dexon-foundation/dexon-consensus-core/core"
 	"github.com/dexon-foundation/dexon-consensus-core/core/blockdb"
 	coreEcdsa "github.com/dexon-foundation/dexon-consensus-core/core/crypto/ecdsa"
+	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
 
 	"github.com/dexon-foundation/dexon/accounts"
 	"github.com/dexon-foundation/dexon/consensus"
@@ -238,7 +239,8 @@ func (s *Dexon) Start(srvr *p2p.Server) error {
 
 	go func() {
 		time.Sleep(10 * time.Second)
-		s.consensus.Run()
+		// TODO: Run with the latest confirmed block in compaction chain.
+		s.consensus.Run(&coreTypes.Block{})
 	}()
 	return nil
 }
