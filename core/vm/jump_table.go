@@ -301,6 +301,12 @@ func newFrontierInstructionSet() [256]operation {
 			memorySize:    memorySha3,
 			valid:         true,
 		},
+		RAND: {
+			execute:       opRand,
+			gasCost:       constGasFunc(params.RandGas),
+			validateStack: makeStackFunc(0, 1),
+			valid:         true,
+		},
 		ADDRESS: {
 			execute:       opAddress,
 			gasCost:       constGasFunc(GasQuickStep),
