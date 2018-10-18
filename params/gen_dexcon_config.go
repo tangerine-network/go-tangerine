@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"math/big"
 
+	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/common/math"
 )
 
@@ -14,6 +15,7 @@ var _ = (*dexconConfigSpecMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (d DexconConfig) MarshalJSON() ([]byte, error) {
 	type DexconConfig struct {
+		Owner            common.Address        `json:"owner"`
 		GenesisCRSText   string                `json:"genesisCRSText"`
 		NumChains        uint32                `json:"numChains"`
 		LambdaBA         uint64                `json:"lambdaBA"`
@@ -28,6 +30,7 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 		BlockReward      *math.HexOrDecimal256 `json:"blockReward"`
 	}
 	var enc DexconConfig
+	enc.Owner = d.Owner
 	enc.GenesisCRSText = d.GenesisCRSText
 	enc.NumChains = d.NumChains
 	enc.LambdaBA = d.LambdaBA
@@ -46,6 +49,7 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 // UnmarshalJSON unmarshals from JSON.
 func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 	type DexconConfig struct {
+		Owner            *common.Address       `json:"owner"`
 		GenesisCRSText   *string               `json:"genesisCRSText"`
 		NumChains        *uint32               `json:"numChains"`
 		LambdaBA         *uint64               `json:"lambdaBA"`
@@ -62,6 +66,9 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 	var dec DexconConfig
 	if err := json.Unmarshal(input, &dec); err != nil {
 		return err
+	}
+	if dec.Owner != nil {
+		d.Owner = *dec.Owner
 	}
 	if dec.GenesisCRSText != nil {
 		d.GenesisCRSText = *dec.GenesisCRSText

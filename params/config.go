@@ -232,18 +232,19 @@ func (c *CliqueConfig) String() string {
 
 // DexconConfig is the consensus engine configs for DEXON consensus.
 type DexconConfig struct {
-	GenesisCRSText   string   `json:"genesisCRSText"`
-	NumChains        uint32   `json:"numChains"`
-	LambdaBA         uint64   `json:"lambdaBA"`
-	LambdaDKG        uint64   `json:"lambdaDKG"`
-	K                int      `json:"k"`
-	PhiRatio         float32  `json:"phiRatio"`
-	NotarySetSize    uint32   `json:"notarySetSize"`
-	DKGSetSize       uint32   `json:"dkgSetSize"`
-	RoundInterval    uint64   `json:"roundInterval"`
-	MinBlockInterval uint64   `json:"minBlockInterval"`
-	MaxBlockInterval uint64   `json:"maxBlockInterval"`
-	BlockReward      *big.Int `json:"blockReward"`
+	Owner            common.Address `json:"owner"`
+	GenesisCRSText   string         `json:"genesisCRSText"`
+	NumChains        uint32         `json:"numChains"`
+	LambdaBA         uint64         `json:"lambdaBA"`
+	LambdaDKG        uint64         `json:"lambdaDKG"`
+	K                int            `json:"k"`
+	PhiRatio         float32        `json:"phiRatio"`
+	NotarySetSize    uint32         `json:"notarySetSize"`
+	DKGSetSize       uint32         `json:"dkgSetSize"`
+	RoundInterval    uint64         `json:"roundInterval"`
+	MinBlockInterval uint64         `json:"minBlockInterval"`
+	MaxBlockInterval uint64         `json:"maxBlockInterval"`
+	BlockReward      *big.Int       `json:"blockReward"`
 }
 
 type dexconConfigSpecMarshaling struct {
@@ -252,7 +253,8 @@ type dexconConfigSpecMarshaling struct {
 
 // String implements the stringer interface, returning the consensus engine details.
 func (d *DexconConfig) String() string {
-	return fmt.Sprintf("{GenesisCRSText: %v NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v MaxBlockInterval: %v BlockReward: %v",
+	return fmt.Sprintf("{Owner: %v GenesisCRSText: %v NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v MaxBlockInterval: %v BlockReward: %v",
+		d.Owner,
 		d.GenesisCRSText,
 		d.NumChains,
 		d.LambdaBA,

@@ -7,9 +7,10 @@
     "eip155Block": 0,
     "eip158Block": 0,
     "dexcon": {
+      "owner": "0x7C3c31B19395A5e2627F921Cc2802560B71f1caB",
       "genesisCRSText": "In DEXON, we trust.",
       "numChains": 1,
-      "lambdaBA": 250,
+      "lambdaBA": 50,
       "lambdaDKG": 2500,
       "k": 0,
       "phiRatio": 667000,
