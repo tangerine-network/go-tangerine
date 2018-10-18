@@ -3,6 +3,7 @@ package dex
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/json"
 	"math/big"
 	"time"
 
@@ -75,7 +76,6 @@ func (d *DexconGovernance) getGovStateAtRound(round uint64) *vm.GovernanceStateH
 	if state == nil || err != nil {
 		return nil
 	}
-
 	return &vm.GovernanceStateHelper{state}
 }
 
@@ -191,9 +191,9 @@ func (d *DexconGovernance) NotifyRoundHeight(targetRound, consensusHeight uint64
 func (d *DexconGovernance) AddDKGComplaint(round uint64, complaint *coreTypes.DKGComplaint) {
 	method := vm.GovernanceContractName2Method["addDKGComplaint"]
 
-	encoded, err := rlp.EncodeToBytes(complaint)
+	encoded, err := json.Marshal(complaint)
 	if err != nil {
-		log.Error("failed to RLP encode complaint to bytes", "err", err)
+		log.Error("failed to JSON encode complaint to bytes", "err", err)
 		return
 	}
 
@@ -214,7 +214,7 @@ func (d *DexconGovernance) AddDKGComplaint(round uint64, complaint *coreTypes.DK
 func (d *DexconGovernance) DKGComplaints(round uint64) []*coreTypes.DKGComplaint {
 	s := d.getGovState()
 	var dkgComplaints []*coreTypes.DKGComplaint
-	for _, pk := range s.DKGMasterPublicKeys(big.NewInt(int64(round))) {
+	for _, pk := range s.DKGComplaints(big.NewInt(int64(round))) {
 		x := new(coreTypes.DKGComplaint)
 		if err := rlp.DecodeBytes(pk, x); err != nil {
 			panic(err)
@@ -228,9 +228,9 @@ func (d *DexconGovernance) DKGComplaints(round uint64) []*coreTypes.DKGComplaint
 func (d *DexconGovernance) AddDKGMasterPublicKey(round uint64, masterPublicKey *coreTypes.DKGMasterPublicKey) {
 	method := vm.GovernanceContractName2Method["addDKGMasterPublicKey"]
 
-	encoded, err := rlp.EncodeToBytes(masterPublicKey)
+	encoded, err := json.Marshal(masterPublicKey)
 	if err != nil {
-		log.Error("failed to RLP encode mpk to bytes", "err", err)
+		log.Error("failed to JSON encode mpk to bytes", "err", err)
 		return
 	}
 
@@ -265,9 +265,9 @@ func (d *DexconGovernance) DKGMasterPublicKeys(round uint64) []*coreTypes.DKGMas
 func (d *DexconGovernance) AddDKGFinalize(round uint64, final *coreTypes.DKGFinalize) {
 	method := vm.GovernanceContractName2Method["addDKGFinalize"]
 
-	encoded, err := rlp.EncodeToBytes(final)
+	encoded, err := json.Marshal(final)
 	if err != nil {
-		log.Error("failed to RLP encode finalize to bytes", "err", err)
+		log.Error("failed to JSON encode finalize to bytes", "err", err)
 		return
 	}
 

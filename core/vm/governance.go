@@ -18,6 +18,7 @@
 package vm
 
 import (
+	"encoding/json"
 	"math/big"
 	"strings"
 
@@ -26,7 +27,6 @@ import (
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/params"
-	"github.com/dexon-foundation/dexon/rlp"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
 	"github.com/dexon-foundation/dexon-consensus-core/core"
@@ -1127,6 +1127,9 @@ func (s *GovernanceStateHelper) PushCRS(crs common.Hash) {
 
 	s.setState(common.BigToHash(loc), crs)
 }
+func (s *GovernanceStateHelper) Round() *big.Int {
+	return new(big.Int).Sub(s.getStateBigInt(big.NewInt(crsLoc)), big.NewInt(1))
+}
 
 // bytes[][] public dkgMasterPublicKeys;
 func (s *GovernanceStateHelper) DKGMasterPublicKeys(round *big.Int) [][]byte {
@@ -1323,8 +1326,7 @@ func (g *GovernanceContract) inDKGSet(nodeID coreTypes.NodeID) bool {
 }
 
 func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byte, error) {
-	nextRound := g.state.LenCRS()
-	if round.Cmp(nextRound) != 0 {
+	if round.Cmp(g.state.Round()) != 0 {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -1348,7 +1350,7 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 	}
 
 	var dkgComplaint coreTypes.DKGComplaint
-	if err := rlp.DecodeBytes(comp, &dkgComplaint); err != nil {
+	if err := json.Unmarshal(comp, &dkgComplaint); err != nil {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -1373,8 +1375,7 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 }
 
 func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) ([]byte, error) {
-	nextRound := g.state.LenCRS()
-	if round.Cmp(nextRound) != 0 {
+	if round.Cmp(g.state.Round()) != 0 {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -1388,7 +1389,7 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 	}
 
 	var dkgMasterPK coreTypes.DKGMasterPublicKey
-	if err := rlp.DecodeBytes(mpk, &dkgMasterPK); err != nil {
+	if err := json.Unmarshal(mpk, &dkgMasterPK); err != nil {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -1413,8 +1414,7 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 }
 
 func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]byte, error) {
-	nextRound := g.state.LenCRS()
-	if round.Cmp(nextRound) != 0 {
+	if round.Cmp(g.state.Round()) != 0 {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -1422,7 +1422,7 @@ func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]
 	caller := g.contract.Caller()
 
 	var dkgFinalize coreTypes.DKGFinalize
-	if err := rlp.DecodeBytes(finalize, &dkgFinalize); err != nil {
+	if err := json.Unmarshal(finalize, &dkgFinalize); err != nil {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -1510,21 +1510,15 @@ func (g *GovernanceContract) unstake() ([]byte, error) {
 }
 
 func (g *GovernanceContract) proposeCRS(signedCRS []byte) ([]byte, error) {
-	round := g.state.LenCRS()
+	round := g.state.Round()
 	prevCRS := g.state.CRS(round)
-
-	// round should be the next round number, abort otherwise.
-	if new(big.Int).Add(round, big.NewInt(1)).Cmp(round) != 0 {
-		g.penalize()
-		return nil, errExecutionReverted
-	}
 
 	// Prepare DKGMasterPublicKeys.
 	// TODO(w): make sure DKGMasterPKs are unique.
 	var dkgMasterPKs []*coreTypes.DKGMasterPublicKey
 	for _, mpk := range g.state.DKGMasterPublicKeys(round) {
 		x := new(coreTypes.DKGMasterPublicKey)
-		if err := rlp.DecodeBytes(mpk, x); err != nil {
+		if err := json.Unmarshal(mpk, x); err != nil {
 			panic(err)
 		}
 		dkgMasterPKs = append(dkgMasterPKs, x)
@@ -1534,7 +1528,7 @@ func (g *GovernanceContract) proposeCRS(signedCRS []byte) ([]byte, error) {
 	var dkgComplaints []*coreTypes.DKGComplaint
 	for _, comp := range g.state.DKGComplaints(round) {
 		x := new(coreTypes.DKGComplaint)
-		if err := rlp.DecodeBytes(comp, x); err != nil {
+		if err := json.Unmarshal(comp, x); err != nil {
 			panic(err)
 		}
 		dkgComplaints = append(dkgComplaints, x)
