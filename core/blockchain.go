@@ -1554,7 +1554,7 @@ func (bc *BlockChain) insertPendingBlocks(chain types.Blocks) (int, []interface{
 			}
 			receipts = append(receipts, receipt)
 			allLogs = append(allLogs, receipt.Logs...)
-			log.Debug("apply transaction", "tx.hash", tx.Hash(), "nonce", tx.Nonce(), "amount", tx.Value())
+			log.Debug("Apply transaction", "tx.hash", tx.Hash(), "nonce", tx.Nonce(), "amount", tx.Value())
 		}
 		// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
 		header.GasUsed = *usedGas
@@ -1587,7 +1587,7 @@ func (bc *BlockChain) insertPendingBlocks(chain types.Blocks) (int, []interface{
 		for pendingHeight := bc.CurrentBlock().NumberU64() + 1; pendingHeight <= block.Header().WitnessHeight; pendingHeight++ {
 			confirmedBlock, exist := bc.pendingBlocks[pendingHeight]
 			if !exist {
-				log.Debug("block has already inserted", "height", pendingHeight)
+				log.Error("Block has already inserted", "height", pendingHeight)
 				continue
 			}
 
@@ -1597,7 +1597,7 @@ func (bc *BlockChain) insertPendingBlocks(chain types.Blocks) (int, []interface{
 			}
 
 			// Write the block to the chain and get the status.
-			log.Debug("insert pending block", "height", pendingHeight)
+			log.Debug("Insert pending block", "height", pendingHeight)
 			status, err := bc.WriteBlockWithState(confirmedBlock.block, confirmedBlock.receipts, s)
 			if err != nil {
 				return i, events, coalescedLogs, fmt.Errorf("WriteBlockWithState error: %v", err)

@@ -141,10 +141,10 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte,
 
 		for _, tx := range txs {
 			if tx.Nonce() != stateDB.GetNonce(addr) {
-				log.Debug("break transaction", "tx.hash", tx.Hash(), "nonce", tx.Nonce(), "expect", stateDB.GetNonce(addr))
+				log.Debug("Break transaction", "tx.hash", tx.Hash(), "nonce", tx.Nonce(), "expect", stateDB.GetNonce(addr))
 				break
 			}
-			log.Debug("receive transaction", "tx.hash", tx.Hash(), "nonce", tx.Nonce(), "amount", tx.Value())
+			log.Debug("Receive transaction", "tx.hash", tx.Hash(), "nonce", tx.Nonce(), "amount", tx.Value())
 			allTxs = append(allTxs, tx)
 		}
 	}
@@ -200,25 +200,25 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 
 	block := d.blockchain.GetConfirmedBlockByHash(blockHash)
 	if block == nil {
-		log.Error("can not get confirmed block")
+		log.Error("Can not get confirmed block")
 		return
 	}
 
 	var transactions types.Transactions
 	err := rlp.Decode(bytes.NewReader(block.Payload), &transactions)
 	if err != nil {
-		log.Error("payload rlp decode", "error", err)
+		log.Error("Payload rlp decode failed", "error", err)
 		return
 	}
 
 	var witnessData witnessData
 	err = rlp.Decode(bytes.NewReader(block.Witness.Data), &witnessData)
 	if err != nil {
-		log.Error("witness rlp decode", "error", err)
+		log.Error("Witness rlp decode failed", "error", err)
 		return
 	}
 
-	log.Debug("block proposer id", "hash", block.ProposerID)
+	log.Debug("Block proposer id", "hash", block.ProposerID)
 	newBlock := types.NewBlock(&types.Header{
 		Number:             new(big.Int).SetUint64(result.Height),
 		Time:               big.NewInt(result.Timestamp.Unix()),
@@ -233,11 +233,11 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 
 	_, err = d.blockchain.InsertPendingBlock([]*types.Block{newBlock})
 	if err != nil {
-		log.Error("insert chain", "error", err)
+		log.Error("Insert chain", "error", err)
 		return
 	}
 
-	log.Debug("insert pending block success", "height", result.Height)
+	log.Debug("Insert pending block success", "height", result.Height)
 
 	d.blockchain.RemoveConfirmedBlock(blockHash)
 	d.notify(result.Height)
