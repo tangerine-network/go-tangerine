@@ -35,7 +35,7 @@ import (
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
 )
 
-var GovernanceContractAddress = common.BytesToAddress([]byte{0XED}) // Reverse of DEX0
+var GovernanceContractAddress = common.HexToAddress("5765692d4e696e6720536f6e696320426f6a6965")
 var minStake = big.NewInt(10000000000000)
 
 const abiJSON = `
