@@ -27,21 +27,26 @@ import (
 	"github.com/dexon-foundation/dexon/rpc"
 )
 
-// Config is the configuration for DEXON consensus.
-type Config struct {
+type ConfigurationFetcher interface {
+	DexconConfiguration(round uint64) *params.DexconConfig
 }
 
 // Dexcon is a delegated proof-of-stake consensus engine.
 type Dexcon struct {
-	config *params.DexconConfig
+	configFetcher ConfigurationFetcher
 }
 
 // New creates a Clique proof-of-authority consensus engine with the initial
 // signers set to the ones provided by the user.
-func New(config *params.DexconConfig) *Dexcon {
-	return &Dexcon{
-		config: config,
-	}
+func New() *Dexcon {
+	return &Dexcon{}
+}
+
+// SetConfigFetcher sets the config fetcher for Dexcon. The reason this is not
+// passed in the New() method is to bypass cycle dependencies when initializing
+// dex backend.
+func (d *Dexcon) SetConfigFetcher(fetcher ConfigurationFetcher) {
+	d.configFetcher = fetcher
 }
 
 // Author implements consensus.Engine, returning the Ethereum address recovered
@@ -105,11 +110,10 @@ func (d *Dexcon) Prepare(chain consensus.ChainReader, header *types.Header) erro
 // Finalize implements consensus.Engine, ensuring no uncles are set, nor block
 // rewards given, and returns the final block.
 func (d *Dexcon) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
-	// TODO(Bojie): remove it and get value from config
-	reward := new(big.Int).Div(d.config.BlockReward, new(big.Int).SetUint64(uint64(d.config.NumChains)))
+	config := d.configFetcher.DexconConfiguration(header.Position.Round)
+	reward := new(big.Int).Div(config.BlockReward, big.NewInt(int64(config.NumChains)))
 	state.AddBalance(header.Coinbase, reward)
 	header.Root = state.IntermediateRoot(true)
-
 	return types.NewBlock(header, txs, uncles, receipts), nil
 }
 

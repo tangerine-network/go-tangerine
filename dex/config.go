@@ -25,7 +25,6 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/dexon-foundation/dexon/consensus/dexcon"
 	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/dex/gasprice"
 	"github.com/dexon-foundation/dexon/eth/downloader"
@@ -35,7 +34,6 @@ import (
 // DefaultConfig contains default settings for use on the Ethereum main net.
 var DefaultConfig = Config{
 	SyncMode:       downloader.FastSync,
-	Dexcon:         dexcon.Config{},
 	NetworkId:      1,
 	LightPeers:     100,
 	DatabaseCache:  768,
@@ -101,9 +99,6 @@ type Config struct {
 	GasFloor          uint64
 	GasCeil           uint64
 	GasLimitTolerance uint64
-
-	// Dexcon options
-	Dexcon dexcon.Config
 
 	// Transaction pool options
 	TxPool core.TxPoolConfig

@@ -79,7 +79,13 @@ func (d *DexconGovernance) getGovStateAtRound(round uint64) *vm.GovernanceStateH
 	return &vm.GovernanceStateHelper{state}
 }
 
-// Configuration return the total ordering K constant.
+// DexconConfiguration return raw config in state.
+func (d *DexconGovernance) DexconConfiguration(round uint64) *params.DexconConfig {
+	s := d.getGovStateAtRound(round)
+	return s.Configuration()
+}
+
+// Configuration returns the system configuration for consensus core to use.
 func (d *DexconGovernance) Configuration(round uint64) *coreTypes.Config {
 	s := d.getGovStateAtRound(round)
 	c := s.Configuration()

@@ -223,6 +223,7 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 		Number:             new(big.Int).SetUint64(result.Height),
 		Time:               big.NewInt(result.Timestamp.Unix()),
 		Coinbase:           common.BytesToAddress(block.ProposerID.Bytes()),
+		Position:           block.Position,
 		WitnessHeight:      block.Witness.Height,
 		WitnessRoot:        witnessData.Root,
 		WitnessReceiptHash: witnessData.ReceiptHash,
