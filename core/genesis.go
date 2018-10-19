@@ -276,15 +276,15 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 			govStateHelper.Stake(addr, account.PublicKey, account.Staked)
 		}
 	}
+	// Genesis CRS.
+	crs := crypto.Keccak256([]byte(g.Config.Dexcon.GenesisCRSText))
+	govStateHelper.PushCRS(common.BytesToHash(crs))
+
 	// Owner.
 	govStateHelper.SetOwner(g.Config.Dexcon.Owner)
 
 	// Governance configuration.
 	govStateHelper.UpdateConfiguration(g.Config.Dexcon)
-
-	// Genesis CRS.
-	crs := crypto.Keccak256([]byte(g.Config.Dexcon.GenesisCRSText))
-	govStateHelper.PushCRS(common.BytesToHash(crs))
 
 	root := statedb.IntermediateRoot(false)
 	head := &types.Header{

@@ -42,6 +42,20 @@ const abiJSON = `
 [
   {
     "constant": true,
+    "inputs": [],
+    "name": "blockReward",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
     "inputs": [
       {
         "name": "",
@@ -407,6 +421,10 @@ const abiJSON = `
     "constant": false,
     "inputs": [
       {
+        "name": "BlockReward",
+        "type": "uint256"
+      },
+      {
         "name": "NumChains",
         "type": "uint256"
       },
@@ -679,6 +697,12 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 	// Solidity auto generated methods.
 	// --------------------------------
 
+	case "blockReward":
+		res, err := method.Outputs.Pack(g.state.BlockReward())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	case "crs":
 		round := new(big.Int)
 		if err := method.Inputs.Unpack(&round, arguments); err != nil {
@@ -856,6 +880,7 @@ const (
 	dkgFinailizedLoc
 	dkgFinalizedsCountLoc
 	ownerLoc
+	blockRewardLoc
 	numChainsLoc
 	lambdaBALoc
 	lambdaDKGLoc
@@ -1183,6 +1208,14 @@ func (s *GovernanceStateHelper) SetOwner(newOwner common.Address) {
 	s.setState(common.BigToHash(big.NewInt(ownerLoc)), newOwner.Hash())
 }
 
+// uint256 public blockReward;
+func (s *GovernanceStateHelper) BlockReward() *big.Int {
+	return s.getStateBigInt(big.NewInt(blockRewardLoc))
+}
+func (s *GovernanceStateHelper) SetBlockReward(reward *big.Int) {
+	s.setStateBigInt(big.NewInt(blockRewardLoc), reward)
+}
+
 // uint256 public numChains;
 func (s *GovernanceStateHelper) NumChains() *big.Int {
 	return s.getStateBigInt(big.NewInt(numChainsLoc))
@@ -1247,6 +1280,7 @@ func (s *GovernanceStateHelper) Stake(addr common.Address, publicKey []byte, sta
 // Configuration returns the current configuration.
 func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
 	return &params.DexconConfig{
+		BlockReward:      s.getStateBigInt(big.NewInt(blockRewardLoc)),
 		NumChains:        uint32(s.getStateBigInt(big.NewInt(numChainsLoc)).Uint64()),
 		LambdaBA:         s.getStateBigInt(big.NewInt(lambdaBALoc)).Uint64(),
 		LambdaDKG:        s.getStateBigInt(big.NewInt(lambdaDKGLoc)).Uint64(),
@@ -1262,6 +1296,7 @@ func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
 
 // UpdateConfiguration updates system configuration.
 func (s *GovernanceStateHelper) UpdateConfiguration(cfg *params.DexconConfig) {
+	s.setStateBigInt(big.NewInt(blockRewardLoc), cfg.BlockReward)
 	s.setStateBigInt(big.NewInt(numChainsLoc), big.NewInt(int64(cfg.NumChains)))
 	s.setStateBigInt(big.NewInt(lambdaBALoc), big.NewInt(int64(cfg.LambdaBA)))
 	s.setStateBigInt(big.NewInt(lambdaDKGLoc), big.NewInt(int64(cfg.LambdaDKG)))

@@ -15,8 +15,9 @@ var _ = (*dexconConfigSpecMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (d DexconConfig) MarshalJSON() ([]byte, error) {
 	type DexconConfig struct {
-		Owner            common.Address        `json:"owner"`
 		GenesisCRSText   string                `json:"genesisCRSText"`
+		Owner            common.Address        `json:"owner"`
+		BlockReward      *math.HexOrDecimal256 `json:"blockReward"`
 		NumChains        uint32                `json:"numChains"`
 		LambdaBA         uint64                `json:"lambdaBA"`
 		LambdaDKG        uint64                `json:"lambdaDKG"`
@@ -27,11 +28,11 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 		RoundInterval    uint64                `json:"roundInterval"`
 		MinBlockInterval uint64                `json:"minBlockInterval"`
 		MaxBlockInterval uint64                `json:"maxBlockInterval"`
-		BlockReward      *math.HexOrDecimal256 `json:"blockReward"`
 	}
 	var enc DexconConfig
-	enc.Owner = d.Owner
 	enc.GenesisCRSText = d.GenesisCRSText
+	enc.Owner = d.Owner
+	enc.BlockReward = (*math.HexOrDecimal256)(d.BlockReward)
 	enc.NumChains = d.NumChains
 	enc.LambdaBA = d.LambdaBA
 	enc.LambdaDKG = d.LambdaDKG
@@ -42,15 +43,15 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 	enc.RoundInterval = d.RoundInterval
 	enc.MinBlockInterval = d.MinBlockInterval
 	enc.MaxBlockInterval = d.MaxBlockInterval
-	enc.BlockReward = (*math.HexOrDecimal256)(d.BlockReward)
 	return json.Marshal(&enc)
 }
 
 // UnmarshalJSON unmarshals from JSON.
 func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 	type DexconConfig struct {
-		Owner            *common.Address       `json:"owner"`
 		GenesisCRSText   *string               `json:"genesisCRSText"`
+		Owner            *common.Address       `json:"owner"`
+		BlockReward      *math.HexOrDecimal256 `json:"blockReward"`
 		NumChains        *uint32               `json:"numChains"`
 		LambdaBA         *uint64               `json:"lambdaBA"`
 		LambdaDKG        *uint64               `json:"lambdaDKG"`
@@ -61,17 +62,19 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 		RoundInterval    *uint64               `json:"roundInterval"`
 		MinBlockInterval *uint64               `json:"minBlockInterval"`
 		MaxBlockInterval *uint64               `json:"maxBlockInterval"`
-		BlockReward      *math.HexOrDecimal256 `json:"blockReward"`
 	}
 	var dec DexconConfig
 	if err := json.Unmarshal(input, &dec); err != nil {
 		return err
 	}
+	if dec.GenesisCRSText != nil {
+		d.GenesisCRSText = *dec.GenesisCRSText
+	}
 	if dec.Owner != nil {
 		d.Owner = *dec.Owner
 	}
-	if dec.GenesisCRSText != nil {
-		d.GenesisCRSText = *dec.GenesisCRSText
+	if dec.BlockReward != nil {
+		d.BlockReward = (*big.Int)(dec.BlockReward)
 	}
 	if dec.NumChains != nil {
 		d.NumChains = *dec.NumChains
@@ -102,9 +105,6 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 	}
 	if dec.MaxBlockInterval != nil {
 		d.MaxBlockInterval = *dec.MaxBlockInterval
-	}
-	if dec.BlockReward != nil {
-		d.BlockReward = (*big.Int)(dec.BlockReward)
 	}
 	return nil
 }
