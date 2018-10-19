@@ -1316,7 +1316,10 @@ func (g *GovernanceContract) inDKGSet(nodeID coreTypes.NodeID) bool {
 	ns := coreTypes.NewNodeSet()
 
 	for _, x := range g.state.Nodes() {
-		mpk := ecdsa.NewPublicKeyFromByteSlice(x.PublicKey)
+		mpk, err := ecdsa.NewPublicKeyFromByteSlice(x.PublicKey)
+		if err != nil {
+			panic(err)
+		}
 		ns.Add(coreTypes.NewNodeID(mpk))
 	}
 

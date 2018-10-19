@@ -14,7 +14,7 @@ func main() {
 			panic(err)
 		}
 		address := crypto.PubkeyToAddress(privKey.PublicKey).String()
-		pk := hex.EncodeToString(crypto.CompressPubkey(&privKey.PublicKey))
+		pk := hex.EncodeToString(crypto.FromECDSAPub(&privKey.PublicKey))
 
 		fmt.Printf(`
     "%s": {

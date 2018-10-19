@@ -3,6 +3,7 @@ package dex
 import (
 	"context"
 	"crypto/ecdsa"
+	"encoding/hex"
 	"encoding/json"
 	"math/big"
 	"time"
@@ -18,7 +19,6 @@ import (
 	"github.com/dexon-foundation/dexon/core/vm"
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/p2p/discover"
 	"github.com/dexon-foundation/dexon/params"
 	"github.com/dexon-foundation/dexon/rlp"
 	"github.com/dexon-foundation/dexon/rpc"
@@ -164,7 +164,11 @@ func (d *DexconGovernance) NodeSet(round uint64) []coreCrypto.PublicKey {
 	var pks []coreCrypto.PublicKey
 
 	for _, n := range s.Nodes() {
-		pks = append(pks, coreEcdsa.NewPublicKeyFromByteSlice(n.PublicKey))
+		pk, err := coreEcdsa.NewPublicKeyFromByteSlice(n.PublicKey)
+		if err != nil {
+			panic(err)
+		}
+		pks = append(pks, pk)
 	}
 	return pks
 }
@@ -306,11 +310,7 @@ func (d *DexconGovernance) NotarySet(
 	r := make(map[string]struct{}, len(notarySet))
 	for id := range notarySet {
 		if key, exists := d.nodeSetCache.GetPublicKey(id); exists {
-			uncompressedKey, err := crypto.DecompressPubkey(key.Bytes())
-			if err != nil {
-				log.Error("decompress key fail", "err", err)
-			}
-			r[discover.PubkeyID(uncompressedKey).String()] = struct{}{}
+			r[hex.EncodeToString(key.Bytes()[1:])] = struct{}{}
 		}
 	}
 	return r, nil
@@ -325,11 +325,7 @@ func (d *DexconGovernance) DKGSet(round uint64) (map[string]struct{}, error) {
 	r := make(map[string]struct{}, len(dkgSet))
 	for id := range dkgSet {
 		if key, exists := d.nodeSetCache.GetPublicKey(id); exists {
-			uncompressedKey, err := crypto.DecompressPubkey(key.Bytes())
-			if err != nil {
-				log.Error("decompress key fail", "err", err)
-			}
-			r[discover.PubkeyID(uncompressedKey).String()] = struct{}{}
+			r[hex.EncodeToString(key.Bytes()[1:])] = struct{}{}
 		}
 	}
 	return r, nil
