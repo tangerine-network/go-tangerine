@@ -388,16 +388,14 @@ func (p *peer) AsyncSendNewBlock(block *types.Block, td *big.Int) {
 }
 
 func (p *peer) SendLatticeBlock(block *coreTypes.Block) error {
-	r := toRLPLatticeBlock(block)
-	p.knownLatticeBlocks.Add(rlpHash(r))
-	return p2p.Send(p.rw, LatticeBlockMsg, toRLPLatticeBlock(block))
+	p.knownLatticeBlocks.Add(rlpHash(block))
+	return p2p.Send(p.rw, LatticeBlockMsg, block)
 }
 
 func (p *peer) AsyncSendLatticeBlock(block *coreTypes.Block) {
 	select {
 	case p.queuedLatticeBlocks <- block:
-		r := toRLPLatticeBlock(block)
-		p.knownLatticeBlocks.Add(rlpHash(r))
+		p.knownLatticeBlocks.Add(rlpHash(block))
 	default:
 		p.Log().Debug("Dropping lattice block propagation")
 	}
@@ -446,16 +444,14 @@ func (p *peer) AsyncSendRandomness(randomness *coreTypes.BlockRandomnessResult) 
 }
 
 func (p *peer) SendDKGPrivateShare(privateShare *coreTypes.DKGPrivateShare) error {
-	r := toRLPDKGPrivateShare(privateShare)
-	p.knownDKGPrivateShares.Add(rlpHash(r))
-	return p2p.Send(p.rw, DKGPrivateShareMsg, toRLPDKGPrivateShare(privateShare))
+	p.knownDKGPrivateShares.Add(rlpHash(privateShare))
+	return p2p.Send(p.rw, DKGPrivateShareMsg, privateShare)
 }
 
 func (p *peer) AsyncSendDKGPrivateShare(privateShare *coreTypes.DKGPrivateShare) {
 	select {
 	case p.queuedDKGPrivateShares <- privateShare:
-		r := toRLPDKGPrivateShare(privateShare)
-		p.knownDKGPrivateShares.Add(rlpHash(r))
+		p.knownDKGPrivateShares.Add(rlpHash(privateShare))
 	default:
 		p.Log().Debug("Dropping DKG private share")
 	}

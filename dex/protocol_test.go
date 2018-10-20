@@ -326,19 +326,19 @@ func TestRecvLatticeBlock(t *testing.T) {
 			Round:   12,
 			Height:  13,
 		},
-		Timestamp: fromMillisecond(toMillisecond(time.Now())),
+		Timestamp: time.Now().UTC(),
 		Acks: coreCommon.NewSortedHashes(coreCommon.Hashes([]coreCommon.Hash{
 			coreCommon.Hash{101}, coreCommon.Hash{100}, coreCommon.Hash{102},
 		})),
 		Payload: []byte{3, 3, 3, 3, 3},
 		Witness: coreTypes.Witness{
-			Timestamp: fromMillisecond(toMillisecond(time.Now())),
+			Timestamp: time.Now().UTC(),
 			Height:    13,
 			Data:      []byte{4, 4, 4, 4, 4},
 		},
 		Finalization: coreTypes.FinalizationResult{
 			Randomness: []byte{5, 5, 5, 5, 5},
-			Timestamp:  fromMillisecond(toMillisecond(time.Now())),
+			Timestamp:  time.Now().UTC(),
 			Height:     13,
 		},
 		Signature: coreCrypto.Signature{
@@ -351,7 +351,7 @@ func TestRecvLatticeBlock(t *testing.T) {
 		},
 	}
 
-	if err := p2p.Send(p.app, LatticeBlockMsg, toRLPLatticeBlock(&block)); err != nil {
+	if err := p2p.Send(p.app, LatticeBlockMsg, &block); err != nil {
 		t.Fatalf("send error: %v", err)
 	}
 
@@ -382,19 +382,19 @@ func TestSendLatticeBlock(t *testing.T) {
 			Round:   12,
 			Height:  13,
 		},
-		Timestamp: fromMillisecond(toMillisecond(time.Now())),
+		Timestamp: time.Now().UTC(),
 		Acks: coreCommon.NewSortedHashes(coreCommon.Hashes([]coreCommon.Hash{
 			coreCommon.Hash{101}, coreCommon.Hash{100}, coreCommon.Hash{102},
 		})),
 		Payload: []byte{3, 3, 3, 3, 3},
 		Witness: coreTypes.Witness{
-			Timestamp: fromMillisecond(toMillisecond(time.Now())),
+			Timestamp: time.Now().UTC(),
 			Height:    13,
 			Data:      []byte{4, 4, 4, 4, 4},
 		},
 		Finalization: coreTypes.FinalizationResult{
 			Randomness: []byte{5, 5, 5, 5, 5},
-			Timestamp:  fromMillisecond(toMillisecond(time.Now())),
+			Timestamp:  time.Now().UTC(),
 			Height:     13,
 		},
 		Signature: coreCrypto.Signature{
@@ -416,12 +416,12 @@ func TestSendLatticeBlock(t *testing.T) {
 		t.Errorf("%v: got code %d, want %d", p.Peer, msg.Code, LatticeBlockMsg)
 	}
 
-	var rb rlpLatticeBlock
-	if err := msg.Decode(&rb); err != nil {
+	var b coreTypes.Block
+	if err := msg.Decode(&b); err != nil {
 		t.Errorf("%v: %v", p.Peer, err)
 	}
 
-	if !reflect.DeepEqual(fromRLPLatticeBlock(&rb), &block) {
+	if !reflect.DeepEqual(b, block) {
 		t.Errorf("block mismatch")
 	}
 }
@@ -592,7 +592,7 @@ func TestRecvDKGPrivateShare(t *testing.T) {
 	}
 
 	if err := p2p.Send(
-		p.app, DKGPrivateShareMsg, toRLPDKGPrivateShare(&privateShare)); err != nil {
+		p.app, DKGPrivateShareMsg, &privateShare); err != nil {
 		t.Fatalf("send error: %v", err)
 	}
 
@@ -600,8 +600,7 @@ func TestRecvDKGPrivateShare(t *testing.T) {
 	select {
 	case msg := <-ch:
 		rps := msg.(*coreTypes.DKGPrivateShare)
-		if !reflect.DeepEqual(
-			toRLPDKGPrivateShare(rps), toRLPDKGPrivateShare(&privateShare)) {
+		if !reflect.DeepEqual(rps, &privateShare) {
 			t.Errorf("vote mismatch")
 		}
 	case <-time.After(1 * time.Second):
@@ -637,13 +636,12 @@ func TestSendDKGPrivateShare(t *testing.T) {
 		t.Errorf("%v: got code %d, want %d", p1.Peer, msg.Code, DKGPrivateShareMsg)
 	}
 
-	var rps rlpDKGPrivateShare
-	if err := msg.Decode(&rps); err != nil {
+	var ps coreTypes.DKGPrivateShare
+	if err := msg.Decode(&ps); err != nil {
 		t.Errorf("%v: %v", p1.Peer, err)
 	}
 
-	expected := toRLPDKGPrivateShare(&privateShare)
-	if !reflect.DeepEqual(rps, *expected) {
+	if !reflect.DeepEqual(ps, privateShare) {
 		t.Errorf("DKG private share mismatch")
 	}
 

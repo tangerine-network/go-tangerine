@@ -21,11 +21,7 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"time"
 
-	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
-	"github.com/dexon-foundation/dexon-consensus-core/core/crypto"
-	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/core/types"
@@ -229,6 +225,7 @@ func rlpHash(x interface{}) (h common.Hash) {
 	return h
 }
 
+/*
 type rlpDKGPrivateShare struct {
 	ProposerID   coreTypes.NodeID
 	ReceiverID   coreTypes.NodeID
@@ -341,3 +338,4 @@ func fromMillisecond(s uint64) time.Time {
 func toMillisecond(t time.Time) uint64 {
 	return uint64(t.UnixNano() / 1000000)
 }
+*/

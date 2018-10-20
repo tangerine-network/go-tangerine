@@ -709,11 +709,11 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		pm.nodeTable.Add(metas)
 	case msg.Code == LatticeBlockMsg:
-		var rb rlpLatticeBlock
-		if err := msg.Decode(&rb); err != nil {
+		var block coreTypes.Block
+		if err := msg.Decode(&block); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
-		pm.receiveCh <- fromRLPLatticeBlock(&rb)
+		pm.receiveCh <- &block
 	case msg.Code == VoteMsg:
 		var vote coreTypes.Vote
 		if err := msg.Decode(&vote); err != nil {
@@ -736,11 +736,11 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		pm.receiveCh <- &randomness
 	case msg.Code == DKGPrivateShareMsg:
 		// Do not relay this msg
-		var rps rlpDKGPrivateShare
-		if err := msg.Decode(&rps); err != nil {
+		var ps coreTypes.DKGPrivateShare
+		if err := msg.Decode(&ps); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
-		pm.receiveCh <- fromRLPDKGPrivateShare(&rps)
+		pm.receiveCh <- &ps
 	case msg.Code == DKGPartialSignatureMsg:
 		// broadcast in DKG set
 		var psig coreTypes.DKGPartialSignature
@@ -826,8 +826,7 @@ func (pm *ProtocolManager) BroadcastMetas(metas []*NodeMeta) {
 // TODO(sonic): block size is big, try not to send to all peers
 // to reduce traffic
 func (pm *ProtocolManager) BroadcastLatticeBlock(block *coreTypes.Block) {
-	hash := rlpHash(toRLPLatticeBlock(block))
-	for _, peer := range pm.peers.PeersWithoutLatticeBlock(hash) {
+	for _, peer := range pm.peers.PeersWithoutLatticeBlock(rlpHash(block)) {
 		peer.AsyncSendLatticeBlock(block)
 	}
 }
@@ -893,9 +892,8 @@ func (pm *ProtocolManager) SendDKGPrivateShare(
 func (pm *ProtocolManager) BroadcastDKGPrivateShare(
 	privateShare *coreTypes.DKGPrivateShare) {
 	label := peerLabel{set: dkgset, round: privateShare.Round}
-	h := rlpHash(toRLPDKGPrivateShare(privateShare))
 	for _, peer := range pm.peers.PeersWithLabel(label) {
-		if !peer.knownDKGPrivateShares.Contains(h) {
+		if !peer.knownDKGPrivateShares.Contains(rlpHash(privateShare)) {
 			peer.AsyncSendDKGPrivateShare(privateShare)
 		}
 	}
