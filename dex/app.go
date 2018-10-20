@@ -347,22 +347,27 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 
 	block := d.blockchain.GetConfirmedBlockByHash(blockHash)
 	if block == nil {
-		log.Error("Can not get confirmed block")
-		return
+		panic("Can not get confirmed block")
 	}
 
 	var transactions types.Transactions
 	err := rlp.Decode(bytes.NewReader(block.Payload), &transactions)
 	if err != nil {
 		log.Error("Payload rlp decode failed", "error", err)
-		return
+		panic(err)
 	}
 
 	var witnessData witnessData
 	err = rlp.Decode(bytes.NewReader(block.Witness.Data), &witnessData)
 	if err != nil {
 		log.Error("Witness rlp decode failed", "error", err)
-		return
+		panic(err)
+	}
+
+	block.Payload = nil
+	dexconMeta, err := rlp.EncodeToBytes(block)
+	if err != nil {
+		panic(err)
 	}
 
 	log.Debug("Block proposer id", "hash", block.ProposerID)
@@ -378,13 +383,14 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 		ChainBlockHeight:   block.Position.Height,
 		// TODO(bojie): fix it
 		GasLimit:   8000000,
+		DexconMeta: dexconMeta,
 		Difficulty: big.NewInt(1),
 	}, transactions, nil, nil)
 
 	_, err = d.blockchain.InsertPendingBlocks([]*types.Block{newBlock})
 	if err != nil {
 		log.Error("Insert chain", "error", err)
-		return
+		panic(err)
 	}
 
 	log.Debug("Insert pending block success", "height", result.Height)

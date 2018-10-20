@@ -894,6 +894,8 @@ func RPCMarshalBlock(b *types.Block, inclTx bool, fullTx bool) (map[string]inter
 		"timestamp":        hexutil.Uint64(head.Time),
 		"transactionsRoot": head.TxHash,
 		"receiptsRoot":     head.ReceiptHash,
+		"randomness":       hexutil.Bytes(head.Randomness),
+		"dexconMeta":       hexutil.Bytes(head.DexconMeta),
 	}
 
 	if inclTx {
