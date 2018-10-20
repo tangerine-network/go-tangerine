@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"encoding/hex"
-	"encoding/json"
 	"math/big"
 	"time"
 
@@ -20,6 +19,7 @@ import (
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/params"
+	"github.com/dexon-foundation/dexon/rlp"
 	"github.com/dexon-foundation/dexon/rpc"
 )
 
@@ -200,7 +200,7 @@ func (d *DexconGovernance) NotifyRoundHeight(targetRound, consensusHeight uint64
 func (d *DexconGovernance) AddDKGComplaint(round uint64, complaint *coreTypes.DKGComplaint) {
 	method := vm.GovernanceContractName2Method["addDKGComplaint"]
 
-	encoded, err := json.Marshal(complaint)
+	encoded, err := rlp.EncodeToBytes(complaint)
 	if err != nil {
 		log.Error("failed to JSON encode complaint to bytes", "err", err)
 		return
@@ -225,7 +225,7 @@ func (d *DexconGovernance) DKGComplaints(round uint64) []*coreTypes.DKGComplaint
 	var dkgComplaints []*coreTypes.DKGComplaint
 	for _, pk := range s.DKGComplaints(big.NewInt(int64(round))) {
 		x := new(coreTypes.DKGComplaint)
-		if err := json.Unmarshal(pk, x); err != nil {
+		if err := rlp.DecodeBytes(pk, x); err != nil {
 			panic(err)
 		}
 		dkgComplaints = append(dkgComplaints, x)
@@ -237,7 +237,7 @@ func (d *DexconGovernance) DKGComplaints(round uint64) []*coreTypes.DKGComplaint
 func (d *DexconGovernance) AddDKGMasterPublicKey(round uint64, masterPublicKey *coreTypes.DKGMasterPublicKey) {
 	method := vm.GovernanceContractName2Method["addDKGMasterPublicKey"]
 
-	encoded, err := json.Marshal(masterPublicKey)
+	encoded, err := rlp.EncodeToBytes(masterPublicKey)
 	if err != nil {
 		log.Error("failed to JSON encode mpk to bytes", "err", err)
 		return
@@ -262,7 +262,7 @@ func (d *DexconGovernance) DKGMasterPublicKeys(round uint64) []*coreTypes.DKGMas
 	var dkgMasterPKs []*coreTypes.DKGMasterPublicKey
 	for _, pk := range s.DKGMasterPublicKeys(big.NewInt(int64(round))) {
 		x := new(coreTypes.DKGMasterPublicKey)
-		if err := json.Unmarshal(pk, x); err != nil {
+		if err := rlp.DecodeBytes(pk, x); err != nil {
 			panic(err)
 		}
 		dkgMasterPKs = append(dkgMasterPKs, x)
@@ -274,7 +274,7 @@ func (d *DexconGovernance) DKGMasterPublicKeys(round uint64) []*coreTypes.DKGMas
 func (d *DexconGovernance) AddDKGFinalize(round uint64, final *coreTypes.DKGFinalize) {
 	method := vm.GovernanceContractName2Method["addDKGFinalize"]
 
-	encoded, err := json.Marshal(final)
+	encoded, err := rlp.EncodeToBytes(final)
 	if err != nil {
 		log.Error("failed to JSON encode finalize to bytes", "err", err)
 		return

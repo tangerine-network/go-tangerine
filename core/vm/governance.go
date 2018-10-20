@@ -18,7 +18,6 @@
 package vm
 
 import (
-	"encoding/json"
 	"math/big"
 	"strings"
 
@@ -27,6 +26,7 @@ import (
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/params"
+	"github.com/dexon-foundation/dexon/rlp"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
 	"github.com/dexon-foundation/dexon-consensus-core/core"
@@ -1388,7 +1388,7 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 	}
 
 	var dkgComplaint coreTypes.DKGComplaint
-	if err := json.Unmarshal(comp, &dkgComplaint); err != nil {
+	if err := rlp.DecodeBytes(comp, &dkgComplaint); err != nil {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -1427,7 +1427,7 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 	}
 
 	var dkgMasterPK coreTypes.DKGMasterPublicKey
-	if err := json.Unmarshal(mpk, &dkgMasterPK); err != nil {
+	if err := rlp.DecodeBytes(mpk, &dkgMasterPK); err != nil {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -1460,7 +1460,7 @@ func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]
 	caller := g.contract.Caller()
 
 	var dkgFinalize coreTypes.DKGFinalize
-	if err := json.Unmarshal(finalize, &dkgFinalize); err != nil {
+	if err := rlp.DecodeBytes(finalize, &dkgFinalize); err != nil {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -1556,7 +1556,7 @@ func (g *GovernanceContract) proposeCRS(signedCRS []byte) ([]byte, error) {
 	var dkgMasterPKs []*coreTypes.DKGMasterPublicKey
 	for _, mpk := range g.state.DKGMasterPublicKeys(round) {
 		x := new(coreTypes.DKGMasterPublicKey)
-		if err := json.Unmarshal(mpk, x); err != nil {
+		if err := rlp.DecodeBytes(mpk, x); err != nil {
 			panic(err)
 		}
 		dkgMasterPKs = append(dkgMasterPKs, x)
@@ -1566,7 +1566,7 @@ func (g *GovernanceContract) proposeCRS(signedCRS []byte) ([]byte, error) {
 	var dkgComplaints []*coreTypes.DKGComplaint
 	for _, comp := range g.state.DKGComplaints(round) {
 		x := new(coreTypes.DKGComplaint)
-		if err := json.Unmarshal(comp, x); err != nil {
+		if err := rlp.DecodeBytes(comp, x); err != nil {
 			panic(err)
 		}
 		dkgComplaints = append(dkgComplaints, x)
