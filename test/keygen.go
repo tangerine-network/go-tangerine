@@ -3,12 +3,18 @@ package main
 import (
 	"encoding/hex"
 	"fmt"
+	"os"
+	"strconv"
 
 	"github.com/dexon-foundation/dexon/crypto"
 )
 
 func main() {
-	for i := 0; i < 4; i++ {
+	count, err := strconv.Atoi(os.Args[1])
+	if err != nil {
+		panic(err)
+	}
+	for i := 0; i < count; i++ {
 		privKey, err := crypto.GenerateKey()
 		if err != nil {
 			panic(err)
