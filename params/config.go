@@ -44,18 +44,32 @@ var TrustedCheckpoints = map[common.Hash]*TrustedCheckpoint{
 var (
 	// MainnetChainConfig is the chain parameters to run a node on the main network.
 	MainnetChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(1),
-		HomesteadBlock:      big.NewInt(1150000),
-		DAOForkBlock:        big.NewInt(1920000),
+		ChainID:             big.NewInt(237),
+		HomesteadBlock:      big.NewInt(0),
+		DAOForkBlock:        big.NewInt(0),
 		DAOForkSupport:      true,
-		EIP150Block:         big.NewInt(2463000),
-		EIP150Hash:          common.HexToHash("0x2086799aeebeae135c246c65021c82b4e15a2c451340993aacfd2751886514f0"),
-		EIP155Block:         big.NewInt(2675000),
-		EIP158Block:         big.NewInt(2675000),
-		ByzantiumBlock:      big.NewInt(4370000),
-		ConstantinopleBlock: big.NewInt(7280000),
-		PetersburgBlock:     big.NewInt(7280000),
-		Dexcon:              &DexconConfig{},
+		EIP150Block:         big.NewInt(0),
+		EIP150Hash:          common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
+		EIP155Block:         big.NewInt(0),
+		EIP158Block:         big.NewInt(0),
+		ByzantiumBlock:      big.NewInt(0),
+		ConstantinopleBlock: big.NewInt(0),
+		PetersburgBlock:     big.NewInt(0),
+		Dexcon: &DexconConfig{
+			GenesisCRSText:   "In DEXON, we trust.",
+			Owner:            common.HexToAddress("7C3c31B19395A5e2627F921Cc2802560B71f1caB"),
+			BlockReward:      big.NewInt(1e18),
+			NumChains:        4,
+			LambdaBA:         250,
+			LambdaDKG:        2500,
+			K:                0,
+			PhiRatio:         667000,
+			NotarySetSize:    4,
+			DKGSetSize:       4,
+			RoundInterval:    99999999999,
+			MinBlockInterval: 900,
+			MaxBlockInterval: 1100,
+		},
 	}
 
 	// MainnetTrustedCheckpoint contains the light client trusted checkpoint for the main network.
@@ -69,7 +83,7 @@ var (
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Ropsten test network.
 	TestnetChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(3),
+		ChainID:             big.NewInt(238),
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
@@ -80,7 +94,19 @@ var (
 		ConstantinopleBlock: big.NewInt(0),
 		PetersburgBlock:     big.NewInt(0),
 		Dexcon: &DexconConfig{
-			BlockReward: new(big.Int).SetInt64(5e+18),
+			GenesisCRSText:   "In DEXON, we trust.",
+			Owner:            common.HexToAddress("7C3c31B19395A5e2627F921Cc2802560B71f1caB"),
+			BlockReward:      big.NewInt(1e18),
+			NumChains:        4,
+			LambdaBA:         250,
+			LambdaDKG:        2500,
+			K:                0,
+			PhiRatio:         667000,
+			NotarySetSize:    4,
+			DKGSetSize:       4,
+			RoundInterval:    99999999999,
+			MinBlockInterval: 900,
+			MaxBlockInterval: 1100,
 		},
 	}
 
@@ -100,7 +126,6 @@ var (
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
 		EIP150Block:         big.NewInt(2),
-		EIP150Hash:          common.HexToHash("0x9b095b36c15eaf13044373aef8ee0bd3a382a5abb92e402afa44b8249c3a90e9"),
 		EIP155Block:         big.NewInt(3),
 		EIP158Block:         big.NewInt(3),
 		ByzantiumBlock:      big.NewInt(1035301),

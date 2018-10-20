@@ -354,10 +354,11 @@ func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance *big
 func DefaultGenesisBlock() *Genesis {
 	return &Genesis{
 		Config:     params.MainnetChainConfig,
-		Nonce:      66,
-		ExtraData:  hexutil.MustDecode("0x11bbe8db4e347b4e8c937c1c8370e4b5ed33adb3db69cbdb7a38e1e50b1b82fa"),
-		GasLimit:   5000,
-		Difficulty: big.NewInt(17179869184),
+		Timestamp:  1540024964,
+		Nonce:      42,
+		ExtraData:  hexutil.MustDecode("0x5765692d4e696e6720536f6e696320426f6a696520323031382d31302d32302e"),
+		GasLimit:   8000000,
+		Difficulty: big.NewInt(1),
 		Alloc:      decodePrealloc(mainnetAllocData),
 	}
 }
@@ -366,10 +367,10 @@ func DefaultGenesisBlock() *Genesis {
 func DefaultTestnetGenesisBlock() *Genesis {
 	return &Genesis{
 		Config:     params.TestnetChainConfig,
-		Nonce:      66,
+		Nonce:      42,
 		ExtraData:  hexutil.MustDecode("0x3535353535353535353535353535353535353535353535353535353535353535"),
 		GasLimit:   16777216,
-		Difficulty: big.NewInt(1048576),
+		Difficulty: big.NewInt(1),
 		Alloc:      decodePrealloc(testnetAllocData),
 	}
 }
@@ -426,13 +427,28 @@ func DeveloperGenesisBlock(period uint64, faucet common.Address) *Genesis {
 }
 
 func decodePrealloc(data string) GenesisAlloc {
-	var p []struct{ Addr, Balance *big.Int }
+	type accountData struct {
+		Balance   *big.Int
+		Staked    *big.Int
+		Code      []byte
+		PublicKey []byte
+	}
+
+	var p []struct {
+		Addr    *big.Int
+		Account accountData
+	}
 	if err := rlp.NewStream(strings.NewReader(data), 0).Decode(&p); err != nil {
 		panic(err)
 	}
 	ga := make(GenesisAlloc, len(p))
 	for _, account := range p {
-		ga[common.BigToAddress(account.Addr)] = GenesisAccount{Balance: account.Balance}
+		ga[common.BigToAddress(account.Addr)] = GenesisAccount{
+			Balance:   account.Account.Balance,
+			Staked:    account.Account.Staked,
+			Code:      account.Account.Code,
+			PublicKey: account.Account.PublicKey,
+		}
 	}
 	return ga
 }

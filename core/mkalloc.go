@@ -38,7 +38,17 @@ import (
 	"github.com/dexon-foundation/dexon/rlp"
 )
 
-type allocItem struct{ Addr, Balance *big.Int }
+type accountData struct {
+	Balance   *big.Int
+	Staked    *big.Int
+	Code      []byte
+	PublicKey []byte
+}
+
+type allocItem struct {
+	Addr    *big.Int
+	Account accountData
+}
 
 type allocList []allocItem
 
@@ -49,10 +59,15 @@ func (a allocList) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
 func makelist(g *core.Genesis) allocList {
 	a := make(allocList, 0, len(g.Alloc))
 	for addr, account := range g.Alloc {
-		if len(account.Storage) > 0 || len(account.Code) > 0 || account.Nonce != 0 {
+		if len(account.Storage) > 0 || account.Nonce != 0 {
 			panic(fmt.Sprintf("can't encode account %x", addr))
 		}
-		a = append(a, allocItem{addr.Big(), account.Balance})
+		a = append(a, allocItem{addr.Big(), accountData{
+			Code:      account.Code,
+			Balance:   account.Balance,
+			Staked:    account.Staked,
+			PublicKey: account.PublicKey,
+		}})
 	}
 	sort.Sort(a)
 	return a
