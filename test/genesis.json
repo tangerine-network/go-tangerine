@@ -12,12 +12,12 @@
       "blockReward": "1000000000000000000",
       "numChains": 4,
       "lambdaBA": 250,
-      "lambdaDKG": 2500,
+      "lambdaDKG": 4000,
       "k": 0,
       "phiRatio": 667000,
       "notarySetSize": 4,
       "dkgSetSize": 4,
-      "roundInterval": 99999999999,
+      "roundInterval": 180000,
       "minBlockInterval": 900,
       "maxBlockInterval": 1100
     }

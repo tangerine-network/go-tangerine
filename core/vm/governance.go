@@ -1413,7 +1413,8 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 }
 
 func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) ([]byte, error) {
-	if round.Cmp(g.state.Round()) != 0 {
+	// Can only add DKG master public key of current and next round.
+	if round.Cmp(new(big.Int).Add(g.state.Round(), big.NewInt(1))) > 0 {
 		g.penalize()
 		return nil, errExecutionReverted
 	}

@@ -174,7 +174,14 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	dex.network = NewDexconNetwork(pm)
 
 	privKey := coreEcdsa.NewPrivateKeyFromECDSA(config.PrivateKey)
-	dMoment := time.Date(2018, 10, 15, 6, 0, 0, 0, time.UTC)
+
+	// TODO(w): set this correctly in config.
+	now := time.Now()
+	dMoment := time.Date(
+		now.Year(), now.Month(), now.Day(),
+		now.Hour(), now.Minute(), (now.Second()/5+1)*5,
+		0, now.Location())
+
 	dex.consensus = dexCore.NewConsensus(dMoment,
 		dex.app, dex.governance, db, dex.network, privKey, log.Root())
 	return dex, nil
