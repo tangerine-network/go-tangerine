@@ -31,6 +31,7 @@ import (
 	"github.com/dexon-foundation/dexon/accounts/keystore"
 	"github.com/dexon-foundation/dexon/cmd/utils"
 	"github.com/dexon-foundation/dexon/console"
+	"github.com/dexon-foundation/dexon/dex"
 	"github.com/dexon-foundation/dexon/eth"
 	"github.com/dexon-foundation/dexon/ethclient"
 	"github.com/dexon-foundation/dexon/internal/debug"
@@ -96,6 +97,7 @@ var (
 		utils.ListenPortFlag,
 		utils.MaxPeersFlag,
 		utils.MaxPendingPeersFlag,
+		utils.ProposingEnabledFlag,
 		utils.MiningEnabledFlag,
 		utils.MinerThreadsFlag,
 		utils.MinerLegacyThreadsFlag,
@@ -353,6 +355,19 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 		}
 		if err := ethereum.StartMining(threads); err != nil {
 			utils.Fatalf("Failed to start mining: %v", err)
+		}
+	}
+
+	if ctx.GlobalBool(utils.ProposingEnabledFlag.Name) {
+		if ctx.GlobalString(utils.SyncModeFlag.Name) == "light" {
+			utils.Fatalf("Light clients do not support proposing")
+		}
+		var dexon *dex.Dexon
+		if err := stack.Service(&dexon); err != nil {
+			utils.Fatalf("Dexon service not running: %v", err)
+		}
+		if err := dexon.StartProposing(); err != nil {
+			utils.Fatalf("Failed to string proposing: %v", err)
 		}
 	}
 }

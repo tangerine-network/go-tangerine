@@ -184,6 +184,12 @@ var AppHelpFlagGroups = []flagGroup{
 		},
 	},
 	{
+		Name: "PROPOSER",
+		Flags: []cli.Flag{
+			utils.ProposingEnabledFlag,
+		},
+	},
+	{
 		Name: "MINER",
 		Flags: []cli.Flag{
 			utils.MiningEnabledFlag,

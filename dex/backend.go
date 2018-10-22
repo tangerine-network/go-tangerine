@@ -255,6 +255,13 @@ func (s *Dexon) Stop() error {
 	return nil
 }
 
+func (s *Dexon) StartProposing() error {
+	// TODO(sonic):
+	// enable dispatch vote, agreement result, finalization result.. msg to consensus core.
+	log.Debug("###############start proposing")
+	return nil
+}
+
 // CreateDB creates the chain database.
 func CreateDB(ctx *node.ServiceContext, config *Config, name string) (ethdb.Database, error) {
 	db, err := ctx.OpenDatabase(name, config.DatabaseCache, config.DatabaseHandles)
