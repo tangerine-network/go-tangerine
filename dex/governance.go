@@ -86,6 +86,12 @@ func (d *DexconGovernance) DexconConfiguration(round uint64) *params.DexconConfi
 
 // Configuration returns the system configuration for consensus core to use.
 func (d *DexconGovernance) Configuration(round uint64) *coreTypes.Config {
+	// Configuration in round r is activiated on round r + 2.
+	if round < 2 {
+		round = 0
+	} else {
+		round -= 2
+	}
 	s := d.getGovStateAtRound(round)
 	c := s.Configuration()
 
@@ -114,15 +120,13 @@ func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
 		return err
 	}
 
-	if nonce > 0 {
-		nonce += 1
-	}
+	log.Info("sendGovTx", "nonce", nonce)
 
 	tx := types.NewTransaction(
 		nonce,
 		vm.GovernanceContractAddress,
 		big.NewInt(0),
-		uint64(200000),
+		uint64(2000000),
 		gasPrice,
 		data)
 
@@ -132,6 +136,9 @@ func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
 	if err != nil {
 		return err
 	}
+
+	log.Info("Send governance transaction", "fullhash", tx.Hash().Hex())
+
 	return d.b.SendTx(ctx, tx)
 }
 
@@ -202,7 +209,7 @@ func (d *DexconGovernance) AddDKGComplaint(round uint64, complaint *coreTypes.DK
 
 	encoded, err := rlp.EncodeToBytes(complaint)
 	if err != nil {
-		log.Error("failed to JSON encode complaint to bytes", "err", err)
+		log.Error("failed to RLP encode complaint to bytes", "err", err)
 		return
 	}
 
@@ -239,7 +246,7 @@ func (d *DexconGovernance) AddDKGMasterPublicKey(round uint64, masterPublicKey *
 
 	encoded, err := rlp.EncodeToBytes(masterPublicKey)
 	if err != nil {
-		log.Error("failed to JSON encode mpk to bytes", "err", err)
+		log.Error("failed to RLP encode mpk to bytes", "err", err)
 		return
 	}
 
@@ -276,7 +283,7 @@ func (d *DexconGovernance) AddDKGFinalize(round uint64, final *coreTypes.DKGFina
 
 	encoded, err := rlp.EncodeToBytes(final)
 	if err != nil {
-		log.Error("failed to JSON encode finalize to bytes", "err", err)
+		log.Error("failed to RLP encode finalize to bytes", "err", err)
 		return
 	}
 
@@ -295,7 +302,7 @@ func (d *DexconGovernance) AddDKGFinalize(round uint64, final *coreTypes.DKGFina
 
 // IsDKGFinal checks if DKG is final.
 func (d *DexconGovernance) IsDKGFinal(round uint64) bool {
-	s := d.getGovStateAtRound(round)
+	s := d.getGovState()
 	threshold := 2*s.DKGSetSize().Uint64()/3 + 1
 	count := s.DKGFinalizedsCount(big.NewInt(int64(round))).Uint64()
 	return count >= threshold

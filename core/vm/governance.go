@@ -877,7 +877,7 @@ const (
 	crsLoc
 	dkgMasterPublicKeysLoc
 	dkgComplaintsLoc
-	dkgFinailizedLoc
+	dkgFinalizedLoc
 	dkgFinalizedsCountLoc
 	ownerLoc
 	blockRewardLoc
@@ -1174,12 +1174,12 @@ func (s *GovernanceStateHelper) PushDKGComplaint(round *big.Int, complaint []byt
 
 // mapping(address => bool)[] public dkgFinalized;
 func (s *GovernanceStateHelper) DKGFinalized(round *big.Int, addr common.Address) bool {
-	baseLoc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinailizedLoc)), round)
+	baseLoc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinalizedLoc)), round)
 	mapLoc := s.getMapLoc(baseLoc, addr.Bytes())
 	return s.getStateBigInt(mapLoc).Cmp(big.NewInt(0)) != 0
 }
 func (s *GovernanceStateHelper) PutDKGFinalized(round *big.Int, addr common.Address, finalized bool) {
-	baseLoc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinailizedLoc)), round)
+	baseLoc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinalizedLoc)), round)
 	mapLoc := s.getMapLoc(baseLoc, addr.Bytes())
 	res := big.NewInt(0)
 	if finalized {

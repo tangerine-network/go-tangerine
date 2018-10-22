@@ -886,6 +886,8 @@ func (pm *ProtocolManager) SendDKGPrivateShare(
 	id := string(pub.Bytes()[1:])
 	if p := pm.peers.Peer(id); p != nil {
 		p.AsyncSendDKGPrivateShare(privateShare)
+	} else {
+		log.Error("Failed to send DKG private share", "publicKey", id)
 	}
 }
 
