@@ -11,7 +11,7 @@
 GOBIN = $(shell pwd)/build/bin
 GO ?= latest
 
-geth:
+geth: libbls
 	build/env.sh go run build/ci.go install ./cmd/geth
 	@echo "Done building."
 	@echo "Run \"$(GOBIN)/geth\" to launch geth."
@@ -39,6 +39,9 @@ test: all
 
 lint: ## Run linters.
 	build/env.sh go run build/ci.go lint
+
+libbls:
+	make -C vendor/github.com/dexon-foundation/bls lib/libbls384.a
 
 clean:
 	./build/clean_go_build_cache.sh

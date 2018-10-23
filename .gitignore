@@ -47,3 +47,6 @@ profile.cov
 **/yarn-error.log
 
 .*.swp
+*.o
+*.d
+*.a
