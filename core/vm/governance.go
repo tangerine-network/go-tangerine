@@ -475,11 +475,11 @@ const abiJSON = `
     "constant": false,
     "inputs": [
       {
-        "name": "round",
+        "name": "Round",
         "type": "uint256"
       },
       {
-        "name": "height",
+        "name": "Height",
         "type": "uint256"
       }
     ],
@@ -492,6 +492,10 @@ const abiJSON = `
   {
     "constant": false,
     "inputs": [
+      {
+        "name": "Round",
+        "type": "uint256"
+      },
       {
         "name": "SignedCRS",
         "type": "bytes"
@@ -658,11 +662,14 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 		}
 		return g.addDKGFinalize(args.Round, args.Finalize)
 	case "proposeCRS":
-		var signedCRS []byte
-		if err := method.Inputs.Unpack(&signedCRS, arguments); err != nil {
+		args := struct {
+			Round     *big.Int
+			SignedCRS []byte
+		}{}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		return g.proposeCRS(signedCRS)
+		return g.proposeCRS(args.Round, args.SignedCRS)
 	case "stake":
 		var publicKey []byte
 		if err := method.Inputs.Unpack(&publicKey, arguments); err != nil {
@@ -1548,8 +1555,13 @@ func (g *GovernanceContract) unstake() ([]byte, error) {
 	return nil, nil
 }
 
-func (g *GovernanceContract) proposeCRS(signedCRS []byte) ([]byte, error) {
+func (g *GovernanceContract) proposeCRS(nextRound *big.Int, signedCRS []byte) ([]byte, error) {
 	round := g.state.Round()
+
+	if nextRound.Cmp(round) <= 0 {
+		return nil, errExecutionReverted
+	}
+
 	prevCRS := g.state.CRS(round)
 
 	// Prepare DKGMasterPublicKeys.

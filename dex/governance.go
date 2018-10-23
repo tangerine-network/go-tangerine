@@ -144,7 +144,7 @@ func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
 
 // CRS returns the CRS for a given round.
 func (d *DexconGovernance) CRS(round uint64) coreCommon.Hash {
-	s := d.getGovStateAtRound(round)
+	s := d.getGovState()
 	return coreCommon.Hash(s.CRS(big.NewInt(int64(round))))
 }
 
@@ -154,10 +154,10 @@ func (d *DexconGovernance) LenCRS() uint64 {
 }
 
 // ProposeCRS send proposals of a new CRS
-func (d *DexconGovernance) ProposeCRS(signedCRS []byte) {
+func (d *DexconGovernance) ProposeCRS(round uint64, signedCRS []byte) {
 	method := vm.GovernanceContractName2Method["proposeCRS"]
 
-	res, err := method.Inputs.Pack(signedCRS)
+	res, err := method.Inputs.Pack(big.NewInt(int64(round)), signedCRS)
 	if err != nil {
 		log.Error("failed to pack proposeCRS input", "err", err)
 		return
