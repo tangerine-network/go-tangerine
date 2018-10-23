@@ -474,8 +474,9 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 		WitnessReceiptHash: witnessData.ReceiptHash,
 		// TODO(bojie): fix it
 		GasLimit:   8000000,
-		DexconMeta: dexconMeta,
 		Difficulty: big.NewInt(1),
+		DexconMeta: dexconMeta,
+		Randomness: result.Randomness,
 	}, transactions, nil, nil)
 
 	_, err = d.blockchain.InsertPendingBlocks([]*types.Block{newBlock})

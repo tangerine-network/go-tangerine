@@ -1623,7 +1623,7 @@ func (bc *BlockChain) insertPendingBlocks(chain types.Blocks) (int, []interface{
 		if err != nil {
 			return i, nil, nil, fmt.Errorf("pendingState commit error: %v", err)
 		}
-		log.Info("commit pending root", "hash", root)
+		log.Info("Commit pending root", "hash", root)
 
 		// add into pending blocks
 		bc.pendingBlocks[block.NumberU64()] = struct {
