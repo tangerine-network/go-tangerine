@@ -854,7 +854,9 @@ func (pm *ProtocolManager) BroadcastAgreementResult(
 		round: agreement.Position.Round,
 	}
 	for _, peer := range pm.peers.PeersWithLabel(label) {
-		peer.AsyncSendAgreement(agreement)
+		if !peer.knownAgreements.Contains(rlpHash(agreement)) {
+			peer.AsyncSendAgreement(agreement)
+		}
 	}
 
 	// TODO(sonic): send to some of other nodes (gossip)
@@ -872,7 +874,9 @@ func (pm *ProtocolManager) BroadcastRandomnessResult(
 		round:   randomness.Position.Round,
 	}
 	for _, peer := range pm.peers.PeersWithLabel(label) {
-		peer.AsyncSendRandomness(randomness)
+		if !peer.knownRandomnesses.Contains(rlpHash(randomness)) {
+			peer.AsyncSendRandomness(randomness)
+		}
 	}
 
 	// TODO(sonic): send to some of other nodes (gossip)
