@@ -569,7 +569,7 @@ func (p *mockPublicKey) VerifySignature(hash coreCommon.Hash, signature coreCryp
 
 func (p *mockPublicKey) Bytes() []byte {
 	b, _ := p.id.Pubkey()
-	return crypto.CompressPubkey(b)
+	return crypto.FromECDSAPub(b)
 }
 
 func TestRecvDKGPrivateShare(t *testing.T) {
