@@ -81,6 +81,10 @@ func (recv *consensusBAReceiver) ProposeVote(vote *types.Vote) {
 
 func (recv *consensusBAReceiver) ProposeBlock() common.Hash {
 	block := recv.consensus.proposeBlock(recv.chainID, recv.round)
+	if block == nil {
+		recv.consensus.logger.Error("unable to propose block")
+		return nullBlockHash
+	}
 	recv.consensus.baModules[recv.chainID].addCandidateBlock(block)
 	if err := recv.consensus.preProcessBlock(block); err != nil {
 		recv.consensus.logger.Error("Failed to pre-process block", "error", err)
@@ -230,9 +234,6 @@ type Consensus struct {
 	authModule    *Authenticator
 	currentConfig *types.Config
 
-	// Modules.
-	nbModule *nonBlocking
-
 	// BA.
 	baModules []*agreement
 	receivers []*consensusBAReceiver
@@ -248,6 +249,7 @@ type Consensus struct {
 
 	// Interfaces.
 	db        blockdb.BlockDatabase
+	app       Application
 	gov       Governance
 	network   Network
 	tickerObj Ticker
@@ -294,11 +296,9 @@ func NewConsensus(
 	authModule := NewAuthenticator(prv)
 	// Check if the application implement Debug interface.
 	debugApp, _ := app.(Debug)
-	// Setup nonblocking module.
-	nbModule := newNonBlocking(app, debugApp)
 	// Init lattice.
 	lattice := NewLattice(
-		dMoment, config, authModule, nbModule, nbModule, db, logger)
+		dMoment, config, authModule, app, debugApp, db, logger)
 	// Init configuration chain.
 	ID := types.NewNodeID(prv.PublicKey())
 	recv := &consensusDKGReceiver{
@@ -321,7 +321,7 @@ func NewConsensus(
 		currentConfig: config,
 		ccModule:      newCompactionChain(gov),
 		lattice:       lattice,
-		nbModule:      nbModule,
+		app:           app,
 		gov:           gov,
 		db:            db,
 		network:       network,
@@ -814,7 +814,7 @@ func (con *Consensus) ProcessBlockRandomnessResult(
 
 // preProcessBlock performs Byzantine Agreement on the block.
 func (con *Consensus) preProcessBlock(b *types.Block) (err error) {
-	if err = con.lattice.SanityCheck(b, true); err != nil {
+	if err = con.lattice.SanityCheck(b); err != nil {
 		return
 	}
 	if err = con.baModules[b.Position.ChainID].processBlock(b); err != nil {
@@ -849,7 +849,7 @@ func (con *Consensus) processBlock(block *types.Block) (err error) {
 			return
 		}
 		// TODO(mission): clone types.FinalizationResult
-		con.nbModule.BlockDelivered(b.Hash, b.Finalization)
+		con.app.BlockDelivered(b.Hash, b.Finalization)
 	}
 	if err = con.lattice.PurgeBlocks(deliveredBlocks); err != nil {
 		return
@@ -859,7 +859,7 @@ func (con *Consensus) processBlock(block *types.Block) (err error) {
 
 // processFinalizedBlock is the entry point for syncing blocks.
 func (con *Consensus) processFinalizedBlock(block *types.Block) (err error) {
-	if err = con.lattice.SanityCheck(block, false); err != nil {
+	if err = con.lattice.SanityCheck(block); err != nil {
 		return
 	}
 	con.ccModule.processFinalizedBlock(block)
@@ -878,7 +878,7 @@ func (con *Consensus) processFinalizedBlock(block *types.Block) (err error) {
 				}
 				err = nil
 			}
-			con.nbModule.BlockDelivered(b.Hash, b.Finalization)
+			con.app.BlockDelivered(b.Hash, b.Finalization)
 			if b.Position.Round+2 == con.roundToNotify {
 				// Only the first block delivered of that round would
 				// trigger this noitification.
