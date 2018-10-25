@@ -464,13 +464,6 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 		panic(err)
 	}
 
-	var witnessData witnessData
-	err = rlp.Decode(bytes.NewReader(block.Witness.Data), &witnessData)
-	if err != nil {
-		log.Error("Witness rlp decode failed", "error", err)
-		panic(err)
-	}
-
 	block.Payload = nil
 	dexconMeta, err := rlp.EncodeToBytes(block)
 	if err != nil {
@@ -478,21 +471,18 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 	}
 
 	newBlock := types.NewBlock(&types.Header{
-		Number:             new(big.Int).SetUint64(result.Height),
-		Time:               big.NewInt(result.Timestamp.Unix()),
-		Coinbase:           common.BytesToAddress(block.ProposerID.Bytes()),
-		Position:           block.Position,
-		WitnessHeight:      block.Witness.Height,
-		WitnessRoot:        witnessData.Root,
-		WitnessReceiptHash: witnessData.ReceiptHash,
+		Number:   new(big.Int).SetUint64(result.Height),
+		Time:     big.NewInt(result.Timestamp.Unix()),
+		Coinbase: common.BytesToAddress(block.ProposerID.Bytes()),
 		// TODO(bojie): fix it
 		GasLimit:   8000000,
 		Difficulty: big.NewInt(1),
+		Round:      block.Position.Round,
 		DexconMeta: dexconMeta,
 		Randomness: result.Randomness,
 	}, transactions, nil, nil)
 
-	_, err = d.blockchain.ProcessPendingBlock(newBlock)
+	_, err = d.blockchain.ProcessPendingBlock(newBlock, &block.Witness)
 	if err != nil {
 		log.Error("Insert chain", "error", err)
 		panic(err)

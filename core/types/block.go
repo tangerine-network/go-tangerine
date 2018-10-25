@@ -26,8 +26,7 @@ import (
 	"time"
 	"unsafe"
 
-	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
-
+	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/common/hexutil"
 	"github.com/dexon-foundation/dexon/rlp"
@@ -66,31 +65,35 @@ func (n *BlockNonce) UnmarshalText(input []byte) error {
 	return hexutil.UnmarshalFixedText("BlockNonce", input, n[:])
 }
 
+type WitnessData struct {
+	Root        common.Hash
+	TxHash      common.Hash
+	ReceiptHash common.Hash
+}
+
 //go:generate gencodec -type Header -field-override headerMarshaling -out gen_header_json.go
 
 // Header represents a block header in the Ethereum blockchain.
 type Header struct {
-	ParentHash         common.Hash        `json:"parentHash"       gencodec:"required"`
-	UncleHash          common.Hash        `json:"sha3Uncles"       gencodec:"required"`
-	Coinbase           common.Address     `json:"miner"            gencodec:"required"`
-	Root               common.Hash        `json:"stateRoot"        gencodec:"required"`
-	TxHash             common.Hash        `json:"transactionsRoot" gencodec:"required"`
-	ReceiptHash        common.Hash        `json:"receiptsRoot"     gencodec:"required"`
-	Bloom              Bloom              `json:"logsBloom"        gencodec:"required"`
-	Difficulty         *big.Int           `json:"difficulty"       gencodec:"required"`
-	Number             *big.Int           `json:"number"           gencodec:"required"`
-	GasLimit           uint64             `json:"gasLimit"         gencodec:"required"`
-	GasUsed            uint64             `json:"gasUsed"          gencodec:"required"`
-	Time               uint64             `json:"timestamp"        gencodec:"required"`
-	Extra              []byte             `json:"extraData"        gencodec:"required"`
-	MixDigest          common.Hash        `json:"mixHash"`
-	Nonce              BlockNonce         `json:"nonce"`
-	Randomness         []byte             `json:"randomness"       gencodec:"required"`
-	Position           coreTypes.Position `json:"position"           gencodec:"required"`
-	WitnessHeight      uint64             `json:"witnessHeight"      gencodec:"required"`
-	WitnessRoot        common.Hash        `json:"witnessRoot"        gencodec:"required"`
-	WitnessReceiptHash common.Hash        `json:"witnessReceiptHash" gencodec:"required"`
-	DexconMeta         []byte             `json:"dexconMeta"         gencodec:"required"`
+	ParentHash  common.Hash        `json:"parentHash"       gencodec:"required"`
+	UncleHash   common.Hash        `json:"sha3Uncles"       gencodec:"required"`
+	Coinbase    common.Address     `json:"miner"            gencodec:"required"`
+	Root        common.Hash        `json:"stateRoot"        gencodec:"required"`
+	TxHash      common.Hash        `json:"transactionsRoot" gencodec:"required"`
+	ReceiptHash common.Hash        `json:"receiptsRoot"     gencodec:"required"`
+	Bloom       Bloom              `json:"logsBloom"        gencodec:"required"`
+	Difficulty  *big.Int           `json:"difficulty"       gencodec:"required"`
+	Number      *big.Int           `json:"number"           gencodec:"required"`
+	GasLimit    uint64             `json:"gasLimit"         gencodec:"required"`
+	GasUsed     uint64             `json:"gasUsed"          gencodec:"required"`
+	Time        uint64             `json:"timestamp"        gencodec:"required"`
+	Extra       []byte             `json:"extraData"        gencodec:"required"`
+	MixDigest   common.Hash        `json:"mixHash"`
+	Nonce       BlockNonce         `json:"nonce"`
+	Randomness  []byte             `json:"randomness"       gencodec:"required"`
+	Position    coreTypes.Position `json:"position"         gencodec:"required"`
+	Round       uint64             `json:"round"            gencodec:"required"`
+	DexconMeta  []byte             `json:"dexconMeta"       gencodec:"required"`
 }
 
 // field type overrides for gencodec

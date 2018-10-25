@@ -1507,13 +1507,13 @@ func (bc *BlockChain) insertSidechain(block *types.Block, it *insertIterator) (i
 	return 0, nil, nil, nil
 }
 
-func (bc *BlockChain) ProcessPendingBlock(block *types.Block) (int, error) {
-	n, events, logs, err := bc.processPendingBlock(block)
+func (bc *BlockChain) ProcessPendingBlock(block *types.Block, witness *coreTypes.Witness) (int, error) {
+	n, events, logs, err := bc.processPendingBlock(block, witness)
 	bc.PostChainEvents(events, logs)
 	return n, err
 }
 
-func (bc *BlockChain) processPendingBlock(block *types.Block) (int, []interface{}, []*types.Log, error) {
+func (bc *BlockChain) processPendingBlock(block *types.Block, witness *coreTypes.Witness) (int, []interface{}, []*types.Log, error) {
 	// Pre-checks passed, start the full block imports
 	bc.wg.Add(1)
 	defer bc.wg.Done()
@@ -1531,6 +1531,12 @@ func (bc *BlockChain) processPendingBlock(block *types.Block) (int, []interface{
 		coalescedLogs []*types.Log
 	)
 
+	var witnessData types.WitnessData
+	if err := rlp.Decode(bytes.NewReader(witness.Data), &witnessData); err != nil {
+		log.Error("Witness rlp decode failed", "error", err)
+		panic(err)
+	}
+
 	// Start a parallel signature recovery (signer will fluke on fork transition, minimal perf loss)
 	senderCacher.recoverFromBlocks(types.MakeSigner(bc.chainConfig, block.Number()), []*types.Block{block})
 
@@ -1541,13 +1547,15 @@ func (bc *BlockChain) processPendingBlock(block *types.Block) (int, []interface{
 	bstart := time.Now()
 
 	currentBlock := bc.CurrentBlock()
-	if block.Header().WitnessHeight > currentBlock.NumberU64() && block.Header().WitnessHeight != 0 {
-		if bc.pendingBlocks[block.Header().WitnessHeight].block.Root() != block.Header().WitnessRoot {
-			return 0, nil, nil, fmt.Errorf("invalid witness root %s vs %s", bc.pendingBlocks[block.Header().WitnessHeight].block.Root().String(), block.Header().WitnessRoot.String())
+	if witness.Height > currentBlock.NumberU64() && witness.Height != 0 {
+		if bc.pendingBlocks[witness.Height].block.Root() != witnessData.Root {
+			return 0, nil, nil, fmt.Errorf("invalid witness root %s vs %s",
+				bc.pendingBlocks[witness.Height].block.Root().String(), witnessData.Root.String())
 		}
 
-		if bc.pendingBlocks[block.Header().WitnessHeight].block.ReceiptHash() != block.Header().WitnessReceiptHash {
-			return 0, nil, nil, fmt.Errorf("invalid witness receipt hash %s vs %s", bc.pendingBlocks[block.Header().WitnessHeight].block.ReceiptHash().String(), block.Header().WitnessReceiptHash.String())
+		if bc.pendingBlocks[witness.Height].block.ReceiptHash() != witnessData.ReceiptHash {
+			return 0, nil, nil, fmt.Errorf("invalid witness receipt hash %s vs %s",
+				bc.pendingBlocks[witness.Height].block.ReceiptHash().String(), witnessData.ReceiptHash.String())
 		}
 	}
 
@@ -1614,7 +1622,7 @@ func (bc *BlockChain) processPendingBlock(block *types.Block) (int, []interface{
 	}{block: newPendingBlock, receipts: receipts}
 
 	// start insert available pending blocks into db
-	for pendingHeight := bc.CurrentBlock().NumberU64() + 1; pendingHeight <= block.Header().WitnessHeight; pendingHeight++ {
+	for pendingHeight := bc.CurrentBlock().NumberU64() + 1; pendingHeight <= witness.Height; pendingHeight++ {
 		pendingIns, exist := bc.pendingBlocks[pendingHeight]
 		if !exist {
 			log.Error("Block has already inserted", "height", pendingHeight)
