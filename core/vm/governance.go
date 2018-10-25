@@ -33,6 +33,7 @@ import (
 	coreCrypto "github.com/dexon-foundation/dexon-consensus-core/core/crypto"
 	"github.com/dexon-foundation/dexon-consensus-core/core/crypto/ecdsa"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
+	dkgTypes "github.com/dexon-foundation/dexon-consensus-core/core/types/dkg"
 )
 
 var GovernanceContractAddress = common.HexToAddress("5765692d4e696e6720536f6e696320426f6a6965")
@@ -1394,7 +1395,7 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 		return nil, errExecutionReverted
 	}
 
-	var dkgComplaint coreTypes.DKGComplaint
+	var dkgComplaint dkgTypes.Complaint
 	if err := rlp.DecodeBytes(comp, &dkgComplaint); err != nil {
 		g.penalize()
 		return nil, errExecutionReverted
@@ -1434,7 +1435,7 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 		return nil, errExecutionReverted
 	}
 
-	var dkgMasterPK coreTypes.DKGMasterPublicKey
+	var dkgMasterPK dkgTypes.MasterPublicKey
 	if err := rlp.DecodeBytes(mpk, &dkgMasterPK); err != nil {
 		g.penalize()
 		return nil, errExecutionReverted
@@ -1467,7 +1468,7 @@ func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]
 
 	caller := g.contract.Caller()
 
-	var dkgFinalize coreTypes.DKGFinalize
+	var dkgFinalize dkgTypes.Finalize
 	if err := rlp.DecodeBytes(finalize, &dkgFinalize); err != nil {
 		g.penalize()
 		return nil, errExecutionReverted
@@ -1566,9 +1567,9 @@ func (g *GovernanceContract) proposeCRS(nextRound *big.Int, signedCRS []byte) ([
 
 	// Prepare DKGMasterPublicKeys.
 	// TODO(w): make sure DKGMasterPKs are unique.
-	var dkgMasterPKs []*coreTypes.DKGMasterPublicKey
+	var dkgMasterPKs []*dkgTypes.MasterPublicKey
 	for _, mpk := range g.state.DKGMasterPublicKeys(round) {
-		x := new(coreTypes.DKGMasterPublicKey)
+		x := new(dkgTypes.MasterPublicKey)
 		if err := rlp.DecodeBytes(mpk, x); err != nil {
 			panic(err)
 		}
@@ -1576,9 +1577,9 @@ func (g *GovernanceContract) proposeCRS(nextRound *big.Int, signedCRS []byte) ([
 	}
 
 	// Prepare DKGComplaints.
-	var dkgComplaints []*coreTypes.DKGComplaint
+	var dkgComplaints []*dkgTypes.Complaint
 	for _, comp := range g.state.DKGComplaints(round) {
-		x := new(coreTypes.DKGComplaint)
+		x := new(dkgTypes.Complaint)
 		if err := rlp.DecodeBytes(comp, x); err != nil {
 			panic(err)
 		}

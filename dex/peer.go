@@ -25,6 +25,7 @@ import (
 
 	mapset "github.com/deckarep/golang-set"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
+	dkgTypes "github.com/dexon-foundation/dexon-consensus-core/core/types/dkg"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/types"
@@ -138,8 +139,8 @@ type peer struct {
 	queuedVotes                chan *coreTypes.Vote
 	queuedAgreements           chan *coreTypes.AgreementResult
 	queuedRandomnesses         chan *coreTypes.BlockRandomnessResult
-	queuedDKGPrivateShares     chan *coreTypes.DKGPrivateShare
-	queuedDKGPartialSignatures chan *coreTypes.DKGPartialSignature
+	queuedDKGPrivateShares     chan *dkgTypes.PrivateShare
+	queuedDKGPartialSignatures chan *dkgTypes.PartialSignature
 	term                       chan struct{} // Termination channel to stop the broadcaster
 }
 
@@ -166,8 +167,8 @@ func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 		queuedVotes:                make(chan *coreTypes.Vote, maxQueuedVotes),
 		queuedAgreements:           make(chan *coreTypes.AgreementResult, maxQueuedAgreements),
 		queuedRandomnesses:         make(chan *coreTypes.BlockRandomnessResult, maxQueuedRandomnesses),
-		queuedDKGPrivateShares:     make(chan *coreTypes.DKGPrivateShare, maxQueuedDKGPrivateShare),
-		queuedDKGPartialSignatures: make(chan *coreTypes.DKGPartialSignature, maxQueuedDKGParitialSignature),
+		queuedDKGPrivateShares:     make(chan *dkgTypes.PrivateShare, maxQueuedDKGPrivateShare),
+		queuedDKGPartialSignatures: make(chan *dkgTypes.PartialSignature, maxQueuedDKGParitialSignature),
 		term: make(chan struct{}),
 	}
 }
@@ -443,12 +444,12 @@ func (p *peer) AsyncSendRandomness(randomness *coreTypes.BlockRandomnessResult) 
 	}
 }
 
-func (p *peer) SendDKGPrivateShare(privateShare *coreTypes.DKGPrivateShare) error {
+func (p *peer) SendDKGPrivateShare(privateShare *dkgTypes.PrivateShare) error {
 	p.knownDKGPrivateShares.Add(rlpHash(privateShare))
 	return p2p.Send(p.rw, DKGPrivateShareMsg, privateShare)
 }
 
-func (p *peer) AsyncSendDKGPrivateShare(privateShare *coreTypes.DKGPrivateShare) {
+func (p *peer) AsyncSendDKGPrivateShare(privateShare *dkgTypes.PrivateShare) {
 	select {
 	case p.queuedDKGPrivateShares <- privateShare:
 		p.knownDKGPrivateShares.Add(rlpHash(privateShare))
@@ -457,12 +458,12 @@ func (p *peer) AsyncSendDKGPrivateShare(privateShare *coreTypes.DKGPrivateShare)
 	}
 }
 
-func (p *peer) SendDKGPartialSignature(psig *coreTypes.DKGPartialSignature) error {
+func (p *peer) SendDKGPartialSignature(psig *dkgTypes.PartialSignature) error {
 	p.knownDKGPartialSignatures.Add(rlpHash(psig))
 	return p2p.Send(p.rw, DKGPartialSignatureMsg, psig)
 }
 
-func (p *peer) AsyncSendDKGPartialSignature(psig *coreTypes.DKGPartialSignature) {
+func (p *peer) AsyncSendDKGPartialSignature(psig *dkgTypes.PartialSignature) {
 	select {
 	case p.queuedDKGPartialSignatures <- psig:
 		p.knownDKGPartialSignatures.Add(rlpHash(psig))

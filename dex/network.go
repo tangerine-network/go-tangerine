@@ -3,6 +3,7 @@ package dex
 import (
 	"github.com/dexon-foundation/dexon-consensus-core/core/crypto"
 	"github.com/dexon-foundation/dexon-consensus-core/core/types"
+	dkgTypes "github.com/dexon-foundation/dexon-consensus-core/core/types/dkg"
 )
 
 type DexconNetwork struct {
@@ -25,20 +26,20 @@ func (n *DexconNetwork) BroadcastBlock(block *types.Block) {
 
 // SendDKGPrivateShare sends PrivateShare to a DKG participant.
 func (n *DexconNetwork) SendDKGPrivateShare(
-	pub crypto.PublicKey, prvShare *types.DKGPrivateShare) {
+	pub crypto.PublicKey, prvShare *dkgTypes.PrivateShare) {
 	n.pm.SendDKGPrivateShare(pub, prvShare)
 }
 
 // BroadcastDKGPrivateShare broadcasts PrivateShare to all DKG participants.
 func (n *DexconNetwork) BroadcastDKGPrivateShare(
-	prvShare *types.DKGPrivateShare) {
+	prvShare *dkgTypes.PrivateShare) {
 	n.pm.BroadcastDKGPrivateShare(prvShare)
 }
 
 // BroadcastDKGPartialSignature broadcasts partialSignature to all
 // DKG participants.
 func (n *DexconNetwork) BroadcastDKGPartialSignature(
-	psig *types.DKGPartialSignature) {
+	psig *dkgTypes.PartialSignature) {
 	n.pm.BroadcastDKGPartialSignature(psig)
 }
 

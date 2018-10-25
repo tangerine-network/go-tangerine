@@ -261,9 +261,8 @@ func (d *DexconApp) PrepareWitness(consensusHeight uint64) (witness coreTypes.Wi
 	}
 
 	return coreTypes.Witness{
-		Timestamp: time.Unix(witnessBlock.Time().Int64(), 0),
-		Height:    witnessBlock.NumberU64(),
-		Data:      witnessData,
+		Height: witnessBlock.NumberU64(),
+		Data:   witnessData,
 	}, nil
 }
 

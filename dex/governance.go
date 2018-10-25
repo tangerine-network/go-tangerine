@@ -12,6 +12,7 @@ import (
 	coreCrypto "github.com/dexon-foundation/dexon-consensus-core/core/crypto"
 	coreEcdsa "github.com/dexon-foundation/dexon-consensus-core/core/crypto/ecdsa"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
+	dkgTypes "github.com/dexon-foundation/dexon-consensus-core/core/types/dkg"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/types"
@@ -204,7 +205,7 @@ func (d *DexconGovernance) NotifyRoundHeight(targetRound, consensusHeight uint64
 }
 
 // AddDKGComplaint adds a DKGComplaint.
-func (d *DexconGovernance) AddDKGComplaint(round uint64, complaint *coreTypes.DKGComplaint) {
+func (d *DexconGovernance) AddDKGComplaint(round uint64, complaint *dkgTypes.Complaint) {
 	method := vm.GovernanceContractName2Method["addDKGComplaint"]
 
 	encoded, err := rlp.EncodeToBytes(complaint)
@@ -227,11 +228,11 @@ func (d *DexconGovernance) AddDKGComplaint(round uint64, complaint *coreTypes.DK
 }
 
 // DKGComplaints gets all the DKGComplaints of round.
-func (d *DexconGovernance) DKGComplaints(round uint64) []*coreTypes.DKGComplaint {
+func (d *DexconGovernance) DKGComplaints(round uint64) []*dkgTypes.Complaint {
 	s := d.getGovState()
-	var dkgComplaints []*coreTypes.DKGComplaint
+	var dkgComplaints []*dkgTypes.Complaint
 	for _, pk := range s.DKGComplaints(big.NewInt(int64(round))) {
-		x := new(coreTypes.DKGComplaint)
+		x := new(dkgTypes.Complaint)
 		if err := rlp.DecodeBytes(pk, x); err != nil {
 			panic(err)
 		}
@@ -241,7 +242,7 @@ func (d *DexconGovernance) DKGComplaints(round uint64) []*coreTypes.DKGComplaint
 }
 
 // AddDKGMasterPublicKey adds a DKGMasterPublicKey.
-func (d *DexconGovernance) AddDKGMasterPublicKey(round uint64, masterPublicKey *coreTypes.DKGMasterPublicKey) {
+func (d *DexconGovernance) AddDKGMasterPublicKey(round uint64, masterPublicKey *dkgTypes.MasterPublicKey) {
 	method := vm.GovernanceContractName2Method["addDKGMasterPublicKey"]
 
 	encoded, err := rlp.EncodeToBytes(masterPublicKey)
@@ -264,11 +265,11 @@ func (d *DexconGovernance) AddDKGMasterPublicKey(round uint64, masterPublicKey *
 }
 
 // DKGMasterPublicKeys gets all the DKGMasterPublicKey of round.
-func (d *DexconGovernance) DKGMasterPublicKeys(round uint64) []*coreTypes.DKGMasterPublicKey {
+func (d *DexconGovernance) DKGMasterPublicKeys(round uint64) []*dkgTypes.MasterPublicKey {
 	s := d.getGovState()
-	var dkgMasterPKs []*coreTypes.DKGMasterPublicKey
+	var dkgMasterPKs []*dkgTypes.MasterPublicKey
 	for _, pk := range s.DKGMasterPublicKeys(big.NewInt(int64(round))) {
-		x := new(coreTypes.DKGMasterPublicKey)
+		x := new(dkgTypes.MasterPublicKey)
 		if err := rlp.DecodeBytes(pk, x); err != nil {
 			panic(err)
 		}
@@ -278,7 +279,7 @@ func (d *DexconGovernance) DKGMasterPublicKeys(round uint64) []*coreTypes.DKGMas
 }
 
 // AddDKGFinalize adds a DKG finalize message.
-func (d *DexconGovernance) AddDKGFinalize(round uint64, final *coreTypes.DKGFinalize) {
+func (d *DexconGovernance) AddDKGFinalize(round uint64, final *dkgTypes.Finalize) {
 	method := vm.GovernanceContractName2Method["addDKGFinalize"]
 
 	encoded, err := rlp.EncodeToBytes(final)

@@ -28,6 +28,7 @@ import (
 
 	coreCrypto "github.com/dexon-foundation/dexon-consensus-core/core/crypto"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
+	dkgTypes "github.com/dexon-foundation/dexon-consensus-core/core/types/dkg"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/consensus"
@@ -736,14 +737,14 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		pm.receiveCh <- &randomness
 	case msg.Code == DKGPrivateShareMsg:
 		// Do not relay this msg
-		var ps coreTypes.DKGPrivateShare
+		var ps dkgTypes.PrivateShare
 		if err := msg.Decode(&ps); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 		pm.receiveCh <- &ps
 	case msg.Code == DKGPartialSignatureMsg:
 		// broadcast in DKG set
-		var psig coreTypes.DKGPartialSignature
+		var psig dkgTypes.PartialSignature
 		if err := msg.Decode(&psig); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
@@ -896,7 +897,7 @@ func (pm *ProtocolManager) SendDKGPrivateShare(
 }
 
 func (pm *ProtocolManager) BroadcastDKGPrivateShare(
-	privateShare *coreTypes.DKGPrivateShare) {
+	privateShare *dkgTypes.PrivateShare) {
 	label := peerLabel{set: dkgset, round: privateShare.Round}
 	for _, peer := range pm.peers.PeersWithLabel(label) {
 		if !peer.knownDKGPrivateShares.Contains(rlpHash(privateShare)) {
@@ -906,7 +907,7 @@ func (pm *ProtocolManager) BroadcastDKGPrivateShare(
 }
 
 func (pm *ProtocolManager) BroadcastDKGPartialSignature(
-	psig *coreTypes.DKGPartialSignature) {
+	psig *dkgTypes.PartialSignature) {
 	label := peerLabel{set: dkgset, round: psig.Round}
 	for _, peer := range pm.peers.PeersWithLabel(label) {
 		if !peer.knownDKGPartialSignatures.Contains(rlpHash(psig)) {
