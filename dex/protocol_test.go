@@ -27,6 +27,7 @@ import (
 	coreCrypto "github.com/dexon-foundation/dexon-consensus-core/core/crypto"
 	"github.com/dexon-foundation/dexon-consensus-core/core/crypto/dkg"
 	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
+	dkgTypes "github.com/dexon-foundation/dexon-consensus-core/core/types/dkg"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/types"
@@ -332,9 +333,8 @@ func TestRecvLatticeBlock(t *testing.T) {
 		})),
 		Payload: []byte{3, 3, 3, 3, 3},
 		Witness: coreTypes.Witness{
-			Timestamp: time.Now().UTC(),
-			Height:    13,
-			Data:      []byte{4, 4, 4, 4, 4},
+			Height: 13,
+			Data:   []byte{4, 4, 4, 4, 4},
 		},
 		Finalization: coreTypes.FinalizationResult{
 			Randomness: []byte{5, 5, 5, 5, 5},
@@ -388,9 +388,8 @@ func TestSendLatticeBlock(t *testing.T) {
 		})),
 		Payload: []byte{3, 3, 3, 3, 3},
 		Witness: coreTypes.Witness{
-			Timestamp: time.Now().UTC(),
-			Height:    13,
-			Data:      []byte{4, 4, 4, 4, 4},
+			Height: 13,
+			Data:   []byte{4, 4, 4, 4, 4},
 		},
 		Finalization: coreTypes.FinalizationResult{
 			Randomness: []byte{5, 5, 5, 5, 5},
@@ -580,7 +579,7 @@ func TestRecvDKGPrivateShare(t *testing.T) {
 
 	// TODO(sonic): polish this
 	privkey := dkg.NewPrivateKey()
-	privateShare := coreTypes.DKGPrivateShare{
+	privateShare := dkgTypes.PrivateShare{
 		ProposerID:   coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
 		ReceiverID:   coreTypes.NodeID{coreCommon.Hash{3, 4, 5}},
 		Round:        10,
@@ -599,7 +598,7 @@ func TestRecvDKGPrivateShare(t *testing.T) {
 	ch := pm.ReceiveChan()
 	select {
 	case msg := <-ch:
-		rps := msg.(*coreTypes.DKGPrivateShare)
+		rps := msg.(*dkgTypes.PrivateShare)
 		if !reflect.DeepEqual(rps, &privateShare) {
 			t.Errorf("vote mismatch")
 		}
@@ -617,7 +616,7 @@ func TestSendDKGPrivateShare(t *testing.T) {
 
 	// TODO(sonic): polish this
 	privkey := dkg.NewPrivateKey()
-	privateShare := coreTypes.DKGPrivateShare{
+	privateShare := dkgTypes.PrivateShare{
 		ProposerID:   coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
 		ReceiverID:   coreTypes.NodeID{coreCommon.Hash{3, 4, 5}},
 		Round:        10,
@@ -636,7 +635,7 @@ func TestSendDKGPrivateShare(t *testing.T) {
 		t.Errorf("%v: got code %d, want %d", p1.Peer, msg.Code, DKGPrivateShareMsg)
 	}
 
-	var ps coreTypes.DKGPrivateShare
+	var ps dkgTypes.PrivateShare
 	if err := msg.Decode(&ps); err != nil {
 		t.Errorf("%v: %v", p1.Peer, err)
 	}
