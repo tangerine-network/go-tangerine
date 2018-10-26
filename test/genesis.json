@@ -8,7 +8,7 @@
     "eip158Block": 0,
     "dexcon": {
       "genesisCRSText": "In DEXON, we trust.",
-      "owner": "0x7C3c31B19395A5e2627F921Cc2802560B71f1caB",
+      "owner": "0xBF8C48A620bacc46907f9B89732D25E47A2D7Cf7",
       "blockReward": "1000000000000000000",
       "numChains": 4,
       "lambdaBA": 250,
@@ -36,6 +36,10 @@
       "code": "0x5765692d4e696e6720536f6e696320426f6a6965"
     },
     "0xBF8C48A620bacc46907f9B89732D25E47A2D7Cf7": {
+      "balance": "100000000000000000000000",
+      "staked": "0"
+    },
+    "0x1245A8672FA881Cf858eF01D34c42B55D9b263fF": {
       "balance": "100000000000000000000000",
       "staked": "0"
     },
