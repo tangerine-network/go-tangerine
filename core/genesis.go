@@ -254,6 +254,8 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
 	govStateHelper := vm.GovernanceStateHelper{statedb}
 
+	totalStaked := big.NewInt(0)
+
 	for addr, account := range g.Alloc {
 		statedb.AddBalance(addr, new(big.Int).Sub(account.Balance, account.Staked))
 		statedb.SetCode(addr, account.Code)
@@ -261,7 +263,11 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		for key, value := range account.Storage {
 			statedb.SetState(addr, key, value)
 		}
+		totalStaked = new(big.Int).Add(totalStaked, account.Staked)
 	}
+
+	// Move staked balance to governance contract.
+	statedb.AddBalance(vm.GovernanceContractAddress, totalStaked)
 
 	// Stake in governance state.
 	keys := AllocKey{}
