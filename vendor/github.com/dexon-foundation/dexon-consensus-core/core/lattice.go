@@ -18,12 +18,18 @@
 package core
 
 import (
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/dexon-foundation/dexon-consensus-core/common"
 	"github.com/dexon-foundation/dexon-consensus-core/core/blockdb"
 	"github.com/dexon-foundation/dexon-consensus-core/core/types"
+)
+
+// Errors for sanity check error.
+var (
+	ErrRetrySanityCheckLater = fmt.Errorf("retry sanity check later")
 )
 
 // Lattice represents a unit to produce a global ordering from multiple chains.
@@ -34,6 +40,7 @@ type Lattice struct {
 	app        Application
 	debug      Debug
 	pool       blockPool
+	retryAdd   bool
 	data       *latticeData
 	toModule   *totalOrdering
 	ctModule   *consensusTimestamp
@@ -137,10 +144,8 @@ func (s *Lattice) SanityCheck(b *types.Block) (err error) {
 		s.lock.RLock()
 		defer s.lock.RUnlock()
 		if err = s.data.sanityCheck(b); err != nil {
-			// Add to block pool, once the lattice updated,
-			// would be checked again.
-			if err == ErrAckingBlockNotExists {
-				s.pool.addBlock(b)
+			if _, ok := err.(*ErrAckingBlockNotExists); ok {
+				err = ErrRetrySanityCheckLater
 			}
 			s.logger.Error("Sanity Check failed", "error", err)
 			return
@@ -151,11 +156,67 @@ func (s *Lattice) SanityCheck(b *types.Block) (err error) {
 	}
 	// Verify data in application layer.
 	s.logger.Debug("Calling Application.VerifyBlock", "block", b)
-	// TODO(jimmy-dexon): handle types.VerifyRetryLater.
-	if s.app.VerifyBlock(b) == types.VerifyInvalidBlock {
+	switch s.app.VerifyBlock(b) {
+	case types.VerifyInvalidBlock:
 		err = ErrInvalidBlock
-		return err
+	case types.VerifyRetryLater:
+		err = ErrRetrySanityCheckLater
 	}
+	return
+}
+
+// addBlockToLattice adds a block into lattice, and deliver blocks with the acks
+// already delivered.
+//
+// NOTE: assume the block passed sanity check.
+func (s *Lattice) addBlockToLattice(
+	input *types.Block) (outputBlocks []*types.Block, err error) {
+	if tip := s.data.chains[input.Position.ChainID].tip; tip != nil {
+		if !input.Position.Newer(&tip.Position) {
+			return
+		}
+	}
+	s.pool.addBlock(input)
+	// Replay tips in pool to check their validity.
+	for {
+		hasOutput := false
+		for i := uint32(0); i < s.chainNum; i++ {
+			var tip *types.Block
+			if tip = s.pool.tip(i); tip == nil {
+				continue
+			}
+			err = s.data.sanityCheck(tip)
+			if err == nil {
+				var output []*types.Block
+				if output, err = s.data.addBlock(tip); err != nil {
+					s.logger.Error("Sanity Check failed", "error", err)
+					continue
+				}
+				hasOutput = true
+				outputBlocks = append(outputBlocks, output...)
+			}
+			if _, ok := err.(*ErrAckingBlockNotExists); ok {
+				err = nil
+				continue
+			}
+			s.pool.removeTip(i)
+		}
+		if !hasOutput {
+			break
+		}
+	}
+
+	for _, b := range outputBlocks {
+		// TODO(jimmy-dexon): change this name of classic DEXON algorithm.
+		if s.debug != nil {
+			s.debug.StronglyAcked(b.Hash)
+		}
+		s.logger.Debug("Calling Application.BlockConfirmed", "block", input)
+		s.app.BlockConfirmed(*b.Clone())
+		// Purge blocks in pool with the same chainID and lower height.
+		s.pool.purgeBlocks(b.Position.ChainID, b.Position.Height)
+	}
+
 	return
 }
 
@@ -165,45 +226,25 @@ func (s *Lattice) SanityCheck(b *types.Block) (err error) {
 //
 // NOTE: assume the block passed sanity check.
 func (s *Lattice) ProcessBlock(
-	input *types.Block) (verified, delivered []*types.Block, err error) {
-
+	input *types.Block) (delivered []*types.Block, err error) {
 	var (
-		tip, b        *types.Block
-		toDelivered   []*types.Block
+		b             *types.Block
 		inLattice     []*types.Block
+		toDelivered   []*types.Block
 		deliveredMode uint32
 	)
+
 	s.lock.Lock()
 	defer s.lock.Unlock()
-	if inLattice, err = s.data.addBlock(input); err != nil {
-		// TODO(mission): if sanity check failed with "acking block doesn't
-		//                exists", we should keep it in a pool.
-		s.logger.Error("Sanity Check failed when adding blocks", "error", err)
+
+	if inLattice, err = s.addBlockToLattice(input); err != nil {
 		return
 	}
-	// TODO(mission): remove this hack, BA related stuffs should not
-	//                be done here.
-	if s.debug != nil {
-		s.debug.StronglyAcked(input.Hash)
+
+	if len(inLattice) == 0 {
+		return
 	}
-	s.logger.Debug("Calling Application.BlockConfirmed", "block", input)
-	s.app.BlockConfirmed(*input.Clone())
-	// Purge blocks in pool with the same chainID and lower height.
-	s.pool.purgeBlocks(input.Position.ChainID, input.Position.Height)
-	// Replay tips in pool to check their validity.
-	for i := uint32(0); i < s.chainNum; i++ {
-		if tip = s.pool.tip(i); tip == nil {
-			continue
-		}
-		err = s.data.sanityCheck(tip)
-		if err == nil {
-			verified = append(verified, tip)
-		}
-		if err == ErrAckingBlockNotExists {
-			continue
-		}
-		s.pool.removeTip(i)
-	}
+
 	// Perform total ordering for each block added to lattice.
 	for _, b = range inLattice {
 		toDelivered, deliveredMode, err = s.toModule.processBlock(b)
@@ -264,4 +305,15 @@ func (s *Lattice) AppendConfig(round uint64, config *types.Config) (err error) {
 		return
 	}
 	return
+}
+
+// ProcessFinalizedBlock is used for syncing lattice data.
+func (s *Lattice) ProcessFinalizedBlock(input *types.Block) {
+	defer func() { s.retryAdd = true }()
+	s.lock.Lock()
+	defer s.lock.Unlock()
+	if err := s.data.addFinalizedBlock(input); err != nil {
+		panic(err)
+	}
+	s.pool.purgeBlocks(input.Position.ChainID, input.Position.Height)
 }

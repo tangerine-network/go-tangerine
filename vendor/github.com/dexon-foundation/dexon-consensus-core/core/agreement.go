@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"math"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/dexon-foundation/dexon-consensus-core/common"
@@ -69,6 +68,7 @@ type agreementReceiver interface {
 	ProposeVote(vote *types.Vote)
 	ProposeBlock() common.Hash
 	ConfirmBlock(common.Hash, map[types.NodeID]*types.Vote)
+	PullBlocks(common.Hashes)
 }
 
 type pendingBlock struct {
@@ -101,7 +101,7 @@ type agreementData struct {
 type agreement struct {
 	state          agreementState
 	data           *agreementData
-	aID            *atomic.Value
+	aID            types.Position
 	notarySet      map[types.NodeID]struct{}
 	hasOutput      bool
 	lock           sync.RWMutex
@@ -125,7 +125,6 @@ func newAgreement(
 			ID:     ID,
 			leader: leader,
 		},
-		aID:            &atomic.Value{},
 		candidateBlock: make(map[common.Hash]*types.Block),
 		fastForward:    make(chan uint64, 1),
 		authModule:     authModule,
@@ -158,8 +157,12 @@ func (a *agreement) restart(
 		a.state = newInitialState(a.data)
 		a.notarySet = notarySet
 		a.candidateBlock = make(map[common.Hash]*types.Block)
-		a.aID.Store(aID)
+		a.aID = *aID.Clone()
 	}()
+
+	if isStop(aID) {
+		return
+	}
 
 	expireTime := time.Now().Add(-10 * time.Second)
 	replayBlock := make([]*types.Block, 0)
@@ -168,7 +171,9 @@ func (a *agreement) restart(
 		defer a.lock.Unlock()
 		newPendingBlock := make([]pendingBlock, 0)
 		for _, pending := range a.pendingBlock {
-			if pending.block.Position == aID {
+			if aID.Newer(&pending.block.Position) {
+				continue
+			} else if pending.block.Position == aID {
 				replayBlock = append(replayBlock, pending.block)
 			} else if pending.receivedTime.After(expireTime) {
 				newPendingBlock = append(newPendingBlock, pending)
@@ -183,7 +188,9 @@ func (a *agreement) restart(
 		defer a.lock.Unlock()
 		newPendingVote := make([]pendingVote, 0)
 		for _, pending := range a.pendingVote {
-			if pending.vote.Position == aID {
+			if aID.Newer(&pending.vote.Position) {
+				continue
+			} else if pending.vote.Position == aID {
 				replayVote = append(replayVote, pending.vote)
 			} else if pending.receivedTime.After(expireTime) {
 				newPendingVote = append(newPendingVote, pending)
@@ -207,6 +214,10 @@ func (a *agreement) stop() {
 	})
 }
 
+func isStop(aID types.Position) bool {
+	return aID.ChainID == math.MaxUint32
+}
+
 // clocks returns how many time this state is required.
 func (a *agreement) clocks() int {
 	return a.state.clocks()
@@ -214,7 +225,9 @@ func (a *agreement) clocks() int {
 
 // agreementID returns the current agreementID.
 func (a *agreement) agreementID() types.Position {
-	return a.aID.Load().(types.Position)
+	a.lock.RLock()
+	defer a.lock.RUnlock()
+	return a.aID
 }
 
 // nextState is called at the specific clock time.
@@ -272,7 +285,14 @@ func (a *agreement) processVote(vote *types.Vote) error {
 	if err := a.sanityCheck(vote); err != nil {
 		return err
 	}
-	if vote.Position != a.agreementID() {
+	aID := a.agreementID()
+	if vote.Position != aID {
+		// Agreement module has stopped.
+		if !isStop(aID) {
+			if aID.Newer(&vote.Position) {
+				return nil
+			}
+		}
 		a.lock.Lock()
 		defer a.lock.Unlock()
 		a.pendingVote = append(a.pendingVote, pendingVote{
@@ -327,6 +347,21 @@ func (a *agreement) processVote(vote *types.Vote) error {
 	// Condition 3.
 	if vote.Type == types.VoteCom && vote.Period >= a.data.period &&
 		len(a.data.votes[vote.Period][types.VoteCom]) >= a.data.requiredVote {
+		hashes := common.Hashes{}
+		addPullBlocks := func(voteType types.VoteType) {
+			for _, vote := range a.data.votes[vote.Period][voteType] {
+				if vote.BlockHash == nullBlockHash || vote.BlockHash == skipBlockHash {
+					continue
+				}
+				if _, found := a.findCandidateBlock(vote.BlockHash); !found {
+					hashes = append(hashes, vote.BlockHash)
+				}
+			}
+		}
+		addPullBlocks(types.VoteInit)
+		addPullBlocks(types.VotePreCom)
+		addPullBlocks(types.VoteCom)
+		a.data.recv.PullBlocks(hashes)
 		a.fastForward <- vote.Period + 1
 		return nil
 	}
@@ -356,7 +391,15 @@ func (a *agreement) done() <-chan struct{} {
 func (a *agreement) processBlock(block *types.Block) error {
 	a.data.blocksLock.Lock()
 	defer a.data.blocksLock.Unlock()
-	if block.Position != a.agreementID() {
+
+	aID := a.agreementID()
+	if block.Position != aID {
+		// Agreement module has stopped.
+		if !isStop(aID) {
+			if aID.Newer(&block.Position) {
+				return nil
+			}
+		}
 		a.pendingBlock = append(a.pendingBlock, pendingBlock{
 			block:        block,
 			receivedTime: time.Now().UTC(),

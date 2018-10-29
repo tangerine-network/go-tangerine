@@ -1,6 +1,7 @@
 package dex
 
 import (
+	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
 	"github.com/dexon-foundation/dexon-consensus-core/core/crypto"
 	"github.com/dexon-foundation/dexon-consensus-core/core/types"
 	dkgTypes "github.com/dexon-foundation/dexon-consensus-core/core/types/dkg"
@@ -12,6 +13,10 @@ type DexconNetwork struct {
 
 func NewDexconNetwork(pm *ProtocolManager) *DexconNetwork {
 	return &DexconNetwork{pm: pm}
+}
+
+// PullBlocks tries to pull blocks from the DEXON network.
+func (n *DexconNetwork) PullBlocks(hashes coreCommon.Hashes) {
 }
 
 // BroadcastVote broadcasts vote to all nodes in DEXON network.
