@@ -114,7 +114,7 @@ func (d *Dexcon) Finalize(chain consensus.ChainReader, header *types.Header, sta
 	reward := new(big.Int).Div(config.BlockReward, big.NewInt(int64(config.NumChains)))
 	state.AddBalance(header.Coinbase, reward)
 
-	header.BlockReward = reward
+	header.Reward = reward
 	header.Root = state.IntermediateRoot(true)
 	return types.NewBlock(header, txs, uncles, receipts), nil
 }

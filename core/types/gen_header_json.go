@@ -7,7 +7,6 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/dexon-foundation/dexon-consensus/core/types"
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/common/hexutil"
 )
@@ -32,11 +31,10 @@ func (h Header) MarshalJSON() ([]byte, error) {
 		Extra       hexutil.Bytes  `json:"extraData"          gencodec:"required"`
 		MixDigest   common.Hash    `json:"mixHash"`
 		Nonce       BlockNonce     `json:"nonce"`
+		Reward      *hexutil.Big   `json:"reward"             gencodec:"required"`
 		Randomness  hexutil.Bytes  `json:"randomness"         gencodec:"required"`
-		Position    types.Position `json:"position"           gencodec:"required"`
 		Round       hexutil.Uint64 `json:"round"              gencodec:"required"`
 		DexconMeta  hexutil.Bytes  `json:"dexconMeta"         gencodec:"required"`
-		BlockReward *big.Int       `json:"blockReward"        gencodec:"required"`
 		Hash        common.Hash    `json:"hash"`
 	}
 	var enc Header
@@ -55,11 +53,10 @@ func (h Header) MarshalJSON() ([]byte, error) {
 	enc.Extra = h.Extra
 	enc.MixDigest = h.MixDigest
 	enc.Nonce = h.Nonce
+	enc.Reward = (*hexutil.Big)(h.Reward)
 	enc.Randomness = h.Randomness
-	enc.Position = h.Position
 	enc.Round = hexutil.Uint64(h.Round)
 	enc.DexconMeta = h.DexconMeta
-	enc.BlockReward = h.BlockReward
 	enc.Hash = h.Hash()
 	return json.Marshal(&enc)
 }
@@ -82,11 +79,10 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		Extra       *hexutil.Bytes  `json:"extraData"          gencodec:"required"`
 		MixDigest   *common.Hash    `json:"mixHash"`
 		Nonce       *BlockNonce     `json:"nonce"`
+		Reward      *hexutil.Big    `json:"reward"             gencodec:"required"`
 		Randomness  *hexutil.Bytes  `json:"randomness"         gencodec:"required"`
-		Position    *types.Position `json:"position"           gencodec:"required"`
 		Round       *hexutil.Uint64 `json:"round"              gencodec:"required"`
 		DexconMeta  *hexutil.Bytes  `json:"dexconMeta"         gencodec:"required"`
-		BlockReward *big.Int        `json:"blockReward"        gencodec:"required"`
 	}
 	var dec Header
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -150,14 +146,14 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 	if dec.Nonce != nil {
 		h.Nonce = *dec.Nonce
 	}
+	if dec.Reward == nil {
+		return errors.New("missing required field 'reward' for Header")
+	}
+	h.Reward = (*big.Int)(dec.Reward)
 	if dec.Randomness == nil {
 		return errors.New("missing required field 'randomness' for Header")
 	}
 	h.Randomness = *dec.Randomness
-	if dec.Position == nil {
-		return errors.New("missing required field 'position' for Header")
-	}
-	h.Position = *dec.Position
 	if dec.Round == nil {
 		return errors.New("missing required field 'round' for Header")
 	}
@@ -166,9 +162,5 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'dexconMeta' for Header")
 	}
 	h.DexconMeta = *dec.DexconMeta
-	if dec.BlockReward == nil {
-		return errors.New("missing required field 'blockReward' for Header")
-	}
-	h.BlockReward = dec.BlockReward
 	return nil
 }
