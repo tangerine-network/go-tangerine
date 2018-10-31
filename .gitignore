@@ -50,3 +50,7 @@ profile.cov
 *.o
 *.d
 *.a
+
+# test
+test/Dexon.*
+test/*.log
