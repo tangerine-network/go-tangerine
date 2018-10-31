@@ -10,6 +10,7 @@
       "genesisCRSText": "In DEXON, we trust.",
       "owner": "0xBF8C48A620bacc46907f9B89732D25E47A2D7Cf7",
       "blockReward": "1000000000000000000",
+      "blockGasLimit": 80000000,
       "numChains": 4,
       "lambdaBA": 250,
       "lambdaDKG": 4000,
@@ -17,7 +18,7 @@
       "phiRatio": 667000,
       "notarySetSize": 4,
       "dkgSetSize": 4,
-      "roundInterval": 300000,
+      "roundInterval": 600000,
       "minBlockInterval": 900,
       "maxBlockInterval": 1100
     }

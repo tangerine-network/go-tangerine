@@ -18,6 +18,7 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 		GenesisCRSText   string                `json:"genesisCRSText"`
 		Owner            common.Address        `json:"owner"`
 		BlockReward      *math.HexOrDecimal256 `json:"blockReward"`
+		BlockGasLimit    uint64                `json:"blockGasLimit"`
 		NumChains        uint32                `json:"numChains"`
 		LambdaBA         uint64                `json:"lambdaBA"`
 		LambdaDKG        uint64                `json:"lambdaDKG"`
@@ -33,6 +34,7 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 	enc.GenesisCRSText = d.GenesisCRSText
 	enc.Owner = d.Owner
 	enc.BlockReward = (*math.HexOrDecimal256)(d.BlockReward)
+	enc.BlockGasLimit = d.BlockGasLimit
 	enc.NumChains = d.NumChains
 	enc.LambdaBA = d.LambdaBA
 	enc.LambdaDKG = d.LambdaDKG
@@ -52,6 +54,7 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 		GenesisCRSText   *string               `json:"genesisCRSText"`
 		Owner            *common.Address       `json:"owner"`
 		BlockReward      *math.HexOrDecimal256 `json:"blockReward"`
+		BlockGasLimit    *uint64               `json:"blockGasLimit"`
 		NumChains        *uint32               `json:"numChains"`
 		LambdaBA         *uint64               `json:"lambdaBA"`
 		LambdaDKG        *uint64               `json:"lambdaDKG"`
@@ -75,6 +78,9 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 	}
 	if dec.BlockReward != nil {
 		d.BlockReward = (*big.Int)(dec.BlockReward)
+	}
+	if dec.BlockGasLimit != nil {
+		d.BlockGasLimit = *dec.BlockGasLimit
 	}
 	if dec.NumChains != nil {
 		d.NumChains = *dec.NumChains

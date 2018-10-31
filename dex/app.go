@@ -411,11 +411,10 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 	}
 
 	newBlock := types.NewBlock(&types.Header{
-		Number:   new(big.Int).SetUint64(result.Height),
-		Time:     big.NewInt(result.Timestamp.Unix()),
-		Coinbase: common.BytesToAddress(block.ProposerID.Bytes()),
-		// TODO(bojie): fix it
-		GasLimit:   8000000,
+		Number:     new(big.Int).SetUint64(result.Height),
+		Time:       big.NewInt(result.Timestamp.Unix()),
+		Coinbase:   common.BytesToAddress(block.ProposerID.Bytes()),
+		GasLimit:   d.gov.DexconConfiguration(block.Position.Round).BlockGasLimit,
 		Difficulty: big.NewInt(1),
 		Round:      block.Position.Round,
 		DexconMeta: dexconMeta,

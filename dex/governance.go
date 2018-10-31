@@ -87,12 +87,6 @@ func (d *DexconGovernance) DexconConfiguration(round uint64) *params.DexconConfi
 
 // Configuration returns the system configuration for consensus core to use.
 func (d *DexconGovernance) Configuration(round uint64) *coreTypes.Config {
-	// Configuration in round r is activiated on round r + 2.
-	if round < 2 {
-		round = 0
-	} else {
-		round -= 2
-	}
 	s := d.getGovStateAtRound(round)
 	c := s.Configuration()
 

@@ -202,6 +202,20 @@ const abiJSON = `
   {
     "constant": true,
     "inputs": [],
+    "name": "blockGasLimit",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
     "name": "roundInterval",
     "outputs": [
       {
@@ -423,6 +437,10 @@ const abiJSON = `
     "inputs": [
       {
         "name": "BlockReward",
+        "type": "uint256"
+      },
+      {
+        "name": "BlockGasLimit",
         "type": "uint256"
       },
       {
@@ -705,6 +723,12 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 	// Solidity auto generated methods.
 	// --------------------------------
 
+	case "blockGasLimit":
+		res, err := method.Outputs.Pack(g.state.BlockGasLimit())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	case "blockReward":
 		res, err := method.Outputs.Pack(g.state.BlockReward())
 		if err != nil {
@@ -889,6 +913,7 @@ const (
 	dkgFinalizedsCountLoc
 	ownerLoc
 	blockRewardLoc
+	blockGasLimitLoc
 	numChainsLoc
 	lambdaBALoc
 	lambdaDKGLoc
@@ -1224,6 +1249,14 @@ func (s *GovernanceStateHelper) SetBlockReward(reward *big.Int) {
 	s.setStateBigInt(big.NewInt(blockRewardLoc), reward)
 }
 
+// uint256 public blockGasLimit;
+func (s *GovernanceStateHelper) BlockGasLimit() *big.Int {
+	return s.getStateBigInt(big.NewInt(blockGasLimitLoc))
+}
+func (s *GovernanceStateHelper) SetBlockGasLimit(reward *big.Int) {
+	s.setStateBigInt(big.NewInt(blockGasLimitLoc), reward)
+}
+
 // uint256 public numChains;
 func (s *GovernanceStateHelper) NumChains() *big.Int {
 	return s.getStateBigInt(big.NewInt(numChainsLoc))
@@ -1289,6 +1322,7 @@ func (s *GovernanceStateHelper) Stake(addr common.Address, publicKey []byte, sta
 func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
 	return &params.DexconConfig{
 		BlockReward:      s.getStateBigInt(big.NewInt(blockRewardLoc)),
+		BlockGasLimit:    uint64(s.getStateBigInt(big.NewInt(blockGasLimitLoc)).Uint64()),
 		NumChains:        uint32(s.getStateBigInt(big.NewInt(numChainsLoc)).Uint64()),
 		LambdaBA:         s.getStateBigInt(big.NewInt(lambdaBALoc)).Uint64(),
 		LambdaDKG:        s.getStateBigInt(big.NewInt(lambdaDKGLoc)).Uint64(),
@@ -1305,6 +1339,7 @@ func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
 // UpdateConfiguration updates system configuration.
 func (s *GovernanceStateHelper) UpdateConfiguration(cfg *params.DexconConfig) {
 	s.setStateBigInt(big.NewInt(blockRewardLoc), cfg.BlockReward)
+	s.setStateBigInt(big.NewInt(blockGasLimitLoc), big.NewInt(int64(cfg.BlockGasLimit)))
 	s.setStateBigInt(big.NewInt(numChainsLoc), big.NewInt(int64(cfg.NumChains)))
 	s.setStateBigInt(big.NewInt(lambdaBALoc), big.NewInt(int64(cfg.LambdaBA)))
 	s.setStateBigInt(big.NewInt(lambdaDKGLoc), big.NewInt(int64(cfg.LambdaDKG)))
