@@ -156,6 +156,12 @@ addressMap:
 			continue
 		}
 
+		balance := latestState.GetBalance(address)
+		cost, exist := d.blockchain.GetCostInConfirmedBlocks(address)
+		if exist {
+			balance = new(big.Int).Sub(balance, cost)
+		}
+
 		var expectNonce uint64
 		// get last nonce from confirmed blocks
 		lastConfirmedNonce, exist := d.blockchain.GetLastNonceInConfirmedBlocks(address)
@@ -166,18 +172,18 @@ addressMap:
 			expectNonce = lastConfirmedNonce + 1
 		}
 
-		if expectNonce != txs[0].Nonce() {
-			log.Debug("Nonce check error", "expect", expectNonce, "nonce", txs[0].Nonce())
-			continue
-		}
-
-		balance := latestState.GetBalance(address)
-		cost, exist := d.blockchain.GetCostInConfirmedBlocks(address)
-		if exist {
-			balance = new(big.Int).Sub(balance, cost)
-		}
-
 		for _, tx := range txs {
+			if expectNonce == tx.Nonce() {
+				expectNonce++
+			} else if expectNonce < tx.Nonce() {
+				// break to do next address
+				break
+			} else if expectNonce > tx.Nonce() {
+				// continue to find next available
+				log.Debug("Nonce check error and continue next tx", "expect", expectNonce, "nonce", tx.Nonce())
+				continue
+			}
+
 			maxGasUsed := new(big.Int).Mul(new(big.Int).SetUint64(tx.Gas()), tx.GasPrice())
 			intrinsicGas, err := core.IntrinsicGas(tx.Data(), tx.To() == nil, true)
 			if err != nil {
