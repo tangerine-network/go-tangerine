@@ -45,9 +45,9 @@ func init() {
 }
 
 type testBlockChain struct {
-	statedb       *state.StateDB
-	gasLimit      uint64
-	chainHeadFeed *event.Feed
+	statedb            *state.StateDB
+	gasLimit           uint64
+	blockConfirmedFeed *event.Feed
 }
 
 func (bc *testBlockChain) CurrentBlock() *types.Block {
@@ -64,8 +64,8 @@ func (bc *testBlockChain) StateAt(common.Hash) (*state.StateDB, error) {
 	return bc.statedb, nil
 }
 
-func (bc *testBlockChain) SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription {
-	return bc.chainHeadFeed.Subscribe(ch)
+func (bc *testBlockChain) SubscribeBlockConfirmedEvent(ch chan<- BlockConfirmedEvent) event.Subscription {
+	return bc.blockConfirmedFeed.Subscribe(ch)
 }
 
 func transaction(nonce uint64, gaslimit uint64, key *ecdsa.PrivateKey) *types.Transaction {

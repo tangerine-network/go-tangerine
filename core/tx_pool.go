@@ -36,8 +36,8 @@ import (
 )
 
 const (
-	// chainHeadChanSize is the size of channel listening to ChainHeadEvent.
-	chainHeadChanSize = 10
+	// blockConfirmedChanSize is the size of channel listening to BlockConfirmedEvent.
+	blockConfirmedChanSize = 10
 )
 
 var (
@@ -118,7 +118,7 @@ type blockChain interface {
 	GetBlock(hash common.Hash, number uint64) *types.Block
 	StateAt(root common.Hash) (*state.StateDB, error)
 
-	SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription
+	SubscribeBlockConfirmedEvent(ch chan<- BlockConfirmedEvent) event.Subscription
 }
 
 // TxPoolConfig are the configuration parameters of the transaction pool.
@@ -203,16 +203,16 @@ func (config *TxPoolConfig) sanitize() TxPoolConfig {
 // current state) and future transactions. Transactions move between those
 // two states over time as they are received and processed.
 type TxPool struct {
-	config       TxPoolConfig
-	chainconfig  *params.ChainConfig
-	chain        blockChain
-	gasPrice     *big.Int
-	txFeed       event.Feed
-	scope        event.SubscriptionScope
-	chainHeadCh  chan ChainHeadEvent
-	chainHeadSub event.Subscription
-	signer       types.Signer
-	mu           sync.RWMutex
+	config            TxPoolConfig
+	chainconfig       *params.ChainConfig
+	chain             blockChain
+	gasPrice          *big.Int
+	txFeed            event.Feed
+	scope             event.SubscriptionScope
+	blockConfirmedCh  chan BlockConfirmedEvent
+	blockConfirmedSub event.Subscription
+	signer            types.Signer
+	mu                sync.RWMutex
 
 	currentState  *state.StateDB      // Current state in the blockchain head
 	pendingState  *state.ManagedState // Pending state tracking virtual nonces
@@ -240,16 +240,16 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain block
 
 	// Create the transaction pool with its initial settings
 	pool := &TxPool{
-		config:      config,
-		chainconfig: chainconfig,
-		chain:       chain,
-		signer:      types.NewEIP155Signer(chainconfig.ChainID),
-		pending:     make(map[common.Address]*txList),
-		queue:       make(map[common.Address]*txList),
-		beats:       make(map[common.Address]time.Time),
-		all:         newTxLookup(),
-		chainHeadCh: make(chan ChainHeadEvent, chainHeadChanSize),
-		gasPrice:    new(big.Int).SetUint64(config.PriceLimit),
+		config:           config,
+		chainconfig:      chainconfig,
+		chain:            chain,
+		signer:           types.NewEIP155Signer(chainconfig.ChainID),
+		pending:          make(map[common.Address]*txList),
+		queue:            make(map[common.Address]*txList),
+		beats:            make(map[common.Address]time.Time),
+		all:              newTxLookup(),
+		blockConfirmedCh: make(chan BlockConfirmedEvent, blockConfirmedChanSize),
+		gasPrice:         new(big.Int).SetUint64(config.PriceLimit),
 	}
 	pool.locals = newAccountSet(pool.signer)
 	for _, addr := range config.Locals {
@@ -271,7 +271,7 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain block
 		}
 	}
 	// Subscribe events from blockchain
-	pool.chainHeadSub = pool.chain.SubscribeChainHeadEvent(pool.chainHeadCh)
+	pool.blockConfirmedSub = pool.chain.SubscribeBlockConfirmedEvent(pool.blockConfirmedCh)
 
 	// Start the event loop and return
 	pool.wg.Add(1)
@@ -304,8 +304,8 @@ func (pool *TxPool) loop() {
 	// Keep waiting for and reacting to the various events
 	for {
 		select {
-		// Handle ChainHeadEvent
-		case ev := <-pool.chainHeadCh:
+		// Handle BlockConfirmedEvent
+		case ev := <-pool.blockConfirmedCh:
 			if ev.Block != nil {
 				pool.mu.Lock()
 				if pool.chainconfig.IsHomestead(ev.Block.Number()) {
@@ -317,7 +317,7 @@ func (pool *TxPool) loop() {
 				pool.mu.Unlock()
 			}
 		// Be unsubscribed due to system stopped
-		case <-pool.chainHeadSub.Err():
+		case <-pool.blockConfirmedSub.Err():
 			return
 
 		// Handle stats reporting ticks
@@ -461,7 +461,7 @@ func (pool *TxPool) Stop() {
 	pool.scope.Close()
 
 	// Unsubscribe subscriptions registered from blockchain
-	pool.chainHeadSub.Unsubscribe()
+	pool.blockConfirmedSub.Unsubscribe()
 	pool.wg.Wait()
 
 	if pool.journal != nil {

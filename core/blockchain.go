@@ -104,14 +104,15 @@ type BlockChain struct {
 	triegc *prque.Prque   // Priority queue mapping block numbers to tries to gc
 	gcproc time.Duration  // Accumulates canonical block processing for trie dumping
 
-	hc            *HeaderChain
-	rmLogsFeed    event.Feed
-	chainFeed     event.Feed
-	chainSideFeed event.Feed
-	chainHeadFeed event.Feed
-	logsFeed      event.Feed
-	scope         event.SubscriptionScope
-	genesisBlock  *types.Block
+	hc                 *HeaderChain
+	rmLogsFeed         event.Feed
+	chainFeed          event.Feed
+	chainSideFeed      event.Feed
+	chainHeadFeed      event.Feed
+	blockConfirmedFeed event.Feed
+	logsFeed           event.Feed
+	scope              event.SubscriptionScope
+	genesisBlock       *types.Block
 
 	mu      sync.RWMutex // global mutex for locking chain operations
 	chainmu sync.RWMutex // blockchain insertion lock
@@ -1610,6 +1611,7 @@ func (bc *BlockChain) processPendingBlock(block *types.Block, witness *coreTypes
 
 	// add into pending blocks
 	bc.addPendingBlock(newPendingBlock, receipts)
+	events = append(events, BlockConfirmedEvent{newPendingBlock})
 
 	// start insert available pending blocks into db
 	for pendingHeight := bc.CurrentBlock().NumberU64() + 1; pendingHeight <= witness.Height; pendingHeight++ {
@@ -1852,6 +1854,9 @@ func (bc *BlockChain) PostChainEvents(events []interface{}, logs []*types.Log) {
 		case ChainHeadEvent:
 			bc.chainHeadFeed.Send(ev)
 
+		case BlockConfirmedEvent:
+			bc.blockConfirmedFeed.Send(ev)
+
 		case ChainSideEvent:
 			bc.chainSideFeed.Send(ev)
 		}
@@ -2042,6 +2047,11 @@ func (bc *BlockChain) SubscribeChainEvent(ch chan<- ChainEvent) event.Subscripti
 // SubscribeChainHeadEvent registers a subscription of ChainHeadEvent.
 func (bc *BlockChain) SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription {
 	return bc.scope.Track(bc.chainHeadFeed.Subscribe(ch))
+}
+
+// SubscribeBlockConfirmedEvent registers a subscription of ChainHeadEvent.
+func (bc *BlockChain) SubscribeBlockConfirmedEvent(ch chan<- BlockConfirmedEvent) event.Subscription {
+	return bc.scope.Track(bc.blockConfirmedFeed.Subscribe(ch))
 }
 
 // SubscribeChainSideEvent registers a subscription of ChainSideEvent.

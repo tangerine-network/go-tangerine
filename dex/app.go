@@ -67,7 +67,8 @@ type witnessData struct {
 	ReceiptHash common.Hash
 }
 
-func NewDexconApp(txPool *core.TxPool, blockchain *core.BlockChain, gov *DexconGovernance, chainDB ethdb.Database, config *Config, vmConfig vm.Config) *DexconApp {
+func NewDexconApp(txPool *core.TxPool, blockchain *core.BlockChain, gov *DexconGovernance,
+	chainDB ethdb.Database, config *Config, vmConfig vm.Config) *DexconApp {
 	return &DexconApp{
 		txPool:          txPool,
 		blockchain:      blockchain,
