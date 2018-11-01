@@ -413,7 +413,7 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 
 	newBlock := types.NewBlock(&types.Header{
 		Number:     new(big.Int).SetUint64(result.Height),
-		Time:       big.NewInt(result.Timestamp.Unix()),
+		Time:       big.NewInt(result.Timestamp.UnixNano() / 1000000),
 		Coinbase:   common.BytesToAddress(block.ProposerID.Bytes()),
 		GasLimit:   d.gov.DexconConfiguration(block.Position.Round).BlockGasLimit,
 		Difficulty: big.NewInt(1),
