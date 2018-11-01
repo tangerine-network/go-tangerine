@@ -244,7 +244,7 @@ func (bc *BlockChain) GetVMConfig() *vm.Config {
 }
 
 type blockInfo struct {
-	addresses map[common.Address]interface{}
+	addresses map[common.Address]struct{}
 	block     *coreTypes.Block
 }
 
@@ -258,23 +258,22 @@ func (bc *BlockChain) AddConfirmedBlock(block *coreTypes.Block) error {
 		return err
 	}
 
-	addressMap := map[common.Address]interface{}{}
+	addressMap := map[common.Address]struct{}{}
 	for _, tx := range transactions {
 		msg, err := tx.AsMessage(types.MakeSigner(bc.Config(), new(big.Int)))
 		if err != nil {
 			return err
 		}
-		addressMap[msg.From()] = nil
+		addressMap[msg.From()] = struct{}{}
 
 		// get latest nonce in block
 		bc.addressNonce[msg.From()] = msg.Nonce()
 
 		// calculate max cost in confirmed blocks
 		if bc.addressCost[msg.From()] == nil {
-			bc.addressCost[msg.From()] = tx.Cost()
-		} else {
-			bc.addressCost[msg.From()] = new(big.Int).Add(bc.addressCost[msg.From()], tx.Cost())
+			bc.addressCost[msg.From()] = big.NewInt(0)
 		}
+		bc.addressCost[msg.From()] = new(big.Int).Add(bc.addressCost[msg.From()], tx.Cost())
 	}
 
 	for addr := range addressMap {
