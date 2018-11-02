@@ -24,9 +24,9 @@ import (
 	"time"
 
 	mapset "github.com/deckarep/golang-set"
-	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
-	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
-	dkgTypes "github.com/dexon-foundation/dexon-consensus-core/core/types/dkg"
+	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
+	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/types"

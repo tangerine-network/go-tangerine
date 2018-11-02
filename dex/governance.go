@@ -7,12 +7,12 @@ import (
 	"math/big"
 	"time"
 
-	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
-	dexCore "github.com/dexon-foundation/dexon-consensus-core/core"
-	coreCrypto "github.com/dexon-foundation/dexon-consensus-core/core/crypto"
-	coreEcdsa "github.com/dexon-foundation/dexon-consensus-core/core/crypto/ecdsa"
-	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
-	dkgTypes "github.com/dexon-foundation/dexon-consensus-core/core/types/dkg"
+	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
+	dexCore "github.com/dexon-foundation/dexon-consensus/core"
+	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
+	coreEcdsa "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
+	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/types"

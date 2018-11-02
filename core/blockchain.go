@@ -28,8 +28,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
-	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
+	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
+	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 	"github.com/hashicorp/golang-lru"
 
 	"github.com/dexon-foundation/dexon/common"

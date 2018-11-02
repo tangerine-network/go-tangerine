@@ -23,11 +23,11 @@ import (
 	"testing"
 	"time"
 
-	coreCommon "github.com/dexon-foundation/dexon-consensus-core/common"
-	coreCrypto "github.com/dexon-foundation/dexon-consensus-core/core/crypto"
-	"github.com/dexon-foundation/dexon-consensus-core/core/crypto/dkg"
-	coreTypes "github.com/dexon-foundation/dexon-consensus-core/core/types"
-	dkgTypes "github.com/dexon-foundation/dexon-consensus-core/core/types/dkg"
+	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
+	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
+	"github.com/dexon-foundation/dexon-consensus/core/crypto/dkg"
+	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/types"
