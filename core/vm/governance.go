@@ -602,6 +602,20 @@ const abiJSON = `
     "payable": false,
     "stateMutability": "nonpayable",
     "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "nodesLength",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
   }
 ]
 `
@@ -680,6 +694,12 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 			return nil, errExecutionReverted
 		}
 		return g.addDKGFinalize(args.Round, args.Finalize)
+	case "nodesLength":
+		res, err := method.Outputs.Pack(g.state.NodesLength())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	case "proposeCRS":
 		args := struct {
 			Round     *big.Int
