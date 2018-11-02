@@ -100,7 +100,6 @@ func (d *DexconGovernance) Configuration(round uint64) *coreTypes.Config {
 		DKGSetSize:       c.DKGSetSize,
 		RoundInterval:    time.Duration(c.RoundInterval) * time.Millisecond,
 		MinBlockInterval: time.Duration(c.MinBlockInterval) * time.Millisecond,
-		MaxBlockInterval: time.Duration(c.MaxBlockInterval) * time.Millisecond,
 	}
 }
 

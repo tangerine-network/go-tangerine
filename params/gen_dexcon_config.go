@@ -28,7 +28,6 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 		DKGSetSize       uint32                `json:"dkgSetSize"`
 		RoundInterval    uint64                `json:"roundInterval"`
 		MinBlockInterval uint64                `json:"minBlockInterval"`
-		MaxBlockInterval uint64                `json:"maxBlockInterval"`
 	}
 	var enc DexconConfig
 	enc.GenesisCRSText = d.GenesisCRSText
@@ -44,7 +43,6 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 	enc.DKGSetSize = d.DKGSetSize
 	enc.RoundInterval = d.RoundInterval
 	enc.MinBlockInterval = d.MinBlockInterval
-	enc.MaxBlockInterval = d.MaxBlockInterval
 	return json.Marshal(&enc)
 }
 
@@ -64,7 +62,6 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 		DKGSetSize       *uint32               `json:"dkgSetSize"`
 		RoundInterval    *uint64               `json:"roundInterval"`
 		MinBlockInterval *uint64               `json:"minBlockInterval"`
-		MaxBlockInterval *uint64               `json:"maxBlockInterval"`
 	}
 	var dec DexconConfig
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -108,9 +105,6 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 	}
 	if dec.MinBlockInterval != nil {
 		d.MinBlockInterval = *dec.MinBlockInterval
-	}
-	if dec.MaxBlockInterval != nil {
-		d.MaxBlockInterval = *dec.MaxBlockInterval
 	}
 	return nil
 }

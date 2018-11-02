@@ -364,20 +364,6 @@ const abiJSON = `
   },
   {
     "constant": true,
-    "inputs": [],
-    "name": "maxBlockInterval",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
     "inputs": [
       {
         "name": "",
@@ -477,10 +463,6 @@ const abiJSON = `
       },
       {
         "name": "MinBlockInterval",
-        "type": "uint256"
-      },
-      {
-        "name": "MaxBlockInterval",
         "type": "uint256"
       }
     ],
@@ -844,12 +826,6 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 			return nil, errExecutionReverted
 		}
 		return res, nil
-	case "maxBlockInterval":
-		res, err := method.Outputs.Pack(g.state.MaxBlockInterval())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
 	case "minBlockInterval":
 		res, err := method.Outputs.Pack(g.state.MinBlockInterval())
 		if err != nil {
@@ -943,7 +919,6 @@ const (
 	dkgSetSizeLoc
 	roundIntervalLoc
 	minBlockIntervalLoc
-	maxBlockIntervalLoc
 )
 
 // State manipulation helper fro the governance contract.
@@ -1322,11 +1297,6 @@ func (s *GovernanceStateHelper) MinBlockInterval() *big.Int {
 	return s.getStateBigInt(big.NewInt(minBlockIntervalLoc))
 }
 
-// uint256 public maxBlockInterval;
-func (s *GovernanceStateHelper) MaxBlockInterval() *big.Int {
-	return s.getStateBigInt(big.NewInt(maxBlockIntervalLoc))
-}
-
 // Stake is a helper function for creating genesis state.
 func (s *GovernanceStateHelper) Stake(addr common.Address, publicKey []byte, staked *big.Int) {
 	offset := s.NodesLength()
@@ -1352,7 +1322,6 @@ func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
 		DKGSetSize:       uint32(s.getStateBigInt(big.NewInt(dkgSetSizeLoc)).Uint64()),
 		RoundInterval:    s.getStateBigInt(big.NewInt(roundIntervalLoc)).Uint64(),
 		MinBlockInterval: s.getStateBigInt(big.NewInt(minBlockIntervalLoc)).Uint64(),
-		MaxBlockInterval: s.getStateBigInt(big.NewInt(maxBlockIntervalLoc)).Uint64(),
 	}
 }
 
@@ -1369,7 +1338,6 @@ func (s *GovernanceStateHelper) UpdateConfiguration(cfg *params.DexconConfig) {
 	s.setStateBigInt(big.NewInt(dkgSetSizeLoc), big.NewInt(int64(cfg.DKGSetSize)))
 	s.setStateBigInt(big.NewInt(roundIntervalLoc), big.NewInt(int64(cfg.RoundInterval)))
 	s.setStateBigInt(big.NewInt(minBlockIntervalLoc), big.NewInt(int64(cfg.MinBlockInterval)))
-	s.setStateBigInt(big.NewInt(maxBlockIntervalLoc), big.NewInt(int64(cfg.MaxBlockInterval)))
 }
 
 // event ConfigurationChanged();
