@@ -143,12 +143,12 @@ type BlockChain struct {
 	badBlocks      *lru.Cache              // Bad block cache
 	shouldPreserve func(*types.Block) bool // Function used to determine whether should preserve the given block.
 
-	confirmedBlocksMu sync.RWMutex
-	confirmedBlocks   map[coreCommon.Hash]*blockInfo
-	addressNonce      map[common.Address]uint64
-	addressCost       map[common.Address]*big.Int
-	addressCounter    map[common.Address]uint64
-	chainLastHeight   map[uint32]uint64
+	confirmedBlockInitMu sync.Mutex
+	confirmedBlocks      map[uint32]map[coreCommon.Hash]*blockInfo
+	addressNonce         map[uint32]map[common.Address]uint64
+	addressCost          map[uint32]map[common.Address]*big.Int
+	addressCounter       map[uint32]map[common.Address]uint64
+	chainLastHeight      map[uint32]uint64
 
 	pendingBlockMu    sync.RWMutex
 	lastPendingHeight uint64
@@ -195,10 +195,10 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 			block    *types.Block
 			receipts types.Receipts
 		}),
-		confirmedBlocks: make(map[coreCommon.Hash]*blockInfo),
-		addressNonce:    make(map[common.Address]uint64),
-		addressCost:     make(map[common.Address]*big.Int),
-		addressCounter:  make(map[common.Address]uint64),
+		confirmedBlocks: make(map[uint32]map[coreCommon.Hash]*blockInfo),
+		addressNonce:    make(map[uint32]map[common.Address]uint64),
+		addressCost:     make(map[uint32]map[common.Address]*big.Int),
+		addressCounter:  make(map[uint32]map[common.Address]uint64),
 		chainLastHeight: make(map[uint32]uint64),
 	}
 	bc.SetValidator(NewDexonBlockValidator(chainConfig, bc, engine))
@@ -249,8 +249,16 @@ type blockInfo struct {
 }
 
 func (bc *BlockChain) AddConfirmedBlock(block *coreTypes.Block) error {
-	bc.confirmedBlocksMu.Lock()
-	defer bc.confirmedBlocksMu.Unlock()
+	chainID := block.Position.ChainID
+	bc.confirmedBlockInitMu.Lock()
+	_, exist := bc.confirmedBlocks[chainID]
+	if !exist {
+		bc.confirmedBlocks[chainID] = make(map[coreCommon.Hash]*blockInfo)
+		bc.addressNonce[chainID] = make(map[common.Address]uint64)
+		bc.addressCost[chainID] = make(map[common.Address]*big.Int)
+		bc.addressCounter[chainID] = make(map[common.Address]uint64)
+	}
+	bc.confirmedBlockInitMu.Unlock()
 
 	var transactions types.Transactions
 	err := rlp.Decode(bytes.NewReader(block.Payload), &transactions)
@@ -267,71 +275,66 @@ func (bc *BlockChain) AddConfirmedBlock(block *coreTypes.Block) error {
 		addressMap[msg.From()] = struct{}{}
 
 		// get latest nonce in block
-		bc.addressNonce[msg.From()] = msg.Nonce()
+		bc.addressNonce[chainID][msg.From()] = msg.Nonce()
 
 		// calculate max cost in confirmed blocks
-		if bc.addressCost[msg.From()] == nil {
-			bc.addressCost[msg.From()] = big.NewInt(0)
+		if bc.addressCost[chainID][msg.From()] == nil {
+			bc.addressCost[chainID][msg.From()] = big.NewInt(0)
 		}
-		bc.addressCost[msg.From()] = new(big.Int).Add(bc.addressCost[msg.From()], tx.Cost())
+		bc.addressCost[chainID][msg.From()] = new(big.Int).Add(bc.addressCost[chainID][msg.From()], tx.Cost())
 	}
 
 	for addr := range addressMap {
-		bc.addressCounter[addr]++
+		bc.addressCounter[chainID][addr]++
 	}
 
-	bc.confirmedBlocks[block.Hash] = &blockInfo{
+	bc.confirmedBlocks[chainID][block.Hash] = &blockInfo{
 		addresses: addressMap,
 		block:     block,
 	}
-	bc.chainLastHeight[block.Position.ChainID] = block.Position.Height
+	bc.chainLastHeight[chainID] = block.Position.Height
 	return nil
 }
 
-func (bc *BlockChain) RemoveConfirmedBlock(hash coreCommon.Hash) {
-	bc.confirmedBlocksMu.Lock()
-	defer bc.confirmedBlocksMu.Unlock()
-
-	blockInfo := bc.confirmedBlocks[hash]
+func (bc *BlockChain) RemoveConfirmedBlock(chainID uint32, hash coreCommon.Hash) {
+	blockInfo := bc.confirmedBlocks[chainID][hash]
 	for addr := range blockInfo.addresses {
-		bc.addressCounter[addr]--
-		if bc.addressCounter[addr] == 0 {
-			delete(bc.addressCounter, addr)
-			delete(bc.addressCost, addr)
-			delete(bc.addressNonce, addr)
+		bc.addressCounter[chainID][addr]--
+		if bc.addressCounter[chainID][addr] == 0 {
+			delete(bc.addressCounter[chainID], addr)
+			delete(bc.addressCost[chainID], addr)
+			delete(bc.addressNonce[chainID], addr)
 		}
 	}
 
-	delete(bc.confirmedBlocks, hash)
+	delete(bc.confirmedBlocks[chainID], hash)
 }
 
-func (bc *BlockChain) GetConfirmedBlockByHash(hash coreCommon.Hash) *coreTypes.Block {
-	bc.confirmedBlocksMu.RLock()
-	defer bc.confirmedBlocksMu.RUnlock()
-
-	return bc.confirmedBlocks[hash].block
+func (bc *BlockChain) GetConfirmedBlockByHash(chainID uint32, hash coreCommon.Hash) *coreTypes.Block {
+	return bc.confirmedBlocks[chainID][hash].block
 }
 
-func (bc *BlockChain) GetLastNonceInConfirmedBlocks(address common.Address) (uint64, bool) {
-	bc.confirmedBlocksMu.RLock()
-	defer bc.confirmedBlocksMu.RUnlock()
+func (bc *BlockChain) GetLastNonceInConfirmedBlocks(chainID uint32, address common.Address) (uint64, bool) {
+	addressNonce, exist := bc.addressNonce[chainID]
+	if !exist {
+		return 0, exist
+	}
 
-	nonce, exist := bc.addressNonce[address]
+	nonce, exist := addressNonce[address]
 	return nonce, exist
 }
 
-func (bc *BlockChain) GetCostInConfirmedBlocks(address common.Address) (*big.Int, bool) {
-	bc.confirmedBlocksMu.RLock()
-	defer bc.confirmedBlocksMu.RUnlock()
+func (bc *BlockChain) GetCostInConfirmedBlocks(chainID uint32, address common.Address) (*big.Int, bool) {
+	addressCost, exist := bc.addressCost[chainID]
+	if !exist {
+		return nil, exist
+	}
 
-	cost, exist := bc.addressCost[address]
+	cost, exist := addressCost[address]
 	return cost, exist
 }
 
 func (bc *BlockChain) GetChainLastConfirmedHeight(chainID uint32) uint64 {
-	bc.confirmedBlocksMu.RLock()
-	defer bc.confirmedBlocksMu.RUnlock()
-
 	return bc.chainLastHeight[chainID]
 }
 

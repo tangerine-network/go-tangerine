@@ -47,13 +47,9 @@ type DexconApp struct {
 	notifyChan map[uint64]*notify
 	notifyMu   sync.Mutex
 
-	chainLatestRootMu sync.RWMutex
-	chainLatestRoot   map[uint32]*common.Hash
-
-	insertMu sync.Mutex
-
 	chainLocksInitMu sync.Mutex
 	chainLocks       map[uint32]*sync.RWMutex
+	chainLatestRoot  map[uint32]*common.Hash
 }
 
 type notify struct {
@@ -157,14 +153,14 @@ addressMap:
 		}
 
 		balance := latestState.GetBalance(address)
-		cost, exist := d.blockchain.GetCostInConfirmedBlocks(address)
+		cost, exist := d.blockchain.GetCostInConfirmedBlocks(position.ChainID, address)
 		if exist {
 			balance = new(big.Int).Sub(balance, cost)
 		}
 
 		var expectNonce uint64
 		// get last nonce from confirmed blocks
-		lastConfirmedNonce, exist := d.blockchain.GetLastNonceInConfirmedBlocks(address)
+		lastConfirmedNonce, exist := d.blockchain.GetLastNonceInConfirmedBlocks(position.ChainID, address)
 		if !exist {
 			// get expect nonce from latest state when confirmed block is empty
 			expectNonce = latestState.GetNonce(address)
@@ -318,13 +314,13 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 	chainNums := new(big.Int).SetUint64(uint64(d.gov.GetNumChains(block.Position.Round)))
 	for address, firstNonce := range addresses {
 		if !d.checkChain(address, chainNums, chainID) {
-			log.Error("check chain fail", "address", address)
+			log.Error("Check chain fail", "address", address)
 			return coreTypes.VerifyInvalidBlock
 		}
 
 		var expectNonce uint64
 		// get last nonce from confirmed blocks
-		lastConfirmedNonce, exist := d.blockchain.GetLastNonceInConfirmedBlocks(address)
+		lastConfirmedNonce, exist := d.blockchain.GetLastNonceInConfirmedBlocks(block.Position.ChainID, address)
 		if !exist {
 			// get expect nonce from latest state when confirmed block is empty
 			expectNonce = latestState.GetNonce(address)
@@ -342,7 +338,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 	addressesBalance := map[common.Address]*big.Int{}
 	for address := range addresses {
 		// replay confirmed block tx to correct balance
-		cost, exist := d.blockchain.GetCostInConfirmedBlocks(address)
+		cost, exist := d.blockchain.GetCostInConfirmedBlocks(block.Position.ChainID, address)
 		if exist {
 			addressesBalance[address] = new(big.Int).Sub(latestState.GetBalance(address), cost)
 		} else {
@@ -392,17 +388,15 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 }
 
 // BlockDelivered is called when a block is add to the compaction chain.
-func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.FinalizationResult) {
-	d.insertMu.Lock()
-	defer d.insertMu.Unlock()
+func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, blockPosition coreTypes.Position, result coreTypes.FinalizationResult) {
+	chainID := blockPosition.ChainID
+	d.chainLock(chainID)
+	defer d.chainUnlock(chainID)
 
-	block := d.blockchain.GetConfirmedBlockByHash(blockHash)
+	block := d.blockchain.GetConfirmedBlockByHash(chainID, blockHash)
 	if block == nil {
 		panic("Can not get confirmed block")
 	}
-
-	d.chainLock(block.Position.ChainID)
-	defer d.chainUnlock(block.Position.ChainID)
 
 	var transactions types.Transactions
 	err := rlp.DecodeBytes(block.Payload, &transactions)
@@ -436,7 +430,7 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, result coreTypes.F
 	d.setChainLatestRoot(block.Position.ChainID, root)
 
 	log.Info("Insert pending block success", "height", result.Height)
-	d.blockchain.RemoveConfirmedBlock(blockHash)
+	d.blockchain.RemoveConfirmedBlock(chainID, blockHash)
 	d.notify(result.Height)
 }
 
@@ -473,16 +467,10 @@ func (d *DexconApp) validateNonce(txs types.Transactions) (map[common.Address]ui
 }
 
 func (d *DexconApp) getChainLatestRoot(chainID uint32) *common.Hash {
-	d.chainLatestRootMu.RLock()
-	defer d.chainLatestRootMu.RUnlock()
-
 	return d.chainLatestRoot[chainID]
 }
 
 func (d *DexconApp) setChainLatestRoot(chainID uint32, root *common.Hash) {
-	d.chainLatestRootMu.Lock()
-	defer d.chainLatestRootMu.Unlock()
-
 	d.chainLatestRoot[chainID] = root
 }
 
