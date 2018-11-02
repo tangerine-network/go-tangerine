@@ -67,6 +67,8 @@ func newVoteListMap() []map[types.NodeID]*types.Vote {
 type agreementReceiver interface {
 	ProposeVote(vote *types.Vote)
 	ProposeBlock() common.Hash
+	// ConfirmBlock is called with lock hold. User can safely use all data within
+	// agreement module.
 	ConfirmBlock(common.Hash, map[types.NodeID]*types.Vote)
 	PullBlocks(common.Hashes)
 }
@@ -242,12 +244,7 @@ func (a *agreement) nextState() (err error) {
 }
 
 func (a *agreement) sanityCheck(vote *types.Vote) error {
-	if exist := func() bool {
-		a.lock.RLock()
-		defer a.lock.RUnlock()
-		_, exist := a.notarySet[vote.ProposerID]
-		return exist
-	}(); !exist {
+	if _, exist := a.notarySet[vote.ProposerID]; !exist {
 		return ErrNotInNotarySet
 	}
 	ok, err := verifyVoteSignature(vote)
@@ -287,19 +284,18 @@ func (a *agreement) prepareVote(vote *types.Vote) (err error) {
 
 // processVote is the entry point for processing Vote.
 func (a *agreement) processVote(vote *types.Vote) error {
+	a.lock.Lock()
+	defer a.lock.Unlock()
 	if err := a.sanityCheck(vote); err != nil {
 		return err
 	}
-	aID := a.agreementID()
-	if vote.Position != aID {
+	if vote.Position != a.aID {
 		// Agreement module has stopped.
-		if !isStop(aID) {
-			if aID.Newer(&vote.Position) {
+		if !isStop(a.aID) {
+			if a.aID.Newer(&vote.Position) {
 				return nil
 			}
 		}
-		a.lock.Lock()
-		defer a.lock.Unlock()
 		a.pendingVote = append(a.pendingVote, pendingVote{
 			vote:         vote,
 			receivedTime: time.Now().UTC(),
@@ -329,6 +325,9 @@ func (a *agreement) processVote(vote *types.Vote) error {
 	}
 
 	// Check if the agreement requires fast-forwarding.
+	if len(a.fastForward) > 0 {
+		return nil
+	}
 	if vote.Type == types.VotePreCom {
 		if hash, ok := a.data.countVoteNoLock(vote.Period, vote.Type); ok &&
 			hash != skipBlockHash {
@@ -358,7 +357,7 @@ func (a *agreement) processVote(vote *types.Vote) error {
 				if vote.BlockHash == nullBlockHash || vote.BlockHash == skipBlockHash {
 					continue
 				}
-				if _, found := a.findCandidateBlock(vote.BlockHash); !found {
+				if _, found := a.findCandidateBlockNoLock(vote.BlockHash); !found {
 					hashes = append(hashes, vote.BlockHash)
 				}
 			}
@@ -366,7 +365,9 @@ func (a *agreement) processVote(vote *types.Vote) error {
 		addPullBlocks(types.VoteInit)
 		addPullBlocks(types.VotePreCom)
 		addPullBlocks(types.VoteCom)
-		a.data.recv.PullBlocks(hashes)
+		if len(hashes) > 0 {
+			a.data.recv.PullBlocks(hashes)
+		}
 		a.fastForward <- vote.Period + 1
 		return nil
 	}
@@ -374,6 +375,10 @@ func (a *agreement) processVote(vote *types.Vote) error {
 }
 
 func (a *agreement) done() <-chan struct{} {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	a.data.lock.Lock()
+	defer a.data.lock.Unlock()
 	ch := make(chan struct{}, 1)
 	if a.hasOutput {
 		ch <- struct{}{}
@@ -394,14 +399,15 @@ func (a *agreement) done() <-chan struct{} {
 
 // processBlock is the entry point for processing Block.
 func (a *agreement) processBlock(block *types.Block) error {
+	a.lock.Lock()
+	defer a.lock.Unlock()
 	a.data.blocksLock.Lock()
 	defer a.data.blocksLock.Unlock()
 
-	aID := a.agreementID()
-	if block.Position != aID {
+	if block.Position != a.aID {
 		// Agreement module has stopped.
-		if !isStop(aID) {
-			if aID.Newer(&block.Position) {
+		if !isStop(a.aID) {
+			if a.aID.Newer(&block.Position) {
 				return nil
 			}
 		}
@@ -421,23 +427,31 @@ func (a *agreement) processBlock(block *types.Block) error {
 		return err
 	}
 	a.data.blocks[block.ProposerID] = block
-	a.addCandidateBlock(block)
+	a.addCandidateBlockNoLock(block)
 	return nil
 }
 
 func (a *agreement) addCandidateBlock(block *types.Block) {
 	a.lock.Lock()
 	defer a.lock.Unlock()
+	a.addCandidateBlockNoLock(block)
+}
+
+func (a *agreement) addCandidateBlockNoLock(block *types.Block) {
 	a.candidateBlock[block.Hash] = block
 }
 
 func (a *agreement) findCandidateBlock(hash common.Hash) (*types.Block, bool) {
 	a.lock.RLock()
 	defer a.lock.RUnlock()
+	return a.findCandidateBlockNoLock(hash)
+}
+
+func (a *agreement) findCandidateBlockNoLock(
+	hash common.Hash) (*types.Block, bool) {
 	b, e := a.candidateBlock[hash]
 	return b, e
 }
-
 func (a *agreementData) countVote(period uint64, voteType types.VoteType) (
 	blockHash common.Hash, ok bool) {
 	a.lock.RLock()
