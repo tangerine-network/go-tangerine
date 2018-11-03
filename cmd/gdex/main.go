@@ -97,7 +97,7 @@ var (
 		utils.ListenPortFlag,
 		utils.MaxPeersFlag,
 		utils.MaxPendingPeersFlag,
-		utils.ProposingEnabledFlag,
+		utils.BlockProposerEnabledFlag,
 		utils.MiningEnabledFlag,
 		utils.MinerThreadsFlag,
 		utils.MinerLegacyThreadsFlag,
@@ -358,7 +358,7 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 		}
 	}
 
-	if ctx.GlobalBool(utils.ProposingEnabledFlag.Name) {
+	if ctx.GlobalBool(utils.BlockProposerEnabledFlag.Name) {
 		if ctx.GlobalString(utils.SyncModeFlag.Name) == "light" {
 			utils.Fatalf("Light clients do not support proposing")
 		}

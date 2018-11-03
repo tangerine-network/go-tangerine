@@ -249,12 +249,6 @@ func (s *Dexon) Start(srvr *p2p.Server) error {
 	// Start the networking layer and the light server if requested
 	s.protocolManager.Start(srvr, maxPeers)
 	s.protocolManager.addSelfMeta()
-
-	go func() {
-		time.Sleep(10 * time.Second)
-		// TODO: Run with the latest confirmed block in compaction chain.
-		s.consensus.Run(&coreTypes.Block{})
-	}()
 	return nil
 }
 
@@ -263,9 +257,8 @@ func (s *Dexon) Stop() error {
 }
 
 func (s *Dexon) StartProposing() error {
-	// TODO(sonic):
-	// enable dispatch vote, agreement result, finalization result.. msg to consensus core.
-	log.Debug("###############start proposing")
+	// TODO: Run with the latest confirmed block in compaction chain.
+	s.consensus.Run(&coreTypes.Block{})
 	return nil
 }
 

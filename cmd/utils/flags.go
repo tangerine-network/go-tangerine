@@ -317,10 +317,10 @@ var (
 		Usage: "Number of trie node generations to keep in memory",
 		Value: int(state.MaxTrieCacheGen),
 	}
-	// Proposer settings
-	ProposingEnabledFlag = cli.BoolFlag{
-		Name:  "propose",
-		Usage: "Enable proposing",
+	// Nodeset settings
+	BlockProposerEnabledFlag = cli.BoolFlag{
+		Name:  "bp",
+		Usage: "Enable block proposer mode (node set)",
 	}
 	// Miner settings
 	MiningEnabledFlag = cli.BoolFlag{

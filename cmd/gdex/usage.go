@@ -184,9 +184,9 @@ var AppHelpFlagGroups = []flagGroup{
 		},
 	},
 	{
-		Name: "PROPOSER",
+		Name: "BLOCK PROPOSER",
 		Flags: []cli.Flag{
-			utils.ProposingEnabledFlag,
+			utils.BlockProposerEnabledFlag,
 		},
 	},
 	{

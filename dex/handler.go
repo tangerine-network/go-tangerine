@@ -1046,7 +1046,9 @@ func (pm *ProtocolManager) peerSetLoop() {
 
 	for {
 		select {
-		case <-pm.chainHeadCh:
+		case event := <-pm.chainHeadCh:
+			pm.BroadcastBlock(event.Block, true)
+
 			newRound := pm.gov.LenCRS() - 1
 			log.Trace("new round", "round", newRound)
 			if newRound == round {
