@@ -49,7 +49,9 @@ type DexconApp struct {
 
 	chainLocksInitMu sync.Mutex
 	chainLocks       map[uint32]*sync.RWMutex
-	chainLatestRoot  map[uint32]*common.Hash
+
+	chainLatestRootMu sync.Mutex
+	chainLatestRoot   map[uint32]*common.Hash
 }
 
 type notify struct {
@@ -467,10 +469,16 @@ func (d *DexconApp) validateNonce(txs types.Transactions) (map[common.Address]ui
 }
 
 func (d *DexconApp) getChainLatestRoot(chainID uint32) *common.Hash {
+	d.chainLatestRootMu.Lock()
+	defer d.chainLatestRootMu.Unlock()
+
 	return d.chainLatestRoot[chainID]
 }
 
 func (d *DexconApp) setChainLatestRoot(chainID uint32, root *common.Hash) {
+	d.chainLatestRootMu.Lock()
+	defer d.chainLatestRootMu.Unlock()
+
 	d.chainLatestRoot[chainID] = root
 }
 
