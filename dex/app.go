@@ -35,6 +35,10 @@ import (
 	"github.com/dexon-foundation/dexon/rlp"
 )
 
+const (
+	verifyBlockMaxRetries = 4
+)
+
 // DexconApp implementes the DEXON consensus core application interface.
 type DexconApp struct {
 	txPool     *core.TxPool
@@ -44,14 +48,11 @@ type DexconApp struct {
 	config     *Config
 	vmConfig   vm.Config
 
-	notifyChan map[uint64]*notify
-	notifyMu   sync.Mutex
-
 	chainLocksInitMu sync.Mutex
 	chainLocks       map[uint32]*sync.RWMutex
 
-	chainLatestRootMu sync.Mutex
-	chainLatestRoot   map[uint32]*common.Hash
+	notifyChan      sync.Map
+	chainLatestRoot sync.Map
 }
 
 type notify struct {
@@ -67,47 +68,99 @@ type witnessData struct {
 func NewDexconApp(txPool *core.TxPool, blockchain *core.BlockChain, gov *DexconGovernance,
 	chainDB ethdb.Database, config *Config, vmConfig vm.Config) *DexconApp {
 	return &DexconApp{
-		txPool:          txPool,
-		blockchain:      blockchain,
-		gov:             gov,
-		chainDB:         chainDB,
-		config:          config,
-		vmConfig:        vmConfig,
-		notifyChan:      make(map[uint64]*notify),
-		chainLocks:      make(map[uint32]*sync.RWMutex),
-		chainLatestRoot: make(map[uint32]*common.Hash),
+		txPool:     txPool,
+		blockchain: blockchain,
+		gov:        gov,
+		chainDB:    chainDB,
+		config:     config,
+		vmConfig:   vmConfig,
+		chainLocks: make(map[uint32]*sync.RWMutex),
 	}
 }
 
 func (d *DexconApp) addNotify(height uint64) <-chan uint64 {
-	d.notifyMu.Lock()
-	defer d.notifyMu.Unlock()
 	result := make(chan uint64)
-	if n, exist := d.notifyChan[height]; exist {
+	v, ok := d.notifyChan.Load(height)
+	if ok {
+		n := v.(*notify)
 		n.results = append(n.results, result)
 	} else {
-		d.notifyChan[height] = &notify{}
-		d.notifyChan[height].results = append(d.notifyChan[height].results, result)
+		n := &notify{results: []chan uint64{result}}
+		d.notifyChan.Store(height, n)
 	}
 	return result
 }
 
 func (d *DexconApp) notify(height uint64) {
-	d.notifyMu.Lock()
-	defer d.notifyMu.Unlock()
-	for h, n := range d.notifyChan {
+	d.notifyChan.Range(func(key, value interface{}) bool {
+		h := key.(uint64)
+		n := value.(*notify)
+
 		if height >= h {
 			for _, ch := range n.results {
 				ch <- height
 			}
-			delete(d.notifyChan, h)
+			d.notifyChan.Delete(key)
 		}
+		return true
+	})
+}
+
+func (d *DexconApp) addrBelongsToChain(address common.Address, chainSize, chainID *big.Int) bool {
+	return new(big.Int).Mod(address.Big(), chainSize).Cmp(chainID) == 0
+}
+
+func (d *DexconApp) chainLockInit(chainID uint32) {
+	d.chainLocksInitMu.Lock()
+	defer d.chainLocksInitMu.Unlock()
+
+	_, exist := d.chainLocks[chainID]
+	if !exist {
+		d.chainLocks[chainID] = &sync.RWMutex{}
 	}
 }
 
-func (d *DexconApp) checkChain(address common.Address, chainSize, chainID *big.Int) bool {
-	addrModChainSize := new(big.Int)
-	return addrModChainSize.Mod(address.Big(), chainSize).Cmp(chainID) == 0
+func (d *DexconApp) chainLock(chainID uint32) {
+	d.chainLockInit(chainID)
+	d.chainLocks[chainID].Lock()
+}
+
+func (d *DexconApp) chainUnlock(chainID uint32) {
+	d.chainLocks[chainID].Unlock()
+}
+
+func (d *DexconApp) chainRLock(chainID uint32) {
+	d.chainLockInit(chainID)
+	d.chainLocks[chainID].RLock()
+}
+
+func (d *DexconApp) chainRUnlock(chainID uint32) {
+	d.chainLocks[chainID].RUnlock()
+}
+
+// validateNonce check if nonce is in order and return first nonce of every address.
+func (d *DexconApp) validateNonce(txs types.Transactions) (map[common.Address]uint64, error) {
+	addressFirstNonce := map[common.Address]uint64{}
+	addressNonce := map[common.Address]uint64{}
+
+	for _, tx := range txs {
+		msg, err := tx.AsMessage(types.MakeSigner(d.blockchain.Config(), new(big.Int)))
+		if err != nil {
+			return nil, err
+		}
+
+		if _, exist := addressFirstNonce[msg.From()]; exist {
+			if addressNonce[msg.From()]+1 != msg.Nonce() {
+				return nil, fmt.Errorf("address nonce check error: expect %v actual %v",
+					addressNonce[msg.From()]+1, msg.Nonce())
+			}
+			addressNonce[msg.From()] = msg.Nonce()
+		} else {
+			addressNonce[msg.From()] = msg.Nonce()
+			addressFirstNonce[msg.From()] = msg.Nonce()
+		}
+	}
+	return addressFirstNonce, nil
 }
 
 // PreparePayload is called when consensus core is preparing payload for block.
@@ -116,20 +169,25 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte,
 	defer d.chainRUnlock(position.ChainID)
 
 	if position.Height != 0 {
-		// check if chain block height is sequential
+		// Check if chain block height is strictly increamental.
 		chainLastHeight := d.blockchain.GetChainLastConfirmedHeight(position.ChainID)
 		if chainLastHeight != position.Height-1 {
-			log.Error("Check confirmed block height fail", "chain", position.ChainID, "height", position.Height-1, "cache height", chainLastHeight)
+			log.Error("Check confirmed block height fail",
+				"chain", position.ChainID, "height", position.Height-1, "cache height", chainLastHeight)
 			return nil, fmt.Errorf("check confirmed block height fail")
 		}
 	}
 
-	root := d.getChainLatestRoot(position.ChainID)
-	if root == nil {
+	var root *common.Hash
+	value, ok := d.chainLatestRoot.Load(position.ChainID)
+	if ok {
+		root = value.(*common.Hash)
+	} else {
 		currentRoot := d.blockchain.CurrentBlock().Root()
 		root = &currentRoot
 	}
-	// set state to the chain latest height
+
+	// Set state to the chain latest height.
 	latestState, err := d.blockchain.StateAt(*root)
 	if err != nil {
 		log.Error("Get pending state", "error", err)
@@ -143,14 +201,15 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte,
 
 	chainID := new(big.Int).SetUint64(uint64(position.ChainID))
 	chainNums := new(big.Int).SetUint64(uint64(d.gov.GetNumChains(position.Round)))
-	blockGasLimit := new(big.Int).SetUint64(core.CalcGasLimit(d.blockchain.CurrentBlock(), d.config.GasFloor, d.config.GasCeil))
+	blockGasLimit := new(big.Int).SetUint64(core.CalcGasLimit(d.blockchain.CurrentBlock(),
+		d.config.GasFloor, d.config.GasCeil))
 	blockGasUsed := new(big.Int)
 	var allTxs types.Transactions
 
 addressMap:
 	for address, txs := range txsMap {
-		// every address's transactions will appear in fixed chain
-		if !d.checkChain(address, chainNums, chainID) {
+		// TX hash need to be slot to the given chain in order to be included in the block.
+		if !d.addrBelongsToChain(address, chainNums, chainID) {
 			continue
 		}
 
@@ -161,10 +220,8 @@ addressMap:
 		}
 
 		var expectNonce uint64
-		// get last nonce from confirmed blocks
 		lastConfirmedNonce, exist := d.blockchain.GetLastNonceInConfirmedBlocks(position.ChainID, address)
 		if !exist {
-			// get expect nonce from latest state when confirmed block is empty
 			expectNonce = latestState.GetNonce(address)
 		} else {
 			expectNonce = lastConfirmedNonce + 1
@@ -174,45 +231,38 @@ addressMap:
 			if expectNonce == tx.Nonce() {
 				expectNonce++
 			} else if expectNonce < tx.Nonce() {
-				// break to do next address
 				break
 			} else if expectNonce > tx.Nonce() {
-				// continue to find next available
-				log.Debug("Nonce check error and continue next tx", "expect", expectNonce, "nonce", tx.Nonce())
+				log.Debug("Skipping tx with smaller nonce then expected", "expected", expectNonce, "nonce", tx.Nonce())
 				continue
 			}
 
-			maxGasUsed := new(big.Int).Mul(new(big.Int).SetUint64(tx.Gas()), tx.GasPrice())
-			intrinsicGas, err := core.IntrinsicGas(tx.Data(), tx.To() == nil, true)
+			intrGas, err := core.IntrinsicGas(tx.Data(), tx.To() == nil, true)
 			if err != nil {
-				log.Error("Calculate intrinsic gas fail", "err", err)
+				log.Error("Failed to calculate intrinsic gas", "error", err)
 				return nil, fmt.Errorf("calculate intrinsic gas error: %v", err)
 			}
-			if big.NewInt(int64(intrinsicGas)).Cmp(maxGasUsed) > 0 {
-				log.Warn("Intrinsic gas is larger than (gas limit * gas price)", "intrinsic", intrinsicGas, "maxGasUsed", maxGasUsed)
+			if tx.Gas() < intrGas {
+				log.Error("Intrinsic gas too low", "txHash", tx.Hash().String())
 				break
 			}
 
 			balance = new(big.Int).Sub(balance, tx.Cost())
 			if balance.Cmp(big.NewInt(0)) < 0 {
-				log.Error("Tx fail", "reason", "not enough balance")
+				log.Warn("Insufficient funds for gas * price + value", "txHash", tx.Hash().String())
 				break
 			}
 
-			blockGasUsed = new(big.Int).Add(blockGasUsed, new(big.Int).SetUint64(tx.Gas()))
-			if blockGasLimit.Cmp(blockGasUsed) < 0 {
+			blockGasUsed = new(big.Int).Add(blockGasUsed, big.NewInt(int64(tx.Gas())))
+			if blockGasUsed.Cmp(blockGasLimit) > 0 {
 				break addressMap
 			}
 
 			allTxs = append(allTxs, tx)
 		}
 	}
-	payload, err = rlp.EncodeToBytes(&allTxs)
-	if err != nil {
-		return
-	}
 
-	return
+	return rlp.EncodeToBytes(&allTxs)
 }
 
 // PrepareWitness will return the witness data no lower than consensusHeight.
@@ -247,21 +297,18 @@ func (d *DexconApp) PrepareWitness(consensusHeight uint64) (witness coreTypes.Wi
 
 // VerifyBlock verifies if the payloads are valid.
 func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifyStatus {
-	const retries = 6
-
 	var witnessData witnessData
 	err := rlp.DecodeBytes(block.Witness.Data, &witnessData)
 	if err != nil {
-		log.Error("Witness rlp decode", "error", err)
+		log.Error("failed to RLP decode witness data", "error", err)
 		return coreTypes.VerifyInvalidBlock
 	}
 
-	for i := 0; i < retries && err != nil; i++ {
-		// check witness root exist
-		err = nil
+	// Wait until the witnessed root is seen on our local chain.
+	for i := 0; i < verifyBlockMaxRetries && err != nil; i++ {
 		_, err = d.blockchain.StateAt(witnessData.Root)
 		if err != nil {
-			log.Debug("Sleep 0.5 seconds and try again", "error", err)
+			log.Debug("Witness root not found, retry in 500ms", "error", err)
 			time.Sleep(500 * time.Millisecond)
 		}
 	}
@@ -275,7 +322,8 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 	defer d.chainRUnlock(block.Position.ChainID)
 
 	if block.Position.Height != 0 {
-		// check if chain block height is sequential
+		// Check if target block is the next height to be verified, we can only
+		// verify the next block in a given chain.
 		chainLastHeight := d.blockchain.GetChainLastConfirmedHeight(block.Position.ChainID)
 		if chainLastHeight != block.Position.Height-1 {
 			log.Error("Check confirmed block height fail", "chain", block.Position.ChainID,
@@ -284,16 +332,19 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 		}
 	}
 
-	root := d.getChainLatestRoot(block.Position.ChainID)
-	if root == nil {
+	// Find the latest state for the given block height.
+	var root *common.Hash
+	value, ok := d.chainLatestRoot.Load(block.Position.ChainID)
+	if ok {
+		root = value.(*common.Hash)
+	} else {
 		currentRoot := d.blockchain.CurrentBlock().Root()
 		root = &currentRoot
 	}
 
-	// set state to the chain latest height
 	latestState, err := d.blockchain.StateAt(*root)
 	if err != nil {
-		log.Error("Get pending state", "error", err)
+		log.Error("Failed to get pending state", "error", err)
 		return coreTypes.VerifyInvalidBlock
 	}
 
@@ -304,30 +355,28 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 		return coreTypes.VerifyInvalidBlock
 	}
 
-	// check if nonce is sequential and return first nonce of every address
-	addresses, err := d.validateNonce(transactions)
+	addressNonce, err := d.validateNonce(transactions)
 	if err != nil {
-		log.Error("Get address nonce", "error", err)
+		log.Error("Validate nonce failed", "error", err)
 		return coreTypes.VerifyInvalidBlock
 	}
 
-	// check all address nonce
+	// Check if nonce is strictly increasing for every address.
 	chainID := big.NewInt(int64(block.Position.ChainID))
-	chainNums := new(big.Int).SetUint64(uint64(d.gov.GetNumChains(block.Position.Round)))
-	for address, firstNonce := range addresses {
-		if !d.checkChain(address, chainNums, chainID) {
-			log.Error("Check chain fail", "address", address)
+	chainNums := big.NewInt(int64(d.gov.GetNumChains(block.Position.Round)))
+
+	for address, firstNonce := range addressNonce {
+		if !d.addrBelongsToChain(address, chainNums, chainID) {
+			log.Error("Address does not belong to given chain ID", "address", address, "chainD", chainID)
 			return coreTypes.VerifyInvalidBlock
 		}
 
 		var expectNonce uint64
-		// get last nonce from confirmed blocks
 		lastConfirmedNonce, exist := d.blockchain.GetLastNonceInConfirmedBlocks(block.Position.ChainID, address)
-		if !exist {
-			// get expect nonce from latest state when confirmed block is empty
-			expectNonce = latestState.GetNonce(address)
-		} else {
+		if exist {
 			expectNonce = lastConfirmedNonce + 1
+		} else {
+			expectNonce = latestState.GetNonce(address)
 		}
 
 		if expectNonce != firstNonce {
@@ -336,10 +385,9 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 		}
 	}
 
-	// get balance from state
+	// Calculate balance in last state (including pending state).
 	addressesBalance := map[common.Address]*big.Int{}
-	for address := range addresses {
-		// replay confirmed block tx to correct balance
+	for address := range addressNonce {
 		cost, exist := d.blockchain.GetCostInConfirmedBlocks(block.Position.ChainID, address)
 		if exist {
 			addressesBalance[address] = new(big.Int).Sub(latestState.GetBalance(address), cost)
@@ -348,41 +396,39 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 		}
 	}
 
-	// validate tx to check available balance
+	// Validate if balance is enough for TXs in this block.
 	blockGasLimit := new(big.Int).SetUint64(core.CalcGasLimit(
 		d.blockchain.CurrentBlock(), d.config.GasFloor, d.config.GasCeil))
 	blockGasUsed := new(big.Int)
+
 	for _, tx := range transactions {
 		msg, err := tx.AsMessage(types.MakeSigner(d.blockchain.Config(), new(big.Int)))
 		if err != nil {
-			log.Error("Tx to message", "error", err)
+			log.Error("Failed to convert tx to message", "error", err)
 			return coreTypes.VerifyInvalidBlock
 		}
 		balance, _ := addressesBalance[msg.From()]
-		maxGasUsed := new(big.Int).Mul(new(big.Int).SetUint64(msg.Gas()), msg.GasPrice())
-		intrinsicGas, err := core.IntrinsicGas(msg.Data(), msg.To() == nil, true)
+		intrGas, err := core.IntrinsicGas(msg.Data(), msg.To() == nil, true)
 		if err != nil {
-			log.Error("Calculate intrinsic gas fail", "err", err)
+			log.Error("Failed to calculate intrinsic gas", "err", err)
 			return coreTypes.VerifyInvalidBlock
 		}
-		if big.NewInt(int64(intrinsicGas)).Cmp(maxGasUsed) > 0 {
-			log.Error("Intrinsic gas is larger than (gas limit * gas price)",
-				"intrinsic", intrinsicGas, "maxGasUsed", maxGasUsed)
+		if tx.Gas() < intrGas {
+			log.Error("Intrinsic gas too low", "txHash", tx.Hash().String(), "intrinsic", intrGas, "gas", tx.Gas())
 			return coreTypes.VerifyInvalidBlock
 		}
 
 		balance = new(big.Int).Sub(balance, tx.Cost())
 		if balance.Cmp(big.NewInt(0)) < 0 {
-			log.Error("Tx fail", "reason", "not enough balance")
+			log.Error("Insufficient funds for gas * price + value", "txHash", tx.Hash().String())
 			return coreTypes.VerifyInvalidBlock
 		}
 
 		blockGasUsed = new(big.Int).Add(blockGasUsed, new(big.Int).SetUint64(tx.Gas()))
-		if blockGasLimit.Cmp(blockGasUsed) < 0 {
-			log.Error("Reach block gas limit", "limit", blockGasLimit)
+		if blockGasUsed.Cmp(blockGasLimit) > 0 {
+			log.Error("Reach block gas limit", "gasUsed", blockGasUsed)
 			return coreTypes.VerifyInvalidBlock
 		}
-
 		addressesBalance[msg.From()] = balance
 	}
 
@@ -390,7 +436,11 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 }
 
 // BlockDelivered is called when a block is add to the compaction chain.
-func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, blockPosition coreTypes.Position, result coreTypes.FinalizationResult) {
+func (d *DexconApp) BlockDelivered(
+	blockHash coreCommon.Hash,
+	blockPosition coreTypes.Position,
+	result coreTypes.FinalizationResult) {
+
 	chainID := blockPosition.ChainID
 	d.chainLock(chainID)
 	defer d.chainUnlock(chainID)
@@ -426,10 +476,10 @@ func (d *DexconApp) BlockDelivered(blockHash coreCommon.Hash, blockPosition core
 
 	root, err := d.blockchain.ProcessPendingBlock(newBlock, &block.Witness)
 	if err != nil {
-		log.Error("Insert chain", "error", err)
+		log.Error("Failed to process pending block", "error", err)
 		panic(err)
 	}
-	d.setChainLatestRoot(block.Position.ChainID, root)
+	d.chainLatestRoot.Store(block.Position.ChainID, root)
 
 	log.Info("Insert pending block success", "height", result.Height)
 	d.blockchain.RemoveConfirmedBlock(chainID, blockHash)
@@ -442,70 +492,4 @@ func (d *DexconApp) BlockConfirmed(block coreTypes.Block) {
 	defer d.chainUnlock(block.Position.ChainID)
 
 	d.blockchain.AddConfirmedBlock(&block)
-}
-
-func (d *DexconApp) validateNonce(txs types.Transactions) (map[common.Address]uint64, error) {
-	addressFirstNonce := map[common.Address]uint64{}
-	addressNonce := map[common.Address]uint64{}
-
-	for _, tx := range txs {
-		msg, err := tx.AsMessage(types.MakeSigner(d.blockchain.Config(), new(big.Int)))
-		if err != nil {
-			return nil, err
-		}
-
-		if _, exist := addressFirstNonce[msg.From()]; exist {
-			if addressNonce[msg.From()]+1 != msg.Nonce() {
-				return nil, fmt.Errorf("address nonce check error: expect %v actual %v",
-					addressNonce[msg.From()]+1, msg.Nonce())
-			}
-			addressNonce[msg.From()] = msg.Nonce()
-		} else {
-			addressNonce[msg.From()] = msg.Nonce()
-			addressFirstNonce[msg.From()] = msg.Nonce()
-		}
-	}
-	return addressFirstNonce, nil
-}
-
-func (d *DexconApp) getChainLatestRoot(chainID uint32) *common.Hash {
-	d.chainLatestRootMu.Lock()
-	defer d.chainLatestRootMu.Unlock()
-
-	return d.chainLatestRoot[chainID]
-}
-
-func (d *DexconApp) setChainLatestRoot(chainID uint32, root *common.Hash) {
-	d.chainLatestRootMu.Lock()
-	defer d.chainLatestRootMu.Unlock()
-
-	d.chainLatestRoot[chainID] = root
-}
-
-func (d *DexconApp) chainLockInit(chainID uint32) {
-	d.chainLocksInitMu.Lock()
-	defer d.chainLocksInitMu.Unlock()
-
-	_, exist := d.chainLocks[chainID]
-	if !exist {
-		d.chainLocks[chainID] = &sync.RWMutex{}
-	}
-}
-
-func (d *DexconApp) chainLock(chainID uint32) {
-	d.chainLockInit(chainID)
-	d.chainLocks[chainID].Lock()
-}
-
-func (d *DexconApp) chainUnlock(chainID uint32) {
-	d.chainLocks[chainID].Unlock()
-}
-
-func (d *DexconApp) chainRLock(chainID uint32) {
-	d.chainLockInit(chainID)
-	d.chainLocks[chainID].RLock()
-}
-
-func (d *DexconApp) chainRUnlock(chainID uint32) {
-	d.chainLocks[chainID].RUnlock()
 }
