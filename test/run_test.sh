@@ -15,14 +15,14 @@ rm -f log-latest
 ln -s $logsdir log-latest
 
 # A standalone RPC server for accepting RPC requests.
-datadir=$PWD/Dexon.rpc
-rm -rf $datadir
-$GDEX --datadir=$datadir init genesis.json
-$GDEX --verbosity=4 --gcmode=archive --datadir=$datadir \
-  --rpc --rpcapi=eth,net,web3,debug --rpcaddr=0.0.0.0 --rpcport=8543 \
-  --ws --wsapi=eth,net,web3,debug --wsaddr=0.0.0.0 --wsport=8544  \
-  --wsorigins='*' --rpcvhosts='*' --rpccorsdomain="*" \
-  > $logsdir/gdex.rpc.log 2>&1 &
+# datadir=$PWD/Dexon.rpc
+# rm -rf $datadir
+# $GDEX --datadir=$datadir init genesis.json
+# $GDEX --verbosity=4 --gcmode=archive --datadir=$datadir \
+#   --rpc --rpcapi=eth,net,web3,debug --rpcaddr=0.0.0.0 --rpcport=8543 \
+#   --ws --wsapi=eth,net,web3,debug --wsaddr=0.0.0.0 --wsport=8544  \
+#   --wsorigins='*' --rpcvhosts='*' --rpccorsdomain="*" \
+#   > $logsdir/gdex.rpc.log 2>&1 &
 
 # Nodes
 for i in $(seq 0 3); do
