@@ -123,6 +123,10 @@ func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
 
 	log.Info("sendGovTx", "nonce", nonce)
 
+	// Increase gasPrice to 5 times of suggested gas price to make sure it will
+	// be included in time.
+	gasPrice = new(big.Int).Mul(gasPrice, big.NewInt(5))
+
 	tx := types.NewTransaction(
 		nonce,
 		vm.GovernanceContractAddress,
