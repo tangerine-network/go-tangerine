@@ -71,11 +71,11 @@ type consensusBAReceiver struct {
 }
 
 func (recv *consensusBAReceiver) ProposeVote(vote *types.Vote) {
+	if err := recv.agreementModule.prepareVote(vote); err != nil {
+		recv.consensus.logger.Error("Failed to prepare vote", "error", err)
+		return
+	}
 	go func() {
-		if err := recv.agreementModule.prepareVote(vote); err != nil {
-			recv.consensus.logger.Error("Failed to prepare vote", "error", err)
-			return
-		}
 		if err := recv.agreementModule.processVote(vote); err != nil {
 			recv.consensus.logger.Error("Failed to process vote", "error", err)
 			return
@@ -336,6 +336,7 @@ func NewConsensus(
 		ID,
 		recv,
 		gov,
+		nodeSetCache,
 		logger)
 	recv.cfgModule = cfgModule
 	// Construct Consensus instance.
@@ -393,6 +394,9 @@ func NewConsensus(
 
 // Run starts running DEXON Consensus.
 func (con *Consensus) Run(initBlock *types.Block) {
+	con.logger.Debug("Calling Governance.NotifyRoundHeight for genesis rounds",
+		"block", initBlock)
+	notifyGenesisRounds(initBlock, con.gov)
 	// Setup context.
 	con.ctx, con.ctxCancel = context.WithCancel(context.Background())
 	con.ccModule.init(initBlock)
@@ -430,7 +434,10 @@ func (con *Consensus) Run(initBlock *types.Block) {
 	for {
 		<-con.tickerObj.Tick()
 		for _, tick := range ticks {
-			go func(tick chan struct{}) { tick <- struct{}{} }(tick)
+			select {
+			case tick <- struct{}{}:
+			default:
+			}
 		}
 	}
 }
@@ -926,9 +933,12 @@ func (con *Consensus) deliverBlock(b *types.Block) {
 	// TODO(mission): clone types.FinalizationResult
 	con.logger.Debug("Calling Application.BlockDelivered", "block", b)
 	con.app.BlockDelivered(b.Hash, b.Position, b.Finalization)
-	if b.Position.Round+2 == con.roundToNotify {
+	if b.Position.Round+roundShift == con.roundToNotify {
 		// Only the first block delivered of that round would
 		// trigger this noitification.
+		con.logger.Debug("Calling Governance.NotifyRoundHeight",
+			"round", con.roundToNotify,
+			"height", b.Finalization.Height)
 		con.gov.NotifyRoundHeight(
 			con.roundToNotify, b.Finalization.Height)
 		con.roundToNotify++
@@ -1002,10 +1012,9 @@ func (con *Consensus) prepareBlock(b *types.Block,
 	if err = con.lattice.PrepareBlock(b, proposeTime); err != nil {
 		return
 	}
-	// TODO(mission): decide CRS by block's round, which could be determined by
-	//                block's info (ex. position, timestamp).
 	con.logger.Debug("Calling Governance.CRS", "round", 0)
-	if err = con.authModule.SignCRS(b, con.gov.CRS(0)); err != nil {
+	if err =
+		con.authModule.SignCRS(b, con.gov.CRS(b.Position.Round)); err != nil {
 		return
 	}
 	return

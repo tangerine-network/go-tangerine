@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dexon-foundation/dexon-consensus/common"
@@ -103,7 +104,7 @@ type agreementData struct {
 type agreement struct {
 	state          agreementState
 	data           *agreementData
-	aID            types.Position
+	aID            *atomic.Value
 	notarySet      map[types.NodeID]struct{}
 	hasOutput      bool
 	lock           sync.RWMutex
@@ -126,6 +127,7 @@ func newAgreement(
 			ID:     ID,
 			leader: leader,
 		},
+		aID:            &atomic.Value{},
 		candidateBlock: make(map[common.Hash]*types.Block),
 		fastForward:    make(chan uint64, 1),
 		authModule:     authModule,
@@ -138,9 +140,15 @@ func newAgreement(
 func (a *agreement) restart(
 	notarySet map[types.NodeID]struct{}, aID types.Position, crs common.Hash) {
 
-	func() {
+	if !func() bool {
 		a.lock.Lock()
 		defer a.lock.Unlock()
+		if !isStop(aID) {
+			oldAID := a.agreementID()
+			if !isStop(oldAID) && !aID.Newer(&oldAID) {
+				return false
+			}
+		}
 		a.data.lock.Lock()
 		defer a.data.lock.Unlock()
 		a.data.blocksLock.Lock()
@@ -152,14 +160,17 @@ func (a *agreement) restart(
 		a.data.requiredVote = len(notarySet)/3*2 + 1
 		a.data.leader.restart(crs)
 		a.data.lockValue = nullBlockHash
-		a.data.lockRound = 1
+		a.data.lockRound = 0
 		a.fastForward = make(chan uint64, 1)
 		a.hasOutput = false
 		a.state = newInitialState(a.data)
 		a.notarySet = notarySet
 		a.candidateBlock = make(map[common.Hash]*types.Block)
-		a.aID = *aID.Clone()
-	}()
+		a.aID.Store(aID)
+		return true
+	}() {
+		return
+	}
 
 	if isStop(aID) {
 		return
@@ -226,14 +237,15 @@ func (a *agreement) clocks() int {
 
 // pullVotes returns if current agreement requires more votes to continue.
 func (a *agreement) pullVotes() bool {
-	return a.state.state() == statePullVote
+	a.data.lock.RLock()
+	defer a.data.lock.RUnlock()
+	return a.state.state() == statePullVote ||
+		(a.state.state() == statePreCommit && (a.data.period%3) == 0)
 }
 
 // agreementID returns the current agreementID.
 func (a *agreement) agreementID() types.Position {
-	a.lock.RLock()
-	defer a.lock.RUnlock()
-	return a.aID
+	return a.aID.Load().(types.Position)
 }
 
 // nextState is called at the specific clock time.
@@ -288,10 +300,11 @@ func (a *agreement) processVote(vote *types.Vote) error {
 	if err := a.sanityCheck(vote); err != nil {
 		return err
 	}
-	if vote.Position != a.aID {
+	aID := a.agreementID()
+	if vote.Position != aID {
 		// Agreement module has stopped.
-		if !isStop(a.aID) {
-			if a.aID.Newer(&vote.Position) {
+		if !isStop(aID) {
+			if aID.Newer(&vote.Position) {
 				return nil
 			}
 		}
@@ -335,7 +348,6 @@ func (a *agreement) processVote(vote *types.Vote) error {
 				vote.BlockHash != a.data.lockValue {
 				a.data.lockValue = hash
 				a.data.lockRound = vote.Period
-				a.fastForward <- a.data.period + 1
 				return nil
 			}
 			// Condition 2.
@@ -403,10 +415,11 @@ func (a *agreement) processBlock(block *types.Block) error {
 	a.data.blocksLock.Lock()
 	defer a.data.blocksLock.Unlock()
 
-	if block.Position != a.aID {
+	aID := a.agreementID()
+	if block.Position != aID {
 		// Agreement module has stopped.
-		if !isStop(a.aID) {
-			if a.aID.Newer(&block.Position) {
+		if !isStop(aID) {
+			if aID.Newer(&block.Position) {
 				return nil
 			}
 		}
