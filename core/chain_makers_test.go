@@ -17,6 +17,7 @@
 package core
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 
@@ -80,6 +81,115 @@ func ExampleGenerateChain() {
 
 	// Import the chain. This runs all block validation rules.
 	blockchain, _ := NewBlockChain(db, nil, gspec.Config, ethash.NewFaker(), vm.Config{}, nil)
+	defer blockchain.Stop()
+
+	if i, err := blockchain.InsertChain(chain); err != nil {
+		fmt.Printf("insert error (block %d): %v\n", chain[i].NumberU64(), err)
+		return
+	}
+
+	state, _ := blockchain.State()
+	fmt.Printf("last block: #%d\n", blockchain.CurrentBlock().Number())
+	fmt.Println("balance of addr1:", state.GetBalance(addr1))
+	fmt.Println("balance of addr2:", state.GetBalance(addr2))
+	fmt.Println("balance of addr3:", state.GetBalance(addr3))
+	// Output:
+	// last block: #5
+	// balance of addr1: 989000
+	// balance of addr2: 10000
+	// balance of addr3: 19687500000000001000
+}
+
+func ExampleGenerateChainWithRoundChange() {
+	var (
+		// genesis node set
+		nodekey1, _ = crypto.HexToECDSA("3cf5bdee098cc34536a7b0e80d85e07a380efca76fc12136299b9e5ba24193c8")
+		nodekey2, _ = crypto.HexToECDSA("96c9f1435d53577db18d45411326311529a0e8affb19218e27f65769a482c0fb")
+		nodekey3, _ = crypto.HexToECDSA("b25e955e30dd87cbaec83287beea6ec9c4c72498bc66905590756bf48da5d1fc")
+		nodekey4, _ = crypto.HexToECDSA("35577f65312f4a5e0b5391f5385043a6bc7b51fa4851a579e845b5fea33efded")
+		nodeaddr1   = crypto.PubkeyToAddress(nodekey1.PublicKey)
+		nodeaddr2   = crypto.PubkeyToAddress(nodekey2.PublicKey)
+		nodeaddr3   = crypto.PubkeyToAddress(nodekey3.PublicKey)
+		nodeaddr4   = crypto.PubkeyToAddress(nodekey4.PublicKey)
+
+		key1, _ = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+		key2, _ = crypto.HexToECDSA("8a1f9a8f95be41cd7ccb6168179afb4504aefe388d1e14474d32c45c72ce7b7a")
+		key3, _ = crypto.HexToECDSA("49a7b37aa6f6645917e7b807e9d1c00d4fa71f18343b0d4122a4d2df64dd6fee")
+		addr1   = crypto.PubkeyToAddress(key1.PublicKey)
+		addr2   = crypto.PubkeyToAddress(key2.PublicKey)
+		addr3   = crypto.PubkeyToAddress(key3.PublicKey)
+
+		db = ethdb.NewMemDatabase()
+	)
+
+	ether := big.NewInt(1e18)
+	gspec := Genesis{
+		Config: params.TestnetChainConfig,
+		Alloc: GenesisAlloc{
+			nodeaddr1: {
+				Balance:   new(big.Int).Mul(big.NewInt(1000), ether),
+				Staked:    new(big.Int).Mul(big.NewInt(500), ether),
+				PublicKey: crypto.FromECDSAPub(&nodekey1.PublicKey),
+			},
+			nodeaddr2: {
+				Balance:   new(big.Int).Mul(big.NewInt(1000), ether),
+				Staked:    new(big.Int).Mul(big.NewInt(500), ether),
+				PublicKey: crypto.FromECDSAPub(&nodekey2.PublicKey),
+			},
+			nodeaddr3: {
+				Balance:   new(big.Int).Mul(big.NewInt(1000), ether),
+				Staked:    new(big.Int).Mul(big.NewInt(500), ether),
+				PublicKey: crypto.FromECDSAPub(&nodekey3.PublicKey),
+			},
+			nodeaddr4: {
+				Balance:   new(big.Int).Mul(big.NewInt(1000), ether),
+				Staked:    new(big.Int).Mul(big.NewInt(500), ether),
+				PublicKey: crypto.FromECDSAPub(&nodekey4.PublicKey),
+			},
+			addr1: {
+				Balance: big.NewInt(1000000),
+			},
+		},
+	}
+	genesis := gspec.MustCommit(db)
+	crs := crypto.Keccak256Hash([]byte(gspec.Config.Dexcon.GenesisCRSText))
+	signer := types.NewEIP155Signer(gspec.Config.ChainID)
+	nodeSet := NewNodeSet(uint64(0), crs, signer,
+		[]*ecdsa.PrivateKey{nodekey1, nodekey2, nodekey3, nodekey4})
+
+	// This call generates a chain of 1000 blocks. The function runs for
+	// each block and adds different features to gen based on the
+	// block index.
+	chain, _ := GenerateChainWithRoundChange(gspec.Config, genesis, ethash.NewFaker(), db, 1000, func(i int, gen *BlockGen) {
+		switch i {
+		case 0:
+			// In block 1, addr1 sends addr2 some ether.
+			tx, _ := types.SignTx(types.NewTransaction(gen.TxNonce(addr1), addr2, big.NewInt(10000), params.TxGas, nil, nil), signer, key1)
+			gen.AddTx(tx)
+		case 1:
+			// In block 2, addr1 sends some more ether to addr2.
+			// addr2 passes it on to addr3.
+			tx1, _ := types.SignTx(types.NewTransaction(gen.TxNonce(addr1), addr2, big.NewInt(1000), params.TxGas, nil, nil), signer, key1)
+			tx2, _ := types.SignTx(types.NewTransaction(gen.TxNonce(addr2), addr3, big.NewInt(1000), params.TxGas, nil, nil), signer, key2)
+			gen.AddTx(tx1)
+			gen.AddTx(tx2)
+		case 2:
+			// Block 3 is empty but was mined by addr3.
+			gen.SetCoinbase(addr3)
+			gen.SetExtra([]byte("yeehaw"))
+		case 3:
+			// Block 4 includes blocks 2 and 3 as uncle headers (with modified extra data).
+			b2 := gen.PrevBlock(1).Header()
+			b2.Extra = []byte("foo")
+			gen.AddUncle(b2)
+			b3 := gen.PrevBlock(2).Header()
+			b3.Extra = []byte("foo")
+			gen.AddUncle(b3)
+		}
+	}, nodeSet, 30)
+
+	// Import the chain. This runs all block validation rules.
+	blockchain, _ := NewBlockChain(db, nil, gspec.Config, ethash.NewFaker(), vm.Config{})
 	defer blockchain.Stop()
 
 	if i, err := blockchain.InsertChain(chain); err != nil {

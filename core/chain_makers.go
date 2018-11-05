@@ -17,8 +17,19 @@
 package core
 
 import (
+	"crypto/ecdsa"
+	"encoding/binary"
 	"fmt"
 	"math/big"
+	"math/rand"
+	"time"
+
+	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
+	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
+	coreDKG "github.com/dexon-foundation/dexon-consensus/core/crypto/dkg"
+	coreEcdsa "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
+	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+	coreTypesDKG "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/consensus"
@@ -26,9 +37,15 @@ import (
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
+	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/params"
+	"github.com/dexon-foundation/dexon/rlp"
 )
+
+func init() {
+	rand.Seed(time.Now().UTC().UnixNano())
+}
 
 // BlockGen creates blocks for testing.
 // See GenerateChain for a detailed explanation.
@@ -248,6 +265,137 @@ func makeHeader(chain consensus.ChainReader, parent *types.Block, state *state.S
 	}
 }
 
+func GenerateChainWithRoundChange(config *params.ChainConfig, parent *types.Block,
+	engine consensus.Engine, db ethdb.Database, n int, gen func(int, *BlockGen),
+	nodeSet *NodeSet, roundInterval int) ([]*types.Block, []types.Receipts) {
+	if config == nil {
+		config = params.TestChainConfig
+	}
+
+	round := parent.Header().Round
+
+	blocks, receipts := make(types.Blocks, n), make([]types.Receipts, n)
+	chainreader := &fakeChainReader{config: config}
+	genblock := func(i int, parent *types.Block, statedb *state.StateDB) (*types.Block, types.Receipts) {
+		b := &BlockGen{i: i, parent: parent, chain: blocks, statedb: statedb, config: config, engine: engine}
+		b.header = makeHeader(chainreader, parent, statedb, b.engine)
+		b.header.DexconMeta = makeDexconMeta(round, parent, nodeSet)
+
+		switch i % roundInterval {
+		case 0:
+			// First block of this round, notify round height
+			tx := nodeSet.NotifyRoundHeightTx(round, b.header.Number.Uint64(), b)
+			b.AddTx(tx)
+		case roundInterval / 2:
+			// Run DKG for next round part 1, AddMasterPublicKey
+			nodeSet.RunDKG(round, 2)
+			for _, node := range nodeSet.nodes[round] {
+				tx := node.MasterPublicKeyTx(round, b.TxNonce(node.address))
+				b.AddTx(tx)
+			}
+		case (roundInterval / 2) + 1:
+			// Run DKG for next round part 2, DKG finalize
+			for _, node := range nodeSet.nodes[round] {
+				tx := node.DKGFinalizeTx(round, b.TxNonce(node.address))
+				b.AddTx(tx)
+			}
+		case (roundInterval / 2) + 2:
+			// Current DKG set create signed CRS for next round and propose it
+			nodeSet.SignedCRS(round)
+			tx := nodeSet.CRSTx(round+1, b)
+			b.AddTx(tx)
+		case roundInterval - 1:
+			// Round change
+			round++
+		}
+
+		// Execute any user modifications to the block and finalize it
+		if gen != nil {
+			gen(i, b)
+		}
+
+		if b.engine != nil {
+			block, _ := b.engine.Finalize(chainreader, b.header, statedb, b.txs, b.uncles, b.receipts)
+			// Write state changes to db
+			root, err := statedb.Commit(config.IsEIP158(b.header.Number))
+			if err != nil {
+				panic(fmt.Sprintf("state write error: %v", err))
+			}
+			if err := statedb.Database().TrieDB().Commit(root, false); err != nil {
+				panic(fmt.Sprintf("trie write error: %v", err))
+			}
+			return block, b.receipts
+		}
+		return nil, nil
+	}
+	for i := 0; i < n; i++ {
+		statedb, err := state.New(parent.Root(), state.NewDatabase(db))
+		if err != nil {
+			panic(err)
+		}
+		block, receipt := genblock(i, parent, statedb)
+		blocks[i] = block
+		receipts[i] = receipt
+		parent = block
+	}
+	return blocks, receipts
+}
+
+type witnessData struct {
+	Root        common.Hash
+	TxHash      common.Hash
+	ReceiptHash common.Hash
+}
+
+func makeDexconMeta(round uint64, parent *types.Block, nodeSet *NodeSet) []byte {
+	data, err := rlp.EncodeToBytes(&witnessData{
+		Root:        parent.Root(),
+		TxHash:      parent.TxHash(),
+		ReceiptHash: parent.ReceiptHash(),
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	// only put required data, ignore information for BA, ex: acks, votes
+	coreBlock := coreTypes.Block{
+		Witness: coreTypes.Witness{
+			Height: parent.Number().Uint64(),
+			Data:   data,
+		},
+	}
+
+	blockHash, err := hashBlock(&coreBlock)
+	if err != nil {
+		panic(err)
+	}
+
+	var parentCoreBlock coreTypes.Block
+
+	if parent.Number().Uint64() != 0 {
+		if err := rlp.DecodeBytes(
+			parent.Header().DexconMeta, &parentCoreBlock); err != nil {
+			panic(err)
+		}
+	}
+
+	parentCoreBlockHash, err := hashBlock(&parentCoreBlock)
+	if err != nil {
+		panic(err)
+	}
+	randomness := nodeSet.Randomness(round, blockHash)
+	coreBlock.Finalization.ParentHash = coreCommon.Hash(parentCoreBlockHash)
+	coreBlock.Finalization.Randomness = randomness
+	coreBlock.Finalization.Timestamp = time.Now().UTC()
+	coreBlock.Finalization.Height = parent.Number().Uint64()
+
+	dexconMeta, err := rlp.EncodeToBytes(&coreBlock)
+	if err != nil {
+		panic(err)
+	}
+	return dexconMeta
+}
+
 // makeHeaderChain creates a deterministic chain of headers rooted at parent.
 func makeHeaderChain(parent *types.Header, n int, engine consensus.Engine, db ethdb.Database, seed int) []*types.Header {
 	blocks := makeBlockChain(types.NewBlockWithHeader(parent), n, engine, db, seed)
@@ -281,3 +429,337 @@ func (cr *fakeChainReader) GetHeaderByNumber(number uint64) *types.Header       
 func (cr *fakeChainReader) GetHeaderByHash(hash common.Hash) *types.Header          { return nil }
 func (cr *fakeChainReader) GetHeader(hash common.Hash, number uint64) *types.Header { return nil }
 func (cr *fakeChainReader) GetBlock(hash common.Hash, number uint64) *types.Block   { return nil }
+
+type node struct {
+	cryptoKey coreCrypto.PrivateKey
+	ecdsaKey  *ecdsa.PrivateKey
+
+	id                  coreTypes.NodeID
+	dkgid               coreDKG.ID
+	address             common.Address
+	prvShares           *coreDKG.PrivateKeyShares
+	pubShares           *coreDKG.PublicKeyShares
+	receivedPrvShares   *coreDKG.PrivateKeyShares
+	recoveredPrivateKey *coreDKG.PrivateKey
+	signer              types.Signer
+
+	mpk *coreTypesDKG.MasterPublicKey
+}
+
+func newNode(privkey *ecdsa.PrivateKey, signer types.Signer) *node {
+	k := coreEcdsa.NewPrivateKeyFromECDSA(privkey)
+	id := coreTypes.NewNodeID(k.PublicKey())
+	return &node{
+		cryptoKey: k,
+		ecdsaKey:  privkey,
+		id:        id,
+		dkgid:     coreDKG.NewID(id.Bytes()),
+		address:   crypto.PubkeyToAddress(privkey.PublicKey),
+		signer:    signer,
+	}
+}
+
+func (n *node) ID() coreTypes.NodeID {
+	return n.id
+}
+
+func (n *node) DKGID() coreDKG.ID {
+	return n.dkgid
+}
+
+// return signed dkg master public key
+func (n *node) MasterPublicKeyTx(round uint64, nonce uint64) *types.Transaction {
+	mpk := &coreTypesDKG.MasterPublicKey{
+		ProposerID:      n.ID(),
+		Round:           round,
+		DKGID:           n.DKGID(),
+		PublicKeyShares: *n.pubShares,
+	}
+
+	binaryRound := make([]byte, 8)
+	binary.LittleEndian.PutUint64(binaryRound, mpk.Round)
+
+	hash := crypto.Keccak256Hash(
+		mpk.ProposerID.Hash[:],
+		mpk.DKGID.GetLittleEndian(),
+		mpk.PublicKeyShares.MasterKeyBytes(),
+		binaryRound,
+	)
+
+	var err error
+	mpk.Signature, err = n.cryptoKey.Sign(coreCommon.Hash(hash))
+	if err != nil {
+		panic(err)
+	}
+
+	method := vm.GovernanceContractName2Method["addDKGMasterPublicKey"]
+	encoded, err := rlp.EncodeToBytes(mpk)
+	if err != nil {
+		panic(err)
+	}
+
+	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	if err != nil {
+		panic(err)
+	}
+	data := append(method.Id(), res...)
+	return n.CreateGovTx(nonce, data)
+}
+
+func (n *node) DKGFinalizeTx(round uint64, nonce uint64) *types.Transaction {
+	final := coreTypesDKG.Finalize{
+		ProposerID: n.ID(),
+		Round:      round,
+	}
+	binaryRound := make([]byte, 8)
+	binary.LittleEndian.PutUint64(binaryRound, final.Round)
+	hash := crypto.Keccak256Hash(
+		final.ProposerID.Hash[:],
+		binaryRound,
+	)
+
+	var err error
+	final.Signature, err = n.cryptoKey.Sign(coreCommon.Hash(hash))
+	if err != nil {
+		panic(err)
+	}
+
+	method := vm.GovernanceContractName2Method["addDKGFinalize"]
+
+	encoded, err := rlp.EncodeToBytes(final)
+	if err != nil {
+		panic(err)
+	}
+
+	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	if err != nil {
+		panic(err)
+	}
+
+	data := append(method.Id(), res...)
+	return n.CreateGovTx(nonce, data)
+}
+
+func (n *node) CreateGovTx(nonce uint64, data []byte) *types.Transaction {
+	tx, err := types.SignTx(types.NewTransaction(
+		nonce,
+		vm.GovernanceContractAddress,
+		big.NewInt(0),
+		uint64(2000000),
+		big.NewInt(1e10),
+		data), n.signer, n.ecdsaKey)
+	if err != nil {
+		panic(err)
+	}
+	return tx
+}
+
+type NodeSet struct {
+	signer    types.Signer
+	privkeys  []*ecdsa.PrivateKey
+	nodes     map[uint64][]*node
+	crs       map[uint64]common.Hash
+	signedCRS map[uint64][]byte
+}
+
+func NewNodeSet(round uint64, crs common.Hash, signer types.Signer,
+	privkeys []*ecdsa.PrivateKey) *NodeSet {
+	n := &NodeSet{
+		signer:    signer,
+		privkeys:  privkeys,
+		nodes:     make(map[uint64][]*node),
+		crs:       make(map[uint64]common.Hash),
+		signedCRS: make(map[uint64][]byte),
+	}
+	n.crs[round] = crs
+	n.RunDKG(round, 2)
+	return n
+}
+
+func (n *NodeSet) CRS(round uint64) common.Hash {
+	if c, ok := n.crs[round]; ok {
+		return c
+	}
+	panic("crs not exist")
+}
+
+// Assume All nodes in NodeSet are in DKG Set too.
+func (n *NodeSet) RunDKG(round uint64, threshold int) {
+	var ids coreDKG.IDs
+	var nodes []*node
+	for _, key := range n.privkeys {
+		node := newNode(key, n.signer)
+		nodes = append(nodes, node)
+		ids = append(ids, node.DKGID())
+	}
+
+	for _, node := range nodes {
+		node.prvShares, node.pubShares = coreDKG.NewPrivateKeyShares(threshold)
+		node.prvShares.SetParticipants(ids)
+		node.receivedPrvShares = coreDKG.NewEmptyPrivateKeyShares()
+	}
+
+	// exchange keys
+	for _, sender := range nodes {
+		for _, receiver := range nodes {
+			// no need to verify
+			prvShare, ok := sender.prvShares.Share(receiver.DKGID())
+			if !ok {
+				panic("not ok")
+			}
+			receiver.receivedPrvShares.AddShare(sender.DKGID(), prvShare)
+		}
+	}
+
+	// recover private key
+	for _, node := range nodes {
+		privKey, err := node.receivedPrvShares.RecoverPrivateKey(ids)
+		if err != nil {
+			panic(err)
+		}
+		node.recoveredPrivateKey = privKey
+	}
+
+	// store these nodes
+	n.nodes[round] = nodes
+}
+
+func (n *NodeSet) Randomness(round uint64, hash common.Hash) []byte {
+	if round == 0 {
+		return []byte{}
+	}
+	return n.TSig(round-1, hash)
+}
+
+func (n *NodeSet) SignedCRS(round uint64) {
+	signedCRS := n.TSig(round, n.crs[round])
+	n.signedCRS[round+1] = signedCRS
+	n.crs[round+1] = crypto.Keccak256Hash(signedCRS)
+}
+
+func (n *NodeSet) TSig(round uint64, hash common.Hash) []byte {
+	var ids coreDKG.IDs
+	var psigs []coreDKG.PartialSignature
+	for _, node := range n.nodes[round] {
+		ids = append(ids, node.DKGID())
+	}
+	for _, node := range n.nodes[round] {
+		sig, err := node.recoveredPrivateKey.Sign(coreCommon.Hash(hash))
+		if err != nil {
+			panic(err)
+		}
+		psigs = append(psigs, coreDKG.PartialSignature(sig))
+		// ids = append(ids, node.DKGID())
+
+		// FIXME: Debug verify signature
+		pk := coreDKG.NewEmptyPublicKeyShares()
+		for _, nnode := range n.nodes[round] {
+			p, err := nnode.pubShares.Share(node.DKGID())
+			if err != nil {
+				panic(err)
+			}
+			err = pk.AddShare(nnode.DKGID(), p)
+			if err != nil {
+				panic(err)
+			}
+		}
+
+		recovered, err := pk.RecoverPublicKey(ids)
+		if err != nil {
+			panic(err)
+		}
+
+		if !recovered.VerifySignature(coreCommon.Hash(hash), sig) {
+			panic("##########can not verify signature")
+		}
+	}
+
+	sig, err := coreDKG.RecoverSignature(psigs, ids)
+	if err != nil {
+		panic(err)
+	}
+	return sig.Signature
+}
+
+func (n *NodeSet) CRSTx(round uint64, b *BlockGen) *types.Transaction {
+	method := vm.GovernanceContractName2Method["proposeCRS"]
+	res, err := method.Inputs.Pack(big.NewInt(int64(round)), n.signedCRS[round])
+	if err != nil {
+		panic(err)
+	}
+	data := append(method.Id(), res...)
+
+	node := n.nodes[round-1][0]
+	return node.CreateGovTx(b.TxNonce(node.address), data)
+}
+
+func (n *NodeSet) NotifyRoundHeightTx(round, height uint64,
+	b *BlockGen) *types.Transaction {
+	method := vm.GovernanceContractName2Method["snapshotRound"]
+	res, err := method.Inputs.Pack(
+		big.NewInt(int64(round)), big.NewInt(int64(height)))
+	if err != nil {
+		panic(err)
+	}
+	data := append(method.Id(), res...)
+
+	var r uint64
+	if round < 1 {
+		r = 0
+	} else {
+		r = round - 1
+	}
+	node := n.nodes[r][0]
+	return node.CreateGovTx(b.TxNonce(node.address), data)
+}
+
+// Copy from dexon consensus core
+// TODO(sonic): polish this
+func hashBlock(block *coreTypes.Block) (common.Hash, error) {
+	hashPosition := hashPosition(block.Position)
+	// Handling Block.Acks.
+	binaryAcks := make([][]byte, len(block.Acks))
+	for idx, ack := range block.Acks {
+		binaryAcks[idx] = ack[:]
+	}
+	hashAcks := crypto.Keccak256Hash(binaryAcks...)
+	binaryTimestamp, err := block.Timestamp.UTC().MarshalBinary()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	binaryWitness, err := hashWitness(&block.Witness)
+	if err != nil {
+		return common.Hash{}, err
+	}
+
+	hash := crypto.Keccak256Hash(
+		block.ProposerID.Hash[:],
+		block.ParentHash[:],
+		hashPosition[:],
+		hashAcks[:],
+		binaryTimestamp[:],
+		block.PayloadHash[:],
+		binaryWitness[:])
+	return hash, nil
+}
+
+func hashPosition(position coreTypes.Position) common.Hash {
+	binaryChainID := make([]byte, 4)
+	binary.LittleEndian.PutUint32(binaryChainID, position.ChainID)
+
+	binaryHeight := make([]byte, 8)
+	binary.LittleEndian.PutUint64(binaryHeight, position.Height)
+
+	return crypto.Keccak256Hash(
+		binaryChainID,
+		binaryHeight,
+	)
+}
+
+func hashWitness(witness *coreTypes.Witness) (common.Hash, error) {
+	binaryHeight := make([]byte, 8)
+	binary.LittleEndian.PutUint64(binaryHeight, witness.Height)
+	return crypto.Keccak256Hash(
+		binaryHeight,
+		witness.Data), nil
+}
