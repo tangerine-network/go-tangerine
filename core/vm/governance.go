@@ -1572,7 +1572,7 @@ func (g *GovernanceContract) unstake() ([]byte, error) {
 	}
 
 	// Return the staked fund.
-	// TODO(w): use OP_CALL so this show up is internal transaction.
+	// TODO(w): add this to debug trace so it shows up as internal transaction.
 	g.evm.Transfer(g.evm.StateDB, GovernanceContractAddress, caller, node.Staked)
 
 	g.contract.UseGas(21000)
@@ -1589,13 +1589,19 @@ func (g *GovernanceContract) proposeCRS(nextRound *big.Int, signedCRS []byte) ([
 	prevCRS := g.state.CRS(round)
 
 	// Prepare DKGMasterPublicKeys.
-	// TODO(w): make sure DKGMasterPKs are unique.
 	var dkgMasterPKs []*dkgTypes.MasterPublicKey
+	existence := make(map[coreTypes.NodeID]struct{})
 	for _, mpk := range g.state.DKGMasterPublicKeys(round) {
 		x := new(dkgTypes.MasterPublicKey)
 		if err := rlp.DecodeBytes(mpk, x); err != nil {
 			panic(err)
 		}
+
+		// Only the first DKG MPK submission is valid.
+		if _, exists := existence[x.ProposerID]; exists {
+			continue
+		}
+		existence[x.ProposerID] = struct{}{}
 		dkgMasterPKs = append(dkgMasterPKs, x)
 	}
 
@@ -1648,7 +1654,18 @@ func (g *GovernanceContract) transferOwnership(newOwner common.Address) ([]byte,
 }
 
 func (g *GovernanceContract) snapshotRound(round, height *big.Int) ([]byte, error) {
-	// TODO(w): validate if this mapping is correct.
+	// Validate if this mapping is correct.
+	rawHeight, ok := g.evm.Context.RoundHeight.Load(round)
+	if !ok {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
+
+	realHeight := rawHeight.(uint64)
+	if height.Cmp(new(big.Int).SetUint64(realHeight)) != 0 {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
 
 	// Only allow updating the next round.
 	nextRound := g.state.LenRoundHeight()
@@ -1658,6 +1675,5 @@ func (g *GovernanceContract) snapshotRound(round, height *big.Int) ([]byte, erro
 	}
 
 	g.state.PushRoundHeight(height)
-	g.contract.UseGas(100000)
 	return nil, nil
 }

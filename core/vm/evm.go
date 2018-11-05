@@ -18,6 +18,7 @@ package vm
 
 import (
 	"math/big"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -92,6 +93,7 @@ type Context struct {
 	Time        *big.Int       // Provides information for TIME
 	Randomness  []byte         // Provides information for RAND
 	Difficulty  *big.Int       // Provides information for DIFFICULTY
+	RoundHeight sync.Map       // Provides information of round height mapping.
 }
 
 // EVM is the Ethereum Virtual Machine base object and provides

@@ -24,6 +24,8 @@ import (
 	"github.com/dexon-foundation/dexon/rpc"
 )
 
+const configActivationOffset = 2
+
 type DexconGovernance struct {
 	b            *DexAPIBackend
 	chainConfig  *params.ChainConfig
@@ -66,6 +68,11 @@ func (d *DexconGovernance) getGovState() *vm.GovernanceStateHelper {
 }
 
 func (d *DexconGovernance) getGovStateAtRound(round uint64) *vm.GovernanceStateHelper {
+	if round < configActivationOffset {
+		round = 0
+	} else {
+		round -= configActivationOffset
+	}
 	ctx := context.Background()
 	blockHeight, err := d.getRoundHeight(ctx, round)
 	if err != nil {

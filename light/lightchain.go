@@ -533,3 +533,9 @@ func (self *LightChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscri
 func (self *LightChain) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEvent) event.Subscription {
 	return self.scope.Track(new(event.Feed).Subscribe(ch))
 }
+
+// GetRoundHeightMap returns the mapping between round and height.
+func (self *LightChain) GetRoundHeightMap() sync.Map {
+	// TODO(w): fix this.
+	return sync.Map{}
+}

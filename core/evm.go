@@ -18,6 +18,7 @@ package core
 
 import (
 	"math/big"
+	"sync"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/consensus"
@@ -33,6 +34,9 @@ type ChainContext interface {
 
 	// GetHeader returns the hash corresponding to their hash.
 	GetHeader(common.Hash, uint64) *types.Header
+
+	// GetRoundHeightMap returns the mapping between round and height.
+	GetRoundHeightMap() sync.Map
 }
 
 // NewEVMContext creates a new context for use in the EVM.
@@ -54,6 +58,7 @@ func NewEVMContext(msg Message, header *types.Header, chain ChainContext, author
 		Time:        new(big.Int).SetUint64(header.Time),
 		Randomness:  header.Randomness,
 		Difficulty:  new(big.Int).Set(header.Difficulty),
+		RoundHeight: chain.GetRoundHeightMap(),
 		GasLimit:    header.GasLimit,
 		GasPrice:    new(big.Int).Set(msg.GasPrice()),
 	}

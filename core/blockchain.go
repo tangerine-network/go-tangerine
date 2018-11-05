@@ -143,6 +143,8 @@ type BlockChain struct {
 	badBlocks      *lru.Cache              // Bad block cache
 	shouldPreserve func(*types.Block) bool // Function used to determine whether should preserve the given block.
 
+	roundHeightMap sync.Map
+
 	confirmedBlockInitMu sync.Mutex
 	confirmedBlocks      map[uint32]map[coreCommon.Hash]*blockInfo
 	addressNonce         map[uint32]map[common.Address]uint64
@@ -1664,6 +1666,11 @@ func (bc *BlockChain) processPendingBlock(block *types.Block, witness *coreTypes
 
 		cache, _ := bc.stateCache.TrieDB().Size()
 		stats.report([]*types.Block{pendingIns.block}, 0, cache)
+
+		_, ok := bc.roundHeightMap.Load(pendingIns.block.Round())
+		if !ok {
+			bc.roundHeightMap.Store(pendingIns.block.Round(), pendingHeight)
+		}
 	}
 	// Append a single chain head event if we've progressed the chain
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {
@@ -2067,4 +2074,9 @@ func (bc *BlockChain) SubscribeChainSideEvent(ch chan<- ChainSideEvent) event.Su
 // SubscribeLogsEvent registers a subscription of []*types.Log.
 func (bc *BlockChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscription {
 	return bc.scope.Track(bc.logsFeed.Subscribe(ch))
+}
+
+// GetRoundHeightMap returns the mapping between round and height.
+func (bc *BlockChain) GetRoundHeightMap() sync.Map {
+	return bc.roundHeightMap
 }
