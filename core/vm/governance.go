@@ -127,6 +127,22 @@ const abiJSON = `
       {
         "name": "staked",
         "type": "uint256"
+      },
+      {
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "name": "email",
+        "type": "string"
+      },
+      {
+        "name": "location",
+        "type": "string"
+      },
+      {
+        "name": "url",
+        "type": "string"
       }
     ],
     "payable": false,
@@ -568,6 +584,22 @@ const abiJSON = `
       {
         "name": "PublicKey",
         "type": "bytes"
+      },
+      {
+        "name": "Name",
+        "type": "string"
+      },
+      {
+        "name": "Email",
+        "type": "string"
+      },
+      {
+        "name": "Location",
+        "type": "string"
+      },
+      {
+        "name": "Url",
+        "type": "string"
       }
     ],
     "name": "stake",
@@ -692,11 +724,17 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 		}
 		return g.proposeCRS(args.Round, args.SignedCRS)
 	case "stake":
-		var publicKey []byte
-		if err := method.Inputs.Unpack(&publicKey, arguments); err != nil {
+		args := struct {
+			PublicKey []byte
+			Name      string
+			Email     string
+			Location  string
+			Url       string
+		}{}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		return g.stake(publicKey)
+		return g.stake(args.PublicKey, args.Name, args.Email, args.Location, args.Url)
 	case "snapshotRound":
 		args := struct {
 			Round  *big.Int
@@ -844,7 +882,9 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 			return nil, errExecutionReverted
 		}
 		info := g.state.Node(index)
-		res, err := method.Outputs.Pack(info.Owner, info.PublicKey, info.Staked)
+		res, err := method.Outputs.Pack(
+			info.Owner, info.PublicKey, info.Staked,
+			info.Name, info.Email, info.Location, info.Url)
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -1080,6 +1120,10 @@ func (s *GovernanceStateHelper) PushRoundHeight(height *big.Int) {
 //     address owner;
 //     bytes publicKey;
 //     uint256 staked;
+//     string name;
+//     string email;
+//     string location;
+//     string url;
 // }
 //
 // Node[] nodes;
@@ -1088,7 +1132,13 @@ type nodeInfo struct {
 	Owner     common.Address
 	PublicKey []byte
 	Staked    *big.Int
+	Name      string
+	Email     string
+	Location  string
+	Url       string
 }
+
+const nodesInfoSize = 7
 
 func (s *GovernanceStateHelper) NodesLength() *big.Int {
 	return s.getStateBigInt(big.NewInt(nodesLoc))
@@ -1097,7 +1147,8 @@ func (s *GovernanceStateHelper) Node(index *big.Int) *nodeInfo {
 	node := new(nodeInfo)
 
 	arrayBaseLoc := s.getSlotLoc(big.NewInt(nodesLoc))
-	elementBaseLoc := new(big.Int).Add(arrayBaseLoc, new(big.Int).Mul(index, big.NewInt(3)))
+	elementBaseLoc := new(big.Int).Add(arrayBaseLoc,
+		new(big.Int).Mul(index, big.NewInt(nodesInfoSize)))
 
 	// owner.
 	loc := elementBaseLoc
@@ -1111,6 +1162,22 @@ func (s *GovernanceStateHelper) Node(index *big.Int) *nodeInfo {
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(2))
 	node.Staked = s.getStateBigInt(loc)
 
+	// name.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(3))
+	node.Name = string(s.readBytes(loc))
+
+	// email.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(4))
+	node.Email = string(s.readBytes(loc))
+
+	// location.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(5))
+	node.Location = string(s.readBytes(loc))
+
+	// url.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(6))
+	node.Url = string(s.readBytes(loc))
+
 	return node
 }
 func (s *GovernanceStateHelper) PushNode(n *nodeInfo) {
@@ -1122,7 +1189,8 @@ func (s *GovernanceStateHelper) PushNode(n *nodeInfo) {
 }
 func (s *GovernanceStateHelper) UpdateNode(index *big.Int, n *nodeInfo) {
 	arrayBaseLoc := s.getSlotLoc(big.NewInt(nodesLoc))
-	elementBaseLoc := new(big.Int).Add(arrayBaseLoc, new(big.Int).Mul(index, big.NewInt(3)))
+	elementBaseLoc := new(big.Int).Add(arrayBaseLoc,
+		new(big.Int).Mul(index, big.NewInt(nodesInfoSize)))
 
 	// owner.
 	loc := elementBaseLoc
@@ -1135,6 +1203,22 @@ func (s *GovernanceStateHelper) UpdateNode(index *big.Int, n *nodeInfo) {
 	// staked.
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(2))
 	s.setStateBigInt(loc, n.Staked)
+
+	// name.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(3))
+	s.writeBytes(loc, []byte(n.Name))
+
+	// email.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(4))
+	s.writeBytes(loc, []byte(n.Email))
+
+	// location.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(5))
+	s.writeBytes(loc, []byte(n.Location))
+
+	// url.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(6))
+	s.writeBytes(loc, []byte(n.Url))
 }
 func (s *GovernanceStateHelper) Nodes() []*nodeInfo {
 	var nodes []*nodeInfo
@@ -1298,12 +1382,18 @@ func (s *GovernanceStateHelper) MinBlockInterval() *big.Int {
 }
 
 // Stake is a helper function for creating genesis state.
-func (s *GovernanceStateHelper) Stake(addr common.Address, publicKey []byte, staked *big.Int) {
+func (s *GovernanceStateHelper) Stake(
+	addr common.Address, publicKey []byte, staked *big.Int,
+	name, email, location, url string) {
 	offset := s.NodesLength()
 	s.PushNode(&nodeInfo{
 		Owner:     addr,
 		PublicKey: publicKey,
 		Staked:    staked,
+		Name:      name,
+		Email:     email,
+		Location:  location,
+		Url:       url,
 	})
 	s.PutOffset(addr, offset)
 }
@@ -1530,7 +1620,15 @@ func (g *GovernanceContract) updateConfiguration(config *params.DexconConfig) ([
 	return nil, nil
 }
 
-func (g *GovernanceContract) stake(publicKey []byte) ([]byte, error) {
+func (g *GovernanceContract) stake(
+	publicKey []byte, name, email, location, url string) ([]byte, error) {
+
+	// Reject invalid inputs.
+	if len(name) >= 32 || len(email) >= 32 || len(location) >= 32 || len(url) >= 128 {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
+
 	caller := g.contract.Caller()
 	offset := g.state.Offset(caller)
 
@@ -1545,6 +1643,10 @@ func (g *GovernanceContract) stake(publicKey []byte) ([]byte, error) {
 		Owner:     caller,
 		PublicKey: publicKey,
 		Staked:    g.contract.Value(),
+		Name:      name,
+		Email:     email,
+		Location:  location,
+		Url:       url,
 	})
 	g.state.PutOffset(caller, offset)
 

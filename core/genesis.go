@@ -80,6 +80,14 @@ func (ga *GenesisAlloc) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// NodeInfo represents the info of a node.
+type NodeInfo struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Location string `json:"location"`
+	Url      string `json:"url"`
+}
+
 // GenesisAccount is an account in the state of the genesis block.
 type GenesisAccount struct {
 	Code       []byte                      `json:"code,omitempty"`
@@ -88,6 +96,7 @@ type GenesisAccount struct {
 	Nonce      uint64                      `json:"nonce,omitempty"`
 	Staked     *big.Int                    `json:"staked"`
 	PublicKey  []byte                      `json:"publicKey"`
+	NodeInfo   NodeInfo                    `json:"info"`
 	PrivateKey []byte                      `json:"secretKey,omitempty"` // for tests
 }
 
@@ -285,7 +294,9 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 			account.Staked = big.NewInt(0)
 		}
 		if account.Staked.Cmp(big.NewInt(0)) > 0 {
-			govStateHelper.Stake(addr, account.PublicKey, account.Staked)
+			govStateHelper.Stake(addr, account.PublicKey, account.Staked,
+				account.NodeInfo.Name, account.NodeInfo.Email,
+				account.NodeInfo.Location, account.NodeInfo.Url)
 		}
 	}
 	// Genesis CRS.
@@ -420,6 +431,7 @@ func decodePrealloc(data string) GenesisAlloc {
 		Staked    *big.Int
 		Code      []byte
 		PublicKey []byte
+		NodeInfo  NodeInfo
 	}
 
 	var p []struct {
@@ -436,6 +448,7 @@ func decodePrealloc(data string) GenesisAlloc {
 			Staked:    account.Account.Staked,
 			Code:      account.Account.Code,
 			PublicKey: account.Account.PublicKey,
+			NodeInfo:  account.Account.NodeInfo,
 		}
 	}
 	return ga

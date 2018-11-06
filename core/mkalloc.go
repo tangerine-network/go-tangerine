@@ -38,11 +38,19 @@ import (
 	"github.com/dexon-foundation/dexon/rlp"
 )
 
+type nodeInfo struct {
+	Name     string
+	Email    string
+	Location string
+	Url      string
+}
+
 type accountData struct {
 	Balance   *big.Int
 	Staked    *big.Int
 	Code      []byte
 	PublicKey []byte
+	NodeInfo  nodeInfo
 }
 
 type allocItem struct {
@@ -67,6 +75,12 @@ func makelist(g *core.Genesis) allocList {
 			Balance:   account.Balance,
 			Staked:    account.Staked,
 			PublicKey: account.PublicKey,
+			NodeInfo: nodeInfo{
+				Name:     account.NodeInfo.Name,
+				Email:    account.NodeInfo.Email,
+				Location: account.NodeInfo.Location,
+				Url:      account.NodeInfo.Url,
+			},
 		}})
 	}
 	sort.Sort(a)
