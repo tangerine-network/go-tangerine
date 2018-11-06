@@ -660,7 +660,7 @@ type peerSet struct {
 	lock   sync.RWMutex
 	closed bool
 	tab    *nodeTable
-	selfID string
+	selfPK string
 
 	srvr          p2pServer
 	gov           governance
@@ -678,7 +678,7 @@ func newPeerSet(gov governance, srvr p2pServer, tab *nodeTable) *peerSet {
 		gov:           gov,
 		srvr:          srvr,
 		tab:           tab,
-		selfID:        hex.EncodeToString(crypto.FromECDSAPub(&srvr.GetPrivateKey().PublicKey)),
+		selfPK:        hex.EncodeToString(crypto.FromECDSAPub(&srvr.GetPrivateKey().PublicKey)),
 		peer2Labels:   make(map[string]map[peerLabel]struct{}),
 		label2Peers:   make(map[peerLabel]map[string]struct{}),
 		history:       make(map[uint64]struct{}),
@@ -905,23 +905,23 @@ func (ps *peerSet) BuildConnection(round uint64) {
 
 	ps.history[round] = struct{}{}
 
-	dkgIDs, err := ps.gov.DKGSet(round)
+	dkgPKs, err := ps.gov.DKGSet(round)
 	if err != nil {
 		log.Error("get dkg set fail", "round", round, "err", err)
 	}
 
 	// build dkg connection
-	_, inDKGSet := dkgIDs[ps.selfID]
+	_, inDKGSet := dkgPKs[ps.selfPK]
 	if inDKGSet {
-		delete(dkgIDs, ps.selfID)
+		delete(dkgPKs, ps.selfPK)
 		dkgLabel := peerLabel{set: dkgset, round: round}
-		for id := range dkgIDs {
-			ps.addDirectPeer(id, dkgLabel)
+		for pk := range dkgPKs {
+			ps.addDirectPeer(pk, dkgLabel)
 		}
 	}
 	var inOneNotarySet bool
 	for cid := uint32(0); cid < ps.gov.GetNumChains(round); cid++ {
-		notaryIDs, err := ps.gov.NotarySet(round, cid)
+		notaryPKs, err := ps.gov.NotarySet(round, cid)
 		if err != nil {
 			log.Error("get notary set fail",
 				"round", round, "chain id", cid, "err", err)
@@ -930,10 +930,10 @@ func (ps *peerSet) BuildConnection(round uint64) {
 
 		label := peerLabel{set: notaryset, chainID: cid, round: round}
 		// not in notary set, add group
-		if _, ok := notaryIDs[ps.selfID]; !ok {
+		if _, ok := notaryPKs[ps.selfPK]; !ok {
 			var nodes []*enode.Node
-			for id := range notaryIDs {
-				node := ps.newNode(id)
+			for pk := range notaryPKs {
+				node := ps.newNode(pk)
 				nodes = append(nodes, node)
 				ps.addLabel(node, label)
 			}
@@ -941,9 +941,9 @@ func (ps *peerSet) BuildConnection(round uint64) {
 			continue
 		}
 
-		delete(notaryIDs, ps.selfID)
-		for id := range notaryIDs {
-			ps.addDirectPeer(id, label)
+		delete(notaryPKs, ps.selfPK)
+		for pk := range notaryPKs {
+			ps.addDirectPeer(pk, label)
 		}
 		inOneNotarySet = true
 	}
@@ -952,8 +952,8 @@ func (ps *peerSet) BuildConnection(round uint64) {
 	if !inDKGSet && inOneNotarySet {
 		var nodes []*enode.Node
 		label := peerLabel{set: dkgset, round: round}
-		for id := range dkgIDs {
-			node := ps.newNode(id)
+		for pk := range dkgPKs {
+			node := ps.newNode(pk)
 			nodes = append(nodes, node)
 			ps.addLabel(node, label)
 		}
@@ -975,23 +975,23 @@ func (ps *peerSet) ForgetConnection(round uint64) {
 }
 
 func (ps *peerSet) forgetConnection(round uint64) {
-	dkgIDs, err := ps.gov.DKGSet(round)
+	dkgPKs, err := ps.gov.DKGSet(round)
 	if err != nil {
 		log.Error("get dkg set fail", "round", round, "err", err)
 	}
 
-	_, inDKGSet := dkgIDs[ps.selfID]
+	_, inDKGSet := dkgPKs[ps.selfPK]
 	if inDKGSet {
-		delete(dkgIDs, ps.selfID)
+		delete(dkgPKs, ps.selfPK)
 		label := peerLabel{set: dkgset, round: round}
-		for id := range dkgIDs {
+		for id := range dkgPKs {
 			ps.removeDirectPeer(id, label)
 		}
 	}
 
 	var inOneNotarySet bool
 	for cid := uint32(0); cid < ps.gov.GetNumChains(round); cid++ {
-		notaryIDs, err := ps.gov.NotarySet(round, cid)
+		notaryPKs, err := ps.gov.NotarySet(round, cid)
 		if err != nil {
 			log.Error("get notary set fail",
 				"round", round, "chain id", cid, "err", err)
@@ -1001,9 +1001,9 @@ func (ps *peerSet) forgetConnection(round uint64) {
 		label := peerLabel{set: notaryset, chainID: cid, round: round}
 
 		// not in notary set, add group
-		if _, ok := notaryIDs[ps.selfID]; !ok {
+		if _, ok := notaryPKs[ps.selfPK]; !ok {
 			var nodes []*enode.Node
-			for id := range notaryIDs {
+			for id := range notaryPKs {
 				node := ps.newNode(id)
 				nodes = append(nodes, node)
 				ps.removeLabel(node, label)
@@ -1012,9 +1012,9 @@ func (ps *peerSet) forgetConnection(round uint64) {
 			continue
 		}
 
-		delete(notaryIDs, ps.selfID)
-		for id := range notaryIDs {
-			ps.removeDirectPeer(id, label)
+		delete(notaryPKs, ps.selfPK)
+		for pk := range notaryPKs {
+			ps.removeDirectPeer(pk, label)
 		}
 		inOneNotarySet = true
 	}
@@ -1023,7 +1023,7 @@ func (ps *peerSet) forgetConnection(round uint64) {
 	if !inDKGSet && inOneNotarySet {
 		var nodes []*enode.Node
 		label := peerLabel{set: dkgset, round: round}
-		for id := range dkgIDs {
+		for id := range dkgPKs {
 			node := ps.newNode(id)
 			nodes = append(nodes, node)
 			ps.removeLabel(node, label)
@@ -1052,7 +1052,7 @@ func (ps *peerSet) BuildNotaryConn(round uint64) {
 		}
 
 		// not in notary set, add group
-		if _, ok := s[ps.selfID]; !ok {
+		if _, ok := s[ps.selfPK]; !ok {
 			var nodes []*enode.Node
 			for id := range s {
 				nodes = append(nodes, ps.newNode(id))
@@ -1066,9 +1066,9 @@ func (ps *peerSet) BuildNotaryConn(round uint64) {
 			chainID: chainID,
 			round:   round,
 		}
-		delete(s, ps.selfID)
-		for id := range s {
-			ps.addDirectPeer(id, label)
+		delete(s, ps.selfPK)
+		for pk := range s {
+			ps.addDirectPeer(pk, label)
 		}
 	}
 }
@@ -1106,7 +1106,7 @@ func (ps *peerSet) forgetNotaryConn(round uint64) {
 				"round", round, "chain id", chainID, "err", err)
 			continue
 		}
-		if _, ok := s[ps.selfID]; !ok {
+		if _, ok := s[ps.selfPK]; !ok {
 			ps.srvr.RemoveGroup(notarySetName(chainID, round))
 			continue
 		}
@@ -1116,9 +1116,9 @@ func (ps *peerSet) forgetNotaryConn(round uint64) {
 			chainID: chainID,
 			round:   round,
 		}
-		delete(s, ps.selfID)
-		for id := range s {
-			ps.removeDirectPeer(id, label)
+		delete(s, ps.selfPK)
+		for pk := range s {
+			ps.removeDirectPeer(pk, label)
 		}
 	}
 }
@@ -1141,14 +1141,14 @@ func (ps *peerSet) BuildDKGConn(round uint64) {
 		return
 	}
 
-	if _, ok := s[ps.selfID]; !ok {
+	if _, ok := s[ps.selfPK]; !ok {
 		return
 	}
 	ps.dkgHistory[round] = struct{}{}
 
-	delete(s, ps.selfID)
-	for id := range s {
-		ps.addDirectPeer(id, peerLabel{
+	delete(s, ps.selfPK)
+	for pk := range s {
+		ps.addDirectPeer(pk, peerLabel{
 			set:   dkgset,
 			round: round,
 		})
@@ -1175,32 +1175,32 @@ func (ps *peerSet) forgetDKGConn(round uint64) {
 		log.Error("get dkg set fail", "round", round)
 		return
 	}
-	if _, ok := s[ps.selfID]; !ok {
+	if _, ok := s[ps.selfPK]; !ok {
 		return
 	}
 
-	delete(s, ps.selfID)
+	delete(s, ps.selfPK)
 	label := peerLabel{
 		set:   dkgset,
 		round: round,
 	}
-	for id := range s {
-		ps.removeDirectPeer(id, label)
+	for pk := range s {
+		ps.removeDirectPeer(pk, label)
 	}
 }
 
 // make sure the ps.lock is held
-func (ps *peerSet) addDirectPeer(id string, label peerLabel) {
-	node := ps.newNode(id)
+func (ps *peerSet) addDirectPeer(pk string, label peerLabel) {
+	node := ps.newNode(pk)
 	ps.addLabel(node, label)
 	ps.srvr.AddDirectPeer(node)
 }
 
 // make sure the ps.lock is held
-func (ps *peerSet) removeDirectPeer(id string, label peerLabel) {
-	node := ps.newNode(id)
+func (ps *peerSet) removeDirectPeer(pk string, label peerLabel) {
+	node := ps.newNode(pk)
 	ps.removeLabel(node, label)
-	if len(ps.peer2Labels[id]) == 0 {
+	if len(ps.peer2Labels[node.ID().String()]) == 0 {
 		ps.srvr.RemoveDirectPeer(node)
 	}
 }
@@ -1233,20 +1233,20 @@ func (ps *peerSet) removeLabel(node *enode.Node, label peerLabel) {
 	}
 }
 
-func (ps *peerSet) newNode(id string) *enode.Node {
+func (ps *peerSet) newNode(pk string) *enode.Node {
 	var ip net.IP
 	var tcp, udp int
 
-	b, err := hex.DecodeString(id)
+	b, err := hex.DecodeString(pk)
 	if err != nil {
 		panic(err)
 	}
 
-	pk, err := crypto.UnmarshalPubkey(b)
+	pubkey, err := crypto.UnmarshalPubkey(b)
 	if err != nil {
 		panic(err)
 	}
-	n := enode.NewV4(pk, net.IP{}, 0, 0)
+	n := enode.NewV4(pubkey, net.IP{}, 0, 0)
 
 	meta := ps.tab.Get(n.ID())
 	if meta != nil {
@@ -1255,5 +1255,5 @@ func (ps *peerSet) newNode(id string) *enode.Node {
 		udp = int(meta.UDP)
 	}
 
-	return enode.NewV4(pk, ip, tcp, udp)
+	return enode.NewV4(pubkey, ip, tcp, udp)
 }
