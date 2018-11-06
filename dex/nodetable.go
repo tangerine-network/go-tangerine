@@ -15,8 +15,8 @@ import (
 type NodeMeta struct {
 	ID        enode.ID
 	IP        net.IP
-	UDP       int
-	TCP       int
+	UDP       uint
+	TCP       uint
 	Timestamp uint64
 	Sig       []byte
 }

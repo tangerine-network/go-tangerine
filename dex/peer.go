@@ -17,9 +17,11 @@
 package dex
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
+	"net"
 	"sync"
 	"time"
 
@@ -30,10 +32,10 @@ import (
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/p2p"
 	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/p2p/enr"
 	"github.com/dexon-foundation/dexon/rlp"
 )
 
@@ -658,6 +660,7 @@ type peerSet struct {
 	lock   sync.RWMutex
 	closed bool
 	tab    *nodeTable
+	selfID string
 
 	srvr          p2pServer
 	gov           governance
@@ -675,6 +678,7 @@ func newPeerSet(gov governance, srvr p2pServer, tab *nodeTable) *peerSet {
 		gov:           gov,
 		srvr:          srvr,
 		tab:           tab,
+		selfID:        hex.EncodeToString(crypto.FromECDSAPub(&srvr.GetPrivateKey().PublicKey)),
 		peer2Labels:   make(map[string]map[peerLabel]struct{}),
 		label2Peers:   make(map[peerLabel]map[string]struct{}),
 		history:       make(map[uint64]struct{}),
@@ -901,23 +905,20 @@ func (ps *peerSet) BuildConnection(round uint64) {
 
 	ps.history[round] = struct{}{}
 
-	selfID := ps.srvr.Self().ID().String()
-
 	dkgIDs, err := ps.gov.DKGSet(round)
 	if err != nil {
 		log.Error("get dkg set fail", "round", round, "err", err)
 	}
 
 	// build dkg connection
-	_, inDKGSet := dkgIDs[selfID]
+	_, inDKGSet := dkgIDs[ps.selfID]
 	if inDKGSet {
-		delete(dkgIDs, selfID)
+		delete(dkgIDs, ps.selfID)
 		dkgLabel := peerLabel{set: dkgset, round: round}
 		for id := range dkgIDs {
 			ps.addDirectPeer(id, dkgLabel)
 		}
 	}
-
 	var inOneNotarySet bool
 	for cid := uint32(0); cid < ps.gov.GetNumChains(round); cid++ {
 		notaryIDs, err := ps.gov.NotarySet(round, cid)
@@ -929,17 +930,18 @@ func (ps *peerSet) BuildConnection(round uint64) {
 
 		label := peerLabel{set: notaryset, chainID: cid, round: round}
 		// not in notary set, add group
-		if _, ok := notaryIDs[selfID]; !ok {
+		if _, ok := notaryIDs[ps.selfID]; !ok {
 			var nodes []*enode.Node
 			for id := range notaryIDs {
-				nodes = append(nodes, ps.newNode(id))
-				ps.addLabel(id, label)
+				node := ps.newNode(id)
+				nodes = append(nodes, node)
+				ps.addLabel(node, label)
 			}
 			ps.srvr.AddGroup(notarySetName(cid, round), nodes, groupNodeNum)
 			continue
 		}
 
-		delete(notaryIDs, selfID)
+		delete(notaryIDs, ps.selfID)
 		for id := range notaryIDs {
 			ps.addDirectPeer(id, label)
 		}
@@ -951,8 +953,9 @@ func (ps *peerSet) BuildConnection(round uint64) {
 		var nodes []*enode.Node
 		label := peerLabel{set: dkgset, round: round}
 		for id := range dkgIDs {
-			nodes = append(nodes, ps.newNode(id))
-			ps.addLabel(id, label)
+			node := ps.newNode(id)
+			nodes = append(nodes, node)
+			ps.addLabel(node, label)
 		}
 		ps.srvr.AddGroup(dkgSetName(round), nodes, groupNodeNum)
 	}
@@ -972,15 +975,14 @@ func (ps *peerSet) ForgetConnection(round uint64) {
 }
 
 func (ps *peerSet) forgetConnection(round uint64) {
-	selfID := ps.srvr.Self().ID().String()
 	dkgIDs, err := ps.gov.DKGSet(round)
 	if err != nil {
 		log.Error("get dkg set fail", "round", round, "err", err)
 	}
 
-	_, inDKGSet := dkgIDs[selfID]
+	_, inDKGSet := dkgIDs[ps.selfID]
 	if inDKGSet {
-		delete(dkgIDs, selfID)
+		delete(dkgIDs, ps.selfID)
 		label := peerLabel{set: dkgset, round: round}
 		for id := range dkgIDs {
 			ps.removeDirectPeer(id, label)
@@ -999,17 +1001,18 @@ func (ps *peerSet) forgetConnection(round uint64) {
 		label := peerLabel{set: notaryset, chainID: cid, round: round}
 
 		// not in notary set, add group
-		if _, ok := notaryIDs[selfID]; !ok {
+		if _, ok := notaryIDs[ps.selfID]; !ok {
 			var nodes []*enode.Node
 			for id := range notaryIDs {
-				nodes = append(nodes, ps.newNode(id))
-				ps.removeLabel(id, label)
+				node := ps.newNode(id)
+				nodes = append(nodes, node)
+				ps.removeLabel(node, label)
 			}
 			ps.srvr.RemoveGroup(notarySetName(cid, round))
 			continue
 		}
 
-		delete(notaryIDs, selfID)
+		delete(notaryIDs, ps.selfID)
 		for id := range notaryIDs {
 			ps.removeDirectPeer(id, label)
 		}
@@ -1021,8 +1024,9 @@ func (ps *peerSet) forgetConnection(round uint64) {
 		var nodes []*enode.Node
 		label := peerLabel{set: dkgset, round: round}
 		for id := range dkgIDs {
-			nodes = append(nodes, ps.newNode(id))
-			ps.removeLabel(id, label)
+			node := ps.newNode(id)
+			nodes = append(nodes, node)
+			ps.removeLabel(node, label)
 		}
 		ps.srvr.RemoveGroup(dkgSetName(round))
 	}
@@ -1039,7 +1043,6 @@ func (ps *peerSet) BuildNotaryConn(round uint64) {
 
 	ps.notaryHistory[round] = struct{}{}
 
-	selfID := ps.srvr.Self().ID().String()
 	for chainID := uint32(0); chainID < ps.gov.GetNumChains(round); chainID++ {
 		s, err := ps.gov.NotarySet(round, chainID)
 		if err != nil {
@@ -1049,7 +1052,7 @@ func (ps *peerSet) BuildNotaryConn(round uint64) {
 		}
 
 		// not in notary set, add group
-		if _, ok := s[selfID]; !ok {
+		if _, ok := s[ps.selfID]; !ok {
 			var nodes []*enode.Node
 			for id := range s {
 				nodes = append(nodes, ps.newNode(id))
@@ -1063,7 +1066,7 @@ func (ps *peerSet) BuildNotaryConn(round uint64) {
 			chainID: chainID,
 			round:   round,
 		}
-		delete(s, selfID)
+		delete(s, ps.selfID)
 		for id := range s {
 			ps.addDirectPeer(id, label)
 		}
@@ -1096,7 +1099,6 @@ func (ps *peerSet) ForgetNotaryConn(round uint64) {
 }
 
 func (ps *peerSet) forgetNotaryConn(round uint64) {
-	selfID := ps.srvr.Self().ID().String()
 	for chainID := uint32(0); chainID < ps.gov.GetNumChains(round); chainID++ {
 		s, err := ps.gov.NotarySet(round, chainID)
 		if err != nil {
@@ -1104,7 +1106,7 @@ func (ps *peerSet) forgetNotaryConn(round uint64) {
 				"round", round, "chain id", chainID, "err", err)
 			continue
 		}
-		if _, ok := s[selfID]; !ok {
+		if _, ok := s[ps.selfID]; !ok {
 			ps.srvr.RemoveGroup(notarySetName(chainID, round))
 			continue
 		}
@@ -1114,7 +1116,7 @@ func (ps *peerSet) forgetNotaryConn(round uint64) {
 			chainID: chainID,
 			round:   round,
 		}
-		delete(s, selfID)
+		delete(s, ps.selfID)
 		for id := range s {
 			ps.removeDirectPeer(id, label)
 		}
@@ -1133,19 +1135,18 @@ func (ps *peerSet) BuildDKGConn(round uint64) {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
 	defer ps.dumpPeerLabel(fmt.Sprintf("BuildDKGConn: %d", round))
-	selfID := ps.srvr.Self().ID().String()
 	s, err := ps.gov.DKGSet(round)
 	if err != nil {
 		log.Error("get dkg set fail", "round", round)
 		return
 	}
 
-	if _, ok := s[selfID]; !ok {
+	if _, ok := s[ps.selfID]; !ok {
 		return
 	}
 	ps.dkgHistory[round] = struct{}{}
 
-	delete(s, selfID)
+	delete(s, ps.selfID)
 	for id := range s {
 		ps.addDirectPeer(id, peerLabel{
 			set:   dkgset,
@@ -1169,17 +1170,16 @@ func (ps *peerSet) ForgetDKGConn(round uint64) {
 }
 
 func (ps *peerSet) forgetDKGConn(round uint64) {
-	selfID := ps.srvr.Self().ID().String()
 	s, err := ps.gov.DKGSet(round)
 	if err != nil {
 		log.Error("get dkg set fail", "round", round)
 		return
 	}
-	if _, ok := s[selfID]; !ok {
+	if _, ok := s[ps.selfID]; !ok {
 		return
 	}
 
-	delete(s, selfID)
+	delete(s, ps.selfID)
 	label := peerLabel{
 		set:   dkgset,
 		round: round,
@@ -1191,20 +1191,24 @@ func (ps *peerSet) forgetDKGConn(round uint64) {
 
 // make sure the ps.lock is held
 func (ps *peerSet) addDirectPeer(id string, label peerLabel) {
-	ps.addLabel(id, label)
-	ps.srvr.AddDirectPeer(ps.newNode(id))
+	node := ps.newNode(id)
+	ps.addLabel(node, label)
+	ps.srvr.AddDirectPeer(node)
 }
 
 // make sure the ps.lock is held
 func (ps *peerSet) removeDirectPeer(id string, label peerLabel) {
-	ps.removeLabel(id, label)
+	node := ps.newNode(id)
+	ps.removeLabel(node, label)
 	if len(ps.peer2Labels[id]) == 0 {
-		ps.srvr.RemoveDirectPeer(ps.newNode(id))
+		ps.srvr.RemoveDirectPeer(node)
 	}
 }
 
 // make sure the ps.lock is held
-func (ps *peerSet) addLabel(id string, label peerLabel) {
+func (ps *peerSet) addLabel(node *enode.Node, label peerLabel) {
+	id := node.ID().String()
+
 	if _, ok := ps.peer2Labels[id]; !ok {
 		ps.peer2Labels[id] = make(map[peerLabel]struct{})
 	}
@@ -1216,7 +1220,9 @@ func (ps *peerSet) addLabel(id string, label peerLabel) {
 }
 
 // make sure the ps.lock is held
-func (ps *peerSet) removeLabel(id string, label peerLabel) {
+func (ps *peerSet) removeLabel(node *enode.Node, label peerLabel) {
+	id := node.ID().String()
+
 	delete(ps.peer2Labels[id], label)
 	delete(ps.label2Peers[label], id)
 	if len(ps.peer2Labels[id]) == 0 {
@@ -1228,18 +1234,26 @@ func (ps *peerSet) removeLabel(id string, label peerLabel) {
 }
 
 func (ps *peerSet) newNode(id string) *enode.Node {
-	nodeID := enode.HexID(id)
-	meta := ps.tab.Get(enode.HexID(id))
+	var ip net.IP
+	var tcp, udp int
 
-	var r enr.Record
-	r.Set(enr.ID(nodeID.String()))
-	r.Set(enr.IP(meta.IP))
-	r.Set(enr.TCP(meta.TCP))
-	r.Set(enr.UDP(meta.UDP))
-
-	n, err := enode.New(enode.ValidSchemes, &r)
+	b, err := hex.DecodeString(id)
 	if err != nil {
 		panic(err)
 	}
-	return n
+
+	pk, err := crypto.UnmarshalPubkey(b)
+	if err != nil {
+		panic(err)
+	}
+	n := enode.NewV4(pk, net.IP{}, 0, 0)
+
+	meta := ps.tab.Get(n.ID())
+	if meta != nil {
+		ip = meta.IP
+		tcp = int(meta.TCP)
+		udp = int(meta.UDP)
+	}
+
+	return enode.NewV4(pk, ip, tcp, udp)
 }

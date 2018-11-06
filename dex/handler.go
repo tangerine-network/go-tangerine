@@ -39,6 +39,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -282,8 +283,8 @@ func (pm *ProtocolManager) makeSelfNodeMeta() *NodeMeta {
 	meta := &NodeMeta{
 		ID:        self.ID(),
 		IP:        self.IP(),
-		UDP:       self.UDP(),
-		TCP:       self.TCP(),
+		UDP:       uint(self.UDP()),
+		TCP:       uint(self.TCP()),
 		Timestamp: uint64(time.Now().Unix()),
 	}
 
@@ -942,11 +943,17 @@ func (pm *ProtocolManager) BroadcastRandomnessResult(
 
 func (pm *ProtocolManager) SendDKGPrivateShare(
 	pub coreCrypto.PublicKey, privateShare *dkgTypes.PrivateShare) {
-	id := string(pub.Bytes()[1:])
-	if p := pm.peers.Peer(id); p != nil {
+
+	pk, err := crypto.UnmarshalPubkey(pub.Bytes())
+	if err != nil {
+		panic(err)
+	}
+	n := enode.NewV4(pk, net.IP{}, 0, 0)
+
+	if p := pm.peers.Peer(n.ID().String()); p != nil {
 		p.AsyncSendDKGPrivateShare(privateShare)
 	} else {
-		log.Error("Failed to send DKG private share", "publicKey", id)
+		log.Error("Failed to send DKG private share", "publicKey", n.ID().String())
 	}
 }
 

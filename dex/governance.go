@@ -317,8 +317,7 @@ func (d *DexconGovernance) GetNumChains(round uint64) uint32 {
 	return d.Configuration(round).NumChains
 }
 
-func (d *DexconGovernance) NotarySet(
-	round uint64, chainID uint32) (map[string]struct{}, error) {
+func (d *DexconGovernance) NotarySet(round uint64, chainID uint32) (map[string]struct{}, error) {
 	notarySet, err := d.nodeSetCache.GetNotarySet(round, chainID)
 	if err != nil {
 		return nil, err
@@ -327,7 +326,7 @@ func (d *DexconGovernance) NotarySet(
 	r := make(map[string]struct{}, len(notarySet))
 	for id := range notarySet {
 		if key, exists := d.nodeSetCache.GetPublicKey(id); exists {
-			r[hex.EncodeToString(key.Bytes()[1:])] = struct{}{}
+			r[hex.EncodeToString(key.Bytes())] = struct{}{}
 		}
 	}
 	return r, nil
@@ -342,7 +341,7 @@ func (d *DexconGovernance) DKGSet(round uint64) (map[string]struct{}, error) {
 	r := make(map[string]struct{}, len(dkgSet))
 	for id := range dkgSet {
 		if key, exists := d.nodeSetCache.GetPublicKey(id); exists {
-			r[hex.EncodeToString(key.Bytes()[1:])] = struct{}{}
+			r[hex.EncodeToString(key.Bytes())] = struct{}{}
 		}
 	}
 	return r, nil
