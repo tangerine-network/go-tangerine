@@ -39,7 +39,7 @@ import (
 var GovernanceContractAddress = common.HexToAddress("5765692d4e696e6720536f6e696320426f6a6965")
 var minStake = big.NewInt(10000000000000)
 
-const abiJSON = `
+const GovernanceABIJSON = `
 [
   {
     "constant": true,
@@ -641,7 +641,7 @@ var events map[string]abi.Event
 
 func init() {
 	// Parse governance contract ABI.
-	abiObject, err := abi.JSON(strings.NewReader(abiJSON))
+	abiObject, err := abi.JSON(strings.NewReader(GovernanceABIJSON))
 	if err != nil {
 		panic(err)
 	}
