@@ -23,7 +23,7 @@ import (
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/eth/downloader"
+	"github.com/dexon-foundation/dexon/dex/downloader"
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/p2p/enode"
 )

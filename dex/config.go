@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/eth/downloader"
+	"github.com/dexon-foundation/dexon/dex/downloader"
 	"github.com/dexon-foundation/dexon/eth/gasprice"
 	"github.com/dexon-foundation/dexon/params"
 )

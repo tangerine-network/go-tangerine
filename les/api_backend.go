@@ -29,10 +29,10 @@ import (
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/eth/downloader"
 	"github.com/dexon-foundation/dexon/eth/gasprice"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/event"
+	"github.com/dexon-foundation/dexon/internal/ethapi"
 	"github.com/dexon-foundation/dexon/light"
 	"github.com/dexon-foundation/dexon/params"
 	"github.com/dexon-foundation/dexon/rpc"
@@ -163,7 +163,7 @@ func (b *LesApiBackend) SubscribeRemovedLogsEvent(ch chan<- core.RemovedLogsEven
 	return b.eth.blockchain.SubscribeRemovedLogsEvent(ch)
 }
 
-func (b *LesApiBackend) Downloader() *downloader.Downloader {
+func (b *LesApiBackend) Downloader() ethapi.Downloader {
 	return b.eth.Downloader()
 }
 

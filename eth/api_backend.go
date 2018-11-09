@@ -28,10 +28,10 @@ import (
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/eth/downloader"
 	"github.com/dexon-foundation/dexon/eth/gasprice"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/event"
+	"github.com/dexon-foundation/dexon/internal/ethapi"
 	"github.com/dexon-foundation/dexon/params"
 	"github.com/dexon-foundation/dexon/rpc"
 )
@@ -189,7 +189,7 @@ func (b *EthAPIBackend) SubscribeNewTxsEvent(ch chan<- core.NewTxsEvent) event.S
 	return b.eth.TxPool().SubscribeNewTxsEvent(ch)
 }
 
-func (b *EthAPIBackend) Downloader() *downloader.Downloader {
+func (b *EthAPIBackend) Downloader() ethapi.Downloader {
 	return b.eth.Downloader()
 }
 

@@ -21,24 +21,28 @@ import (
 	"context"
 	"math/big"
 
+	ethereum "github.com/dexon-foundation/dexon"
 	"github.com/dexon-foundation/dexon/accounts"
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/eth/downloader"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/event"
 	"github.com/dexon-foundation/dexon/params"
 	"github.com/dexon-foundation/dexon/rpc"
 )
 
+type Downloader interface {
+	Progress() ethereum.SyncProgress
+}
+
 // Backend interface provides the common API services (that are provided by
 // both full and light clients) with access to necessary functions.
 type Backend interface {
 	// General Ethereum API
-	Downloader() *downloader.Downloader
+	Downloader() Downloader
 	ProtocolVersion() int
 	SuggestPrice(ctx context.Context) (*big.Int, error)
 	ChainDb() ethdb.Database

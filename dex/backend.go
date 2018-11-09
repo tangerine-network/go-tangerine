@@ -33,7 +33,7 @@ import (
 	"github.com/dexon-foundation/dexon/core/rawdb"
 	"github.com/dexon-foundation/dexon/core/vm"
 	"github.com/dexon-foundation/dexon/dex/blockdb"
-	"github.com/dexon-foundation/dexon/eth/downloader"
+	"github.com/dexon-foundation/dexon/dex/downloader"
 	"github.com/dexon-foundation/dexon/eth/filters"
 	"github.com/dexon-foundation/dexon/eth/gasprice"
 	"github.com/dexon-foundation/dexon/ethdb"
@@ -266,12 +266,12 @@ func CreateDB(ctx *node.ServiceContext, config *Config, name string) (ethdb.Data
 	return db, nil
 }
 
-func (d *Dexon) AccountManager() *accounts.Manager  { return d.accountManager }
-func (d *Dexon) BlockChain() *core.BlockChain       { return d.blockchain }
-func (d *Dexon) TxPool() *core.TxPool               { return d.txPool }
-func (d *Dexon) DexVersion() int                    { return int(d.protocolManager.SubProtocols[0].Version) }
-func (d *Dexon) EventMux() *event.TypeMux           { return d.eventMux }
-func (d *Dexon) Engine() consensus.Engine           { return d.engine }
-func (d *Dexon) ChainDb() ethdb.Database            { return d.chainDb }
-func (d *Dexon) Downloader() *downloader.Downloader { return d.protocolManager.downloader }
-func (d *Dexon) NetVersion() uint64                 { return d.networkID }
+func (d *Dexon) AccountManager() *accounts.Manager { return d.accountManager }
+func (d *Dexon) BlockChain() *core.BlockChain      { return d.blockchain }
+func (d *Dexon) TxPool() *core.TxPool              { return d.txPool }
+func (d *Dexon) DexVersion() int                   { return int(d.protocolManager.SubProtocols[0].Version) }
+func (d *Dexon) EventMux() *event.TypeMux          { return d.eventMux }
+func (d *Dexon) Engine() consensus.Engine          { return d.engine }
+func (d *Dexon) ChainDb() ethdb.Database           { return d.chainDb }
+func (d *Dexon) Downloader() ethapi.Downloader     { return d.protocolManager.downloader }
+func (d *Dexon) NetVersion() uint64                { return d.networkID }
