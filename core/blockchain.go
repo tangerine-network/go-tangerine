@@ -203,7 +203,83 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		addressCounter:  make(map[uint32]map[common.Address]uint64),
 		chainLastHeight: make(map[uint32]uint64),
 	}
-	bc.SetValidator(NewDexonBlockValidator(chainConfig, bc, engine))
+	bc.SetValidator(NewBlockValidator(chainConfig, bc, engine))
+	bc.SetProcessor(NewStateProcessor(chainConfig, bc, engine))
+
+	var err error
+	bc.hc, err = NewHeaderChain(db, chainConfig, engine, bc.getProcInterrupt)
+	if err != nil {
+		return nil, err
+	}
+	bc.genesisBlock = bc.GetBlockByNumber(0)
+	if bc.genesisBlock == nil {
+		return nil, ErrNoGenesis
+	}
+	if err := bc.loadLastState(); err != nil {
+		return nil, err
+	}
+	// Check the current state of the block hashes and make sure that we do not have any of the bad blocks in our chain
+	for hash := range BadHashes {
+		if header := bc.GetHeaderByHash(hash); header != nil {
+			// get the canonical block corresponding to the offending header's number
+			headerByNumber := bc.GetHeaderByNumber(header.Number.Uint64())
+			// make sure the headerByNumber (if present) is in our current canonical chain
+			if headerByNumber != nil && headerByNumber.Hash() == header.Hash() {
+				log.Error("Found bad hash, rewinding chain", "number", header.Number, "hash", header.ParentHash)
+				bc.SetHead(header.Number.Uint64() - 1)
+				log.Error("Chain rewind was successful, resuming normal operation")
+			}
+		}
+	}
+
+	// Set genesis round height mapping.
+	bc.roundHeightMap.Store(0, 0)
+
+	// Take ownership of this particular state
+	go bc.update()
+	return bc, nil
+}
+
+func NewBlockChainWithDexonValidator(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *params.ChainConfig, engine consensus.Engine, vmConfig vm.Config, shouldPreserve func(block *types.Block) bool) (*BlockChain, error) {
+	if cacheConfig == nil {
+		cacheConfig = &CacheConfig{
+			TrieNodeLimit: 256 * 1024 * 1024,
+			TrieTimeLimit: 5 * time.Minute,
+		}
+	}
+	bodyCache, _ := lru.New(bodyCacheLimit)
+	bodyRLPCache, _ := lru.New(bodyCacheLimit)
+	receiptsCache, _ := lru.New(receiptsCacheLimit)
+	blockCache, _ := lru.New(blockCacheLimit)
+	futureBlocks, _ := lru.New(maxFutureBlocks)
+	badBlocks, _ := lru.New(badBlockLimit)
+
+	bc := &BlockChain{
+		chainConfig:   chainConfig,
+		cacheConfig:   cacheConfig,
+		db:            db,
+		triegc:        prque.New(nil),
+		stateCache:    state.NewDatabase(db),
+		quit:          make(chan struct{}),
+		bodyCache:     bodyCache,
+		bodyRLPCache:  bodyRLPCache,
+		receiptsCache: receiptsCache,
+		blockCache:    blockCache,
+		futureBlocks:  futureBlocks,
+		engine:        engine,
+		vmConfig:      vmConfig,
+		badBlocks:     badBlocks,
+		pendingBlocks: make(map[uint64]struct {
+			block    *types.Block
+			receipts types.Receipts
+		}),
+		confirmedBlocks: make(map[uint32]map[coreCommon.Hash]*blockInfo),
+		addressNonce:    make(map[uint32]map[common.Address]uint64),
+		addressCost:     make(map[uint32]map[common.Address]*big.Int),
+		addressCounter:  make(map[uint32]map[common.Address]uint64),
+		chainLastHeight: make(map[uint32]uint64),
+	}
+	bc.SetValidator(NewBlockValidator(chainConfig, bc, engine))
 	bc.SetProcessor(NewStateProcessor(chainConfig, bc, engine))
 
 	var err error

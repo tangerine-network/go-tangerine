@@ -18,6 +18,7 @@ package core
 
 import (
 	"math/big"
+	"reflect"
 	"sync"
 
 	"github.com/dexon-foundation/dexon/common"
@@ -48,6 +49,12 @@ func NewEVMContext(msg Message, header *types.Header, chain ChainContext, author
 	} else {
 		beneficiary = *author
 	}
+
+	var roundHeight sync.Map
+	if !reflect.ValueOf(chain).IsNil() {
+		roundHeight = chain.GetRoundHeightMap()
+	}
+
 	return vm.Context{
 		CanTransfer: CanTransfer,
 		Transfer:    Transfer,
@@ -58,7 +65,7 @@ func NewEVMContext(msg Message, header *types.Header, chain ChainContext, author
 		Time:        new(big.Int).SetUint64(header.Time),
 		Randomness:  header.Randomness,
 		Difficulty:  new(big.Int).Set(header.Difficulty),
-		RoundHeight: chain.GetRoundHeightMap(),
+		RoundHeight: roundHeight,
 		GasLimit:    header.GasLimit,
 		GasPrice:    new(big.Int).Set(msg.GasPrice()),
 	}

@@ -42,7 +42,7 @@ func ExampleGenerateChain() {
 
 	// Ensure that key1 has some funds in the genesis block.
 	gspec := &Genesis{
-		Config: &params.ChainConfig{HomesteadBlock: new(big.Int)},
+		Config: &params.ChainConfig{HomesteadBlock: new(big.Int), Dexcon: params.TestChainConfig.Dexcon},
 		Alloc:  GenesisAlloc{addr1: {Balance: big.NewInt(1000000)}},
 	}
 	genesis := gspec.MustCommit(db)
@@ -160,7 +160,7 @@ func ExampleGenerateChainWithRoundChange() {
 	// This call generates a chain of 1000 blocks. The function runs for
 	// each block and adds different features to gen based on the
 	// block index.
-	chain, _ := GenerateChainWithRoundChange(gspec.Config, genesis, ethash.NewFaker(), db, 1000, func(i int, gen *BlockGen) {
+	chain, _ := GenerateChainWithRoundChange(gspec.Config, genesis, ethash.NewFaker(), db, 5, func(i int, gen *BlockGen) {
 		switch i {
 		case 0:
 			// In block 1, addr1 sends addr2 some ether.
@@ -189,7 +189,7 @@ func ExampleGenerateChainWithRoundChange() {
 	}, nodeSet, 30)
 
 	// Import the chain. This runs all block validation rules.
-	blockchain, _ := NewBlockChain(db, nil, gspec.Config, ethash.NewFaker(), vm.Config{})
+	blockchain, _ := NewBlockChain(db, nil, gspec.Config, ethash.NewFaker(), vm.Config{}, nil)
 	defer blockchain.Stop()
 
 	if i, err := blockchain.InsertChain(chain); err != nil {

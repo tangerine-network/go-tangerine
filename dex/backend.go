@@ -134,7 +134,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 		}
 		cacheConfig = &core.CacheConfig{Disabled: config.NoPruning, TrieCleanLimit: config.TrieCleanCache, TrieDirtyLimit: config.TrieDirtyCache, TrieTimeLimit: config.TrieTimeout}
 	)
-	dex.blockchain, err = core.NewBlockChain(chainDb, cacheConfig, dex.chainConfig, dex.engine, vmConfig, nil)
+	dex.blockchain, err = core.NewBlockChainWithDexonValidator(chainDb, cacheConfig,
+		dex.chainConfig, dex.engine, vmConfig, nil)
 
 	// Rewind the chain in case of an incompatible config upgrade.
 	if compat, ok := genesisErr.(*params.ConfigCompatError); ok {

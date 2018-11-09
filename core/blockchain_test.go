@@ -47,9 +47,12 @@ var (
 // header only chain.
 func newCanonical(engine consensus.Engine, n int, full bool) (ethdb.Database, *BlockChain, error) {
 	var (
-		db      = ethdb.NewMemDatabase()
-		genesis = new(Genesis).MustCommit(db)
+		db = ethdb.NewMemDatabase()
+		g  = new(Genesis)
 	)
+
+	g.Config = params.TestnetChainConfig
+	genesis := g.MustCommit(db)
 
 	// Initialize a fresh chain with only a genesis block
 	blockchain, _ := NewBlockChain(db, nil, params.AllEthashProtocolChanges, engine, vm.Config{}, nil)
@@ -1275,8 +1278,12 @@ func TestEIP155Transition(t *testing.T) {
 			Config: &params.ChainConfig{ChainID: big.NewInt(1), EIP155Block: big.NewInt(2), HomesteadBlock: new(big.Int)},
 			Alloc:  GenesisAlloc{address: {Balance: funds}, deleteAddr: {Balance: new(big.Int)}},
 		}
-		genesis = gspec.MustCommit(db)
 	)
+
+	dexConf := new(params.DexconConfig)
+	dexConf.BlockReward = new(big.Int)
+	gspec.Config.Dexcon = dexConf
+	genesis := gspec.MustCommit(db)
 
 	blockchain, _ := NewBlockChain(db, nil, gspec.Config, ethash.NewFaker(), vm.Config{}, nil)
 	defer blockchain.Stop()
@@ -1383,8 +1390,10 @@ func TestEIP161AccountRemoval(t *testing.T) {
 			},
 			Alloc: GenesisAlloc{address: {Balance: funds}},
 		}
-		genesis = gspec.MustCommit(db)
 	)
+
+	gspec.Config.Dexcon = params.TestChainConfig.Dexcon
+	genesis := gspec.MustCommit(db)
 	blockchain, _ := NewBlockChain(db, nil, gspec.Config, ethash.NewFaker(), vm.Config{}, nil)
 	defer blockchain.Stop()
 
@@ -1442,7 +1451,10 @@ func TestBlockchainHeaderchainReorgConsistency(t *testing.T) {
 	engine := ethash.NewFaker()
 
 	db := ethdb.NewMemDatabase()
-	genesis := new(Genesis).MustCommit(db)
+	gspec := &Genesis{
+		Config: params.TestnetChainConfig,
+	}
+	genesis := gspec.MustCommit(db)
 	blocks, _ := GenerateChain(params.TestChainConfig, genesis, engine, db, 64, func(i int, b *BlockGen) { b.SetCoinbase(common.Address{1}) })
 
 	// Generate a bunch of fork blocks, each side forking from the canonical chain
@@ -1458,7 +1470,7 @@ func TestBlockchainHeaderchainReorgConsistency(t *testing.T) {
 	// Import the canonical and fork chain side by side, verifying the current block
 	// and current header consistency
 	diskdb := ethdb.NewMemDatabase()
-	new(Genesis).MustCommit(diskdb)
+	gspec.MustCommit(diskdb)
 
 	chain, err := NewBlockChain(diskdb, nil, params.TestChainConfig, engine, vm.Config{}, nil)
 	if err != nil {
@@ -1487,7 +1499,10 @@ func TestTrieForkGC(t *testing.T) {
 	engine := ethash.NewFaker()
 
 	db := ethdb.NewMemDatabase()
-	genesis := new(Genesis).MustCommit(db)
+	gspec := &Genesis{
+		Config: params.TestnetChainConfig,
+	}
+	genesis := gspec.MustCommit(db)
 	blocks, _ := GenerateChain(params.TestChainConfig, genesis, engine, db, 2*triesInMemory, func(i int, b *BlockGen) { b.SetCoinbase(common.Address{1}) })
 
 	// Generate a bunch of fork blocks, each side forking from the canonical chain
@@ -1502,7 +1517,7 @@ func TestTrieForkGC(t *testing.T) {
 	}
 	// Import the canonical and fork chain side by side, forcing the trie cache to cache both
 	diskdb := ethdb.NewMemDatabase()
-	new(Genesis).MustCommit(diskdb)
+	gspec.MustCommit(diskdb)
 
 	chain, err := NewBlockChain(diskdb, nil, params.TestChainConfig, engine, vm.Config{}, nil)
 	if err != nil {
@@ -1533,7 +1548,10 @@ func TestLargeReorgTrieGC(t *testing.T) {
 	engine := ethash.NewFaker()
 
 	db := ethdb.NewMemDatabase()
-	genesis := new(Genesis).MustCommit(db)
+	gspec := &Genesis{
+		Config: params.TestnetChainConfig,
+	}
+	genesis := gspec.MustCommit(db)
 
 	shared, _ := GenerateChain(params.TestChainConfig, genesis, engine, db, 64, func(i int, b *BlockGen) { b.SetCoinbase(common.Address{1}) })
 	original, _ := GenerateChain(params.TestChainConfig, shared[len(shared)-1], engine, db, 2*triesInMemory, func(i int, b *BlockGen) { b.SetCoinbase(common.Address{2}) })
@@ -1541,7 +1559,7 @@ func TestLargeReorgTrieGC(t *testing.T) {
 
 	// Import the shared chain and the original canonical one
 	diskdb := ethdb.NewMemDatabase()
-	new(Genesis).MustCommit(diskdb)
+	gspec.MustCommit(diskdb)
 
 	chain, err := NewBlockChain(diskdb, nil, params.TestChainConfig, engine, vm.Config{}, nil)
 	if err != nil {
