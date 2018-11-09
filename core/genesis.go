@@ -266,48 +266,56 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	totalStaked := big.NewInt(0)
 
 	for addr, account := range g.Alloc {
-		if account.Staked == nil {
+		// For DEXON consensus genesis staking.
+		if g.Config != nil && g.Config.Dexcon != nil {
 			account.Staked = big.NewInt(0)
+			statedb.AddBalance(addr, new(big.Int).Sub(account.Balance, account.Staked))
+			totalStaked = new(big.Int).Add(totalStaked, account.Staked)
+		} else {
+			statedb.AddBalance(addr, account.Balance)
 		}
-		statedb.AddBalance(addr, new(big.Int).Sub(account.Balance, account.Staked))
+
 		statedb.SetCode(addr, account.Code)
 		statedb.SetNonce(addr, account.Nonce)
 		for key, value := range account.Storage {
 			statedb.SetState(addr, key, value)
 		}
-		totalStaked = new(big.Int).Add(totalStaked, account.Staked)
 	}
 
-	// Move staked balance to governance contract.
-	statedb.AddBalance(vm.GovernanceContractAddress, totalStaked)
+	// For DEXON consensus genesis staking.
+	if g.Config != nil && g.Config.Dexcon != nil {
+		// Move staked balance to governance contract.
+		statedb.AddBalance(vm.GovernanceContractAddress, totalStaked)
 
-	// Stake in governance state.
-	keys := AllocKey{}
-	for addr := range g.Alloc {
-		keys = append(keys, addr)
-	}
-	sort.Sort(keys)
-
-	for _, addr := range keys {
-		account := g.Alloc[addr]
-		if account.Staked == nil {
-			account.Staked = big.NewInt(0)
+		// Stake in governance state.
+		keys := AllocKey{}
+		for addr := range g.Alloc {
+			keys = append(keys, addr)
 		}
-		if account.Staked.Cmp(big.NewInt(0)) > 0 {
-			govStateHelper.Stake(addr, account.PublicKey, account.Staked,
-				account.NodeInfo.Name, account.NodeInfo.Email,
-				account.NodeInfo.Location, account.NodeInfo.Url)
+		sort.Sort(keys)
+
+		for _, addr := range keys {
+			account := g.Alloc[addr]
+			if account.Staked == nil {
+				account.Staked = big.NewInt(0)
+			}
+			if account.Staked.Cmp(big.NewInt(0)) > 0 {
+				govStateHelper.Stake(addr, account.PublicKey, account.Staked,
+					account.NodeInfo.Name, account.NodeInfo.Email,
+					account.NodeInfo.Location, account.NodeInfo.Url)
+			}
 		}
+
+		// Genesis CRS.
+		crs := crypto.Keccak256([]byte(g.Config.Dexcon.GenesisCRSText))
+		govStateHelper.PushCRS(common.BytesToHash(crs))
+
+		// Owner.
+		govStateHelper.SetOwner(g.Config.Dexcon.Owner)
+
+		// Governance configuration.
+		govStateHelper.UpdateConfiguration(g.Config.Dexcon)
 	}
-	// Genesis CRS.
-	crs := crypto.Keccak256([]byte(g.Config.Dexcon.GenesisCRSText))
-	govStateHelper.PushCRS(common.BytesToHash(crs))
-
-	// Owner.
-	govStateHelper.SetOwner(g.Config.Dexcon.Owner)
-
-	// Governance configuration.
-	govStateHelper.UpdateConfiguration(g.Config.Dexcon)
 
 	root := statedb.IntermediateRoot(false)
 	head := &types.Header{
