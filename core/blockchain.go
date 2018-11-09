@@ -1740,6 +1740,33 @@ func (bc *BlockChain) GetPending() (*types.Block, *state.StateDB) {
 	return block, s
 }
 
+// GetGovStateByHash extracts the governance contract's state from state trie
+// (the merkle proof of governance contract address and the whole storage)
+// at the given block hash.
+func (bc *BlockChain) GetGovStateByHash(hash common.Hash) (*types.GovState, error) {
+	header := bc.GetHeaderByHash(hash)
+	if header == nil {
+		return nil, fmt.Errorf("header not found")
+	}
+	statedb, err := bc.StateAt(header.Root)
+	if err != nil {
+		return nil, err
+	}
+	return state.GetGovState(statedb, header, vm.GovernanceContractAddress)
+}
+
+func (bc *BlockChain) GetGovStateByNumber(number uint64) (*types.GovState, error) {
+	header := bc.GetHeaderByNumber(number)
+	if header == nil {
+		return nil, fmt.Errorf("header not found")
+	}
+	statedb, err := bc.StateAt(header.Root)
+	if err != nil {
+		return nil, err
+	}
+	return state.GetGovState(statedb, header, vm.GovernanceContractAddress)
+}
+
 // reorg takes two blocks, an old chain and a new chain and will reconstruct the
 // blocks and inserts them to be part of the new canonical chain and accumulates
 // potential missing transactions and post an event about them.
