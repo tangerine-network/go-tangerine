@@ -279,7 +279,7 @@ func NewBlockChainWithDexonValidator(db ethdb.Database, cacheConfig *CacheConfig
 		addressCounter:  make(map[uint32]map[common.Address]uint64),
 		chainLastHeight: make(map[uint32]uint64),
 	}
-	bc.SetValidator(NewBlockValidator(chainConfig, bc, engine))
+	bc.SetValidator(NewDexonBlockValidator(chainConfig, bc, engine))
 	bc.SetProcessor(NewStateProcessor(chainConfig, bc, engine))
 
 	var err error
