@@ -17,6 +17,8 @@
 package dex
 
 import (
+	"crypto/ecdsa"
+	"encoding/hex"
 	"fmt"
 	"reflect"
 	"sync"
@@ -34,7 +36,6 @@ import (
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/eth/downloader"
 	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/discover"
 	"github.com/dexon-foundation/dexon/rlp"
 )
 
@@ -72,7 +73,7 @@ func testStatusMsgErrors(t *testing.T, protocol int) {
 		},
 		{
 			code: StatusMsg, data: statusData{uint32(protocol), 999, td, head.Hash(), genesis.Hash()},
-			wantError: errResp(ErrNetworkIdMismatch, "999 (!= 1)"),
+			wantError: errResp(ErrNetworkIdMismatch, "999 (!= 237)"),
 		},
 		{
 			code: StatusMsg, data: statusData{uint32(protocol), DefaultConfig.NetworkId, td, head.Hash(), common.Hash{3}},
@@ -237,7 +238,7 @@ func TestRecvNodeMetas(t *testing.T) {
 	defer p.close()
 
 	meta := NodeMeta{
-		ID: nodeID(1),
+		ID: randomID(),
 	}
 
 	ch := make(chan newMetasEvent)
@@ -265,8 +266,8 @@ func TestSendNodeMetas(t *testing.T) {
 	defer pm.Stop()
 
 	allmetas := make([]*NodeMeta, 100)
-	for nonce := range allmetas {
-		allmetas[nonce] = &NodeMeta{ID: nodeID(int64(nonce))}
+	for i := 0; i < len(allmetas); i++ {
+		allmetas[i] = &NodeMeta{ID: randomID()}
 	}
 
 	// Connect several peers. They should all receive the pending transactions.
@@ -548,7 +549,8 @@ func TestSendVote(t *testing.T) {
 	for i, tt := range testPeers {
 		p, _ := newTestPeer(fmt.Sprintf("peer #%d", i), dex64, pm, true)
 		if tt.label != nil {
-			pm.peers.addDirectPeer(p.id, *tt.label)
+			b := crypto.FromECDSAPub(p.Node().Pubkey())
+			pm.peers.addDirectPeer(hex.EncodeToString(b), *tt.label)
 		}
 		wg.Add(1)
 		go checkvote(p, tt.isReceiver)
@@ -558,17 +560,14 @@ func TestSendVote(t *testing.T) {
 	wg.Wait()
 }
 
-type mockPublicKey struct {
-	id enode.ID
-}
+type mockPublicKey ecdsa.PublicKey
 
 func (p *mockPublicKey) VerifySignature(hash coreCommon.Hash, signature coreCrypto.Signature) bool {
 	return true
 }
 
 func (p *mockPublicKey) Bytes() []byte {
-	b, _ := p.id.Pubkey()
-	return crypto.FromECDSAPub(b)
+	return crypto.FromECDSAPub((*ecdsa.PublicKey)(p))
 }
 
 func TestRecvDKGPrivateShare(t *testing.T) {
@@ -627,7 +626,7 @@ func TestSendDKGPrivateShare(t *testing.T) {
 		},
 	}
 
-	go pm.SendDKGPrivateShare(&mockPublicKey{p1.ID()}, &privateShare)
+	go pm.SendDKGPrivateShare((*mockPublicKey)(p1.Node().Pubkey()), &privateShare)
 	msg, err := p1.app.ReadMsg()
 	if err != nil {
 		t.Errorf("%v: read error: %v", p1.Peer, err)

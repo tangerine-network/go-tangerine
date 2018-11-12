@@ -2,12 +2,12 @@ package dex
 
 import (
 	"crypto/ecdsa"
+	"net"
 	"testing"
 	"time"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/p2p/discover"
 	"github.com/dexon-foundation/dexon/p2p/enode"
 )
 
@@ -87,7 +87,7 @@ func TestNodeTable(t *testing.T) {
 	}
 }
 
-func randomID() enode.ID {
+func randomEnode() *enode.Node {
 	var err error
 	var privkey *ecdsa.PrivateKey
 	for {
@@ -96,5 +96,9 @@ func randomID() enode.ID {
 			break
 		}
 	}
-	return discover.PubkeyID(&(privkey.PublicKey))
+	return enode.NewV4(&privkey.PublicKey, net.IP{}, 0, 0)
+}
+
+func randomID() enode.ID {
+	return randomEnode().ID()
 }

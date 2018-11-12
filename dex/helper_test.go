@@ -21,8 +21,8 @@ package dex
 
 import (
 	"crypto/ecdsa"
-	"crypto/rand"
 	"math/big"
+	"net"
 	"sort"
 	"sync"
 	"testing"
@@ -48,17 +48,20 @@ var (
 
 // testP2PServer is a fake, helper p2p server for testing purposes.
 type testP2PServer struct {
-	mu     sync.Mutex
-	self   *enode.Node
-	direct map[enode.NodeID]*enode.Node
-	group  map[string][]*enode.Node
+	mu      sync.Mutex
+	self    *enode.Node
+	privkey *ecdsa.PrivateKey
+	direct  map[enode.ID]*enode.Node
+	group   map[string][]*enode.Node
 }
 
-func newTestP2PServer(self *enode.Node) *testP2PServer {
+func newTestP2PServer(privkey *ecdsa.PrivateKey) *testP2PServer {
+	self := enode.NewV4(&privkey.PublicKey, net.IP{}, 0, 0)
 	return &testP2PServer{
-		self:   self,
-		direct: make(map[enode.NodeID]*enode.Node),
-		group:  make(map[string][]*enode.Node),
+		self:    self,
+		privkey: privkey,
+		direct:  make(map[enode.ID]*enode.Node),
+		group:   make(map[string][]*enode.Node),
 	}
 }
 
@@ -66,16 +69,20 @@ func (s *testP2PServer) Self() *enode.Node {
 	return s.self
 }
 
+func (s *testP2PServer) GetPrivateKey() *ecdsa.PrivateKey {
+	return s.privkey
+}
+
 func (s *testP2PServer) AddDirectPeer(node *enode.Node) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	s.direct[node.ID] = node
+	s.direct[node.ID()] = node
 }
 
 func (s *testP2PServer) RemoveDirectPeer(node *enode.Node) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	delete(s.direct, node.ID)
+	delete(s.direct, node.ID())
 }
 
 func (s *testP2PServer) AddGroup(
@@ -104,7 +111,7 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 			Alloc:  core.GenesisAlloc{testBank: {Balance: big.NewInt(1000000), Staked: big.NewInt(0)}},
 		}
 		genesis       = gspec.MustCommit(db)
-		blockchain, _ = core.NewBlockChain(db, nil, gspec.Config, engine, vm.Config{})
+		blockchain, _ = core.NewBlockChain(db, nil, gspec.Config, engine, vm.Config{}, nil)
 	)
 	chain, _ := core.GenerateChain(gspec.Config, genesis, ethash.NewFaker(), db, blocks, generator)
 	if _, err := blockchain.InsertChain(chain); err != nil {
@@ -122,7 +129,11 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 	if err != nil {
 		return nil, nil, err
 	}
-	pm.Start(newTestP2PServer(&enode.Node{}), 1000)
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		return nil, nil, err
+	}
+	pm.Start(newTestP2PServer(key), 1000)
 	return pm, db, nil
 }
 
@@ -222,13 +233,16 @@ type testPeer struct {
 // newTestPeer creates a new peer registered at the given protocol manager.
 func newTestPeer(name string, version int, pm *ProtocolManager, shake bool) (*testPeer, <-chan error) {
 	// Create a message pipe to communicate through
-	app, net := p2p.MsgPipe()
+	app, pipenet := p2p.MsgPipe()
 
-	// Generate a random id and create the peer
-	var id enode.NodeID
-	rand.Read(id[:])
+	// Generate a random key and create the peer
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
 
-	peer := pm.newPeer(version, p2p.NewPeer(id, name, nil), net)
+	node := enode.NewV4(&key.PublicKey, net.IP{}, 0, 0)
+	peer := pm.newPeer(version, p2p.NewPeerWithEnode(node, name, nil), pipenet)
 
 	// Start the peer on a new thread
 	errc := make(chan error, 1)
@@ -240,7 +254,7 @@ func newTestPeer(name string, version int, pm *ProtocolManager, shake bool) (*te
 			errc <- p2p.DiscQuitting
 		}
 	}()
-	tp := &testPeer{app: app, net: net, peer: peer}
+	tp := &testPeer{app: app, net: pipenet, peer: peer}
 	// Execute any implicitly requested handshakes and return
 	if shake {
 		var (
