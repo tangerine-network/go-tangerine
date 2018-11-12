@@ -268,7 +268,6 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	for addr, account := range g.Alloc {
 		// For DEXON consensus genesis staking.
 		if g.Config != nil && g.Config.Dexcon != nil {
-			account.Staked = big.NewInt(0)
 			statedb.AddBalance(addr, new(big.Int).Sub(account.Balance, account.Staked))
 			totalStaked = new(big.Int).Add(totalStaked, account.Staked)
 		} else {
@@ -296,9 +295,6 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 
 		for _, addr := range keys {
 			account := g.Alloc[addr]
-			if account.Staked == nil {
-				account.Staked = big.NewInt(0)
-			}
 			if account.Staked.Cmp(big.NewInt(0)) > 0 {
 				govStateHelper.Stake(addr, account.PublicKey, account.Staked,
 					account.NodeInfo.Name, account.NodeInfo.Email,
