@@ -51,6 +51,7 @@ type DexconApp struct {
 	chainLocksInitMu sync.Mutex
 	chainLocks       map[uint32]*sync.RWMutex
 
+	notifyMu        sync.Mutex
 	notifyChan      sync.Map
 	chainLatestRoot sync.Map
 }
@@ -79,6 +80,9 @@ func NewDexconApp(txPool *core.TxPool, blockchain *core.BlockChain, gov *DexconG
 }
 
 func (d *DexconApp) addNotify(height uint64) <-chan uint64 {
+	d.notifyMu.Lock()
+	defer d.notifyMu.Unlock()
+
 	result := make(chan uint64)
 	v, ok := d.notifyChan.Load(height)
 	if ok {
@@ -92,6 +96,9 @@ func (d *DexconApp) addNotify(height uint64) <-chan uint64 {
 }
 
 func (d *DexconApp) notify(height uint64) {
+	d.notifyMu.Lock()
+	defer d.notifyMu.Unlock()
+
 	d.notifyChan.Range(func(key, value interface{}) bool {
 		h := key.(uint64)
 		n := value.(*notify)
