@@ -94,7 +94,7 @@ var (
 			Owner:            common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
 			BlockReward:      big.NewInt(1e18),
 			BlockGasLimit:    80000000,
-			NumChains:        4,
+			NumChains:        6,
 			LambdaBA:         250,
 			LambdaDKG:        2500,
 			K:                0,

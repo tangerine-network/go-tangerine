@@ -14,7 +14,7 @@
       "owner": "0xBF8C48A620bacc46907f9B89732D25E47A2D7Cf7",
       "blockReward": "0xde0b6b3a7640000",
       "blockGasLimit": 80000000,
-      "numChains": 4,
+      "numChains": 6,
       "lambdaBA": 250,
       "lambdaDKG": 2500,
       "k": 0,
