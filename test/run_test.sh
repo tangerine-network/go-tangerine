@@ -29,8 +29,11 @@ for i in $(seq 0 3); do
   datadir=$PWD/Dexon.$i
   rm -rf $datadir
   $GDEX --datadir=$datadir init genesis.json
-  $GDEX --verbosity=4 --gcmode=archive \
+  $GDEX \
+    --testnet \
     --bp \
+    --verbosity=4 \
+    --gcmode=archive \
     --datadir=$datadir --nodekey=test$i.nodekey \
     --port=$((30305 + $i)) \
     --rpc --rpcapi=eth,net,web3,debug \

@@ -53,7 +53,7 @@ var (
 		PetersburgBlock:     big.NewInt(0),
 		Dexcon: &DexconConfig{
 			GenesisCRSText:   "In DEXON, we trust.",
-			Owner:            common.HexToAddress("7C3c31B19395A5e2627F921Cc2802560B71f1caB"),
+			Owner:            common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
 			BlockReward:      big.NewInt(1e18),
 			BlockGasLimit:    80000000,
 			NumChains:        4,
@@ -63,7 +63,7 @@ var (
 			PhiRatio:         667000,
 			NotarySetSize:    4,
 			DKGSetSize:       4,
-			RoundInterval:    99999999999,
+			RoundInterval:    600000,
 			MinBlockInterval: 900,
 		},
 	}
@@ -91,7 +91,7 @@ var (
 		PetersburgBlock:     big.NewInt(0),
 		Dexcon: &DexconConfig{
 			GenesisCRSText:   "In DEXON, we trust.",
-			Owner:            common.HexToAddress("7C3c31B19395A5e2627F921Cc2802560B71f1caB"),
+			Owner:            common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
 			BlockReward:      big.NewInt(1e18),
 			BlockGasLimit:    80000000,
 			NumChains:        4,
@@ -101,7 +101,7 @@ var (
 			PhiRatio:         667000,
 			NotarySetSize:    4,
 			DKGSetSize:       4,
-			RoundInterval:    99999999999,
+			RoundInterval:    600000,
 			MinBlockInterval: 900,
 		},
 	}
