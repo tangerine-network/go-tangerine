@@ -41,6 +41,7 @@ for i in $(seq 0 3); do
     --ws --wsapi=eth,net,web3,debug \
     --wsaddr=0.0.0.0 --wsport=$((8546 + $i * 2)) \
     --wsorigins='*' --rpcvhosts='*' --rpccorsdomain="*" \
+    --pprof --pprofaddr=localhost --pprofport=$((6060 + $i)) \
     > $logsdir/gdex.$i.log 2>&1 &
 done
 
