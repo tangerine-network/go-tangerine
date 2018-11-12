@@ -29,6 +29,7 @@ import (
 	"math/rand"
 	"time"
 
+	dexon "github.com/dexon-foundation/dexon"
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/crypto"
@@ -38,6 +39,7 @@ import (
 var key = flag.String("key", "", "private key path")
 var endpoint = flag.String("endpoint", "http://127.0.0.1:8545", "JSON RPC endpoint")
 var n = flag.Int("n", 100, "number of random accounts")
+var gambler = flag.Bool("gambler", false, "make this monkey a gambler")
 
 type Monkey struct {
 	client    *ethclient.Client
@@ -109,6 +111,111 @@ func (m *Monkey) transfer(
 	}
 }
 
+func (m *Monkey) deploy(
+	key *ecdsa.PrivateKey, code string, ctors []string, amount *big.Int, nonce uint64) common.Address {
+
+	if nonce == math.MaxUint64 {
+		var err error
+		address := crypto.PubkeyToAddress(key.PublicKey)
+		nonce, err = m.client.PendingNonceAt(context.Background(), address)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	var input string
+	for _, ctor := range ctors {
+		input += fmt.Sprintf("%064s", ctor)
+	}
+	data := common.Hex2Bytes(code + input)
+
+	gas, err := m.client.EstimateGas(context.Background(), dexon.CallMsg{
+		Data: data,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	tx := types.NewContractCreation(
+		uint64(nonce),
+		amount,
+		gas,
+		big.NewInt(1e9),
+		data)
+
+	signer := types.NewEIP155Signer(m.networkID)
+	tx, err = types.SignTx(tx, signer, key)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Sending TX", "fullhash", tx.Hash().String())
+
+	err = m.client.SendTransaction(context.Background(), tx)
+	if err != nil {
+		panic(err)
+	}
+
+	for {
+		time.Sleep(500 * time.Millisecond)
+		recp, err := m.client.TransactionReceipt(context.Background(), tx.Hash())
+		if err != nil {
+			if err == dexon.NotFound {
+				continue
+			}
+			panic(err)
+		}
+		return recp.ContractAddress
+	}
+}
+
+func (m *Monkey) call(
+	key *ecdsa.PrivateKey, contract common.Address, input []byte, amount *big.Int, gas uint64, nonce uint64) {
+
+	address := crypto.PubkeyToAddress(key.PublicKey)
+	if nonce == math.MaxUint64 {
+		var err error
+		nonce, err = m.client.PendingNonceAt(context.Background(), address)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if gas == uint64(0) {
+		var err error
+		gas, err = m.client.EstimateGas(context.Background(), dexon.CallMsg{
+			From:  address,
+			To:    &contract,
+			Value: amount,
+			Data:  input,
+		})
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	tx := types.NewTransaction(
+		uint64(nonce),
+		contract,
+		amount,
+		gas,
+		big.NewInt(1e9),
+		input)
+
+	signer := types.NewEIP155Signer(m.networkID)
+	tx, err := types.SignTx(tx, signer, key)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("Sending TX", "fullhash", tx.Hash().String())
+
+	err = m.client.SendTransaction(context.Background(), tx)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func (m *Monkey) Distribute() {
 	fmt.Println("Distributing DEX to random accounts ...")
 	address := crypto.PubkeyToAddress(m.source.PublicKey)
@@ -124,7 +231,7 @@ func (m *Monkey) Distribute() {
 		m.transfer(m.source, address, amount, nonce)
 		nonce += 1
 	}
-	time.Sleep(60 * time.Second)
+	time.Sleep(20 * time.Second)
 }
 
 func (m *Monkey) Crazy() {
@@ -151,5 +258,9 @@ func main() {
 
 	m := New(*endpoint, privKey, *n)
 	m.Distribute()
-	m.Crazy()
+	if *gambler {
+		m.Gamble()
+	} else {
+		m.Crazy()
+	}
 }
