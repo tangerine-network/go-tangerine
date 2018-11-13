@@ -306,6 +306,9 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		crs := crypto.Keccak256([]byte(g.Config.Dexcon.GenesisCRSText))
 		govStateHelper.PushCRS(common.BytesToHash(crs))
 
+		// Round 0 height.
+		govStateHelper.PushRoundHeight(big.NewInt(0))
+
 		// Owner.
 		govStateHelper.SetOwner(g.Config.Dexcon.Owner)
 

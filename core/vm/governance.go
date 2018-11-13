@@ -917,7 +917,7 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 			return nil, errExecutionReverted
 		}
 		return res, nil
-	case "RoundHeight":
+	case "roundHeight":
 		round := new(big.Int)
 		if err := method.Inputs.Unpack(&round, arguments); err != nil {
 			return nil, errExecutionReverted
@@ -939,7 +939,7 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 
 // Storage position enums.
 const (
-	RoundHeightLoc = iota
+	roundHeightLoc = iota
 	nodesLoc
 	offsetLoc
 	crsLoc
@@ -1096,21 +1096,21 @@ func (s *GovernanceStateHelper) appendTo2DByteArray(pos, index *big.Int, data []
 	s.writeBytes(elementLoc, data)
 }
 
-// uint256[] public RoundHeight;
+// uint256[] public roundHeight;
 func (s *GovernanceStateHelper) LenRoundHeight() *big.Int {
-	return s.getStateBigInt(big.NewInt(RoundHeightLoc))
+	return s.getStateBigInt(big.NewInt(roundHeightLoc))
 }
 func (s *GovernanceStateHelper) RoundHeight(round *big.Int) *big.Int {
-	baseLoc := s.getSlotLoc(big.NewInt(RoundHeightLoc))
+	baseLoc := s.getSlotLoc(big.NewInt(roundHeightLoc))
 	loc := new(big.Int).Add(baseLoc, round)
 	return s.getStateBigInt(loc)
 }
 func (s *GovernanceStateHelper) PushRoundHeight(height *big.Int) {
 	// increase length by 1.
-	length := s.getStateBigInt(big.NewInt(RoundHeightLoc))
-	s.setStateBigInt(big.NewInt(RoundHeightLoc), new(big.Int).Add(length, big.NewInt(1)))
+	length := s.getStateBigInt(big.NewInt(roundHeightLoc))
+	s.setStateBigInt(big.NewInt(roundHeightLoc), new(big.Int).Add(length, big.NewInt(1)))
 
-	baseLoc := s.getSlotLoc(big.NewInt(RoundHeightLoc))
+	baseLoc := s.getSlotLoc(big.NewInt(roundHeightLoc))
 	loc := new(big.Int).Add(baseLoc, length)
 
 	s.setStateBigInt(loc, height)
