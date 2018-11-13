@@ -19,7 +19,14 @@ package vm
 import (
 	"fmt"
 	"math/big"
+	"sync"
 )
+
+var stackPool = sync.Pool{
+	New: func() interface{} {
+		return &Stack{data: make([]*big.Int, 0, 1024)}
+	},
+}
 
 // Stack is an object for basic stack operations. Items popped to the stack are
 // expected to be changed and modified. stack does not take care of adding newly
@@ -29,7 +36,13 @@ type Stack struct {
 }
 
 func newstack() *Stack {
-	return &Stack{data: make([]*big.Int, 0, 1024)}
+	stack := stackPool.Get().(*Stack)
+	stack.data = stack.data[:0]
+	return stack
+}
+
+func recyclestack(stack *Stack) {
+	stackPool.Put(stack)
 }
 
 // Data returns the underlying big.Int array.

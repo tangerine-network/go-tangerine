@@ -32,12 +32,23 @@ import (
 
 var (
 	bigZero                  = new(big.Int)
+	big2                     = big.NewInt(2)
+	big256                   = big.NewInt(256)
 	tt255                    = math.BigPow(2, 255)
 	errWriteProtection       = errors.New("evm: write protection")
 	errReturnDataOutOfBounds = errors.New("evm: return data out of bounds")
 	errExecutionReverted     = errors.New("evm: execution reverted")
 	errMaxCodeSizeExceeded   = errors.New("evm: max code size exceeded")
+	power2                   = make([]*big.Int, 256)
 )
+
+func init() {
+	cur := int64(1)
+	for i := 0; i < 256; i++ {
+		power2[i] = big.NewInt(cur)
+		cur <<= 1
+	}
+}
 
 func opAdd(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
 	x, y := stack.pop(), stack.peek()
@@ -126,22 +137,15 @@ func opSmod(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory 
 
 func opExp(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
 	base, exponent := stack.pop(), stack.pop()
-	// some shortcuts
-	cmpToOne := exponent.Cmp(big1)
-	if cmpToOne < 0 { // Exponent is zero
-		// x ^ 0 == 1
-		stack.push(base.SetUint64(1))
-	} else if base.Sign() == 0 {
-		// 0 ^ y, if y != 0, == 0
-		stack.push(base.SetUint64(0))
-	} else if cmpToOne == 0 { // Exponent is one
-		// x ^ 1 == x
-		stack.push(base)
+	if base.Cmp(big2) == 0 && exponent.Cmp(big256) == -1 {
+		exp := exponent.Int64()
+		stack.push(interpreter.intPool.get().Set(power2[exp]))
 	} else {
 		stack.push(math.Exp(base, exponent))
-		interpreter.intPool.put(base)
 	}
-	interpreter.intPool.put(exponent)
+
+	interpreter.intPool.put(base, exponent)
+
 	return nil, nil
 }
 
