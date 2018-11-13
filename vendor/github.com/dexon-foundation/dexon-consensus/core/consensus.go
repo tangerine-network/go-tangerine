@@ -660,7 +660,8 @@ func (con *Consensus) initialRound(
 				// unexpected network fluctuation and ensure the robustness.
 				for (con.gov.CRS(nextRound) == common.Hash{}) {
 					con.logger.Info("CRS is not ready yet. Try again later...",
-						"nodeID", con.ID)
+						"nodeID", con.ID,
+						"round", nextRound)
 					time.Sleep(500 * time.Millisecond)
 				}
 				nextDkgSet, err := con.nodeSetCache.GetDKGSet(nextRound)
@@ -718,7 +719,6 @@ func (con *Consensus) initialRound(
 			}
 			con.initialRound(
 				startTime.Add(config.RoundInterval), nextRound, nextConfig)
-			con.round = nextRound
 		})
 }
 
@@ -908,9 +908,6 @@ func (con *Consensus) ProcessAgreementResult(
 	if !con.ccModule.blockRegistered(rand.BlockHash) {
 		return nil
 	}
-	if DiffUint64(con.round, rand.Position.Round) > 1 {
-		return nil
-	}
 	// Sanity check done.
 	if !con.cfgModule.touchTSigHash(rand.BlockHash) {
 		return nil
@@ -1005,9 +1002,8 @@ func (con *Consensus) preProcessBlock(b *types.Block) (err error) {
 
 // deliverBlock deliver a block to application layer.
 func (con *Consensus) deliverBlock(b *types.Block) {
-	// TODO(mission): clone types.FinalizationResult
 	con.logger.Debug("Calling Application.BlockDelivered", "block", b)
-	con.app.BlockDelivered(b.Hash, b.Position, b.Finalization)
+	con.app.BlockDelivered(b.Hash, b.Position, b.Finalization.Clone())
 	if b.Position.Round+roundShift == con.roundToNotify {
 		// Only the first block delivered of that round would
 		// trigger this noitification.
