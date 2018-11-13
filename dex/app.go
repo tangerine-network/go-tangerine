@@ -275,13 +275,13 @@ addressMap:
 // PrepareWitness will return the witness data no lower than consensusHeight.
 func (d *DexconApp) PrepareWitness(consensusHeight uint64) (witness coreTypes.Witness, err error) {
 	var witnessBlock *types.Block
-	lastPendingHeight := d.blockchain.GetLastPendingHeight()
+	lastPendingHeight := d.blockchain.GetPendingHeight()
 	if lastPendingHeight == 0 && consensusHeight == 0 {
 		witnessBlock = d.blockchain.CurrentBlock()
 	} else if lastPendingHeight >= consensusHeight {
-		witnessBlock = d.blockchain.GetLastPendingBlock()
+		witnessBlock = d.blockchain.GetPendingBlock()
 	} else if h := <-d.addNotify(consensusHeight); h >= consensusHeight {
-		witnessBlock = d.blockchain.GetLastPendingBlock()
+		witnessBlock = d.blockchain.GetPendingBlock()
 	} else {
 		log.Error("need pending block")
 		return witness, fmt.Errorf("need pending block")

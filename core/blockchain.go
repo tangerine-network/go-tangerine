@@ -1779,18 +1779,27 @@ func (bc *BlockChain) addPendingBlock(block *types.Block, receipts types.Receipt
 	bc.lastPendingHeight = block.NumberU64()
 }
 
-func (bc *BlockChain) GetLastPendingHeight() uint64 {
+func (bc *BlockChain) GetPendingHeight() uint64 {
 	bc.pendingBlockMu.RLock()
 	defer bc.pendingBlockMu.RUnlock()
 
 	return bc.lastPendingHeight
 }
 
-func (bc *BlockChain) GetLastPendingBlock() *types.Block {
+func (bc *BlockChain) GetPendingBlock() *types.Block {
 	bc.pendingBlockMu.RLock()
 	defer bc.pendingBlockMu.RUnlock()
 
 	return bc.pendingBlocks[bc.lastPendingHeight].block
+}
+
+func (bc *BlockChain) GetPending() (*types.Block, *state.StateDB) {
+	block := bc.GetPendingBlock()
+	s, err := state.New(block.Header().Root, bc.stateCache)
+	if err != nil {
+		panic(err)
+	}
+	return block, s
 }
 
 // reorg takes two blocks, an old chain and a new chain and will reconstruct the
