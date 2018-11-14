@@ -40,6 +40,8 @@ var key = flag.String("key", "", "private key path")
 var endpoint = flag.String("endpoint", "http://127.0.0.1:8545", "JSON RPC endpoint")
 var n = flag.Int("n", 100, "number of random accounts")
 var gambler = flag.Bool("gambler", false, "make this monkey a gambler")
+var parallel = flag.Bool("parallel", false, "monkeys will send transaction in parallel")
+var sleep = flag.Int("sleep", 500, "time in millisecond that monkeys sleep between each transaction")
 
 type Monkey struct {
 	client    *ethclient.Client
@@ -237,14 +239,21 @@ func (m *Monkey) Distribute() {
 func (m *Monkey) Crazy() {
 	fmt.Println("Performing random transfers ...")
 	nonce := uint64(0)
+	transfer := func(key *ecdsa.PrivateKey, to common.Address, nonce uint64) {
+		m.transfer(key, to, big.NewInt(1), nonce)
+	}
 	for {
 		fmt.Println("nonce", nonce)
 		for _, key := range m.keys {
 			to := crypto.PubkeyToAddress(m.keys[rand.Int()%len(m.keys)].PublicKey)
-			m.transfer(key, to, big.NewInt(1), nonce)
+			if *parallel {
+				go transfer(key, to, nonce)
+			} else {
+				transfer(key, to, nonce)
+			}
 		}
 		nonce += 1
-		time.Sleep(500 * time.Millisecond)
+		time.Sleep(time.Duration(*sleep) * time.Millisecond)
 	}
 }
 
