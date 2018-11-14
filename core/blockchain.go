@@ -2165,7 +2165,11 @@ func (bc *BlockChain) SubscribeLogsEvent(ch chan<- []*types.Log) event.Subscript
 	return bc.scope.Track(bc.logsFeed.Subscribe(ch))
 }
 
-// GetRoundHeightMap returns the mapping between round and height.
-func (bc *BlockChain) GetRoundHeightMap() sync.Map {
-	return bc.roundHeightMap
+// GetRoundHeight returns the height of a given round.
+func (bc *BlockChain) GetRoundHeight(round uint64) (uint64, bool) {
+	h, ok := bc.roundHeightMap.Load(round)
+	if !ok {
+		return 0, false
+	}
+	return h.(uint64), true
 }

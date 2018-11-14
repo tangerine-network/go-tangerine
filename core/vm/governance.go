@@ -1467,11 +1467,22 @@ func (g *GovernanceContract) penalize() {
 	g.contract.UseGas(g.contract.Gas)
 }
 
-func (g *GovernanceContract) inDKGSet(nodeID coreTypes.NodeID) bool {
+func (g *GovernanceContract) inDKGSet(round *big.Int, nodeID coreTypes.NodeID) bool {
 	target := coreTypes.NewDKGSetTarget(coreCommon.Hash(g.state.CurrentCRS()))
 	ns := coreTypes.NewNodeSet()
 
-	for _, x := range g.state.Nodes() {
+	configRound := big.NewInt(0) // If round < core.ConfigRoundShift, use 0.
+	if round.Uint64() >= core.ConfigRoundShift {
+		configRound = new(big.Int).Sub(round, big.NewInt(int64(core.ConfigRoundShift)))
+	}
+
+	statedb, err := g.evm.Context.StateAtNumber(g.state.RoundHeight(configRound).Uint64())
+	if err != nil {
+		panic(err)
+	}
+
+	state := GovernanceStateHelper{statedb}
+	for _, x := range state.Nodes() {
 		mpk, err := ecdsa.NewPublicKeyFromByteSlice(x.PublicKey)
 		if err != nil {
 			panic(err)
@@ -1515,7 +1526,7 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 	}
 
 	// DKGComplaint must belongs to someone in DKG set.
-	if !g.inDKGSet(dkgComplaint.ProposerID) {
+	if !g.inDKGSet(round, dkgComplaint.ProposerID) {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -1555,7 +1566,7 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 	}
 
 	// DKGMasterPublicKey must belongs to someone in DKG set.
-	if !g.inDKGSet(dkgMasterPK.ProposerID) {
+	if !g.inDKGSet(round, dkgMasterPK.ProposerID) {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -1588,7 +1599,7 @@ func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]
 	}
 
 	// DKGFInalize must belongs to someone in DKG set.
-	if !g.inDKGSet(dkgFinalize.ProposerID) {
+	if !g.inDKGSet(round, dkgFinalize.ProposerID) {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
@@ -1757,13 +1768,12 @@ func (g *GovernanceContract) transferOwnership(newOwner common.Address) ([]byte,
 
 func (g *GovernanceContract) snapshotRound(round, height *big.Int) ([]byte, error) {
 	// Validate if this mapping is correct.
-	rawHeight, ok := g.evm.Context.RoundHeight.Load(round)
+	realHeight, ok := g.evm.Context.GetRoundHeight(round.Uint64())
 	if !ok {
 		g.penalize()
 		return nil, errExecutionReverted
 	}
 
-	realHeight := rawHeight.(uint64)
 	if height.Cmp(new(big.Int).SetUint64(realHeight)) != 0 {
 		g.penalize()
 		return nil, errExecutionReverted

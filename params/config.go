@@ -220,7 +220,7 @@ type dexconConfigSpecMarshaling struct {
 
 // String implements the stringer interface, returning the consensus engine details.
 func (d *DexconConfig) String() string {
-	return fmt.Sprintf("{GenesisCRSText: %v Owner: %v BlockReward: %v BlockGasLimit: %v NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v",
+	return fmt.Sprintf("{GenesisCRSText: %v Owner: %v BlockReward: %v BlockGasLimit: %v NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v}",
 		d.GenesisCRSText,
 		d.Owner,
 		d.BlockReward,

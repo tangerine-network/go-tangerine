@@ -18,11 +18,11 @@ package vm
 
 import (
 	"math/big"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/params"
 )
@@ -39,6 +39,10 @@ type (
 	// GetHashFunc returns the nth block hash in the blockchain
 	// and is used by the BLOCKHASH EVM op code.
 	GetHashFunc func(uint64) common.Hash
+	// StateAtFunc returns the statedb given a root hash.
+	StateAtNumberFunc func(uint64) (*state.StateDB, error)
+	// GetRoundHeightFunc returns the round height.
+	GetRoundHeightFunc func(uint64) (uint64, bool)
 )
 
 // run runs the given contract and takes care of running precompiles with a fallback to the byte code interpreter.
@@ -81,6 +85,10 @@ type Context struct {
 	Transfer TransferFunc
 	// GetHash returns the hash corresponding to n
 	GetHash GetHashFunc
+	// StateAtNumber returns the statedb given a root hash.
+	StateAtNumber StateAtNumberFunc
+	// GetRoundHeight returns the round height.
+	GetRoundHeight GetRoundHeightFunc
 
 	// Message information
 	Origin   common.Address // Provides information for ORIGIN
@@ -93,7 +101,6 @@ type Context struct {
 	Time        *big.Int       // Provides information for TIME
 	Randomness  []byte         // Provides information for RAND
 	Difficulty  *big.Int       // Provides information for DIFFICULTY
-	RoundHeight sync.Map       // Provides information of round height mapping.
 }
 
 // EVM is the Ethereum Virtual Machine base object and provides

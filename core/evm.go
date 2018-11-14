@@ -18,11 +18,10 @@ package core
 
 import (
 	"math/big"
-	"reflect"
-	"sync"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/consensus"
+	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
 )
@@ -36,8 +35,14 @@ type ChainContext interface {
 	// GetHeader returns the hash corresponding to their hash.
 	GetHeader(common.Hash, uint64) *types.Header
 
-	// GetRoundHeightMap returns the mapping between round and height.
-	GetRoundHeightMap() sync.Map
+	// StateAt returns the statedb given a root hash.
+	StateAt(common.Hash) (*state.StateDB, error)
+
+	// GetHeaderByNumber returns the header given a block number.
+	GetHeaderByNumber(number uint64) *types.Header
+
+	// GetRoundHeight returns the mapping between round and height.
+	GetRoundHeight(uint64) (uint64, bool)
 }
 
 // NewEVMContext creates a new context for use in the EVM.
@@ -50,24 +55,29 @@ func NewEVMContext(msg Message, header *types.Header, chain ChainContext, author
 		beneficiary = *author
 	}
 
-	var roundHeight sync.Map
-	if !reflect.ValueOf(chain).IsNil() {
-		roundHeight = chain.GetRoundHeightMap()
-	}
-
 	return vm.Context{
-		CanTransfer: CanTransfer,
-		Transfer:    Transfer,
-		GetHash:     GetHashFn(header, chain),
-		Origin:      msg.From(),
-		Coinbase:    beneficiary,
-		BlockNumber: new(big.Int).Set(header.Number),
-		Time:        new(big.Int).SetUint64(header.Time),
-		Randomness:  header.Randomness,
-		Difficulty:  new(big.Int).Set(header.Difficulty),
-		RoundHeight: roundHeight,
-		GasLimit:    header.GasLimit,
-		GasPrice:    new(big.Int).Set(msg.GasPrice()),
+		CanTransfer:    CanTransfer,
+		Transfer:       Transfer,
+		GetHash:        GetHashFn(header, chain),
+		StateAtNumber:  StateAtNumberFn(chain),
+		GetRoundHeight: chain.GetRoundHeight,
+		Origin:         msg.From(),
+		Coinbase:       beneficiary,
+		BlockNumber:    new(big.Int).Set(header.Number),
+		Time:           new(big.Int).SetUint64(header.Time),
+		Randomness:     header.Randomness,
+		Difficulty:     new(big.Int).Set(header.Difficulty),
+		GasLimit:       header.GasLimit,
+		GasPrice:       new(big.Int).Set(msg.GasPrice()),
+	}
+}
+
+// StateAtNumberFn returns a StateAtNumberFunc which allows the retrieval of
+// statedb at a given block height.
+func StateAtNumberFn(chain ChainContext) func(n uint64) (*state.StateDB, error) {
+	return func(n uint64) (*state.StateDB, error) {
+		header := chain.GetHeaderByNumber(n)
+		return chain.StateAt(header.Root)
 	}
 }
 
