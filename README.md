@@ -10,16 +10,18 @@ https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/6874
 [![Go Report Card](https://goreportcard.com/badge/github.com/dexon-foundation/dexon)](https://goreportcard.com/report/github.com/dexon-foundation/dexon)
 [![Travis](https://travis-ci.org/dexon-foundation/dexon.svg?branch=master)](https://travis-ci.org/dexon-foundation/dexon)
 
+<!--
 Automated builds are available for stable releases and the unstable master branch.
 Binary archives are published at https://gdex.ethereum.org/downloads/.
+-->
 
 ## Building the source
 
 For prerequisites and detailed build instructions please read the
-[Installation Instructions](https://github.com/dexon-foundation/dexon/wiki/Building-Ethereum)
+[Installation Instructions](https://github.com/dexon-foundation/wiki/wiki/Building-DEXON)
 on the wiki.
 
-Building gdex requires both a Go (version 1.9 or later) and a C compiler.
+Building gdex requires both a Go (version 1.10 or later) and a C compiler.
 You can install them using your favourite package manager.
 Once the dependencies are installed, run
 
@@ -35,25 +37,26 @@ The dexon project comes with several wrappers/executables found in the `cmd` dir
 
 | Command    | Description |
 |:----------:|-------------|
-| **`gdex`** | Our main Ethereum CLI client. It is the entry point into the Ethereum network (main-, test- or private net), capable of running as a full node (default), archive node (retaining all historical state) or a light node (retrieving data live). It can be used by other processes as a gateway into the Ethereum network via JSON RPC endpoints exposed on top of HTTP, WebSocket and/or IPC transports. `gdex --help` and the [CLI Wiki page](https://github.com/dexon-foundation/dexon/wiki/Command-Line-Options) for command line options. |
-| `abigen` | Source code generator to convert Ethereum contract definitions into easy to use, compile-time type-safe Go packages. It operates on plain [Ethereum contract ABIs](https://github.com/ethereum/wiki/wiki/Ethereum-Contract-ABI) with expanded functionality if the contract bytecode is also available. However it also accepts Solidity source files, making development much more streamlined. Please see our [Native DApps](https://github.com/dexon-foundation/dexon/wiki/Native-DApps:-Go-bindings-to-Ethereum-contracts) wiki page for details. |
+| **`gdex`** | Our main Ethereum CLI client. It is the entry point into the Ethereum network (main-, test- or private net), capable of running as a full node (default), archive node (retaining all historical state) or a light node (retrieving data live). It can be used by other processes as a gateway into the Ethereum network via JSON RPC endpoints exposed on top of HTTP, WebSocket and/or IPC transports. `gdex --help`<!-- and the [CLI Wiki page](https://github.com/dexon-foundation/dexon/wiki/Command-Line-Options) for command line options -->. |
+| `abigen` | Source code generator to convert Ethereum contract definitions into easy to use, compile-time type-safe Go packages. It operates on plain [Contract ABIs](https://solidity.readthedocs.io/en/develop/abi-spec.html) with expanded functionality if the contract bytecode is also available. However it also accepts Solidity source files, making development much more streamlined. Please see our [Native DApps](https://github.com/dexon-foundation/wiki/wiki/Dapp-Development) wiki page for details. |
 | `bootnode` | Stripped down version of our Ethereum client implementation that only takes part in the network node discovery protocol, but does not run any of the higher level application protocols. It can be used as a lightweight bootstrap node to aid in finding peers in private networks. |
 | `evm` | Developer utility version of the EVM (Ethereum Virtual Machine) that is capable of running bytecode snippets within a configurable environment and execution mode. Its purpose is to allow isolated, fine-grained debugging of EVM opcodes (e.g. `evm --code 60ff60ff --debug`). |
-| `gethrpctest` | Developer utility tool to support our [ethereum/rpc-test](https://github.com/ethereum/rpc-tests) test suite which validates baseline conformity to the [Ethereum JSON RPC](https://github.com/ethereum/wiki/wiki/JSON-RPC) specs. Please see the [test suite's readme](https://github.com/ethereum/rpc-tests/blob/master/README.md) for details. |
-| `rlpdump` | Developer utility tool to convert binary RLP ([Recursive Length Prefix](https://github.com/ethereum/wiki/wiki/RLP)) dumps (data encoding used by the Ethereum protocol both network as well as consensus wise) to user friendlier hierarchical representation (e.g. `rlpdump --hex CE0183FFFFFFC4C304050583616263`). |
+| `rlpdump` | Developer utility tool to convert binary RLP <!-- ([Recursive Length Prefix](https://github.com/ethereum/wiki/wiki/RLP)) --> dumps (data encoding used by the DEXON protocol both network as well as consensus wise) to user friendlier hierarchical representation (e.g. `rlpdump --hex CE0183FFFFFFC4C304050583616263`). |
 | `swarm`    | Swarm daemon and tools. This is the entrypoint for the Swarm network. `swarm --help` for command line options and subcommands. See [Swarm README](https://github.com/dexon-foundation/dexon/tree/master/swarm) for more information. |
 | `puppeth`    | a CLI wizard that aids in creating a new Ethereum network. |
+<!-- | `gethrpctest` | Developer utility tool to support our [ethereum/rpc-test](https://github.com/ethereum/rpc-tests) test suite which validates baseline conformity to the [Ethereum JSON RPC](https://github.com/ethereum/wiki/wiki/JSON-RPC) specs. Please see the [test suite's readme](https://github.com/ethereum/rpc-tests/blob/master/README.md) for details. | -->
 
 ## Running gdex
 
-Going through all the possible command line flags is out of scope here (please consult our
-[CLI Wiki page](https://github.com/dexon-foundation/dexon/wiki/Command-Line-Options)), but we've
+Going through all the possible command line flags is out of scope here <!-- (please consult our
+[CLI Wiki page](https://github.com/dexon-foundation/dexon/wiki/Command-Line-Options)) -->, but we've
 enumerated a few common parameter combos to get you up to speed quickly on how you can run your
-own Geth instance.
+own Gdex instance.
 
-### Full node on the main Ethereum network
+<!--
+### Full node on the main DEXON network
 
-By far the most common scenario is people wanting to simply interact with the Ethereum network:
+By far the most common scenario is people wanting to simply interact with the DRXON network:
 create accounts; transfer funds; deploy and interact with contracts. For this particular use-case
 the user doesn't care about years-old historical data, so we can fast-sync quickly to the current
 state of the network. To do so:
@@ -67,18 +70,19 @@ This command will:
  * Start gdex in fast sync mode (default, can be changed with the `--syncmode` flag), causing it to
    download more data in exchange for avoiding processing the entire history of the Ethereum network,
    which is very CPU intensive.
- * Start up Geth's built-in interactive [JavaScript console](https://github.com/dexon-foundation/dexon/wiki/JavaScript-Console),
-   (via the trailing `console` subcommand) through which you can invoke all official [`web3` methods](https://github.com/ethereum/wiki/wiki/JavaScript-API)
-   as well as Geth's own [management APIs](https://github.com/dexon-foundation/dexon/wiki/Management-APIs).
+ * Start up Geth's built-in interactive JavaScript console [JavaScript console](https://github.com/dexon-foundation/wiki/wiki/JavaScript-Console),
+   (via the trailing `console` subcommand) through which you can invoke all official [`web3` methods](https://github.com/dexon-foundation/wiki/wiki/JavaScript-API)
+   as well as Gdex's own [management APIs](https://github.com/dexon-foundation/wiki/wiki/Management-APIs)
    This tool is optional and if you leave it out you can always attach to an already running Geth instance
    with `gdex attach`.
+-->
 
-### Full node on the Ethereum test network
+### Full node on the DEXON test network
 
-Transitioning towards developers, if you'd like to play around with creating Ethereum contracts, you
+Transitioning towards developers, if you'd like to play around with creating DEXON contracts, you
 almost certainly would like to do that without any real money involved until you get the hang of the
 entire system. In other words, instead of attaching to the main network, you want to join the **test**
-network with your node, which is fully equivalent to the main network, but with play-Ether only.
+network with your node, which is fully equivalent to the main network, but with play-DEX only.
 
 ```
 $ gdex --testnet console
@@ -87,28 +91,20 @@ $ gdex --testnet console
 The `console` subcommand have the exact same meaning as above and they are equally useful on the
 testnet too. Please see above for their explanations if you've skipped to here.
 
-Specifying the `--testnet` flag however will reconfigure your Geth instance a bit:
+Specifying the `--testnet` flag however will reconfigure your Gdex instance a bit:
 
- * Instead of using the default data directory (`~/.ethereum` on Linux for example), Geth will nest
-   itself one level deeper into a `testnet` subfolder (`~/.ethereum/testnet` on Linux). Note, on OSX
+ * Instead of using the default data directory (`~/.dexon` on Linux for example), Gdex will nest
+   itself one level deeper into a `testnet` subfolder (`~/.dexon/testnet` on Linux). Note, on OSX
    and Linux this also means that attaching to a running testnet node requires the use of a custom
    endpoint since `gdex attach` will try to attach to a production node endpoint by default. E.g.
    `gdex attach <datadir>/testnet/gdex.ipc`. Windows users are not affected by this.
- * Instead of connecting the main Ethereum network, the client will connect to the test network,
+ * Instead of connecting the main DEXON network, the client will connect to the test network,
    which uses different P2P bootnodes, different network IDs and genesis states.
    
 *Note: Although there are some internal protective measures to prevent transactions from crossing
 over between the main network and test network, you should make sure to always use separate accounts
-for play-money and real-money. Unless you manually move accounts, Geth will by default correctly
+for play-money and real-money. Unless you manually move accounts, Gdex will by default correctly
 separate the two networks and will not make any accounts available between them.*
-
-### Full node on the Rinkeby test network
-
-The above test network is a cross client one based on the ethash proof-of-work consensus algorithm. As such, it has certain extra overhead and is more susceptible to reorganization attacks due to the network's low difficulty / security. Go Ethereum also supports connecting to a proof-of-authority based test network called [*Rinkeby*](https://www.rinkeby.io) (operated by members of the community). This network is lighter, more secure, but is only supported by dexon.
-
-```
-$ gdex --rinkeby console
-```
 
 ### Configuration
 
@@ -126,29 +122,31 @@ $ gdex --your-favourite-flags dumpconfig
 
 *Note: This works only with gdex v1.6.0 and above.*
 
+<!--
 #### Docker quick start
 
-One of the quickest ways to get Ethereum up and running on your machine is by using Docker:
+One of the quickest ways to get DEXON up and running on your machine is by using Docker:
 
 ```
-docker run -d --name ethereum-node -v /Users/alice/ethereum:/root \
+docker run -d --name dexon-node -v /Users/bob/ethereum:/root \
            -p 8545:8545 -p 30303:30303 \
-           ethereum/client-go
+           dexonfoundation/client-go
 ```
 
 This will start gdex in fast-sync mode with a DB memory allowance of 1GB just as the above command does.  It will also create a persistent volume in your home directory for saving your blockchain as well as map the default ports. There is also an `alpine` tag available for a slim version of the image.
 
 Do not forget `--rpcaddr 0.0.0.0`, if you want to access RPC from other containers and/or hosts. By default, `gdex` binds to the local interface and RPC endpoints is not accessible from the outside.
+-->
 
-### Programatically interfacing Geth nodes
+### Programatically interfacing Gdex nodes
 
-As a developer, sooner rather than later you'll want to start interacting with Geth and the Ethereum
-network via your own programs and not manually through the console. To aid this, Geth has built-in
-support for a JSON-RPC based APIs ([standard APIs](https://github.com/ethereum/wiki/wiki/JSON-RPC) and
-[Geth specific APIs](https://github.com/dexon-foundation/dexon/wiki/Management-APIs)). These can be
+As a developer, sooner rather than later you'll want to start interacting with Gdex and the DEXON
+network via your own programs and not manually through the console. To aid this, Gdex has built-in
+support for a JSON-RPC based APIs which are ethereum-compatible ([standard APIs](https://github.com/ethereum/wiki/wiki/JSON-RPC) and
+[Gdex specific APIs](https://github.com/ethereum/go-ethereum/wiki/Management-APIs)). These can be
 exposed via HTTP, WebSockets and IPC (unix sockets on unix based platforms, and named pipes on Windows).
 
-The IPC interface is enabled by default and exposes all the APIs supported by Geth, whereas the HTTP
+The IPC interface is enabled by default and exposes all the APIs supported by Gdex, whereas the HTTP
 and WS interfaces need to manually be enabled and only expose a subset of APIs due to security reasons.
 These can be turned on/off and configured as you'd expect.
 
@@ -258,26 +256,6 @@ $ gdex --datadir=path/to/custom/data/folder --bootnodes=<bootnode-enode-url-from
 *Note: Since your network will be completely cut off from the main and test networks, you'll also
 need to configure a miner to process transactions and create new blocks for you.*
 
-#### Running a private miner
-
-Mining on the public Ethereum network is a complex task as it's only feasible using GPUs, requiring
-an OpenCL or CUDA enabled `ethminer` instance. For information on such a setup, please consult the
-[EtherMining subreddit](https://www.reddit.com/r/EtherMining/) and the [Genoil miner](https://github.com/Genoil/cpp-ethereum)
-repository.
-
-In a private network setting however, a single CPU miner instance is more than enough for practical
-purposes as it can produce a stable stream of blocks at the correct intervals without needing heavy
-resources (consider running on a single thread, no need for multiple ones either). To start a Geth
-instance for mining, run it with all your usual flags, extended by:
-
-```
-$ gdex <usual-flags> --mine --minerthreads=1 --etherbase=0x0000000000000000000000000000000000000000
-```
-
-Which will start mining blocks and transactions on a single CPU thread, crediting all proceedings to
-the account specified by `--etherbase`. You can further tune the mining by changing the default gas
-limit blocks converge to (`--targetgaslimit`) and the price transactions are accepted at (`--gasprice`).
-
 ## Contribution
 
 Thank you for considering to help out with the source code! We welcome contributions from
@@ -285,7 +263,7 @@ anyone on the internet, and are grateful for even the smallest of fixes!
 
 If you'd like to contribute to dexon, please fork, fix, commit and send a pull request
 for the maintainers to review and merge into the main code base. If you wish to submit more
-complex changes though, please check up with the core devs first on [our gitter channel](https://gitter.im/ethereum/dexon)
+complex changes though, please check up with the core devs first <!-- on [our gitter channel](https://gitter.im/ethereum/dexon) -->
 to ensure those changes are in line with the general philosophy of the project and/or get some
 early feedback which can make both your efforts much lighter as well as our review and merge
 procedures quick and simple.
@@ -294,7 +272,7 @@ Please make sure your contributions adhere to our coding guidelines:
 
  * Code must adhere to the official Go [formatting](https://golang.org/doc/effective_go.html#formatting) guidelines (i.e. uses [gofmt](https://golang.org/cmd/gofmt/)).
  * Code must be documented adhering to the official Go [commentary](https://golang.org/doc/effective_go.html#commentary) guidelines.
- * Pull requests need to be based on and opened against the `master` branch.
+ * Pull requests need to be based on and opened against the `dev` branch.
  * Commit messages should be prefixed with the package(s) they modify.
    * E.g. "eth, rpc: make trace configs optional"
 
