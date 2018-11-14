@@ -362,7 +362,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 		return coreTypes.VerifyInvalidBlock
 	}
 
-	_, err := transactions.TouchSenders(types.MakeSigner(d.blockchain.Config(), new(big.Int)))
+	_, err = transactions.TouchSenders(types.MakeSigner(d.blockchain.Config(), new(big.Int)))
 	if err != nil {
 		log.Error("Failed to calculate sender", "error", err)
 		return coreTypes.VerifyInvalidBlock

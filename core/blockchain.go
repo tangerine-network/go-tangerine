@@ -347,7 +347,7 @@ func (bc *BlockChain) AddConfirmedBlock(block *coreTypes.Block) error {
 	if err != nil {
 		return err
 	}
-	_, err := transactions.TouchSenders(types.MakeSigner(bc.Config(), new(big.Int)))
+	_, err = transactions.TouchSenders(types.MakeSigner(bc.Config(), new(big.Int)))
 	if err != nil {
 		return err
 	}
