@@ -79,40 +79,6 @@ func NewDexconApp(txPool *core.TxPool, blockchain *core.BlockChain, gov *DexconG
 	}
 }
 
-func (d *DexconApp) addNotify(height uint64) <-chan uint64 {
-	d.notifyMu.Lock()
-	defer d.notifyMu.Unlock()
-
-	result := make(chan uint64)
-	v, ok := d.notifyChan.Load(height)
-	if ok {
-		n := v.(*notify)
-		n.results = append(n.results, result)
-	} else {
-		n := &notify{results: []chan uint64{result}}
-		d.notifyChan.Store(height, n)
-	}
-	return result
-}
-
-func (d *DexconApp) notify(height uint64) {
-	d.notifyMu.Lock()
-	defer d.notifyMu.Unlock()
-
-	d.notifyChan.Range(func(key, value interface{}) bool {
-		h := key.(uint64)
-		n := value.(*notify)
-
-		if height >= h {
-			for _, ch := range n.results {
-				ch <- height
-			}
-			d.notifyChan.Delete(key)
-		}
-		return true
-	})
-}
-
 func (d *DexconApp) addrBelongsToChain(address common.Address, chainSize, chainID *big.Int) bool {
 	return new(big.Int).Mod(address.Big(), chainSize).Cmp(chainID) == 0
 }
@@ -280,11 +246,10 @@ func (d *DexconApp) PrepareWitness(consensusHeight uint64) (witness coreTypes.Wi
 		witnessBlock = d.blockchain.CurrentBlock()
 	} else if lastPendingHeight >= consensusHeight {
 		witnessBlock = d.blockchain.GetPendingBlock()
-	} else if h := <-d.addNotify(consensusHeight); h >= consensusHeight {
-		witnessBlock = d.blockchain.GetPendingBlock()
 	} else {
-		log.Error("need pending block")
-		return witness, fmt.Errorf("need pending block")
+		log.Error("last pending height too low", "lastPendingHeight", lastPendingHeight,
+			"consensusHeight", consensusHeight)
+		return witness, fmt.Errorf("last pending height < consensus height")
 	}
 
 	witnessData, err := rlp.EncodeToBytes(&witnessData{
@@ -489,7 +454,6 @@ func (d *DexconApp) BlockDelivered(
 
 	log.Info("Insert pending block success", "height", result.Height)
 	d.blockchain.RemoveConfirmedBlock(chainID, blockHash)
-	d.notify(result.Height)
 }
 
 // BlockConfirmed is called when a block is confirmed and added to lattice.
