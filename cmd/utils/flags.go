@@ -1176,6 +1176,10 @@ func SetDexConfig(ctx *cli.Context, stack *node.Node, cfg *dex.Config) {
 	if ctx.GlobalIsSet(NetworkIdFlag.Name) {
 		cfg.NetworkId = ctx.GlobalUint64(NetworkIdFlag.Name)
 	}
+	if ctx.GlobalIsSet(BlockProposerEnabledFlag.Name) {
+		cfg.BlockProposerEnabled = ctx.GlobalBool(BlockProposerEnabledFlag.Name)
+	}
+
 	if ctx.GlobalIsSet(CacheFlag.Name) || ctx.GlobalIsSet(CacheDatabaseFlag.Name) {
 		cfg.DatabaseCache = ctx.GlobalInt(CacheFlag.Name) * ctx.GlobalInt(CacheDatabaseFlag.Name) / 100
 	}

@@ -64,6 +64,7 @@ func (n *BlockNonce) UnmarshalText(input []byte) error {
 	return hexutil.UnmarshalFixedText("BlockNonce", input, n[:])
 }
 
+// WitnessData represents the witness data.
 type WitnessData struct {
 	Root        common.Hash
 	TxHash      common.Hash

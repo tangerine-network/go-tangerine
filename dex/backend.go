@@ -134,8 +134,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 		}
 		cacheConfig = &core.CacheConfig{Disabled: config.NoPruning, TrieCleanLimit: config.TrieCleanCache, TrieDirtyLimit: config.TrieDirtyCache, TrieTimeLimit: config.TrieTimeout}
 	)
-	dex.blockchain, err = core.NewBlockChainWithDexonValidator(chainDb, cacheConfig,
-		dex.chainConfig, dex.engine, vmConfig, nil)
+	dex.blockchain, err = core.NewBlockChain(chainDb, cacheConfig, dex.chainConfig, dex.engine, vmConfig, nil)
 
 	// Rewind the chain in case of an incompatible config upgrade.
 	if compat, ok := genesisErr.(*params.ConfigCompatError); ok {
@@ -148,7 +147,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	if config.TxPool.Journal != "" {
 		config.TxPool.Journal = ctx.ResolvePath(config.TxPool.Journal)
 	}
-	dex.txPool = core.NewTxPool(config.TxPool, dex.chainConfig, dex.blockchain)
+	dex.txPool = core.NewTxPool(config.TxPool, dex.chainConfig, dex.blockchain, config.BlockProposerEnabled)
 
 	dex.APIBackend = &DexAPIBackend{dex, nil}
 	gpoParams := config.GPO
@@ -166,7 +165,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 
 	pm, err := NewProtocolManager(dex.chainConfig, config.SyncMode,
 		config.NetworkId, dex.eventMux, dex.txPool, dex.engine, dex.blockchain,
-		chainDb, dex.governance)
+		chainDb, config.BlockProposerEnabled, dex.governance)
 	if err != nil {
 		return nil, err
 	}

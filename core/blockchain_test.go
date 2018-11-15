@@ -1280,9 +1280,6 @@ func TestEIP155Transition(t *testing.T) {
 		}
 	)
 
-	dexConf := new(params.DexconConfig)
-	dexConf.BlockReward = new(big.Int)
-	gspec.Config.Dexcon = dexConf
 	genesis := gspec.MustCommit(db)
 
 	blockchain, _ := NewBlockChain(db, nil, gspec.Config, ethash.NewFaker(), vm.Config{}, nil)

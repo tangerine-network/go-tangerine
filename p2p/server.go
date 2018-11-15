@@ -33,13 +33,13 @@ import (
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/event"
 	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/p2p/discover"
 	"github.com/dexon-foundation/dexon/p2p/discv5"
 	"github.com/dexon-foundation/dexon/p2p/enode"
 	"github.com/dexon-foundation/dexon/p2p/enr"
 	"github.com/dexon-foundation/dexon/p2p/nat"
 	"github.com/dexon-foundation/dexon/p2p/netutil"
 	"github.com/dexon-foundation/dexon/rlp"
-	"github.com/ethereum/go-ethereum/p2p/discover"
 )
 
 const (

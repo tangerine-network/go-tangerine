@@ -46,10 +46,11 @@ var DefaultConfig = Config{
 		Blocks:     20,
 		Percentile: 60,
 	},
-	DefaultGasPrice:   big.NewInt(params.GWei),
-	GasFloor:          8000000,
-	GasCeil:           8000000,
-	GasLimitTolerance: 1000000,
+	BlockProposerEnabled: false,
+	DefaultGasPrice:      big.NewInt(params.GWei),
+	GasFloor:             8000000,
+	GasCeil:              8000000,
+	GasLimitTolerance:    1000000,
 }
 
 func init() {
@@ -105,6 +106,9 @@ type Config struct {
 
 	// Gas Price Oracle options
 	GPO gasprice.Config
+
+	// BlockProposer options
+	BlockProposerEnabled bool
 
 	// Enables tracking of SHA3 preimages in the VM
 	EnablePreimageRecording bool

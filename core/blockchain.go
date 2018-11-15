@@ -237,79 +237,6 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	return bc, nil
 }
 
-func NewBlockChainWithDexonValidator(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *params.ChainConfig, engine consensus.Engine, vmConfig vm.Config, shouldPreserve func(block *types.Block) bool) (*BlockChain, error) {
-	if cacheConfig == nil {
-		cacheConfig = &CacheConfig{
-			TrieNodeLimit: 256 * 1024 * 1024,
-			TrieTimeLimit: 5 * time.Minute,
-		}
-	}
-	bodyCache, _ := lru.New(bodyCacheLimit)
-	bodyRLPCache, _ := lru.New(bodyCacheLimit)
-	receiptsCache, _ := lru.New(receiptsCacheLimit)
-	blockCache, _ := lru.New(blockCacheLimit)
-	futureBlocks, _ := lru.New(maxFutureBlocks)
-	badBlocks, _ := lru.New(badBlockLimit)
-
-	bc := &BlockChain{
-		chainConfig:   chainConfig,
-		cacheConfig:   cacheConfig,
-		db:            db,
-		triegc:        prque.New(nil),
-		stateCache:    state.NewDatabase(db),
-		quit:          make(chan struct{}),
-		bodyCache:     bodyCache,
-		bodyRLPCache:  bodyRLPCache,
-		receiptsCache: receiptsCache,
-		blockCache:    blockCache,
-		futureBlocks:  futureBlocks,
-		engine:        engine,
-		vmConfig:      vmConfig,
-		badBlocks:     badBlocks,
-		pendingBlocks: make(map[uint64]struct {
-			block    *types.Block
-			receipts types.Receipts
-		}),
-		confirmedBlocks: make(map[uint32]map[coreCommon.Hash]*blockInfo),
-		addressNonce:    make(map[uint32]map[common.Address]uint64),
-		addressCost:     make(map[uint32]map[common.Address]*big.Int),
-		addressCounter:  make(map[uint32]map[common.Address]uint64),
-		chainLastHeight: make(map[uint32]uint64),
-	}
-	bc.SetValidator(NewDexonBlockValidator(chainConfig, bc, engine))
-	bc.SetProcessor(NewStateProcessor(chainConfig, bc, engine))
-
-	var err error
-	bc.hc, err = NewHeaderChain(db, chainConfig, engine, bc.getProcInterrupt)
-	if err != nil {
-		return nil, err
-	}
-	bc.genesisBlock = bc.GetBlockByNumber(0)
-	if bc.genesisBlock == nil {
-		return nil, ErrNoGenesis
-	}
-	if err := bc.loadLastState(); err != nil {
-		return nil, err
-	}
-	// Check the current state of the block hashes and make sure that we do not have any of the bad blocks in our chain
-	for hash := range BadHashes {
-		if header := bc.GetHeaderByHash(hash); header != nil {
-			// get the canonical block corresponding to the offending header's number
-			headerByNumber := bc.GetHeaderByNumber(header.Number.Uint64())
-			// make sure the headerByNumber (if present) is in our current canonical chain
-			if headerByNumber != nil && headerByNumber.Hash() == header.Hash() {
-				log.Error("Found bad hash, rewinding chain", "number", header.Number, "hash", header.ParentHash)
-				bc.SetHead(header.Number.Uint64() - 1)
-				log.Error("Chain rewind was successful, resuming normal operation")
-			}
-		}
-	}
-
-	// Take ownership of this particular state
-	go bc.update()
-	return bc, nil
-}
-
 func (bc *BlockChain) getProcInterrupt() bool {
 	return atomic.LoadInt32(&bc.procInterrupt) == 1
 }
@@ -1600,7 +1527,15 @@ func (bc *BlockChain) ProcessPendingBlock(block *types.Block, witness *coreTypes
 	return n, err
 }
 
-func (bc *BlockChain) processPendingBlock(block *types.Block, witness *coreTypes.Witness) (*common.Hash, []interface{}, []*types.Log, error) {
+func (bc *BlockChain) processPendingBlock(
+	block *types.Block, witness *coreTypes.Witness) (*common.Hash, []interface{}, []*types.Log, error) {
+	// Pre-checks passed, start the full block imports
+	bc.wg.Add(1)
+	defer bc.wg.Done()
+
+	bc.chainmu.Lock()
+	defer bc.chainmu.Unlock()
+
 	// A queued approach to delivering events. This is generally
 	// faster than direct delivery and requires much less mutex
 	// acquiring.
@@ -1611,12 +1546,6 @@ func (bc *BlockChain) processPendingBlock(block *types.Block, witness *coreTypes
 		coalescedLogs []*types.Log
 	)
 
-	var witnessData types.WitnessData
-	if err := rlp.Decode(bytes.NewReader(witness.Data), &witnessData); err != nil {
-		log.Error("Witness rlp decode failed", "error", err)
-		panic(err)
-	}
-
 	// Start a parallel signature recovery (signer will fluke on fork transition, minimal perf loss)
 	senderCacher.recoverFromBlocks(types.MakeSigner(bc.chainConfig, block.Number()), []*types.Block{block})
 
@@ -1626,18 +1555,17 @@ func (bc *BlockChain) processPendingBlock(block *types.Block, witness *coreTypes
 	}
 	bstart := time.Now()
 
-	currentBlock := bc.CurrentBlock()
-	if witness.Height > currentBlock.NumberU64() && witness.Height != 0 {
-		if bc.pendingBlocks[witness.Height].block.Root() != witnessData.Root {
-			return nil, nil, nil, fmt.Errorf("invalid witness root %s vs %s",
-				bc.pendingBlocks[witness.Height].block.Root().String(), witnessData.Root.String())
-		}
-
-		if bc.pendingBlocks[witness.Height].block.ReceiptHash() != witnessData.ReceiptHash {
-			return nil, nil, nil, fmt.Errorf("invalid witness receipt hash %s vs %s",
-				bc.pendingBlocks[witness.Height].block.ReceiptHash().String(), witnessData.ReceiptHash.String())
-		}
+	var witnessData types.WitnessData
+	if err := rlp.Decode(bytes.NewReader(witness.Data), &witnessData); err != nil {
+		log.Error("Witness rlp decode failed", "error", err)
+		panic(err)
 	}
+
+	if err := bc.Validator().ValidateWitnessData(witness.Height, witnessData); err != nil {
+		return nil, nil, nil, fmt.Errorf("valiadte witness data error: %v", err)
+	}
+
+	currentBlock := bc.CurrentBlock()
 
 	var parentBlock *types.Block
 	var pendingState *state.StateDB
@@ -1680,12 +1608,6 @@ func (bc *BlockChain) processPendingBlock(block *types.Block, witness *coreTypes
 		return nil, nil, nil, fmt.Errorf("finalize error: %v", err)
 	}
 
-	// Validate the state using the default validator
-	err = bc.Validator().ValidateState(block, nil, pendingState, receipts, *usedGas)
-	if err != nil {
-		bc.reportBlock(block, receipts, err)
-		return nil, nil, nil, fmt.Errorf("valiadte state error: %v", err)
-	}
 	proctime := time.Since(bstart)
 
 	// commit state to refresh stateCache
@@ -1788,6 +1710,13 @@ func (bc *BlockChain) GetPendingBlock() *types.Block {
 	defer bc.pendingBlockMu.RUnlock()
 
 	return bc.pendingBlocks[bc.lastPendingHeight].block
+}
+
+func (bc *BlockChain) GetPendingBlockByNumber(number uint64) *types.Block {
+	bc.pendingBlockMu.RLock()
+	defer bc.pendingBlockMu.RUnlock()
+
+	return bc.pendingBlocks[number].block
 }
 
 func (bc *BlockChain) GetPending() (*types.Block, *state.StateDB) {

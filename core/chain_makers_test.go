@@ -148,6 +148,7 @@ func ExampleGenerateChainWithRoundChange() {
 			},
 			addr1: {
 				Balance: big.NewInt(1000000),
+				Staked:  big.NewInt(0),
 			},
 		},
 	}

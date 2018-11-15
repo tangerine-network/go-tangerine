@@ -101,37 +101,20 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 	return nil
 }
 
-// BlockValidator implements Validator.
-type DexonBlockValidator struct {
-	config *params.ChainConfig // Chain configuration options
-	bc     *BlockChain         // Canonical block chain
-	engine consensus.Engine    // Consensus engine used for validating
-}
+func (v *BlockValidator) ValidateWitnessData(height uint64, data types.WitnessData) error {
+	currentBlock := v.bc.CurrentBlock()
+	if height > currentBlock.NumberU64() && height != 0 {
+		pendingBlock := v.bc.GetPendingBlockByNumber(height)
 
-// NewDexonBlockValidator returns a new block validator which is safe for re-use
-func NewDexonBlockValidator(config *params.ChainConfig, blockchain *BlockChain, engine consensus.Engine) *DexonBlockValidator {
-	validator := &DexonBlockValidator{
-		config: config,
-		engine: engine,
-		bc:     blockchain,
+		if pendingBlock.Root() != data.Root {
+			return fmt.Errorf("invalid witness root %s vs %s",
+				pendingBlock.Root().String(), data.Root.String())
+		}
+		if pendingBlock.ReceiptHash() != data.ReceiptHash {
+			return fmt.Errorf("invalid witness receipt hash %s vs %s",
+				pendingBlock.ReceiptHash().String(), data.ReceiptHash.String())
+		}
 	}
-	return validator
-}
-
-// ValidateBody validates the given block's uncles and verifies the block
-// header's transaction and uncle roots. The headers are assumed to be already
-// validated at this point.
-func (v *DexonBlockValidator) ValidateBody(block *types.Block) error {
-	// TODO(Bojie): implement it
-	return nil
-}
-
-// ValidateState validates the various changes that happen after a state
-// transition, such as amount of used gas, the receipt roots and the state root
-// itself. ValidateState returns a database batch if the validation was a success
-// otherwise nil and an error is returned.
-func (v *DexonBlockValidator) ValidateState(block, parent *types.Block, statedb *state.StateDB, receipts types.Receipts, usedGas uint64) error {
-	// TODO(Bojie): implement it
 	return nil
 }
 
