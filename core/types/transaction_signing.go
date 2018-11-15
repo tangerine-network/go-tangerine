@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"sync"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/crypto"
@@ -30,6 +31,27 @@ import (
 var (
 	ErrInvalidChainId = errors.New("invalid chain id for signer")
 )
+
+var (
+	txCache = &sync.Map{}
+)
+
+func DeleteTxCacheByHash(hash common.Hash) {
+	txCache.Delete(hash)
+}
+
+func StoreTxCache(key common.Hash, value common.Address) {
+	txCache.Store(key, value)
+}
+
+func LoadTxCache(key common.Hash) (common.Address, bool) {
+	addr, ok := txCache.Load(key)
+	if !ok {
+		return common.Address{}, ok
+	}
+
+	return addr.(common.Address), ok
+}
 
 // sigCache is used to cache the derived sender and contains
 // the signer used to derive it.
@@ -125,6 +147,11 @@ func (s EIP155Signer) Equal(s2 Signer) bool {
 var big8 = big.NewInt(8)
 
 func (s EIP155Signer) Sender(tx *Transaction) (common.Address, error) {
+	addr, ok := LoadTxCache(tx.Hash())
+	if ok {
+		return addr, nil
+	}
+
 	if !tx.Protected() {
 		return HomesteadSigner{}.Sender(tx)
 	}
@@ -133,7 +160,14 @@ func (s EIP155Signer) Sender(tx *Transaction) (common.Address, error) {
 	}
 	V := new(big.Int).Sub(tx.data.V, s.chainIdMul)
 	V.Sub(V, big8)
-	return recoverPlain(s.Hash(tx), tx.data.R, tx.data.S, V, true)
+
+	addr, err := recoverPlain(s.Hash(tx), tx.data.R, tx.data.S, V, true)
+	if err != nil {
+		return common.Address{}, err
+	}
+
+	StoreTxCache(tx.Hash(), addr)
+	return addr, nil
 }
 
 // SignatureValues returns signature values. This signature

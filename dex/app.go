@@ -458,16 +458,9 @@ func (d *DexconApp) BlockDelivered(
 	d.chainLock(chainID)
 	defer d.chainUnlock(chainID)
 
-	block := d.blockchain.GetConfirmedBlockByHash(chainID, blockHash)
+	block, txs := d.blockchain.GetConfirmedBlockByHash(chainID, blockHash)
 	if block == nil {
 		panic("Can not get confirmed block")
-	}
-
-	var transactions types.Transactions
-	err := rlp.DecodeBytes(block.Payload, &transactions)
-	if err != nil {
-		log.Error("Payload rlp decode failed", "error", err)
-		panic(err)
 	}
 
 	block.Payload = nil
@@ -485,7 +478,7 @@ func (d *DexconApp) BlockDelivered(
 		Round:      block.Position.Round,
 		DexconMeta: dexconMeta,
 		Randomness: result.Randomness,
-	}, transactions, nil, nil)
+	}, txs, nil, nil)
 
 	root, err := d.blockchain.ProcessPendingBlock(newBlock, &block.Witness)
 	if err != nil {

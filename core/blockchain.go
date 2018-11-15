@@ -249,6 +249,7 @@ func (bc *BlockChain) GetVMConfig() *vm.Config {
 type blockInfo struct {
 	addresses map[common.Address]struct{}
 	block     *coreTypes.Block
+	txs       types.Transactions
 }
 
 func (bc *BlockChain) AddConfirmedBlock(block *coreTypes.Block) error {
@@ -298,6 +299,7 @@ func (bc *BlockChain) AddConfirmedBlock(block *coreTypes.Block) error {
 	bc.confirmedBlocks[chainID][block.Hash] = &blockInfo{
 		addresses: addressMap,
 		block:     block,
+		txs:       transactions,
 	}
 	bc.chainLastHeight[chainID] = block.Position.Height
 	return nil
@@ -317,8 +319,8 @@ func (bc *BlockChain) RemoveConfirmedBlock(chainID uint32, hash coreCommon.Hash)
 	delete(bc.confirmedBlocks[chainID], hash)
 }
 
-func (bc *BlockChain) GetConfirmedBlockByHash(chainID uint32, hash coreCommon.Hash) *coreTypes.Block {
-	return bc.confirmedBlocks[chainID][hash].block
+func (bc *BlockChain) GetConfirmedBlockByHash(chainID uint32, hash coreCommon.Hash) (*coreTypes.Block, types.Transactions) {
+	return bc.confirmedBlocks[chainID][hash].block, bc.confirmedBlocks[chainID][hash].txs
 }
 
 func (bc *BlockChain) GetLastNonceInConfirmedBlocks(chainID uint32, address common.Address) (uint64, bool) {

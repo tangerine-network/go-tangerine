@@ -965,6 +965,8 @@ func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) {
 			delete(pool.queue, addr)
 		}
 	}
+
+	types.DeleteTxCacheByHash(hash)
 }
 
 // promoteExecutables moves transactions that have become processable from the
