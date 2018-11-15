@@ -17,7 +17,6 @@
 package core
 
 import (
-	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 
@@ -100,6 +99,7 @@ func ExampleGenerateChain() {
 	// balance of addr3: 19687500000000001000
 }
 
+/*
 func ExampleGenerateChainWithRoundChange() {
 	var (
 		// genesis node set
@@ -209,3 +209,4 @@ func ExampleGenerateChainWithRoundChange() {
 	// balance of addr2: 10000
 	// balance of addr3: 19687500000000001000
 }
+*/

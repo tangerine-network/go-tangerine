@@ -43,16 +43,16 @@ func TestDefaultGenesisBlock(t *testing.T) {
 
 func TestSetupGenesis(t *testing.T) {
 	var (
-		customghash = common.HexToHash("0xb6ba0591a77fc67883bb23a0463ecacede39e63176ec65fd137466c4cda91af5")
+		customghash = common.HexToHash("0xe19bf9c49cae55e72edfdfa9f4ef867defeb3747de25102740b7cebc5b9cdb1a")
 		customg     = Genesis{
-			Config: &params.ChainConfig{HomesteadBlock: big.NewInt(3), Dexcon: params.TestChainConfig.Dexcon},
+			Config: &params.ChainConfig{HomesteadBlock: big.NewInt(3)},
 			Alloc: GenesisAlloc{
 				{1}: {Balance: big.NewInt(1), Storage: map[common.Hash]common.Hash{{1}: {1}}},
 			},
 		}
 		oldcustomg = customg
 	)
-	oldcustomg.Config = &params.ChainConfig{HomesteadBlock: big.NewInt(2), Dexcon: params.TestChainConfig.Dexcon}
+	oldcustomg.Config = &params.ChainConfig{HomesteadBlock: big.NewInt(2)}
 	tests := []struct {
 		name       string
 		fn         func(ethdb.Database) (*params.ChainConfig, common.Hash, error)

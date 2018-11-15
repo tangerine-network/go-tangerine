@@ -48,9 +48,6 @@ var DefaultConfig = Config{
 	},
 	BlockProposerEnabled: false,
 	DefaultGasPrice:      big.NewInt(params.GWei),
-	GasFloor:             80000000,
-	GasCeil:              80000000,
-	GasLimitTolerance:    1000000,
 }
 
 func init() {
@@ -96,10 +93,7 @@ type Config struct {
 	TrieTimeout        time.Duration
 
 	// For calculate gas limit
-	DefaultGasPrice   *big.Int
-	GasFloor          uint64
-	GasCeil           uint64
-	GasLimitTolerance uint64
+	DefaultGasPrice *big.Int
 
 	// Transaction pool options
 	TxPool core.TxPoolConfig
