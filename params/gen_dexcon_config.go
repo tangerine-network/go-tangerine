@@ -17,6 +17,7 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 	type DexconConfig struct {
 		GenesisCRSText   string                `json:"genesisCRSText"`
 		Owner            common.Address        `json:"owner"`
+		MinStake         *math.HexOrDecimal256 `json:"minStake"`
 		BlockReward      *math.HexOrDecimal256 `json:"blockReward"`
 		BlockGasLimit    uint64                `json:"blockGasLimit"`
 		NumChains        uint32                `json:"numChains"`
@@ -32,6 +33,7 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 	var enc DexconConfig
 	enc.GenesisCRSText = d.GenesisCRSText
 	enc.Owner = d.Owner
+	enc.MinStake = (*math.HexOrDecimal256)(d.MinStake)
 	enc.BlockReward = (*math.HexOrDecimal256)(d.BlockReward)
 	enc.BlockGasLimit = d.BlockGasLimit
 	enc.NumChains = d.NumChains
@@ -51,6 +53,7 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 	type DexconConfig struct {
 		GenesisCRSText   *string               `json:"genesisCRSText"`
 		Owner            *common.Address       `json:"owner"`
+		MinStake         *math.HexOrDecimal256 `json:"minStake"`
 		BlockReward      *math.HexOrDecimal256 `json:"blockReward"`
 		BlockGasLimit    *uint64               `json:"blockGasLimit"`
 		NumChains        *uint32               `json:"numChains"`
@@ -72,6 +75,9 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 	}
 	if dec.Owner != nil {
 		d.Owner = *dec.Owner
+	}
+	if dec.MinStake != nil {
+		d.MinStake = (*big.Int)(dec.MinStake)
 	}
 	if dec.BlockReward != nil {
 		d.BlockReward = (*big.Int)(dec.BlockReward)

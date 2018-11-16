@@ -54,6 +54,7 @@ var (
 		Dexcon: &DexconConfig{
 			GenesisCRSText:   "In DEXON, we trust.",
 			Owner:            common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
+			MinStake:         new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
 			BlockReward:      big.NewInt(1e18),
 			BlockGasLimit:    80000000,
 			NumChains:        4,
@@ -92,6 +93,7 @@ var (
 		Dexcon: &DexconConfig{
 			GenesisCRSText:   "In DEXON, we trust.",
 			Owner:            common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
+			MinStake:         new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
 			BlockReward:      big.NewInt(1e18),
 			BlockGasLimit:    80000000,
 			NumChains:        6,
@@ -201,6 +203,7 @@ func (c *CliqueConfig) String() string {
 type DexconConfig struct {
 	GenesisCRSText   string         `json:"genesisCRSText"`
 	Owner            common.Address `json:"owner"`
+	MinStake         *big.Int       `json:"minStake"`
 	BlockReward      *big.Int       `json:"blockReward"`
 	BlockGasLimit    uint64         `json:"blockGasLimit"`
 	NumChains        uint32         `json:"numChains"`
@@ -215,14 +218,16 @@ type DexconConfig struct {
 }
 
 type dexconConfigSpecMarshaling struct {
+	MinStake    *math.HexOrDecimal256
 	BlockReward *math.HexOrDecimal256
 }
 
 // String implements the stringer interface, returning the consensus engine details.
 func (d *DexconConfig) String() string {
-	return fmt.Sprintf("{GenesisCRSText: %v Owner: %v BlockReward: %v BlockGasLimit: %v NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v}",
+	return fmt.Sprintf("{GenesisCRSText: %v Owner: %v MinStake: %v BlockReward: %v BlockGasLimit: %v NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v}",
 		d.GenesisCRSText,
 		d.Owner,
+		d.MinStake,
 		d.BlockReward,
 		d.BlockGasLimit,
 		d.NumChains,

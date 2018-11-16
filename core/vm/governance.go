@@ -165,6 +165,20 @@ const GovernanceABIJSON = `
   },
   {
     "constant": true,
+    "inputs": [],
+    "name": "minStake",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
     "inputs": [
       {
         "name": "",
@@ -437,6 +451,10 @@ const GovernanceABIJSON = `
   {
     "constant": false,
     "inputs": [
+      {
+        "name": "MinStake",
+        "type": "uint256"
+      },
       {
         "name": "BlockReward",
         "type": "uint256"
@@ -870,6 +888,12 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (
 			return nil, errExecutionReverted
 		}
 		return res, nil
+	case "minStake":
+		res, err := method.Outputs.Pack(g.state.MinStake())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	case "numChains":
 		res, err := method.Outputs.Pack(g.state.NumChains())
 		if err != nil {
@@ -948,6 +972,7 @@ const (
 	dkgFinalizedLoc
 	dkgFinalizedsCountLoc
 	ownerLoc
+	minStakeLoc
 	blockRewardLoc
 	blockGasLimitLoc
 	numChainsLoc
@@ -1320,6 +1345,14 @@ func (s *GovernanceStateHelper) SetOwner(newOwner common.Address) {
 	s.setState(common.BigToHash(big.NewInt(ownerLoc)), newOwner.Hash())
 }
 
+// uint256 public minStake;
+func (s *GovernanceStateHelper) MinStake() *big.Int {
+	return s.getStateBigInt(big.NewInt(minStakeLoc))
+}
+func (s *GovernanceStateHelper) SetMinStake(stake *big.Int) {
+	s.setStateBigInt(big.NewInt(minStakeLoc), stake)
+}
+
 // uint256 public blockReward;
 func (s *GovernanceStateHelper) BlockReward() *big.Int {
 	return s.getStateBigInt(big.NewInt(blockRewardLoc))
@@ -1401,6 +1434,7 @@ func (s *GovernanceStateHelper) Stake(
 // Configuration returns the current configuration.
 func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
 	return &params.DexconConfig{
+		MinStake:         s.getStateBigInt(big.NewInt(minStakeLoc)),
 		BlockReward:      s.getStateBigInt(big.NewInt(blockRewardLoc)),
 		BlockGasLimit:    uint64(s.getStateBigInt(big.NewInt(blockGasLimitLoc)).Uint64()),
 		NumChains:        uint32(s.getStateBigInt(big.NewInt(numChainsLoc)).Uint64()),
@@ -1417,6 +1451,7 @@ func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
 
 // UpdateConfiguration updates system configuration.
 func (s *GovernanceStateHelper) UpdateConfiguration(cfg *params.DexconConfig) {
+	s.setStateBigInt(big.NewInt(minStakeLoc), cfg.MinStake)
 	s.setStateBigInt(big.NewInt(blockRewardLoc), cfg.BlockReward)
 	s.setStateBigInt(big.NewInt(blockGasLimitLoc), big.NewInt(int64(cfg.BlockGasLimit)))
 	s.setStateBigInt(big.NewInt(numChainsLoc), big.NewInt(int64(cfg.NumChains)))
@@ -1642,6 +1677,12 @@ func (g *GovernanceContract) stake(
 
 	caller := g.contract.Caller()
 	offset := g.state.Offset(caller)
+
+	// Need to stake at least minStake.
+	if g.contract.Value().Cmp(g.state.MinStake()) < 0 {
+		g.penalize()
+		return nil, errExecutionReverted
+	}
 
 	// Can not stake if already staked.
 	if offset.Cmp(big.NewInt(0)) >= 0 {

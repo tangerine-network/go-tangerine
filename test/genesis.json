@@ -12,6 +12,7 @@
     "dexcon": {
       "genesisCRSText": "In DEXON, we trust.",
       "owner": "0xBF8C48A620bacc46907f9B89732D25E47A2D7Cf7",
+      "minStake": "0x152d02c7e14af6800000",
       "blockReward": "0xde0b6b3a7640000",
       "blockGasLimit": 80000000,
       "numChains": 6,
@@ -46,8 +47,8 @@
       "staked": "0"
     },
     "0x361e4958bd8b4d035C68C473193E77FdAb6aEa9D": {
-      "balance": "1000000000000000000000",
-      "staked": "500000000000000000000",
+      "balance": "200000000000000000000000",
+      "staked": "100000000000000000000000",
       "publicKey": "0x040c2f07cf22966ebaa19dd87de11d04f9a606e83e75a5295574760a5a4dd82807e7d9f28f86cd389871dd931a477cac64e233a6f098d5b257871d8163dc1bddcf",
       "info": {
         "name": "DEXON1",
@@ -57,8 +58,8 @@
       }
     },
     "0xbC71C0F2aeCa46fa0001e765965029b16a06049E": {
-      "balance": "1000000000000000000000",
-      "staked": "500000000000000000000",
+      "balance": "200000000000000000000000",
+      "staked": "100000000000000000000000",
       "publicKey": "0x04a12a015f27d98e5305498d23aeacde281e48aad918ae87d7f61784ab43828953db99bf1f44426294cbc21e32cf3a99122f2ce8a35ba718a7c814eec7bae9a3ea",
       "info": {
         "name": "DEXON2",
@@ -68,8 +69,8 @@
       }
     },
     "0xB6a2e270b54F19B4002d6535a71CFDd1CA1f5fC1": {
-      "balance": "1000000000000000000000",
-      "staked": "500000000000000000000",
+      "balance": "200000000000000000000000",
+      "staked": "100000000000000000000000",
       "publicKey": "0x0463f78d398f6b042952062a26f3551a4e294a11084b1006c8d6376437b72488d8f3af6b849931c03624ad2d581900e9ad5f3cfeeed040c799e5308cd8012853fb",
       "info": {
         "name": "DEXON3",
@@ -79,8 +80,8 @@
       }
     },
     "0xb6bBBE39033131e428d5a3545856a596cacB7810": {
-      "balance": "1000000000000000000000",
-      "staked": "500000000000000000000",
+      "balance": "200000000000000000000000",
+      "staked": "100000000000000000000000",
       "publicKey": "0x04a1118c8f1c2e293de528e5b45ac5e65167af4cb4d10887924a9f839287d060da26414e971cab75013e560dfec7897b1983eaa631ae2f16ea4062525310edd8ea",
       "info": {
         "name": "DEXON4",
