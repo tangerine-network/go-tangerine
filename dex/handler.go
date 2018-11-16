@@ -1079,6 +1079,10 @@ func (pm *ProtocolManager) peerSetLoop() {
 			pm.BroadcastBlock(event.Block, true)  // First propagate block to peers
 			pm.BroadcastBlock(event.Block, false) // Only then announce to the rest
 
+			if !pm.isBlockProposer {
+				break
+			}
+
 			newRound := pm.gov.LenCRS() - 1
 			log.Trace("new round", "round", newRound)
 			if newRound == round {

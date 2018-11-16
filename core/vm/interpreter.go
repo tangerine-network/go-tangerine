@@ -46,6 +46,9 @@ type Config struct {
 	EWASMInterpreter string
 	// Type of the EVM interpreter
 	EVMInterpreter string
+
+	// Whether or not we are a block proposer.
+	IsBlockProposer bool
 }
 
 // Interpreter is used to run Ethereum based contracts and will utilise the

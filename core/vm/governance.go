@@ -1767,16 +1767,18 @@ func (g *GovernanceContract) transferOwnership(newOwner common.Address) ([]byte,
 }
 
 func (g *GovernanceContract) snapshotRound(round, height *big.Int) ([]byte, error) {
-	// Validate if this mapping is correct.
-	realHeight, ok := g.evm.Context.GetRoundHeight(round.Uint64())
-	if !ok {
-		g.penalize()
-		return nil, errExecutionReverted
-	}
+	// Validate if this mapping is correct. Only block proposer need to verify this.
+	if g.evm.IsBlockProposer() {
+		realHeight, ok := g.evm.Context.GetRoundHeight(round.Uint64())
+		if !ok {
+			g.penalize()
+			return nil, errExecutionReverted
+		}
 
-	if height.Cmp(new(big.Int).SetUint64(realHeight)) != 0 {
-		g.penalize()
-		return nil, errExecutionReverted
+		if height.Cmp(new(big.Int).SetUint64(realHeight)) != 0 {
+			g.penalize()
+			return nil, errExecutionReverted
+		}
 	}
 
 	// Only allow updating the next round.
