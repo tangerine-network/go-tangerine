@@ -1569,6 +1569,13 @@ func (bc *BlockChain) processPendingBlock(
 
 	currentBlock := bc.CurrentBlock()
 
+	var (
+		receipts types.Receipts
+		usedGas  = new(uint64)
+		header   = block.Header()
+		gp       = new(GasPool).AddGas(math.MaxUint64)
+	)
+
 	var parentBlock *types.Block
 	var pendingState *state.StateDB
 	var err error
@@ -1581,18 +1588,13 @@ func (bc *BlockChain) processPendingBlock(
 	} else {
 		parentBlock = parent.block
 	}
-	block.RawHeader().ParentHash = parentBlock.Hash()
+
+	header.ParentHash = parentBlock.Hash()
 	pendingState, err = state.New(parentBlock.Root(), bc.stateCache)
 	if err != nil {
 		return nil, nil, nil, err
 	}
 
-	var (
-		receipts types.Receipts
-		usedGas  = new(uint64)
-		header   = block.Header()
-		gp       = new(GasPool).AddGas(math.MaxUint64)
-	)
 	// Iterate over and process the individual transactions
 	for i, tx := range block.Transactions() {
 		pendingState.Prepare(tx.Hash(), block.Hash(), i)

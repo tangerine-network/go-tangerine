@@ -315,9 +315,7 @@ func (b *Block) Randomness() []byte       { return common.CopyBytes(b.header.Ran
 func (b *Block) Reward() *big.Int         { return new(big.Int).Set(b.header.Reward) }
 func (b *Block) Round() uint64            { return b.header.Round }
 func (b *Block) DexconMeta() []byte       { return common.CopyBytes(b.header.DexconMeta) }
-
-func (b *Block) Header() *Header    { return CopyHeader(b.header) }
-func (b *Block) RawHeader() *Header { return b.header }
+func (b *Block) Header() *Header          { return CopyHeader(b.header) }
 
 // Body returns the non-header content of the block.
 func (b *Block) Body() *Body { return &Body{b.transactions, b.uncles} }
