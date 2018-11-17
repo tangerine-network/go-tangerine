@@ -1498,8 +1498,16 @@ func newGovernanceContract(evm *EVM, contract *Contract) *GovernanceContract {
 	}
 }
 
-func (g *GovernanceContract) penalize() {
-	g.contract.UseGas(g.contract.Gas)
+func (g *GovernanceContract) UseGas(gas uint64) ([]byte, error) {
+	if !g.contract.UseGas(gas) {
+		return nil, ErrOutOfGas
+	}
+	return nil, nil
+}
+
+func (g *GovernanceContract) penalize() ([]byte, error) {
+	g.UseGas(g.contract.Gas)
+	return nil, errExecutionReverted
 }
 
 func (g *GovernanceContract) inDKGSet(round *big.Int, nodeID coreTypes.NodeID) bool {
@@ -1532,16 +1540,14 @@ func (g *GovernanceContract) inDKGSet(round *big.Int, nodeID coreTypes.NodeID) b
 
 func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byte, error) {
 	if round.Cmp(g.state.Round()) != 0 {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	caller := g.contract.Caller()
 
 	// Finalized caller is not allowed to propose complaint.
 	if g.state.DKGFinalized(round, caller) {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	// Calculate 2f
@@ -1556,34 +1562,29 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 
 	var dkgComplaint dkgTypes.Complaint
 	if err := rlp.DecodeBytes(comp, &dkgComplaint); err != nil {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	// DKGComplaint must belongs to someone in DKG set.
 	if !g.inDKGSet(round, dkgComplaint.ProposerID) {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	verified, _ := core.VerifyDKGComplaintSignature(&dkgComplaint)
 	if !verified {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	g.state.PushDKGComplaint(round, comp)
 
 	// Set this to relatively high to prevent spamming
-	g.contract.UseGas(10000000)
-	return nil, nil
+	return g.UseGas(5000000)
 }
 
 func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) ([]byte, error) {
 	// Can only add DKG master public key of current and next round.
 	if round.Cmp(new(big.Int).Add(g.state.Round(), big.NewInt(1))) > 0 {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	caller := g.contract.Caller()
@@ -1596,53 +1597,44 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 
 	var dkgMasterPK dkgTypes.MasterPublicKey
 	if err := rlp.DecodeBytes(mpk, &dkgMasterPK); err != nil {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	// DKGMasterPublicKey must belongs to someone in DKG set.
 	if !g.inDKGSet(round, dkgMasterPK.ProposerID) {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	verified, _ := core.VerifyDKGMasterPublicKeySignature(&dkgMasterPK)
 	if !verified {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	g.state.PushDKGMasterPublicKey(round, mpk)
 
-	// DKG operation is expensive.
-	g.contract.UseGas(100000)
-	return nil, nil
+	return g.UseGas(100000)
 }
 
 func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]byte, error) {
 	if round.Cmp(g.state.Round()) != 0 {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	caller := g.contract.Caller()
 
 	var dkgFinalize dkgTypes.Finalize
 	if err := rlp.DecodeBytes(finalize, &dkgFinalize); err != nil {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	// DKGFInalize must belongs to someone in DKG set.
 	if !g.inDKGSet(round, dkgFinalize.ProposerID) {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	verified, _ := core.VerifyDKGFinalizeSignature(&dkgFinalize)
 	if !verified {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	if !g.state.DKGFinalized(round, caller) {
@@ -1650,9 +1642,7 @@ func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]
 		g.state.IncDKGFinalizedsCount(round)
 	}
 
-	// DKG operation is expensive.
-	g.contract.UseGas(100000)
-	return nil, nil
+	return g.UseGas(100000)
 }
 
 func (g *GovernanceContract) updateConfiguration(config *params.DexconConfig) ([]byte, error) {
@@ -1671,8 +1661,7 @@ func (g *GovernanceContract) stake(
 
 	// Reject invalid inputs.
 	if len(name) >= 32 || len(email) >= 32 || len(location) >= 32 || len(url) >= 128 {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	caller := g.contract.Caller()
@@ -1680,14 +1669,12 @@ func (g *GovernanceContract) stake(
 
 	// Need to stake at least minStake.
 	if g.contract.Value().Cmp(g.state.MinStake()) < 0 {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	// Can not stake if already staked.
 	if offset.Cmp(big.NewInt(0)) >= 0 {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	offset = g.state.NodesLength()
@@ -1702,8 +1689,7 @@ func (g *GovernanceContract) stake(
 	})
 	g.state.PutOffset(caller, offset)
 
-	g.contract.UseGas(21000)
-	return nil, nil
+	return g.UseGas(0)
 }
 
 func (g *GovernanceContract) unstake() ([]byte, error) {
@@ -1729,8 +1715,7 @@ func (g *GovernanceContract) unstake() ([]byte, error) {
 	// TODO(w): add this to debug trace so it shows up as internal transaction.
 	g.evm.Transfer(g.evm.StateDB, GovernanceContractAddress, caller, node.Staked)
 
-	g.contract.UseGas(21000)
-	return nil, nil
+	return g.UseGas(0)
 }
 
 func (g *GovernanceContract) proposeCRS(nextRound *big.Int, signedCRS []byte) ([]byte, error) {
@@ -1781,8 +1766,7 @@ func (g *GovernanceContract) proposeCRS(nextRound *big.Int, signedCRS []byte) ([
 		Signature: signedCRS,
 	}
 	if !dkgGPK.VerifySignature(coreCommon.Hash(prevCRS), signature) {
-		g.penalize()
-		return nil, errExecutionReverted
+		return g.penalize()
 	}
 
 	// Save new CRS into state and increase round.
@@ -1794,8 +1778,7 @@ func (g *GovernanceContract) proposeCRS(nextRound *big.Int, signedCRS []byte) ([
 
 	// To encourage DKG set to propose the correct value, correctly submitting
 	// this should cause nothing.
-	g.contract.UseGas(0)
-	return nil, nil
+	return g.UseGas(0)
 }
 
 func (g *GovernanceContract) transferOwnership(newOwner common.Address) ([]byte, error) {
@@ -1812,20 +1795,19 @@ func (g *GovernanceContract) snapshotRound(round, height *big.Int) ([]byte, erro
 	if g.evm.IsBlockProposer() {
 		realHeight, ok := g.evm.Context.GetRoundHeight(round.Uint64())
 		if !ok {
-			g.penalize()
-			return nil, errExecutionReverted
+			return g.penalize()
 		}
 
 		if height.Cmp(new(big.Int).SetUint64(realHeight)) != 0 {
-			g.penalize()
-			return nil, errExecutionReverted
+			return g.penalize()
 		}
 	}
 
 	// Only allow updating the next round.
 	nextRound := g.state.LenRoundHeight()
 	if round.Cmp(nextRound) != 0 {
-		g.penalize()
+		// No need to penalize, since the only possibility at this point is the
+		// round height is already snapshoted.
 		return nil, errExecutionReverted
 	}
 

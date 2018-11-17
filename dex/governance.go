@@ -79,6 +79,7 @@ func (d *DexconGovernance) getGovStateAtRound(round uint64) *vm.GovernanceStateH
 
 	state, _, err := d.b.StateAndHeaderByNumber(ctx, rpc.BlockNumber(blockHeight))
 	if state == nil || err != nil {
+		log.Error("Failed to retrieve governance state", "round", round, "height", blockHeight)
 		return nil
 	}
 	return &vm.GovernanceStateHelper{state}
@@ -119,17 +120,15 @@ func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
 		return err
 	}
 
-	log.Info("sendGovTx", "nonce", nonce)
-
-	// Increase gasPrice to 5 times of suggested gas price to make sure it will
+	// Increase gasPrice to 10 times of suggested gas price to make sure it will
 	// be included in time.
-	gasPrice = new(big.Int).Mul(gasPrice, big.NewInt(5))
+	gasPrice = new(big.Int).Mul(gasPrice, big.NewInt(10))
 
 	tx := types.NewTransaction(
 		nonce,
 		vm.GovernanceContractAddress,
 		big.NewInt(0),
-		uint64(2000000),
+		uint64(10000000),
 		gasPrice,
 		data)
 
@@ -140,7 +139,7 @@ func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
 		return err
 	}
 
-	log.Info("Send governance transaction", "fullhash", tx.Hash().Hex())
+	log.Info("Send governance transaction", "fullhash", tx.Hash().Hex(), "nonce", nonce)
 
 	return d.b.SendTx(ctx, tx)
 }

@@ -1596,7 +1596,7 @@ func (bc *BlockChain) processPendingBlock(
 		return nil, nil, nil, err
 	}
 
-	// Iterate over and process the individual transactions
+	// Iterate over and process the individual transactions.
 	for i, tx := range block.Transactions() {
 		pendingState.Prepare(tx.Hash(), block.Hash(), i)
 		receipt, _, err := ApplyTransaction(bc.chainConfig, bc, nil, gp, pendingState, header, tx, usedGas, bc.vmConfig)
@@ -1613,19 +1613,23 @@ func (bc *BlockChain) processPendingBlock(
 		return nil, nil, nil, fmt.Errorf("finalize error: %v", err)
 	}
 
+	if _, ok := bc.GetRoundHeight(newPendingBlock.Round()); !ok {
+		bc.storeRoundHeight(newPendingBlock.Round(), newPendingBlock.NumberU64())
+	}
+
 	proctime := time.Since(bstart)
 
-	// commit state to refresh stateCache
+	// Commit state to refresh stateCache.
 	_, err = pendingState.Commit(true)
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("pendingState commit error: %v", err)
 	}
 
-	// add into pending blocks
+	// Add into pending blocks.
 	bc.addPendingBlock(newPendingBlock, receipts)
 	events = append(events, BlockConfirmedEvent{newPendingBlock})
 
-	// start insert available pending blocks into db
+	// Start insert available pending blocks into db
 	for pendingHeight := bc.CurrentBlock().NumberU64() + 1; pendingHeight <= witness.Height; pendingHeight++ {
 		pendingIns, exist := bc.pendingBlocks[pendingHeight]
 		if !exist {
@@ -1646,8 +1650,9 @@ func (bc *BlockChain) processPendingBlock(
 
 		switch status {
 		case CanonStatTy:
-			log.Debug("Inserted new block", "number", pendingIns.block.Number(), "hash", pendingIns.block.Hash(), "uncles", len(pendingIns.block.Uncles()),
-				"txs", len(pendingIns.block.Transactions()), "gas", pendingIns.block.GasUsed(), "elapsed", common.PrettyDuration(time.Since(bstart)))
+			log.Debug("Inserted new block", "number", pendingIns.block.Number(), "hash", pendingIns.block.Hash(),
+				"uncles", len(pendingIns.block.Uncles()), "txs", len(pendingIns.block.Transactions()),
+				"gas", pendingIns.block.GasUsed(), "elapsed", common.PrettyDuration(time.Since(bstart)))
 
 			var allLogs []*types.Log
 			for _, r := range pendingIns.receipts {
@@ -1671,10 +1676,6 @@ func (bc *BlockChain) processPendingBlock(
 
 		cache, _ := bc.stateCache.TrieDB().Size()
 		stats.report([]*types.Block{pendingIns.block}, 0, cache)
-
-		if _, ok := bc.GetRoundHeight(pendingIns.block.Round()); !ok {
-			bc.storeRoundHeight(pendingIns.block.Round(), pendingHeight)
-		}
 	}
 	// Append a single chain head event if we've progressed the chain
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {

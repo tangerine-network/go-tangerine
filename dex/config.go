@@ -48,8 +48,8 @@ var DefaultConfig = Config{
 	},
 	BlockProposerEnabled: false,
 	DefaultGasPrice:      big.NewInt(params.GWei),
-	GasFloor:             8000000,
-	GasCeil:              8000000,
+	GasFloor:             80000000,
+	GasCeil:              80000000,
 	GasLimitTolerance:    1000000,
 }
 
