@@ -303,8 +303,8 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		}
 
 		// Genesis CRS.
-		crs := crypto.Keccak256([]byte(g.Config.Dexcon.GenesisCRSText))
-		govStateHelper.PushCRS(common.BytesToHash(crs))
+		crs := crypto.Keccak256Hash([]byte(g.Config.Dexcon.GenesisCRSText))
+		govStateHelper.PushCRS(crs)
 
 		// Round 0 height.
 		govStateHelper.PushRoundHeight(big.NewInt(0))

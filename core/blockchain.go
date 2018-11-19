@@ -1714,7 +1714,7 @@ func (bc *BlockChain) GetPendingHeight() uint64 {
 	return bc.lastPendingHeight
 }
 
-func (bc *BlockChain) GetPendingBlock() *types.Block {
+func (bc *BlockChain) PendingBlock() *types.Block {
 	bc.pendingBlockMu.RLock()
 	defer bc.pendingBlockMu.RUnlock()
 
@@ -1729,7 +1729,10 @@ func (bc *BlockChain) GetPendingBlockByNumber(number uint64) *types.Block {
 }
 
 func (bc *BlockChain) GetPending() (*types.Block, *state.StateDB) {
-	block := bc.GetPendingBlock()
+	block := bc.PendingBlock()
+	if block == nil {
+		block = bc.CurrentBlock()
+	}
 	s, err := state.New(block.Header().Root, bc.stateCache)
 	if err != nil {
 		panic(err)

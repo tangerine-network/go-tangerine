@@ -245,7 +245,7 @@ func (d *DexconApp) PrepareWitness(consensusHeight uint64) (witness coreTypes.Wi
 	if lastPendingHeight == 0 && consensusHeight == 0 {
 		witnessBlock = d.blockchain.CurrentBlock()
 	} else if lastPendingHeight >= consensusHeight {
-		witnessBlock = d.blockchain.GetPendingBlock()
+		witnessBlock = d.blockchain.PendingBlock()
 	} else {
 		log.Error("last pending height too low", "lastPendingHeight", lastPendingHeight,
 			"consensusHeight", consensusHeight)

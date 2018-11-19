@@ -23,7 +23,7 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 		NumChains        uint32                `json:"numChains"`
 		LambdaBA         uint64                `json:"lambdaBA"`
 		LambdaDKG        uint64                `json:"lambdaDKG"`
-		K                int                   `json:"k"`
+		K                uint32                `json:"k"`
 		PhiRatio         float32               `json:"phiRatio"`
 		NotarySetSize    uint32                `json:"notarySetSize"`
 		DKGSetSize       uint32                `json:"dkgSetSize"`
@@ -59,7 +59,7 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 		NumChains        *uint32               `json:"numChains"`
 		LambdaBA         *uint64               `json:"lambdaBA"`
 		LambdaDKG        *uint64               `json:"lambdaDKG"`
-		K                *int                  `json:"k"`
+		K                *uint32               `json:"k"`
 		PhiRatio         *float32              `json:"phiRatio"`
 		NotarySetSize    *uint32               `json:"notarySetSize"`
 		DKGSetSize       *uint32               `json:"dkgSetSize"`

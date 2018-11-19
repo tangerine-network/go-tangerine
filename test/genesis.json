@@ -19,7 +19,7 @@
       "lambdaBA": 250,
       "lambdaDKG": 2500,
       "k": 0,
-      "phiRatio": 667000,
+      "phiRatio": 0.667,
       "notarySetSize": 4,
       "dkgSetSize": 4,
       "roundInterval": 600000,

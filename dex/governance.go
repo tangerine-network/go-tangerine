@@ -100,7 +100,7 @@ func (d *DexconGovernance) Configuration(round uint64) *coreTypes.Config {
 		NumChains:        c.NumChains,
 		LambdaBA:         time.Duration(c.LambdaBA) * time.Millisecond,
 		LambdaDKG:        time.Duration(c.LambdaDKG) * time.Millisecond,
-		K:                c.K,
+		K:                int(c.K),
 		PhiRatio:         c.PhiRatio,
 		NotarySetSize:    c.NotarySetSize,
 		DKGSetSize:       c.DKGSetSize,
@@ -172,12 +172,12 @@ func (d *DexconGovernance) ProposeCRS(round uint64, signedCRS []byte) {
 	}
 }
 
-// NodeSet returns the current notary set.
+// NodeSet returns the current node set.
 func (d *DexconGovernance) NodeSet(round uint64) []coreCrypto.PublicKey {
 	s := d.getGovStateAtRound(round)
 	var pks []coreCrypto.PublicKey
 
-	for _, n := range s.Nodes() {
+	for _, n := range s.QualifiedNodes() {
 		pk, err := coreEcdsa.NewPublicKeyFromByteSlice(n.PublicKey)
 		if err != nil {
 			panic(err)
