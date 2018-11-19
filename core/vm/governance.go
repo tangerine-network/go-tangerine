@@ -56,7 +56,7 @@ const GovernanceABIJSON = `
     "outputs": [
       {
         "name": "",
-        "type": "uint256"
+        "type": "int256"
       }
     ],
     "payable": false,
@@ -313,7 +313,7 @@ const GovernanceABIJSON = `
     "outputs": [
       {
         "name": "",
-        "type": "uint256"
+        "type": "int256"
       }
     ],
     "payable": false,
@@ -2043,6 +2043,11 @@ func (g *GovernanceContract) delegate(nodeAddr common.Address) ([]byte, error) {
 
 	caller := g.contract.Caller()
 	value := g.contract.Value()
+
+	// Can not delegate if no fund was sent.
+	if value.Cmp(big.NewInt(0)) == 0 {
+		return nil, errExecutionReverted
+	}
 
 	// Can not delegate if already delegated.
 	delegatorOffset := g.state.DelegatorsOffset(nodeAddr, caller)
