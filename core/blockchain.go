@@ -150,7 +150,7 @@ type BlockChain struct {
 	addressNonce         map[uint32]map[common.Address]uint64
 	addressCost          map[uint32]map[common.Address]*big.Int
 	addressCounter       map[uint32]map[common.Address]uint64
-	chainLastHeight      map[uint32]uint64
+	chainLastHeight      sync.Map
 
 	pendingBlockMu    sync.RWMutex
 	lastPendingHeight uint64
@@ -201,7 +201,6 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		addressNonce:    make(map[uint32]map[common.Address]uint64),
 		addressCost:     make(map[uint32]map[common.Address]*big.Int),
 		addressCounter:  make(map[uint32]map[common.Address]uint64),
-		chainLastHeight: make(map[uint32]uint64),
 	}
 	bc.SetValidator(NewBlockValidator(chainConfig, bc, engine))
 	bc.SetProcessor(NewStateProcessor(chainConfig, bc, engine))
@@ -301,7 +300,7 @@ func (bc *BlockChain) AddConfirmedBlock(block *coreTypes.Block) error {
 		block:     block,
 		txs:       transactions,
 	}
-	bc.chainLastHeight[chainID] = block.Position.Height
+	bc.chainLastHeight.Store(chainID, block.Position.Height)
 	return nil
 }
 
@@ -344,7 +343,11 @@ func (bc *BlockChain) GetCostInConfirmedBlocks(chainID uint32, address common.Ad
 }
 
 func (bc *BlockChain) GetChainLastConfirmedHeight(chainID uint32) uint64 {
-	return bc.chainLastHeight[chainID]
+	val, ok := bc.chainLastHeight.Load(chainID)
+	if !ok {
+		panic(fmt.Errorf("failed to get chain last height, chainID = %d", chainID))
+	}
+	return val.(uint64)
 }
 
 // loadLastState loads the last known chain state from the database. This method
