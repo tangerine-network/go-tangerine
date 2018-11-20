@@ -232,6 +232,8 @@ func isStop(aID types.Position) bool {
 
 // clocks returns how many time this state is required.
 func (a *agreement) clocks() int {
+	a.data.lock.RLock()
+	defer a.data.lock.RUnlock()
 	return a.state.clocks()
 }
 
@@ -250,6 +252,14 @@ func (a *agreement) agreementID() types.Position {
 
 // nextState is called at the specific clock time.
 func (a *agreement) nextState() (err error) {
+	if func() bool {
+		a.lock.RLock()
+		defer a.lock.RUnlock()
+		return a.hasOutput
+	}() {
+		a.state = newSleepState(a.data)
+		return
+	}
 	a.state, err = a.state.nextState()
 	return
 }

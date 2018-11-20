@@ -26,6 +26,7 @@ import (
 	"github.com/dexon-foundation/dexon-consensus/core/crypto"
 	"github.com/dexon-foundation/dexon-consensus/core/types"
 	typesDKG "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
+	"github.com/dexon-foundation/dexon-consensus/core/utils"
 )
 
 // Errors for configuration chain..
@@ -51,7 +52,7 @@ type configurationChain struct {
 	tsig            map[common.Hash]*tsigProtocol
 	tsigTouched     map[common.Hash]struct{}
 	tsigReady       *sync.Cond
-	cache           *NodeSetCache
+	cache           *utils.NodeSetCache
 	dkgSet          map[types.NodeID]struct{}
 	mpkReady        bool
 	pendingPrvShare map[types.NodeID]*typesDKG.PrivateShare
@@ -64,7 +65,7 @@ func newConfigurationChain(
 	ID types.NodeID,
 	recv dkgReceiver,
 	gov Governance,
-	cache *NodeSetCache,
+	cache *utils.NodeSetCache,
 	logger common.Logger) *configurationChain {
 	return &configurationChain{
 		ID:          ID,
@@ -106,6 +107,10 @@ func (cc *configurationChain) runDKG(round uint64) error {
 	cc.dkgLock.Lock()
 	defer cc.dkgLock.Unlock()
 	if cc.dkg == nil || cc.dkg.round != round {
+		if cc.dkg != nil && cc.dkg.round > round {
+			cc.logger.Warn("DKG canceled", "round", round)
+			return nil
+		}
 		return ErrDKGNotRegistered
 	}
 	if func() bool {
@@ -114,6 +119,11 @@ func (cc *configurationChain) runDKG(round uint64) error {
 		_, exist := cc.gpk[round]
 		return exist
 	}() {
+		return nil
+	}
+	cc.logger.Debug("Calling Governance.IsDKGFinal", "round", round)
+	if cc.gov.IsDKGFinal(round) {
+		cc.logger.Warn("DKG already final", "round", round)
 		return nil
 	}
 
@@ -182,10 +192,6 @@ func (cc *configurationChain) runDKG(round uint64) error {
 	if err != nil {
 		return err
 	}
-	signer, err := cc.dkg.recoverShareSecret(gpk.qualifyIDs)
-	if err != nil {
-		return err
-	}
 	qualifies := ""
 	for nID := range gpk.qualifyNodeIDs {
 		qualifies += fmt.Sprintf("%s ", nID.String()[:6])
@@ -195,6 +201,14 @@ func (cc *configurationChain) runDKG(round uint64) error {
 		"round", round,
 		"count", len(gpk.qualifyIDs),
 		"qualifies", qualifies)
+	if _, exist := gpk.qualifyNodeIDs[cc.ID]; !exist {
+		cc.logger.Warn("Self is not in Qualify Nodes")
+		return nil
+	}
+	signer, err := cc.dkg.recoverShareSecret(gpk.qualifyIDs)
+	if err != nil {
+		return err
+	}
 	cc.dkgResult.Lock()
 	defer cc.dkgResult.Unlock()
 	cc.dkgSigner[round] = signer
@@ -264,13 +278,24 @@ func (cc *configurationChain) runTSig(
 			}
 		}
 	}()
+	timeout := make(chan struct{}, 1)
+	go func() {
+		// TODO(jimmy-dexon): make timeout configurable.
+		time.Sleep(5 * time.Second)
+		timeout <- struct{}{}
+		cc.tsigReady.Broadcast()
+	}()
 	var signature crypto.Signature
 	var err error
 	for func() bool {
 		signature, err = cc.tsig[hash].signature()
+		select {
+		case <-timeout:
+			return false
+		default:
+		}
 		return err == ErrNotEnoughtPartialSignatures
 	}() {
-		// TODO(jimmy-dexon): add a timeout here.
 		cc.tsigReady.Wait()
 	}
 	delete(cc.tsig, hash)

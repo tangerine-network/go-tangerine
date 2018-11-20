@@ -29,6 +29,7 @@ import (
 	"github.com/dexon-foundation/dexon-consensus/core/crypto"
 	"github.com/dexon-foundation/dexon-consensus/core/types"
 	typesDKG "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
+	"github.com/dexon-foundation/dexon-consensus/core/utils"
 )
 
 // Errors for consensus core.
@@ -55,8 +56,6 @@ var (
 		"incorrect vote position")
 	ErrIncorrectVoteProposer = fmt.Errorf(
 		"incorrect vote proposer")
-	ErrIncorrectBlockRandomnessResult = fmt.Errorf(
-		"incorrect block randomness result")
 )
 
 // consensusBAReceiver implements agreementReceiver.
@@ -135,6 +134,8 @@ func (recv *consensusBAReceiver) ConfirmBlock(
 					"hash", hash,
 					"chainID", recv.chainID)
 				recv.agreementModule.addCandidateBlock(block)
+				recv.agreementModule.lock.Lock()
+				defer recv.agreementModule.lock.Unlock()
 				recv.ConfirmBlock(block.Hash, votes)
 			}()
 			return
@@ -187,7 +188,7 @@ type consensusDKGReceiver struct {
 	ID           types.NodeID
 	gov          Governance
 	authModule   *Authenticator
-	nodeSetCache *NodeSetCache
+	nodeSetCache *utils.NodeSetCache
 	cfgModule    *configurationChain
 	network      Network
 	logger       common.Logger
@@ -284,6 +285,7 @@ type Consensus struct {
 	// Dexon consensus v1's modules.
 	lattice  *Lattice
 	ccModule *compactionChain
+	toSyncer *totalOrderingSyncer
 
 	// Interfaces.
 	db        blockdb.BlockDatabase
@@ -294,7 +296,7 @@ type Consensus struct {
 
 	// Misc.
 	dMoment       time.Time
-	nodeSetCache  *NodeSetCache
+	nodeSetCache  *utils.NodeSetCache
 	round         uint64
 	roundToNotify uint64
 	lock          sync.RWMutex
@@ -318,7 +320,7 @@ func NewConsensus(
 	var round uint64
 	logger.Debug("Calling Governance.Configuration", "round", round)
 	config := gov.Configuration(round)
-	nodeSetCache := NewNodeSetCache(gov)
+	nodeSetCache := utils.NewNodeSetCache(gov)
 	logger.Debug("Calling Governance.CRS", "round", round)
 	// Setup auth module.
 	authModule := NewAuthenticator(prv)
@@ -441,7 +443,7 @@ func (con *Consensus) Run(initBlock *types.Block) {
 		con.cfgModule.registerDKG(initRound, int(initConfig.DKGSetSize)/3+1)
 		con.event.RegisterTime(con.dMoment.Add(initConfig.RoundInterval/4),
 			func(time.Time) {
-				con.runDKGTSIG(initRound, initConfig)
+				con.runDKG(initRound, initConfig)
 			})
 	}
 	con.initialRound(con.dMoment, initRound, initConfig)
@@ -492,6 +494,12 @@ BALoop:
 		select {
 		case newNotary := <-recv.restartNotary:
 			if newNotary {
+				con.logger.Debug("Calling Governance.CRS", "round", recv.round)
+				crs = con.gov.CRS(recv.round)
+				if (crs == common.Hash{}) {
+					// Governance is out-of-sync.
+					continue BALoop
+				}
 				configForNewRound := con.gov.Configuration(recv.round)
 				recv.changeNotaryTime =
 					recv.changeNotaryTime.Add(configForNewRound.RoundInterval)
@@ -499,8 +507,6 @@ BALoop:
 				if err != nil {
 					panic(err)
 				}
-				con.logger.Debug("Calling Governance.CRS", "round", recv.round)
-				crs = con.gov.CRS(recv.round)
 				con.logger.Debug("Calling Governance.Configuration",
 					"round", recv.round)
 				nIDs = nodes.GetSubSet(
@@ -541,8 +547,8 @@ BALoop:
 	}
 }
 
-// runDKGTSIG starts running DKG+TSIG protocol.
-func (con *Consensus) runDKGTSIG(round uint64, config *types.Config) {
+// runDKG starts running DKG protocol.
+func (con *Consensus) runDKG(round uint64, config *types.Config) {
 	con.dkgReady.L.Lock()
 	defer con.dkgReady.L.Unlock()
 	if con.dkgRunning != 0 {
@@ -564,41 +570,18 @@ func (con *Consensus) runDKGTSIG(round uint64, config *types.Config) {
 			}
 		}()
 		if err := con.cfgModule.runDKG(round); err != nil {
-			panic(err)
-		}
-		nodes, err := con.nodeSetCache.GetNodeSet(round)
-		if err != nil {
-			panic(err)
-		}
-		con.logger.Debug("Calling Governance.Configuration", "round", round)
-		hash := HashConfigurationBlock(
-			nodes.IDs,
-			con.gov.Configuration(round),
-			common.Hash{},
-			con.cfgModule.prevHash)
-		psig, err := con.cfgModule.preparePartialSignature(
-			round, hash)
-		if err != nil {
-			panic(err)
-		}
-		if err = con.authModule.SignDKGPartialSignature(psig); err != nil {
-			panic(err)
-		}
-		if err = con.cfgModule.processPartialSignature(psig); err != nil {
-			panic(err)
-		}
-		con.logger.Debug("Calling Network.BroadcastDKGPartialSignature",
-			"proposer", psig.ProposerID,
-			"round", psig.Round,
-			"hash", psig.Hash)
-		con.network.BroadcastDKGPartialSignature(psig)
-		if _, err = con.cfgModule.runBlockTSig(round, hash); err != nil {
-			panic(err)
+			con.logger.Error("Failed to runDKG", "error", err)
 		}
 	}()
 }
 
 func (con *Consensus) runCRS(round uint64) {
+	con.logger.Debug("Calling Governance.CRS to check if already proposed",
+		"round", round+1)
+	if (con.gov.CRS(round+1) != common.Hash{}) {
+		con.logger.Info("CRS already proposed", "round", round+1)
+		return
+	}
 	// Start running next round CRS.
 	con.logger.Debug("Calling Governance.CRS", "round", round)
 	psig, err := con.cfgModule.preparePartialSignature(round, con.gov.CRS(round))
@@ -683,7 +666,7 @@ func (con *Consensus) initialRound(
 						con.logger.Debug("Calling Governance.Configuration",
 							"round", nextRound)
 						nextConfig := con.gov.Configuration(nextRound)
-						con.runDKGTSIG(nextRound, nextConfig)
+						con.runDKG(nextRound, nextConfig)
 					})
 			}(round + 1)
 		})
@@ -695,23 +678,6 @@ func (con *Consensus) initialRound(
 			con.logger.Debug("Calling Governance.Configuration",
 				"round", nextRound)
 			nextConfig := con.gov.Configuration(nextRound)
-			// Get configuration for the round next to next round. Configuration
-			// for that round should be ready at this moment and is required for
-			// lattice module. This logic is related to:
-			//  - roundShift
-			//  - notifyGenesisRound
-			futureRound := nextRound + 1
-			con.logger.Debug("Calling Governance.Configuration",
-				"round", futureRound)
-			futureConfig := con.gov.Configuration(futureRound)
-			con.logger.Debug("Append Config", "round", futureRound)
-			if err := con.lattice.AppendConfig(
-				futureRound, futureConfig); err != nil {
-				con.logger.Debug("Unable to append config",
-					"round", futureRound,
-					"error", err)
-				panic(err)
-			}
 			con.initialRound(
 				startTime.Add(config.RoundInterval), nextRound, nextConfig)
 		})
@@ -833,6 +799,12 @@ func (con *Consensus) proposeEmptyBlock(
 
 // ProcessVote is the entry point to submit ont vote to a Consensus instance.
 func (con *Consensus) ProcessVote(vote *types.Vote) (err error) {
+	if vote.Position.ChainID >= uint32(len(con.baModules)) {
+		return nil
+	}
+	if isStop(con.baModules[vote.Position.ChainID].agreementID()) {
+		return nil
+	}
 	v := vote.Clone()
 	err = con.baModules[v.Position.ChainID].processVote(v)
 	return err
@@ -877,6 +849,9 @@ func (con *Consensus) ProcessAgreementResult(
 	// Syncing BA Module.
 	agreement := con.baModules[rand.Position.ChainID]
 	aID := agreement.agreementID()
+	if isStop(aID) {
+		return nil
+	}
 	if rand.Position.Newer(&aID) {
 		con.logger.Info("Syncing BA", "position", &rand.Position)
 		nodes, err := con.nodeSetCache.GetNodeSet(rand.Position.Round)
@@ -959,31 +934,17 @@ func (con *Consensus) ProcessBlockRandomnessResult(
 	if rand.Position.Round == 0 {
 		return nil
 	}
-	if !con.ccModule.blockRegistered(rand.BlockHash) {
-		return nil
-	}
-	round := rand.Position.Round
-	v, ok, err := con.ccModule.tsigVerifier.UpdateAndGet(round)
-	if err != nil {
+	if err := con.ccModule.processBlockRandomnessResult(rand); err != nil {
+		if err == ErrBlockNotRegistered {
+			err = nil
+		}
 		return err
-	}
-	if !ok {
-		return nil
-	}
-	if !v.VerifySignature(
-		rand.BlockHash, crypto.Signature{Signature: rand.Randomness}) {
-		return ErrIncorrectBlockRandomnessResult
 	}
 	con.logger.Debug("Calling Network.BroadcastRandomnessResult",
 		"hash", rand.BlockHash,
 		"position", &rand.Position,
 		"randomness", hex.EncodeToString(rand.Randomness))
 	con.network.BroadcastRandomnessResult(rand)
-	if err := con.ccModule.processBlockRandomnessResult(rand); err != nil {
-		if err != ErrBlockNotRegistered {
-			return err
-		}
-	}
 	return nil
 }
 
@@ -1000,6 +961,23 @@ func (con *Consensus) deliverBlock(b *types.Block) {
 	con.logger.Debug("Calling Application.BlockDelivered", "block", b)
 	con.app.BlockDelivered(b.Hash, b.Position, b.Finalization.Clone())
 	if b.Position.Round == con.roundToNotify {
+		// Get configuration for the round next to next round. Configuration
+		// for that round should be ready at this moment and is required for
+		// lattice module. This logic is related to:
+		//  - roundShift
+		//  - notifyGenesisRound
+		futureRound := con.roundToNotify + 1
+		con.logger.Debug("Calling Governance.Configuration",
+			"round", con.roundToNotify)
+		futureConfig := con.gov.Configuration(futureRound)
+		con.logger.Debug("Append Config", "round", futureRound)
+		if err := con.lattice.AppendConfig(
+			futureRound, futureConfig); err != nil {
+			con.logger.Debug("Unable to append config",
+				"round", futureRound,
+				"error", err)
+			panic(err)
+		}
 		// Only the first block delivered of that round would
 		// trigger this noitification.
 		con.logger.Debug("Calling Governance.NotifyRoundHeight",
@@ -1048,7 +1026,10 @@ func (con *Consensus) processBlock(block *types.Block) (err error) {
 // processFinalizedBlock is the entry point for syncing blocks.
 func (con *Consensus) processFinalizedBlock(block *types.Block) (err error) {
 	if err = con.lattice.SanityCheck(block); err != nil {
-		return
+		if err != ErrRetrySanityCheckLater {
+			return
+		}
+		err = nil
 	}
 	con.ccModule.processFinalizedBlock(block)
 	for {
@@ -1066,6 +1047,11 @@ func (con *Consensus) processFinalizedBlock(block *types.Block) (err error) {
 				}
 				err = nil
 			}
+			con.lattice.ProcessFinalizedBlock(b)
+			// TODO(jimmy): BlockConfirmed and DeliverBlock may not be removed if
+			// application implements state snapshot.
+			con.logger.Debug("Calling Application.BlockConfirmed", "block", b)
+			con.app.BlockConfirmed(*b.Clone())
 			con.deliverBlock(b)
 		}
 	}
