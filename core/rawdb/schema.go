@@ -53,6 +53,8 @@ var (
 	txLookupPrefix  = []byte("l") // txLookupPrefix + hash -> transaction/receipt lookup metadata
 	bloomBitsPrefix = []byte("B") // bloomBitsPrefix + bit (uint16 big endian) + section (uint64 big endian) + hash -> bloom bits
 
+	coreBlockPrefix = []byte("D")
+
 	preimagePrefix = []byte("secure-key-")      // preimagePrefix + hash -> preimage
 	configPrefix   = []byte("ethereum-config-") // config prefix for the db
 
@@ -111,6 +113,11 @@ func blockReceiptsKey(number uint64, hash common.Hash) []byte {
 // txLookupKey = txLookupPrefix + hash
 func txLookupKey(hash common.Hash) []byte {
 	return append(txLookupPrefix, hash.Bytes()...)
+}
+
+// coreBlockKey = coreBlockPrefix + hash
+func coreBlockKey(hash common.Hash) []byte {
+	return append(coreBlockPrefix, hash.Bytes()...)
 }
 
 // bloomBitsKey = bloomBitsPrefix + bit (uint16 big endian) + section (uint64 big endian) + hash

@@ -19,11 +19,9 @@ package dex
 
 import (
 	"fmt"
-	"path/filepath"
 	"time"
 
 	dexCore "github.com/dexon-foundation/dexon-consensus/core"
-	"github.com/dexon-foundation/dexon-consensus/core/blockdb"
 	coreEcdsa "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
 	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 
@@ -34,6 +32,7 @@ import (
 	"github.com/dexon-foundation/dexon/core/bloombits"
 	"github.com/dexon-foundation/dexon/core/rawdb"
 	"github.com/dexon-foundation/dexon/core/vm"
+	"github.com/dexon-foundation/dexon/dex/blockdb"
 	"github.com/dexon-foundation/dexon/eth/downloader"
 	"github.com/dexon-foundation/dexon/eth/filters"
 	"github.com/dexon-foundation/dexon/eth/gasprice"
@@ -76,7 +75,6 @@ type Dexon struct {
 	app        *DexconApp
 	governance *DexconGovernance
 	network    *DexconNetwork
-	blockdb    blockdb.BlockDatabase
 	consensus  *dexCore.Consensus
 
 	networkID     uint64
@@ -85,12 +83,6 @@ type Dexon struct {
 
 func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	// Consensus.
-	blockDBPath := filepath.Join(ctx.Config.DataDir, "dexcon", "blockdb")
-	db, err := blockdb.NewLevelDBBackedBlockDB(blockDBPath)
-	if err != nil {
-		panic(err)
-	}
-
 	chainDb, err := CreateDB(ctx, config, "chaindata")
 	if err != nil {
 		return nil, err
@@ -122,7 +114,6 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 		networkID:      config.NetworkId,
 		bloomRequests:  make(chan chan *bloombits.Retrieval),
 		bloomIndexer:   NewBloomIndexer(chainDb, params.BloomBitsBlocks, params.BloomConfirms),
-		blockdb:        db,
 		engine:         engine,
 	}
 
@@ -184,7 +175,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 		0, now.Location())
 
 	dex.consensus = dexCore.NewConsensus(dMoment,
-		dex.app, dex.governance, db, dex.network, privKey, log.Root())
+		dex.app, dex.governance, blockdb.NewDatabase(chainDb), dex.network, privKey, log.Root())
 	return dex, nil
 }
 
