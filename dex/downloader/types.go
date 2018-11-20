@@ -35,12 +35,21 @@ type dataPack interface {
 // headerPack is a batch of block headers returned by a peer.
 type headerPack struct {
 	peerID  string
-	headers []*types.Header
+	headers []*types.HeaderWithGovState
 }
 
 func (p *headerPack) PeerId() string { return p.peerID }
 func (p *headerPack) Items() int     { return len(p.headers) }
 func (p *headerPack) Stats() string  { return fmt.Sprintf("%d", len(p.headers)) }
+
+type govStatePack struct {
+	peerID   string
+	govState *types.GovState
+}
+
+func (p *govStatePack) PeerId() string { return p.peerID }
+func (p *govStatePack) Items() int     { return 1 }
+func (p *govStatePack) Stats() string  { return "1" }
 
 // bodyPack is a batch of block bodies returned by a peer.
 type bodyPack struct {

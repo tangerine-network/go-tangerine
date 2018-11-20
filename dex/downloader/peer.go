@@ -78,8 +78,9 @@ type peerConnection struct {
 // LightPeer encapsulates the methods required to synchronise with a remote light peer.
 type LightPeer interface {
 	Head() (common.Hash, *big.Int)
-	RequestHeadersByHash(common.Hash, int, int, bool) error
-	RequestHeadersByNumber(uint64, int, int, bool) error
+	RequestHeadersByHash(common.Hash, int, int, bool, bool) error
+	RequestHeadersByNumber(uint64, int, int, bool, bool) error
+	RequestGovStateByHash(common.Hash) error
 }
 
 // Peer encapsulates the methods required to synchronise with a remote full peer.
@@ -96,11 +97,15 @@ type lightPeerWrapper struct {
 }
 
 func (w *lightPeerWrapper) Head() (common.Hash, *big.Int) { return w.peer.Head() }
-func (w *lightPeerWrapper) RequestHeadersByHash(h common.Hash, amount int, skip int, reverse bool) error {
-	return w.peer.RequestHeadersByHash(h, amount, skip, reverse)
+func (w *lightPeerWrapper) RequestHeadersByHash(h common.Hash, amount int, skip int, reverse, withGov bool) error {
+	return w.peer.RequestHeadersByHash(h, amount, skip, reverse, withGov)
 }
-func (w *lightPeerWrapper) RequestHeadersByNumber(i uint64, amount int, skip int, reverse bool) error {
-	return w.peer.RequestHeadersByNumber(i, amount, skip, reverse)
+func (w *lightPeerWrapper) RequestHeadersByNumber(i uint64, amount int, skip int, reverse, withGov bool) error {
+	return w.peer.RequestHeadersByNumber(i, amount, skip, reverse, withGov)
+}
+func (w *lightPeerWrapper) RequestGovStateByHash(common.Hash) error {
+	// TODO(sonic): support this
+	panic("RequestGovStateByHash not supported in light client mode sync")
 }
 func (w *lightPeerWrapper) RequestBodies([]common.Hash) error {
 	panic("RequestBodies not supported in light client mode sync")
@@ -156,7 +161,7 @@ func (p *peerConnection) FetchHeaders(from uint64, count int) error {
 	p.headerStarted = time.Now()
 
 	// Issue the header retrieval request (absolut upwards without gaps)
-	go p.peer.RequestHeadersByNumber(from, count, 0, false)
+	go p.peer.RequestHeadersByNumber(from, count, 0, false, true)
 
 	return nil
 }

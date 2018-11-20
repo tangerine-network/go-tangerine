@@ -13,3 +13,8 @@ type GovState struct {
 	Proof     [][]byte
 	Storage   [][2][]byte
 }
+
+type HeaderWithGovState struct {
+	*Header
+	GovState *GovState `rlp:"nil"`
+}

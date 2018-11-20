@@ -88,7 +88,14 @@ func (p *FakePeer) RequestHeadersByHash(hash common.Hash, amount int, skip int, 
 			}
 		}
 	}
-	p.dl.DeliverHeaders(p.id, headers)
+
+	// TODO(sonic): fix this
+	var headersWithGovState []*types.HeaderWithGovState
+	for _, h := range headers {
+		headersWithGovState = append(headersWithGovState,
+			&types.HeaderWithGovState{Header: h})
+	}
+	p.dl.DeliverHeaders(p.id, headersWithGovState)
 	return nil
 }
 
@@ -115,7 +122,13 @@ func (p *FakePeer) RequestHeadersByNumber(number uint64, amount int, skip int, r
 		}
 		headers = append(headers, origin)
 	}
-	p.dl.DeliverHeaders(p.id, headers)
+	// TODO(sonic): fix this
+	var headersWithGovState []*types.HeaderWithGovState
+	for _, h := range headers {
+		headersWithGovState = append(headersWithGovState,
+			&types.HeaderWithGovState{Header: h})
+	}
+	p.dl.DeliverHeaders(p.id, headersWithGovState)
 	return nil
 }
 

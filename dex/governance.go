@@ -46,7 +46,7 @@ func NewDexconGovernance(backend *DexAPIBackend, chainConfig *params.ChainConfig
 	return g
 }
 
-func (d *DexconGovernance) getRoundHeight(ctx context.Context, round uint64) (uint64, error) {
+func (d *DexconGovernance) GetRoundHeight(ctx context.Context, round uint64) (uint64, error) {
 	state, _, err := d.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
 	if state == nil || err != nil {
 		return 0, err
@@ -72,7 +72,7 @@ func (d *DexconGovernance) getGovStateAtRound(round uint64) *vm.GovernanceStateH
 		round -= dexCore.ConfigRoundShift
 	}
 	ctx := context.Background()
-	blockHeight, err := d.getRoundHeight(ctx, round)
+	blockHeight, err := d.GetRoundHeight(ctx, round)
 	if err != nil {
 		return nil
 	}
