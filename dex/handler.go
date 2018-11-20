@@ -1037,10 +1037,25 @@ func (pm *ProtocolManager) BroadcastPullVotes(
 }
 
 func (pm *ProtocolManager) txBroadcastLoop() {
+	queueSizeMax := common.StorageSize(100 * 1024) // 100 KB
+	currentSize := common.StorageSize(0)
+	txs := make(types.Transactions, 0)
 	for {
 		select {
+		case <-time.After(500 * time.Millisecond):
+			pm.BroadcastTxs(txs)
+			txs = txs[:0]
+			currentSize = 0
 		case event := <-pm.txsCh:
-			pm.BroadcastTxs(event.Txs)
+			txs = append(txs, event.Txs...)
+			for _, tx := range event.Txs {
+				currentSize += tx.Size()
+			}
+			if currentSize >= queueSizeMax {
+				pm.BroadcastTxs(txs)
+				txs = txs[:0]
+				currentSize = 0
+			}
 
 		// Err() channel will be closed when unsubscribing.
 		case <-pm.txsSub.Err():

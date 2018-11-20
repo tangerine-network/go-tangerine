@@ -1,3 +1,20 @@
+// Copyright 2018 The dexon-consensus Authors
+// This file is part of the dexon-consensus library.
+//
+// The dexon-consensus library is free software: you can redistribute it
+// and/or modify it under the terms of the GNU Lesser General Public License as
+// published by the Free Software Foundation, either version 3 of the License,
+// or (at your option) any later version.
+//
+// The dexon-consensus library is distributed in the hope that it will be
+// useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser
+// General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the dexon-consensus library. If not, see
+// <http://www.gnu.org/licenses/>.
+
 // Copyright 2015 The go-ethereum Authors
 // This file is part of the go-ethereum library.
 //
@@ -188,12 +205,6 @@ func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 func (p *peer) broadcast() {
 	for {
 		select {
-		case txs := <-p.queuedTxs:
-			if err := p.SendTransactions(txs); err != nil {
-				return
-			}
-			p.Log().Trace("Broadcast transactions", "count", len(txs))
-
 		case metas := <-p.queuedMetas:
 			if err := p.SendNodeMetas(metas); err != nil {
 				return
@@ -253,6 +264,15 @@ func (p *peer) broadcast() {
 			p.Log().Trace("Pulling Votes", "position", pos)
 		case <-p.term:
 			return
+		case <-time.After(100 * time.Millisecond):
+		}
+		select {
+		case txs := <-p.queuedTxs:
+			if err := p.SendTransactions(txs); err != nil {
+				return
+			}
+			p.Log().Trace("Broadcast transactions", "count", len(txs))
+		default:
 		}
 	}
 }
