@@ -26,13 +26,20 @@ import (
 	"sync/atomic"
 	"time"
 
+	dexCore "github.com/dexon-foundation/dexon-consensus/core"
+	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
+	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/consensus"
 	"github.com/dexon-foundation/dexon/core/rawdb"
 	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/params"
+	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/dexon-foundation/dexon/trie"
 	"github.com/hashicorp/golang-lru"
 )
 
@@ -293,6 +300,192 @@ func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, writeHeader WhCa
 		context = append(context, []interface{}{"ignored", stats.ignored}...)
 	}
 	log.Info("Imported new block headers", context...)
+
+	return 0, nil
+}
+
+func (hc *HeaderChain) WriteHeader2(header *types.HeaderWithGovState) (status WriteStatus, err error) {
+	// Cache some values to prevent constant recalculation
+	var (
+		hash   = header.Hash()
+		number = header.Number.Uint64()
+	)
+	// Calculate the total difficulty of the header
+	ptd := hc.GetTd(header.ParentHash, number-1)
+	if ptd == nil {
+		return NonStatTy, consensus.ErrUnknownAncestor
+	}
+	localTd := hc.GetTd(hc.currentHeaderHash, hc.CurrentHeader().Number.Uint64())
+	externTd := new(big.Int).Add(header.Difficulty, ptd)
+
+	// Irrelevant of the canonical status, write the td and header to the database
+	if err := hc.WriteTd(hash, number, externTd); err != nil {
+		log.Crit("Failed to write header total difficulty", "err", err)
+	}
+	rawdb.WriteHeader(hc.chainDb, header.Header)
+
+	// If the total difficulty is higher than our known, add it to the canonical chain
+	// Second clause in the if statement reduces the vulnerability to selfish mining.
+	// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
+	if externTd.Cmp(localTd) > 0 || (externTd.Cmp(localTd) == 0 && mrand.Float64() < 0.5) {
+		// Delete any canonical number assignments above the new head
+		batch := hc.chainDb.NewBatch()
+		for i := number + 1; ; i++ {
+			hash := rawdb.ReadCanonicalHash(hc.chainDb, i)
+			if hash == (common.Hash{}) {
+				break
+			}
+			rawdb.DeleteCanonicalHash(batch, i)
+		}
+		batch.Write()
+
+		// Overwrite any stale canonical number assignments
+		var (
+			headHash   = header.ParentHash
+			headNumber = header.Number.Uint64() - 1
+			headHeader = hc.GetHeader(headHash, headNumber)
+		)
+		for rawdb.ReadCanonicalHash(hc.chainDb, headNumber) != headHash {
+			rawdb.WriteCanonicalHash(hc.chainDb, headHash, headNumber)
+
+			headHash = headHeader.ParentHash
+			headNumber = headHeader.Number.Uint64() - 1
+			headHeader = hc.GetHeader(headHash, headNumber)
+		}
+		// Extend the canonical chain with the new header
+		rawdb.WriteCanonicalHash(hc.chainDb, hash, number)
+		rawdb.WriteHeadHeaderHash(hc.chainDb, hash)
+
+		hc.currentHeaderHash = hash
+		hc.currentHeader.Store(types.CopyHeader(header.Header))
+
+		status = CanonStatTy
+	} else {
+		status = SideStatTy
+	}
+
+	hc.headerCache.Add(hash, header.Header)
+	hc.numberCache.Add(hash, number)
+
+	// Store the govState
+	if govState := header.GovState; govState != nil {
+		batch := hc.chainDb.NewBatch()
+		for _, node := range govState.Proof {
+			batch.Put(crypto.Keccak256(node), node)
+		}
+		if err := batch.Write(); err != nil {
+			panic(fmt.Errorf("DB write error: %v", err))
+		}
+
+		triedb := trie.NewDatabase(hc.chainDb)
+		t, err := trie.New(common.Hash{}, triedb)
+		if err != nil {
+			panic(err)
+		}
+
+		for _, kv := range govState.Storage {
+			t.TryUpdate(kv[0], kv[1])
+		}
+		t.Commit(nil)
+		triedb.Commit(t.Hash(), false)
+	}
+	return
+}
+
+type Wh2Callback func(*types.HeaderWithGovState) error
+
+func (hc *HeaderChain) ValidateHeaderChain2(chain []*types.HeaderWithGovState, verifierCache *dexCore.TSigVerifierCache) (int, error) {
+	// Do a sanity check that the provided chain is actually ordered and linked
+	for i := 1; i < len(chain); i++ {
+		if chain[i].Number.Uint64() != chain[i-1].Number.Uint64()+1 || chain[i].ParentHash != chain[i-1].Hash() {
+			// Chain broke ancestry, log a message (programming error) and skip insertion
+			log.Error("Non contiguous header insert", "number", chain[i].Number, "hash", chain[i].Hash(),
+				"parent", chain[i].ParentHash, "prevnumber", chain[i-1].Number, "prevhash", chain[i-1].Hash())
+
+			return 0, fmt.Errorf("non contiguous insert: item %d is #%d [%x…], item %d is #%d [%x…] (parent [%x…])", i-1, chain[i-1].Number,
+				chain[i-1].Hash().Bytes()[:4], i, chain[i].Number, chain[i].Hash().Bytes()[:4], chain[i].ParentHash[:4])
+		}
+	}
+
+	// Iterate over the headers and ensure they all check out
+	for i, header := range chain {
+		// If the chain is terminating, stop processing blocks
+		if hc.procInterrupt() {
+			log.Debug("Premature abort during headers verification")
+			return 0, errors.New("aborted")
+		}
+
+		if err := hc.verifyTSig(header.Header, verifierCache); err != nil {
+			return i, err
+		}
+	}
+	return 0, nil
+}
+
+func (hc *HeaderChain) verifyTSig(header *types.Header, verifierCache *dexCore.TSigVerifierCache) error {
+	// If the header is a banned one, straight out abort
+	if BadHashes[header.Hash()] {
+		return ErrBlacklistedHash
+	}
+
+	if header.Round == 0 {
+		return nil
+	}
+
+	var dexconMeta coreTypes.Block
+	if err := rlp.DecodeBytes(header.DexconMeta, &dexconMeta); err != nil {
+		return err
+	}
+
+	v, ok, err := verifierCache.UpdateAndGet(header.Round)
+	if err != nil {
+		panic(err)
+	}
+
+	if !ok {
+		panic(fmt.Errorf("DKG of round %d is not finished", header.Round))
+	}
+
+	if !v.VerifySignature(dexconMeta.Hash, coreCrypto.Signature{
+		Type:      "bls",
+		Signature: header.Randomness}) {
+		return fmt.Errorf("signature invalid")
+	}
+	return nil
+}
+
+// InsertHeaderChain2 attempts to insert the given header chain in to the local
+// chain, possibly creating a reorg. If an error is returned, it will return the
+// index number of the failing header as well an error describing what went wrong.
+//
+// The verify parameter can be used to fine tune whether nonce verification
+// should be done or not. The reason behind the optional check is because some
+// of the header retrieval mechanisms already need to verfy nonces, as well as
+// because nonces can be verified sparsely, not needing to check each.
+func (hc *HeaderChain) InsertHeaderChain2(chain []*types.HeaderWithGovState, writeHeader Wh2Callback, start time.Time) (int, error) {
+	// Collect some import statistics to report on
+	stats := struct{ processed, ignored int }{}
+	// All headers passed verification, import them into the database
+	for i, header := range chain {
+		// Short circuit insertion if shutting down
+		if hc.procInterrupt() {
+			log.Debug("Premature abort during headers import")
+			return i, errors.New("aborted")
+		}
+		// If the header's already known, skip it, otherwise store
+		if hc.HasHeader(header.Hash(), header.Number.Uint64()) {
+			stats.ignored++
+			continue
+		}
+		if err := writeHeader(header); err != nil {
+			return i, err
+		}
+		stats.processed++
+	}
+	// Report some public statistics so the user has a clue what's going on
+	last := chain[len(chain)-1]
+	log.Info("Imported new block headers", "count", stats.processed, "elapsed", common.PrettyDuration(time.Since(start)),
+		"number", last.Number, "hash", last.Hash(), "ignored", stats.ignored)
 
 	return 0, nil
 }
