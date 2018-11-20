@@ -22,7 +22,7 @@ $GDEX \
   --testnet \
   --verbosity=4 \
   --gcmode=archive \
-  --datadir=$datadir \
+  --datadir=$datadir --nodekey=testrpc.nodekey \
   --rpc --rpcapi=eth,net,web3,debug \
   --rpcaddr=0.0.0.0 --rpcport=8545 \
   --ws --wsapi=eth,net,web3,debug \
