@@ -21,6 +21,7 @@ import (
 	"errors"
 	"io"
 	"math/big"
+	"runtime"
 	"sync"
 	"sync/atomic"
 
@@ -274,24 +275,29 @@ func (s Transactions) GetRlp(i int) []byte {
 
 // TouchSenders calculates the sender of each transaction and update the cache.
 func (s Transactions) TouchSenders(signer Signer) (errorTx *Transaction, err error) {
+	num := runtime.NumCPU()
+	batchSize := len(s) / num
 	wg := sync.WaitGroup{}
-	wg.Add(len(s))
+	wg.Add(num)
 	txError := make(chan error, 1)
-	for _, tx := range s {
-		go func(tx *Transaction) {
+	for i := 0; i < num; i++ {
+		go func(txs Transactions) {
 			defer wg.Done()
-			if len(txError) > 0 {
-				return
-			}
-			_, err := Sender(signer, tx)
-			if err != nil {
-				select {
-				case txError <- err:
-					errorTx = tx
-				default:
+			for _, tx := range txs {
+				if len(txError) > 0 {
+					return
+				}
+				_, err := Sender(signer, tx)
+				if err != nil {
+					select {
+					case txError <- err:
+						errorTx = tx
+					default:
+					}
+					return
 				}
 			}
-		}(tx)
+		}(s[i*batchSize : (i+1)*batchSize])
 	}
 	wg.Wait()
 	select {
