@@ -268,7 +268,7 @@ func (bc *BlockChain) AddConfirmedBlock(block *coreTypes.Block) error {
 	if err != nil {
 		return err
 	}
-	_, err = transactions.TouchSenders(types.MakeSigner(bc.Config(), new(big.Int)))
+	_, err = types.GlobalSigCache.Add(types.NewEIP155Signer(bc.Config().ChainID), transactions)
 	if err != nil {
 		return err
 	}

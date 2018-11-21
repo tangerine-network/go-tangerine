@@ -21,8 +21,6 @@ import (
 	"errors"
 	"io"
 	"math/big"
-	"runtime"
-	"sync"
 	"sync/atomic"
 
 	"github.com/dexon-foundation/dexon/common"
@@ -271,40 +269,6 @@ func (s Transactions) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
 func (s Transactions) GetRlp(i int) []byte {
 	enc, _ := rlp.EncodeToBytes(s[i])
 	return enc
-}
-
-// TouchSenders calculates the sender of each transaction and update the cache.
-func (s Transactions) TouchSenders(signer Signer) (errorTx *Transaction, err error) {
-	num := runtime.NumCPU()
-	batchSize := len(s) / num
-	wg := sync.WaitGroup{}
-	wg.Add(num)
-	txError := make(chan error, 1)
-	for i := 0; i < num; i++ {
-		go func(txs Transactions) {
-			defer wg.Done()
-			for _, tx := range txs {
-				if len(txError) > 0 {
-					return
-				}
-				_, err := Sender(signer, tx)
-				if err != nil {
-					select {
-					case txError <- err:
-						errorTx = tx
-					default:
-					}
-					return
-				}
-			}
-		}(s[i*batchSize : (i+1)*batchSize])
-	}
-	wg.Wait()
-	select {
-	case err = <-txError:
-	default:
-	}
-	return
 }
 
 // TxDifference returns a new set which is the difference between a and b.

@@ -724,7 +724,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			}
 			p.MarkTransaction(tx.Hash())
 		}
-		types.Transactions(txs).TouchSenders(types.MakeSigner(pm.blockchain.Config(), new(big.Int)))
+		types.GlobalSigCache.Add(types.NewEIP155Signer(pm.blockchain.Config().ChainID), txs)
 		pm.txpool.AddRemotes(txs)
 
 	case msg.Code == MetaMsg:

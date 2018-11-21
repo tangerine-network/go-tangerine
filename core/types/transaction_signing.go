@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"runtime"
 	"sync"
 
 	"github.com/dexon-foundation/dexon/common"
@@ -32,25 +33,95 @@ var (
 	ErrInvalidChainId = errors.New("invalid chain id for signer")
 )
 
-var (
-	txCache = &sync.Map{}
-)
+var GlobalSigCache *globalSigCache
 
-func DeleteTxCacheByHash(hash common.Hash) {
-	txCache.Delete(hash)
+func init() {
+	GlobalSigCache = newGlobalSigCache()
 }
 
-func StoreTxCache(key common.Hash, value common.Address) {
-	txCache.Store(key, value)
+// globalSigCache stores the mapping between txHash and sender address.
+// Since ECRecover is slow, and we run ECRecover very frequently (in
+// app.VerifyBlock, app.ConfirmedBlock), so we need to cache it globally.
+type globalSigCache struct {
+	cache   map[common.Hash]common.Address
+	cacheMu sync.RWMutex
 }
 
-func LoadTxCache(key common.Hash) (common.Address, bool) {
-	addr, ok := txCache.Load(key)
-	if !ok {
-		return common.Address{}, ok
+func newGlobalSigCache() *globalSigCache {
+	return &globalSigCache{
+		cache: make(map[common.Hash]common.Address),
 	}
+}
 
-	return addr.(common.Address), ok
+type resultEntry struct {
+	Hash common.Hash
+	Addr common.Address
+}
+
+// Add adds a list of transactions into sig cache.
+func (c *globalSigCache) Add(signer Signer, txs Transactions) (errorTx *Transaction, err error) {
+	num := runtime.NumCPU()
+	batchSize := len(txs) / num
+	wg := sync.WaitGroup{}
+	wg.Add(num)
+	txError := make(chan error, 1)
+
+	for i := 0; i < num; i++ {
+		go func(txs Transactions) {
+			defer wg.Done()
+			results := make([]resultEntry, len(txs))
+			for i, tx := range txs {
+				if len(txError) > 0 {
+					return
+				}
+				addr, err := Sender(signer, tx)
+				if err != nil {
+					select {
+					case txError <- err:
+						errorTx = tx
+					default:
+					}
+					return
+				}
+				results[i] = resultEntry{
+					Hash: tx.Hash(),
+					Addr: addr,
+				}
+			}
+			// Acquire lock and set cache.
+			c.cacheMu.Lock()
+			defer c.cacheMu.Unlock()
+			for _, r := range results {
+				c.cache[r.Hash] = r.Addr
+			}
+		}(txs[i*batchSize : (i+1)*batchSize])
+	}
+	wg.Wait()
+
+	select {
+	case err = <-txError:
+	default:
+	}
+	return
+}
+
+// Prune removes a list of hashes of tx from the cache.
+func (c *globalSigCache) Prune(hashes []common.Hash) {
+	c.cacheMu.Lock()
+	defer c.cacheMu.Unlock()
+
+	for _, hash := range hashes {
+		delete(c.cache, hash)
+	}
+}
+
+// Get returns a single address given a tx hash.
+func (c *globalSigCache) Get(hash common.Hash) (common.Address, bool) {
+	c.cacheMu.RLock()
+	defer c.cacheMu.RUnlock()
+
+	res, ok := c.cache[hash]
+	return res, ok
 }
 
 // sigCache is used to cache the derived sender and contains
@@ -147,7 +218,7 @@ func (s EIP155Signer) Equal(s2 Signer) bool {
 var big8 = big.NewInt(8)
 
 func (s EIP155Signer) Sender(tx *Transaction) (common.Address, error) {
-	addr, ok := LoadTxCache(tx.Hash())
+	addr, ok := GlobalSigCache.Get(tx.Hash())
 	if ok {
 		return addr, nil
 	}
@@ -165,8 +236,6 @@ func (s EIP155Signer) Sender(tx *Transaction) (common.Address, error) {
 	if err != nil {
 		return common.Address{}, err
 	}
-
-	StoreTxCache(tx.Hash(), addr)
 	return addr, nil
 }
 
