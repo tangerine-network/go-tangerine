@@ -1013,9 +1013,6 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 			bytes += batch.ValueSize()
 			batch.Reset()
 		}
-		if _, ok := bc.GetRoundHeight(block.Round()); !ok {
-			bc.storeRoundHeight(block.Round(), block.NumberU64())
-		}
 	}
 	if batch.ValueSize() > 0 {
 		bytes += batch.ValueSize()
@@ -1391,7 +1388,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 				"txs", len(block.Transactions()), "gas", block.GasUsed(), "uncles", len(block.Uncles()),
 				"root", block.Root())
 			events = append(events, ChainSideEvent{block})
-			panic("fork found")
 		}
 		blockInsertTimer.UpdateSince(start)
 		stats.processed++
@@ -1536,22 +1532,22 @@ func (bc *BlockChain) insertSidechain(block *types.Block, it *insertIterator) (i
 	return 0, nil, nil, nil
 }
 
-// InsertChain2 attempts to insert the given batch of blocks in to the canonical
+// InsertDexonChain attempts to insert the given batch of blocks in to the canonical
 // chain or, otherwise, create a fork. If an error is returned it will return
 // the index number of the failing block as well an error describing what went
 // wrong.
 //
 // After insertion is done, all accumulated events will be fired.
-func (bc *BlockChain) InsertChain2(chain types.Blocks) (int, error) {
-	n, events, logs, err := bc.insertChain2(chain)
+func (bc *BlockChain) InsertDexonChain(chain types.Blocks) (int, error) {
+	n, events, logs, err := bc.insertDexonChain(chain)
 	bc.PostChainEvents(events, logs)
 	return n, err
 }
 
-// insertChain2 will execute the actual chain insertion and event aggregation. The
+// insertDexoonChain will execute the actual chain insertion and event aggregation. The
 // only reason this method exists as a separate one is to make locking cleaner
 // with deferred statements.
-func (bc *BlockChain) insertChain2(chain types.Blocks) (int, []interface{}, []*types.Log, error) {
+func (bc *BlockChain) insertDexonChain(chain types.Blocks) (int, []interface{}, []*types.Log, error) {
 	// Sanity check that we have something meaningful to import
 	if len(chain) == 0 {
 		return 0, nil, nil, nil
@@ -1656,7 +1652,7 @@ func (bc *BlockChain) insertChain2(chain types.Blocks) (int, []interface{}, []*t
 			}
 			// Import all the pruned blocks to make the state available
 			bc.chainmu.Unlock()
-			_, evs, logs, err := bc.insertChain2(winner)
+			_, evs, logs, err := bc.insertDexonChain(winner)
 			bc.chainmu.Lock()
 			events, coalescedLogs = evs, logs
 
@@ -1718,15 +1714,13 @@ func (bc *BlockChain) insertChain2(chain types.Blocks) (int, []interface{}, []*t
 
 			blockInsertTimer.UpdateSince(bstart)
 			events = append(events, ChainSideEvent{block})
+			panic("fork found")
 		}
 		stats.processed++
 		stats.usedGas += usedGas
 
 		cache, _ := bc.stateCache.TrieDB().Size()
 		stats.report(chain, i, cache)
-		if _, ok := bc.GetRoundHeight(block.Round()); !ok {
-			bc.storeRoundHeight(block.Round(), block.NumberU64())
-		}
 	}
 	// Append a single chain head event if we've progressed the chain
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {
@@ -2222,8 +2216,12 @@ func (bc *BlockChain) InsertHeaderChain(chain []*types.Header, checkFreq int) (i
 	return bc.hc.InsertHeaderChain(chain, whFunc, start)
 }
 
-func (bc *BlockChain) InsertHeaderChain2(chain []*types.HeaderWithGovState, verifierCache *dexCore.TSigVerifierCache) (int, error) {
+func (bc *BlockChain) InsertDexonHeaderChain(chain []*types.HeaderWithGovState, verifierCache *dexCore.TSigVerifierCache) (int, error) {
 	start := time.Now()
+	if i, err := bc.hc.ValidateDexonHeaderChain(chain, verifierCache); err != nil {
+		return i, err
+	}
+
 	bc.chainmu.Lock()
 	defer bc.chainmu.Unlock()
 
@@ -2233,11 +2231,11 @@ func (bc *BlockChain) InsertHeaderChain2(chain []*types.HeaderWithGovState, veri
 	whFunc := func(header *types.HeaderWithGovState) error {
 		bc.mu.Lock()
 		defer bc.mu.Unlock()
-		_, err := bc.hc.WriteHeader2(header)
+		_, err := bc.hc.WriteDexonHeader(header)
 		return err
 	}
 
-	return bc.hc.InsertHeaderChain2(chain, whFunc, start)
+	return bc.hc.InsertDexonHeaderChain(chain, whFunc, start)
 }
 
 // writeHeader writes a header into the local chain, given that its parent is

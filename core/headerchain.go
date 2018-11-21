@@ -304,7 +304,7 @@ func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, writeHeader WhCa
 	return 0, nil
 }
 
-func (hc *HeaderChain) WriteHeader2(header *types.HeaderWithGovState) (status WriteStatus, err error) {
+func (hc *HeaderChain) WriteDexonHeader(header *types.HeaderWithGovState) (status WriteStatus, err error) {
 	// Cache some values to prevent constant recalculation
 	var (
 		hash   = header.Hash()
@@ -394,7 +394,7 @@ func (hc *HeaderChain) WriteHeader2(header *types.HeaderWithGovState) (status Wr
 
 type Wh2Callback func(*types.HeaderWithGovState) error
 
-func (hc *HeaderChain) ValidateHeaderChain2(chain []*types.HeaderWithGovState, verifierCache *dexCore.TSigVerifierCache) (int, error) {
+func (hc *HeaderChain) ValidateDexonHeaderChain(chain []*types.HeaderWithGovState, verifierCache *dexCore.TSigVerifierCache) (int, error) {
 	// Do a sanity check that the provided chain is actually ordered and linked
 	for i := 1; i < len(chain); i++ {
 		if chain[i].Number.Uint64() != chain[i-1].Number.Uint64()+1 || chain[i].ParentHash != chain[i-1].Hash() {
@@ -454,7 +454,7 @@ func (hc *HeaderChain) verifyTSig(header *types.Header, verifierCache *dexCore.T
 	return nil
 }
 
-// InsertHeaderChain2 attempts to insert the given header chain in to the local
+// InsertDexonHeaderChain attempts to insert the given header chain in to the local
 // chain, possibly creating a reorg. If an error is returned, it will return the
 // index number of the failing header as well an error describing what went wrong.
 //
@@ -462,7 +462,7 @@ func (hc *HeaderChain) verifyTSig(header *types.Header, verifierCache *dexCore.T
 // should be done or not. The reason behind the optional check is because some
 // of the header retrieval mechanisms already need to verfy nonces, as well as
 // because nonces can be verified sparsely, not needing to check each.
-func (hc *HeaderChain) InsertHeaderChain2(chain []*types.HeaderWithGovState, writeHeader Wh2Callback, start time.Time) (int, error) {
+func (hc *HeaderChain) InsertDexonHeaderChain(chain []*types.HeaderWithGovState, writeHeader Wh2Callback, start time.Time) (int, error) {
 	// Collect some import statistics to report on
 	stats := struct{ processed, ignored int }{}
 	// All headers passed verification, import them into the database

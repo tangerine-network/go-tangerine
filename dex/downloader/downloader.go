@@ -180,8 +180,8 @@ type LightChain interface {
 	// GetTd returns the total difficulty of a local block.
 	GetTd(common.Hash, uint64) *big.Int
 
-	// InsertHeaderChain2 inserts a batch of headers into the local chain.
-	InsertHeaderChain2([]*types.HeaderWithGovState, *dexCore.TSigVerifierCache) (int, error)
+	// InsertDexonHeaderChain inserts a batch of headers into the local chain.
+	InsertDexonHeaderChain([]*types.HeaderWithGovState, *dexCore.TSigVerifierCache) (int, error)
 
 	// Rollback removes a few recently added elements from the local chain.
 	Rollback([]common.Hash)
@@ -206,8 +206,8 @@ type BlockChain interface {
 	// FastSyncCommitHead directly commits the head block to a certain entity.
 	FastSyncCommitHead(common.Hash) error
 
-	// InsertChain2 inserts a batch of blocks into the local chain.
-	InsertChain2(types.Blocks) (int, error)
+	// InsertDexonChain inserts a batch of blocks into the local chain.
+	InsertDexonChain(types.Blocks) (int, error)
 
 	// InsertReceiptChain inserts a batch of receipts into the local chain.
 	InsertReceiptChain(types.Blocks, []types.Receipts) (int, error)
@@ -1421,7 +1421,7 @@ func (d *Downloader) processHeaders(origin uint64, pivot uint64, td *big.Int) er
 						}
 					}
 
-					if n, err := d.lightchain.InsertHeaderChain2(chunk, d.verifierCache); err != nil {
+					if n, err := d.lightchain.InsertDexonHeaderChain(chunk, d.verifierCache); err != nil {
 						// If some headers were inserted, add them too to the rollback list
 						if n > 0 {
 							for _, h := range chunk[:n] {
@@ -1513,7 +1513,7 @@ func (d *Downloader) importBlockResults(results []*fetchResult) error {
 	for i, result := range results {
 		blocks[i] = types.NewBlockWithHeader(result.Header).WithBody(result.Transactions, result.Uncles)
 	}
-	if index, err := d.blockchain.InsertChain2(blocks); err != nil {
+	if index, err := d.blockchain.InsertDexonChain(blocks); err != nil {
 		log.Debug("Downloaded item processing failed", "number", results[index].Header.Number, "hash", results[index].Header.Hash(), "err", err)
 		return errInvalidChain
 	}
