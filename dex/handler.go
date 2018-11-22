@@ -34,7 +34,6 @@
 package dex
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -495,7 +494,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			}
 		}
 
-		ctx := context.Background()
 		if query.WithGov && len(headers) > 0 {
 			last := headers[len(headers)-1]
 			currentBlock := pm.blockchain.CurrentBlock()
@@ -513,11 +511,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				if r == 0 {
 					continue
 				}
-				h, err := pm.gov.GetRoundHeight(ctx, r)
-				if err != nil {
-					log.Warn("Get round height fail", "err", err)
-					return p.SendBlockHeaders([]*types.HeaderWithGovState{})
-				}
+				h := pm.gov.GetRoundHeight(r)
 				log.Trace("#Snapshot height", "height", h)
 				if h == 0 {
 					h = height
@@ -1181,7 +1175,9 @@ func (pm *ProtocolManager) peerSetLoop() {
 			}
 			if newRound == round+1 {
 				pm.peers.BuildConnection(newRound)
-				pm.peers.ForgetConnection(round - 1)
+				if round >= 1 {
+					pm.peers.ForgetConnection(round - 1)
+				}
 			} else {
 				// just forget all network connection and rebuild.
 				pm.peers.ForgetConnection(round)

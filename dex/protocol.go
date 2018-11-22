@@ -34,7 +34,6 @@
 package dex
 
 import (
-	"context"
 	"crypto/ecdsa"
 	"fmt"
 	"io"
@@ -144,7 +143,7 @@ type txPool interface {
 }
 
 type governance interface {
-	GetRoundHeight(context.Context, uint64) (uint64, error)
+	GetRoundHeight(uint64) uint64
 
 	GetNumChains(uint64) uint32
 

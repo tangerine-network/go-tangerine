@@ -234,7 +234,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		}
 	}
 
-	gov := NewGovernance(bc)
+	gov := NewGovernance(NewGovernanceStateDB(bc))
 	bc.verifierCache = dexCore.NewTSigVerifierCache(gov, 5)
 
 	// Take ownership of this particular state

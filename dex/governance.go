@@ -5,26 +5,26 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"math/big"
-	"time"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
 	dexCore "github.com/dexon-foundation/dexon-consensus/core"
 	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
 	coreEcdsa "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
 
 	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/params"
 	"github.com/dexon-foundation/dexon/rlp"
-	"github.com/dexon-foundation/dexon/rpc"
 )
 
 type DexconGovernance struct {
+	*core.Governance
+
 	b            *DexAPIBackend
 	chainConfig  *params.ChainConfig
 	privateKey   *ecdsa.PrivateKey
@@ -32,11 +32,13 @@ type DexconGovernance struct {
 	nodeSetCache *dexCore.NodeSetCache
 }
 
-// NewDexconGovernance retruns a governance implementation of the DEXON
+// NewDexconGovernance returns a governance implementation of the DEXON
 // consensus governance interface.
 func NewDexconGovernance(backend *DexAPIBackend, chainConfig *params.ChainConfig,
 	privKey *ecdsa.PrivateKey) *DexconGovernance {
 	g := &DexconGovernance{
+		Governance: core.NewGovernance(
+			core.NewGovernanceStateDB(backend.dex.BlockChain())),
 		b:           backend,
 		chainConfig: chainConfig,
 		privateKey:  privKey,
@@ -46,67 +48,9 @@ func NewDexconGovernance(backend *DexAPIBackend, chainConfig *params.ChainConfig
 	return g
 }
 
-func (d *DexconGovernance) GetRoundHeight(ctx context.Context, round uint64) (uint64, error) {
-	state, _, err := d.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
-	if state == nil || err != nil {
-		return 0, err
-	}
-	s := vm.GovernanceStateHelper{state}
-	return s.RoundHeight(big.NewInt(int64(round))).Uint64(), nil
-}
-
-func (d *DexconGovernance) getGovState() *vm.GovernanceStateHelper {
-	ctx := context.Background()
-	state, _, err := d.b.StateAndHeaderByNumber(ctx, rpc.LatestBlockNumber)
-	if state == nil || err != nil {
-		return nil
-	}
-
-	return &vm.GovernanceStateHelper{state}
-}
-
-func (d *DexconGovernance) getGovStateAtRound(round uint64) *vm.GovernanceStateHelper {
-	if round < dexCore.ConfigRoundShift {
-		round = 0
-	} else {
-		round -= dexCore.ConfigRoundShift
-	}
-	ctx := context.Background()
-	blockHeight, err := d.GetRoundHeight(ctx, round)
-	if err != nil {
-		return nil
-	}
-
-	state, _, err := d.b.StateAndHeaderByNumber(ctx, rpc.BlockNumber(blockHeight))
-	if state == nil || err != nil {
-		log.Error("Failed to retrieve governance state", "round", round, "height", blockHeight)
-		return nil
-	}
-	return &vm.GovernanceStateHelper{state}
-}
-
 // DexconConfiguration return raw config in state.
 func (d *DexconGovernance) DexconConfiguration(round uint64) *params.DexconConfig {
-	s := d.getGovStateAtRound(round)
-	return s.Configuration()
-}
-
-// Configuration returns the system configuration for consensus core to use.
-func (d *DexconGovernance) Configuration(round uint64) *coreTypes.Config {
-	s := d.getGovStateAtRound(round)
-	c := s.Configuration()
-
-	return &coreTypes.Config{
-		NumChains:        c.NumChains,
-		LambdaBA:         time.Duration(c.LambdaBA) * time.Millisecond,
-		LambdaDKG:        time.Duration(c.LambdaDKG) * time.Millisecond,
-		K:                int(c.K),
-		PhiRatio:         c.PhiRatio,
-		NotarySetSize:    c.NotarySetSize,
-		DKGSetSize:       c.DKGSetSize,
-		RoundInterval:    time.Duration(c.RoundInterval) * time.Millisecond,
-		MinBlockInterval: time.Duration(c.MinBlockInterval) * time.Millisecond,
-	}
+	return d.GetConfigHelper(round).Configuration()
 }
 
 func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
@@ -146,12 +90,12 @@ func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
 
 // CRS returns the CRS for a given round.
 func (d *DexconGovernance) CRS(round uint64) coreCommon.Hash {
-	s := d.getGovState()
+	s := d.GetHeadHelper()
 	return coreCommon.Hash(s.CRS(big.NewInt(int64(round))))
 }
 
 func (d *DexconGovernance) LenCRS() uint64 {
-	s := d.getGovState()
+	s := d.GetHeadHelper()
 	return s.LenCRS().Uint64()
 }
 
@@ -174,7 +118,7 @@ func (d *DexconGovernance) ProposeCRS(round uint64, signedCRS []byte) {
 
 // NodeSet returns the current node set.
 func (d *DexconGovernance) NodeSet(round uint64) []coreCrypto.PublicKey {
-	s := d.getGovStateAtRound(round)
+	s := d.GetConfigHelper(round)
 	var pks []coreCrypto.PublicKey
 
 	for _, n := range s.QualifiedNodes() {
@@ -228,20 +172,6 @@ func (d *DexconGovernance) AddDKGComplaint(round uint64, complaint *dkgTypes.Com
 	}
 }
 
-// DKGComplaints gets all the DKGComplaints of round.
-func (d *DexconGovernance) DKGComplaints(round uint64) []*dkgTypes.Complaint {
-	s := d.getGovState()
-	var dkgComplaints []*dkgTypes.Complaint
-	for _, pk := range s.DKGComplaints(big.NewInt(int64(round))) {
-		x := new(dkgTypes.Complaint)
-		if err := rlp.DecodeBytes(pk, x); err != nil {
-			panic(err)
-		}
-		dkgComplaints = append(dkgComplaints, x)
-	}
-	return dkgComplaints
-}
-
 // AddDKGMasterPublicKey adds a DKGMasterPublicKey.
 func (d *DexconGovernance) AddDKGMasterPublicKey(round uint64, masterPublicKey *dkgTypes.MasterPublicKey) {
 	method := vm.GovernanceContractName2Method["addDKGMasterPublicKey"]
@@ -265,20 +195,6 @@ func (d *DexconGovernance) AddDKGMasterPublicKey(round uint64, masterPublicKey *
 	}
 }
 
-// DKGMasterPublicKeys gets all the DKGMasterPublicKey of round.
-func (d *DexconGovernance) DKGMasterPublicKeys(round uint64) []*dkgTypes.MasterPublicKey {
-	s := d.getGovState()
-	var dkgMasterPKs []*dkgTypes.MasterPublicKey
-	for _, pk := range s.DKGMasterPublicKeys(big.NewInt(int64(round))) {
-		x := new(dkgTypes.MasterPublicKey)
-		if err := rlp.DecodeBytes(pk, x); err != nil {
-			panic(err)
-		}
-		dkgMasterPKs = append(dkgMasterPKs, x)
-	}
-	return dkgMasterPKs
-}
-
 // AddDKGFinalize adds a DKG finalize message.
 func (d *DexconGovernance) AddDKGFinalize(round uint64, final *dkgTypes.Finalize) {
 	method := vm.GovernanceContractName2Method["addDKGFinalize"]
@@ -300,14 +216,6 @@ func (d *DexconGovernance) AddDKGFinalize(round uint64, final *dkgTypes.Finalize
 	if err != nil {
 		log.Error("failed to send addDKGFinalize tx", "err", err)
 	}
-}
-
-// IsDKGFinal checks if DKG is final.
-func (d *DexconGovernance) IsDKGFinal(round uint64) bool {
-	s := d.getGovState()
-	threshold := 2*s.DKGSetSize().Uint64()/3 + 1
-	count := s.DKGFinalizedsCount(big.NewInt(int64(round))).Uint64()
-	return count >= threshold
 }
 
 func (d *DexconGovernance) GetNumChains(round uint64) uint32 {
