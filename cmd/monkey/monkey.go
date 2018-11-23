@@ -40,7 +40,7 @@ var key = flag.String("key", "", "private key path")
 var endpoint = flag.String("endpoint", "http://127.0.0.1:8545", "JSON RPC endpoint")
 var n = flag.Int("n", 100, "number of random accounts")
 var gambler = flag.Bool("gambler", false, "make this monkey a gambler")
-var parallel = flag.Bool("parallel", false, "monkeys will send transaction in parallel")
+var batch = flag.Bool("batch", false, "monkeys will send transaction in batch")
 var sleep = flag.Int("sleep", 500, "time in millisecond that monkeys sleep between each transaction")
 
 type Monkey struct {
@@ -79,35 +79,70 @@ func New(ep string, source *ecdsa.PrivateKey, num int) *Monkey {
 	}
 }
 
-func (m *Monkey) transfer(
-	key *ecdsa.PrivateKey, toAddress common.Address, amount *big.Int, nonce uint64) {
+type transferContext struct {
+	Key       *ecdsa.PrivateKey
+	ToAddress common.Address
+	Amount    *big.Int
+	Data      []byte
+	Nonce     uint64
+	Gas       uint64
+}
 
-	if nonce == math.MaxUint64 {
+func (m *Monkey) prepareTx(ctx *transferContext) *types.Transaction {
+	if ctx.Nonce == math.MaxUint64 {
 		var err error
-		address := crypto.PubkeyToAddress(key.PublicKey)
-		nonce, err = m.client.PendingNonceAt(context.Background(), address)
+		address := crypto.PubkeyToAddress(ctx.Key.PublicKey)
+		ctx.Nonce, err = m.client.PendingNonceAt(context.Background(), address)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	if ctx.Gas == uint64(0) {
+		var err error
+		ctx.Gas, err = m.client.EstimateGas(context.Background(), dexon.CallMsg{
+			Data: ctx.Data,
+		})
 		if err != nil {
 			panic(err)
 		}
 	}
 
 	tx := types.NewTransaction(
-		uint64(nonce),
-		toAddress,
-		amount,
+		ctx.Nonce,
+		ctx.ToAddress,
+		ctx.Amount,
 		uint64(21000),
 		big.NewInt(1e9),
 		nil)
 
 	signer := types.NewEIP155Signer(m.networkID)
-	tx, err := types.SignTx(tx, signer, key)
+	tx, err := types.SignTx(tx, signer, ctx.Key)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println("Sending TX", "fullhash", tx.Hash().String())
+	return tx
+}
 
-	err = m.client.SendTransaction(context.Background(), tx)
+func (m *Monkey) transfer(ctx *transferContext) {
+	tx := m.prepareTx(ctx)
+
+	fmt.Println("Sending TX", "fullhash", tx.Hash().String())
+	err := m.client.SendTransaction(context.Background(), tx)
+	if err != nil {
+		panic(err)
+	}
+}
+
+func (m *Monkey) batchTransfer(ctxs []*transferContext) {
+	txs := make([]*types.Transaction, len(ctxs))
+	for i, ctx := range ctxs {
+		txs[i] = m.prepareTx(ctx)
+		fmt.Println("Sending TX", "fullhash", txs[i].Hash().String())
+	}
+
+	err := m.client.SendTransactions(context.Background(), txs)
 	if err != nil {
 		panic(err)
 	}
@@ -139,7 +174,7 @@ func (m *Monkey) deploy(
 	}
 
 	tx := types.NewContractCreation(
-		uint64(nonce),
+		nonce,
 		amount,
 		gas,
 		big.NewInt(1e9),
@@ -171,53 +206,6 @@ func (m *Monkey) deploy(
 	}
 }
 
-func (m *Monkey) call(
-	key *ecdsa.PrivateKey, contract common.Address, input []byte, amount *big.Int, gas uint64, nonce uint64) {
-
-	address := crypto.PubkeyToAddress(key.PublicKey)
-	if nonce == math.MaxUint64 {
-		var err error
-		nonce, err = m.client.PendingNonceAt(context.Background(), address)
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	if gas == uint64(0) {
-		var err error
-		gas, err = m.client.EstimateGas(context.Background(), dexon.CallMsg{
-			From:  address,
-			To:    &contract,
-			Value: amount,
-			Data:  input,
-		})
-		if err != nil {
-			panic(err)
-		}
-	}
-
-	tx := types.NewTransaction(
-		uint64(nonce),
-		contract,
-		amount,
-		gas,
-		big.NewInt(1e9),
-		input)
-
-	signer := types.NewEIP155Signer(m.networkID)
-	tx, err := types.SignTx(tx, signer, key)
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("Sending TX", "fullhash", tx.Hash().String())
-
-	err = m.client.SendTransaction(context.Background(), tx)
-	if err != nil {
-		panic(err)
-	}
-}
-
 func (m *Monkey) Distribute() {
 	fmt.Println("Distributing DEX to random accounts ...")
 	address := crypto.PubkeyToAddress(m.source.PublicKey)
@@ -226,31 +214,47 @@ func (m *Monkey) Distribute() {
 		panic(err)
 	}
 
-	for _, key := range m.keys {
+	ctxs := make([]*transferContext, len(m.keys))
+	for i, key := range m.keys {
 		address := crypto.PubkeyToAddress(key.PublicKey)
 		amount := new(big.Int)
 		amount.SetString("1000000000000000000", 10)
-		m.transfer(m.source, address, amount, nonce)
+		ctxs[i] = &transferContext{
+			Key:       m.source,
+			ToAddress: address,
+			Amount:    amount,
+			Nonce:     nonce,
+			Gas:       21000,
+		}
 		nonce += 1
 	}
+	m.batchTransfer(ctxs)
 	time.Sleep(20 * time.Second)
 }
 
 func (m *Monkey) Crazy() {
 	fmt.Println("Performing random transfers ...")
 	nonce := uint64(0)
-	transfer := func(key *ecdsa.PrivateKey, to common.Address, nonce uint64) {
-		m.transfer(key, to, big.NewInt(1), nonce)
-	}
 	for {
 		fmt.Println("nonce", nonce)
-		for _, key := range m.keys {
+		ctxs := make([]*transferContext, len(m.keys))
+		for i, key := range m.keys {
 			to := crypto.PubkeyToAddress(m.keys[rand.Int()%len(m.keys)].PublicKey)
-			if *parallel {
-				go transfer(key, to, nonce)
-			} else {
-				transfer(key, to, nonce)
+			ctx := &transferContext{
+				Key:       key,
+				ToAddress: to,
+				Amount:    big.NewInt(1),
+				Nonce:     nonce,
+				Gas:       21000,
 			}
+			if *batch {
+				ctxs[i] = ctx
+			} else {
+				m.transfer(ctx)
+			}
+		}
+		if *batch {
+			m.batchTransfer(ctxs)
 		}
 		nonce += 1
 		time.Sleep(time.Duration(*sleep) * time.Millisecond)

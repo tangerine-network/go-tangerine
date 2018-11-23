@@ -154,6 +154,10 @@ func (b *DexAPIBackend) SendTx(ctx context.Context, signedTx *types.Transaction)
 	return b.dex.txPool.AddLocal(signedTx)
 }
 
+func (b *DexAPIBackend) SendTxs(ctx context.Context, signedTxs []*types.Transaction) []error {
+	return b.dex.txPool.AddLocals(signedTxs)
+}
+
 func (b *DexAPIBackend) GetPoolTransactions() (types.Transactions, error) {
 	pending, err := b.dex.txPool.Pending()
 	if err != nil {

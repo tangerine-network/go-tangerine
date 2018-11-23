@@ -18,7 +18,6 @@
 package main
 
 import (
-	"crypto/ecdsa"
 	"fmt"
 	"math"
 	"math/big"
@@ -55,7 +54,14 @@ func (m *Monkey) Gamble() {
 	if err != nil {
 		panic(err)
 	}
-	m.call(m.source, contract, input, new(big.Int).Set(oneDEX), 0, math.MaxUint64)
+	m.transfer(&transferContext{
+		Key:       m.source,
+		ToAddress: contract,
+		Amount:    new(big.Int).Set(oneDEX),
+		Data:      input,
+		Gas:       0,
+		Nonce:     math.MaxUint64,
+	})
 
 	time.Sleep(5 * time.Second)
 
@@ -64,19 +70,26 @@ func (m *Monkey) Gamble() {
 		panic(err)
 	}
 
-	call := func(key *ecdsa.PrivateKey, nonce uint64) {
-		m.call(key, contract, input, big.NewInt(100000), uint64(32740), nonce)
-	}
-
 	nonce := uint64(0)
 	for {
 		fmt.Println("nonce", nonce)
-		for _, key := range m.keys {
-			if *parallel {
-				go call(key, nonce)
-			} else {
-				call(key, nonce)
+		ctxs := make([]*transferContext, len(m.keys))
+		for i, key := range m.keys {
+			ctx := &transferContext{
+				Key:       key,
+				ToAddress: contract,
+				Amount:    big.NewInt(1),
+				Data:      input,
+				Nonce:     nonce,
 			}
+			if *batch {
+				ctxs[i] = ctx
+			} else {
+				m.transfer(ctx)
+			}
+		}
+		if *batch {
+			m.batchTransfer(ctxs)
 		}
 		nonce += 1
 		time.Sleep(time.Duration(*sleep) * time.Millisecond)

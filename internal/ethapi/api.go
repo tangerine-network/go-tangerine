@@ -1288,6 +1288,31 @@ func submitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (c
 	return tx.Hash(), nil
 }
 
+// submitTransactions is a helper function that submits batch of tx to txPool and logs a message.
+func submitTransactions(ctx context.Context, b Backend, txs []*types.Transaction) ([]common.Hash, error) {
+	errs := b.SendTxs(ctx, txs)
+	var hashes []common.Hash
+	for i, err := range errs {
+		if err != nil {
+			return nil, err
+		}
+		tx := txs[i]
+		if tx.To() == nil {
+			signer := types.MakeSigner(b.ChainConfig(), b.CurrentBlock().Number())
+			from, err := types.Sender(signer, tx)
+			if err != nil {
+				return nil, err
+			}
+			addr := crypto.CreateAddress(from, tx.Nonce())
+			log.Info("Submitted contract creation", "fullhash", tx.Hash().Hex(), "contract", addr.Hex())
+		} else {
+			log.Info("Submitted transaction", "fullhash", tx.Hash().Hex(), "recipient", tx.To())
+		}
+		hashes = append(hashes, tx.Hash())
+	}
+	return hashes, nil
+}
+
 // SendTransaction creates a transaction for the given argument, sign it and submit it to the
 // transaction pool.
 func (s *PublicTransactionPoolAPI) SendTransaction(ctx context.Context, args SendTxArgs) (common.Hash, error) {
@@ -1333,6 +1358,20 @@ func (s *PublicTransactionPoolAPI) SendRawTransaction(ctx context.Context, encod
 		return common.Hash{}, err
 	}
 	return submitTransaction(ctx, s.b, tx)
+}
+
+// SendRawTransactions will add the signed transaction to the transaction pool.
+// The sender is responsible for signing the transaction and using the correct nonce.
+func (s *PublicTransactionPoolAPI) SendRawTransactions(ctx context.Context, encodedTxs []hexutil.Bytes) ([]common.Hash, error) {
+	var txs []*types.Transaction
+	for _, encodedTx := range encodedTxs {
+		tx := new(types.Transaction)
+		if err := rlp.DecodeBytes(encodedTx, tx); err != nil {
+			return nil, err
+		}
+		txs = append(txs, tx)
+	}
+	return submitTransactions(ctx, s.b, txs)
 }
 
 // Sign calculates an ECDSA signature for:

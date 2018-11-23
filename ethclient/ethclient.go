@@ -506,6 +506,22 @@ func (ec *Client) SendTransaction(ctx context.Context, tx *types.Transaction) er
 	return ec.c.CallContext(ctx, nil, "eth_sendRawTransaction", common.ToHex(data))
 }
 
+// SendTransactions injects a batch of signed transactions into the pending pool for execution.
+//
+// If a transaction was a contract creation use the TransactionReceipt method to get the
+// contract address after the transaction has been mined.
+func (ec *Client) SendTransactions(ctx context.Context, txs []*types.Transaction) error {
+	txData := make([]interface{}, len(txs))
+	for i, tx := range txs {
+		data, err := rlp.EncodeToBytes(tx)
+		if err != nil {
+			return err
+		}
+		txData[i] = common.ToHex(data)
+	}
+	return ec.c.CallContext(ctx, nil, "eth_sendRawTransactions", txData)
+}
+
 func toCallArg(msg ethereum.CallMsg) interface{} {
 	arg := map[string]interface{}{
 		"from": msg.From,
