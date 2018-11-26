@@ -43,10 +43,10 @@ var (
 )
 
 func init() {
-	cur := int64(1)
+	cur := big.NewInt(1)
 	for i := 0; i < 256; i++ {
-		power2[i] = big.NewInt(cur)
-		cur <<= 1
+		power2[i] = new(big.Int).Set(cur)
+		cur = new(big.Int).Mul(cur, big2)
 	}
 }
 
