@@ -1093,8 +1093,13 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	}
 	triedb := bc.stateCache.TrieDB()
 
-	// If we're running an archive node, always flush
-	if bc.cacheConfig.Disabled {
+	if _, ok := bc.GetRoundHeight(block.Round()); !ok {
+		bc.storeRoundHeight(block.Round(), block.NumberU64())
+	}
+	height, _ := bc.GetRoundHeight(block.Round())
+
+	// If we're running an archive node or the block is snapshot height, always flush
+	if bc.cacheConfig.Disabled || height == block.NumberU64() {
 		if err := triedb.Commit(root, false); err != nil {
 			return NonStatTy, err
 		}
