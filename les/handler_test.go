@@ -498,7 +498,7 @@ func TestTransactionStatusLes2(t *testing.T) {
 	chain := pm.blockchain.(*core.BlockChain)
 	config := core.DefaultTxPoolConfig
 	config.Journal = ""
-	txpool := core.NewTxPool(config, params.TestChainConfig, chain)
+	txpool := core.NewTxPool(config, params.TestChainConfig, chain, false)
 	pm.txpool = txpool
 	peer, _ := newTestPeer(t, "peer", 2, pm, true)
 	defer peer.close()
