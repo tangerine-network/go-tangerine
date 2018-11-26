@@ -200,16 +200,15 @@ addressMap:
 			expectNonce = lastConfirmedNonce + 1
 		}
 
-		for _, tx := range txs {
-			if expectNonce == tx.Nonce() {
-				expectNonce++
-			} else if expectNonce < tx.Nonce() {
-				break
-			} else if expectNonce > tx.Nonce() {
-				log.Debug("Skipping tx with smaller nonce then expected", "expected", expectNonce, "nonce", tx.Nonce())
-				continue
-			}
+		if len(txs) == 0 {
+			continue
+		}
 
+		firstNonce := txs[0].Nonce()
+		startIndex := int(expectNonce - firstNonce)
+
+		for i := startIndex; i < len(txs); i++ {
+			tx := txs[i]
 			intrGas, err := core.IntrinsicGas(tx.Data(), tx.To() == nil, true)
 			if err != nil {
 				log.Error("Failed to calculate intrinsic gas", "error", err)
