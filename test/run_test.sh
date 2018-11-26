@@ -1,12 +1,16 @@
 #!/bin/bash
 
+if [ "$1" != "--testnet" ] && [ "$1" != "--taipei" ]; then
+  echo 'invalid network specified'
+  exit 1
+fi
+
+NETWORK="${1}"
+
 GDEX=../build/bin/gdex
 
 # Kill all previous instances.
 pkill -9 -f gdex
-
-# Start bootnode.
-bootnode -nodekey bootnode.key --verbosity=9 > bootnode.log 2>&1 &
 
 logsdir=$PWD/log-$(date '+%Y-%m-%d-%H:%M:%S')
 mkdir $logsdir
@@ -19,7 +23,7 @@ datadir=$PWD/Dexon.rpc
 rm -rf $datadir
 $GDEX --datadir=$datadir init genesis.json
 $GDEX \
-  --testnet \
+  ${NETWORK} \
   --verbosity=4 \
   --gcmode=archive \
   --datadir=$datadir --nodekey=testrpc.nodekey \
@@ -36,7 +40,7 @@ for i in $(seq 0 3); do
   rm -rf $datadir
   $GDEX --datadir=$datadir init genesis.json
   $GDEX \
-    --testnet \
+    ${NETWORK} \
     --bp \
     --verbosity=4 \
     --gcmode=archive \

@@ -393,10 +393,22 @@ func DefaultGenesisBlock() *Genesis {
 	}
 }
 
-// DefaultTestnetGenesisBlock returns the Ropsten network genesis block.
+// DefaultTestnetGenesisBlock returns the Taiwan network genesis block.
 func DefaultTestnetGenesisBlock() *Genesis {
 	return &Genesis{
 		Config:     params.TestnetChainConfig,
+		Nonce:      0x42,
+		ExtraData:  hexutil.MustDecode("0x3535353535353535353535353535353535353535353535353535353535353535"),
+		GasLimit:   40000000,
+		Difficulty: big.NewInt(1),
+		Alloc:      decodePrealloc(testnetAllocData),
+	}
+}
+
+// DefaultTaipeiGenesisBlock returns the Taipei network genesis block.
+func DefaultTaipeiGenesisBlock() *Genesis {
+	return &Genesis{
+		Config:     params.TaipeiChainConfig,
 		Nonce:      0x42,
 		ExtraData:  hexutil.MustDecode("0x3535353535353535353535353535353535353535353535353535353535353535"),
 		GasLimit:   40000000,

@@ -124,6 +124,8 @@ func remoteConsole(ctx *cli.Context) error {
 		if path != "" {
 			if ctx.GlobalBool(utils.TestnetFlag.Name) {
 				path = filepath.Join(path, "testnet")
+			} else if ctx.GlobalBool(utils.TaipeiFlag.Name) {
+				path = filepath.Join(path, "taipei")
 			}
 		}
 		endpoint = fmt.Sprintf("%s/gdex.ipc", path)
