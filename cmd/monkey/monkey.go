@@ -128,7 +128,6 @@ func (m *Monkey) prepareTx(ctx *transferContext) *types.Transaction {
 func (m *Monkey) transfer(ctx *transferContext) {
 	tx := m.prepareTx(ctx)
 
-	fmt.Println("Sending TX", "fullhash", tx.Hash().String())
 	err := m.client.SendTransaction(context.Background(), tx)
 	if err != nil {
 		panic(err)
@@ -139,7 +138,6 @@ func (m *Monkey) batchTransfer(ctxs []*transferContext) {
 	txs := make([]*types.Transaction, len(ctxs))
 	for i, ctx := range ctxs {
 		txs[i] = m.prepareTx(ctx)
-		fmt.Println("Sending TX", "fullhash", txs[i].Hash().String())
 	}
 
 	err := m.client.SendTransactions(context.Background(), txs)
@@ -236,7 +234,6 @@ func (m *Monkey) Crazy() {
 	fmt.Println("Performing random transfers ...")
 	nonce := uint64(0)
 	for {
-		fmt.Println("nonce", nonce)
 		ctxs := make([]*transferContext, len(m.keys))
 		for i, key := range m.keys {
 			to := crypto.PubkeyToAddress(m.keys[rand.Int()%len(m.keys)].PublicKey)
@@ -256,6 +253,8 @@ func (m *Monkey) Crazy() {
 		if *batch {
 			m.batchTransfer(ctxs)
 		}
+		fmt.Printf("Sent %d transactions, nonce = %d\n", len(m.keys), nonce)
+
 		nonce += 1
 		time.Sleep(time.Duration(*sleep) * time.Millisecond)
 	}

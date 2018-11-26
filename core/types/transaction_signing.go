@@ -173,9 +173,13 @@ func Sender(signer Signer, tx *Transaction) (common.Address, error) {
 		}
 	}
 
-	addr, err := signer.Sender(tx)
-	if err != nil {
-		return common.Address{}, err
+	addr, ok := GlobalSigCache.Get(tx.Hash())
+	if !ok {
+		var err error
+		addr, err = signer.Sender(tx)
+		if err != nil {
+			return common.Address{}, err
+		}
 	}
 	tx.from.Store(sigCache{signer: signer, from: addr})
 	return addr, nil
@@ -218,11 +222,6 @@ func (s EIP155Signer) Equal(s2 Signer) bool {
 var big8 = big.NewInt(8)
 
 func (s EIP155Signer) Sender(tx *Transaction) (common.Address, error) {
-	addr, ok := GlobalSigCache.Get(tx.Hash())
-	if ok {
-		return addr, nil
-	}
-
 	if !tx.Protected() {
 		return HomesteadSigner{}.Sender(tx)
 	}

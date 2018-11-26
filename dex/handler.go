@@ -1112,7 +1112,7 @@ func (pm *ProtocolManager) txBroadcastLoop() {
 	txs := make(types.Transactions, 0)
 	for {
 		select {
-		case <-time.After(500 * time.Millisecond):
+		case <-time.After(100 * time.Millisecond):
 			pm.BroadcastTxs(txs)
 			txs = txs[:0]
 			currentSize = 0

@@ -1290,6 +1290,7 @@ func submitTransaction(ctx context.Context, b Backend, tx *types.Transaction) (c
 
 // submitTransactions is a helper function that submits batch of tx to txPool and logs a message.
 func submitTransactions(ctx context.Context, b Backend, txs []*types.Transaction) ([]common.Hash, error) {
+	types.GlobalSigCache.Add(types.NewEIP155Signer(b.ChainConfig().ChainID), txs)
 	errs := b.SendTxs(ctx, txs)
 	var hashes []common.Hash
 	for i, err := range errs {

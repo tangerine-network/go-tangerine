@@ -174,10 +174,9 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte,
 
 	chainID := new(big.Int).SetUint64(uint64(position.ChainID))
 	chainNums := new(big.Int).SetUint64(uint64(d.gov.GetNumChains(position.Round)))
-	blockGasLimit := new(big.Int).SetUint64(core.CalcGasLimit(d.blockchain.CurrentBlock(),
-		d.config.GasFloor, d.config.GasCeil))
+	blockGasLimit := new(big.Int).SetUint64(d.blockchain.CurrentBlock().GasLimit())
 	blockGasUsed := new(big.Int)
-	var allTxs types.Transactions
+	allTxs := make([]*types.Transaction, 0, 3000)
 
 addressMap:
 	for address, txs := range txsMap {
@@ -374,8 +373,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 	}
 
 	// Validate if balance is enough for TXs in this block.
-	blockGasLimit := new(big.Int).SetUint64(core.CalcGasLimit(
-		d.blockchain.CurrentBlock(), d.config.GasFloor, d.config.GasCeil))
+	blockGasLimit := new(big.Int).SetUint64(d.blockchain.CurrentBlock().GasLimit())
 	blockGasUsed := new(big.Int)
 
 	for _, tx := range transactions {
@@ -451,7 +449,6 @@ func (d *DexconApp) BlockDelivered(
 	}
 	d.chainLatestRoot.Store(block.Position.ChainID, root)
 
-	log.Info("Insert pending block success", "height", result.Height)
 	d.blockchain.RemoveConfirmedBlock(chainID, blockHash)
 }
 

@@ -1834,6 +1834,8 @@ func (bc *BlockChain) processPendingBlock(
 	bc.addPendingBlock(newPendingBlock, receipts)
 	events = append(events, BlockConfirmedEvent{newPendingBlock})
 
+	log.Debug("Inserted pending block", "height", newPendingBlock.Number(), "hash", newPendingBlock.Hash())
+
 	// Start insert available pending blocks into db
 	for pendingHeight := bc.CurrentBlock().NumberU64() + 1; pendingHeight <= witness.Height; pendingHeight++ {
 		pendingIns, exist := bc.pendingBlocks[pendingHeight]
