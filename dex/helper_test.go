@@ -125,7 +125,7 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 		notarySetFunc: func(uint64, uint32) (map[string]struct{}, error) { return nil, nil },
 	}
 
-	pm, err := NewProtocolManager(gspec.Config, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, blockchain, db, tgov)
+	pm, err := NewProtocolManager(gspec.Config, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, blockchain, db, true, tgov)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -221,6 +221,10 @@ func (g *testGovernance) NotarySet(
 
 func (g *testGovernance) DKGSet(round uint64) (map[string]struct{}, error) {
 	return g.dkgSetFunc(round)
+}
+
+func (g *testGovernance) GetRoundHeight(round uint64) uint64 {
+	return 0
 }
 
 // testPeer is a simulated peer to allow testing direct network calls.

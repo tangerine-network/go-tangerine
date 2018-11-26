@@ -433,12 +433,14 @@ func TestRecvVote(t *testing.T) {
 	defer p.close()
 
 	vote := coreTypes.Vote{
-		ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
-		Period:     10,
-		Position: coreTypes.Position{
-			ChainID: 11,
-			Round:   12,
-			Height:  13,
+		VoteHeader: coreTypes.VoteHeader{
+			ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
+			Period:     10,
+			Position: coreTypes.Position{
+				ChainID: 11,
+				Round:   12,
+				Height:  13,
+			},
 		},
 		Signature: coreCrypto.Signature{
 			Type:      "123",
@@ -468,12 +470,14 @@ func TestSendVote(t *testing.T) {
 	defer pm.Stop()
 
 	vote := coreTypes.Vote{
-		ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
-		Period:     10,
-		Position: coreTypes.Position{
-			ChainID: 1,
-			Round:   10,
-			Height:  13,
+		VoteHeader: coreTypes.VoteHeader{
+			ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
+			Period:     10,
+			Position: coreTypes.Position{
+				ChainID: 1,
+				Round:   10,
+				Height:  13,
+			},
 		},
 		Signature: coreCrypto.Signature{
 			Type:      "123",
@@ -663,12 +667,14 @@ func TestRecvAgreement(t *testing.T) {
 
 	// TODO(sonic): polish this
 	vote := coreTypes.Vote{
-		ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
-		Period:     10,
-		Position: coreTypes.Position{
-			ChainID: 1,
-			Round:   10,
-			Height:  13,
+		VoteHeader: coreTypes.VoteHeader{
+			ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
+			Period:     10,
+			Position: coreTypes.Position{
+				ChainID: 1,
+				Round:   10,
+				Height:  13,
+			},
 		},
 		Signature: coreCrypto.Signature{
 			Type:      "123",
@@ -706,12 +712,14 @@ func TestSendAgreement(t *testing.T) {
 
 	// TODO(sonic): polish this
 	vote := coreTypes.Vote{
-		ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
-		Period:     10,
-		Position: coreTypes.Position{
-			ChainID: 1,
-			Round:   10,
-			Height:  13,
+		VoteHeader: coreTypes.VoteHeader{
+			ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
+			Period:     10,
+			Position: coreTypes.Position{
+				ChainID: 1,
+				Round:   10,
+				Height:  13,
+			},
 		},
 		Signature: coreCrypto.Signature{
 			Type:      "123",

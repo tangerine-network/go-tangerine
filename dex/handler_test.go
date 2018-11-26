@@ -198,9 +198,10 @@ func testGetBlockHeaders(t *testing.T, protocol int) {
 	// Run each of the tests and verify the results against the chain
 	for i, tt := range tests {
 		// Collect the headers to expect in the response
-		headers := []*types.Header{}
+		headers := []*types.HeaderWithGovState{}
 		for _, hash := range tt.expect {
-			headers = append(headers, pm.blockchain.GetBlockByHash(hash).Header())
+			headers = append(headers, &types.HeaderWithGovState{
+				Header: pm.blockchain.GetBlockByHash(hash).Header()})
 		}
 		// Send the hash request and verify the response
 		p2p.Send(peer.app, 0x03, tt.query)

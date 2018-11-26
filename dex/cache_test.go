@@ -18,11 +18,27 @@
 package dex
 
 import (
+	"sort"
+	"strings"
 	"testing"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
 	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 )
+
+type byHash []*coreTypes.Vote
+
+func (v byHash) Len() int {
+	return len(v)
+}
+
+func (v byHash) Less(i int, j int) bool {
+	return strings.Compare(v[i].BlockHash.String(), v[j].BlockHash.String()) < 0
+}
+
+func (v byHash) Swap(i int, j int) {
+	v[i], v[j] = v[j], v[i]
+}
 
 func TestCacheVote(t *testing.T) {
 	cache := newCache(3)
@@ -33,36 +49,50 @@ func TestCacheVote(t *testing.T) {
 		Height: uint64(1),
 	}
 	vote1 := &coreTypes.Vote{
-		BlockHash: coreCommon.NewRandomHash(),
-		Position:  pos0,
+		VoteHeader: coreTypes.VoteHeader{
+			BlockHash: coreCommon.NewRandomHash(),
+			Position:  pos0,
+		},
 	}
 	vote2 := &coreTypes.Vote{
-		BlockHash: coreCommon.NewRandomHash(),
-		Position:  pos0,
+		VoteHeader: coreTypes.VoteHeader{
+			BlockHash: coreCommon.NewRandomHash(),
+			Position:  pos0,
+		},
 	}
 	vote3 := &coreTypes.Vote{
-		BlockHash: coreCommon.NewRandomHash(),
-		Position:  pos1,
+		VoteHeader: coreTypes.VoteHeader{
+			BlockHash: coreCommon.NewRandomHash(),
+			Position:  pos1,
+		},
 	}
 	vote4 := &coreTypes.Vote{
-		BlockHash: coreCommon.NewRandomHash(),
-		Position:  pos1,
+		VoteHeader: coreTypes.VoteHeader{
+			BlockHash: coreCommon.NewRandomHash(),
+			Position:  pos1,
+		},
 	}
 	cache.addVote(vote1)
 	cache.addVote(vote2)
 	cache.addVote(vote3)
 
 	votes := cache.votes(pos0)
+	sort.Sort(byHash(votes))
+
+	resultVotes := []*coreTypes.Vote{vote1, vote2}
+	sort.Sort(byHash(resultVotes))
+
 	if len(votes) != 2 {
 		t.Errorf("fail to get votes: have %d, want 2", len(votes))
 	}
-	if !votes[0].BlockHash.Equal(vote1.BlockHash) {
-		t.Errorf("get wrong vote: have %s, want %s", votes[0], vote1)
+	if !votes[0].BlockHash.Equal(resultVotes[0].BlockHash) {
+		t.Errorf("get wrong vote: have %s, want %s", votes[0], resultVotes[0])
 	}
-	if !votes[1].BlockHash.Equal(vote2.BlockHash) {
-		t.Errorf("get wrong vote: have %s, want %s", votes[1], vote2)
+	if !votes[1].BlockHash.Equal(resultVotes[1].BlockHash) {
+		t.Errorf("get wrong vote: have %s, want %s", votes[1], resultVotes[1])
 	}
 	votes = cache.votes(pos1)
+	sort.Sort(byHash(votes))
 	if len(votes) != 1 {
 		t.Errorf("fail to get votes: have %d, want 1", len(votes))
 	}
@@ -73,18 +103,25 @@ func TestCacheVote(t *testing.T) {
 	cache.addVote(vote4)
 
 	votes = cache.votes(pos0)
+	sort.Sort(byHash(votes))
+
 	if len(votes) != 0 {
 		t.Errorf("fail to get votes: have %d, want 0", len(votes))
 	}
 	votes = cache.votes(pos1)
+	sort.Sort(byHash(votes))
+
+	resultVotes = []*coreTypes.Vote{vote3, vote4}
+	sort.Sort(byHash(resultVotes))
+
 	if len(votes) != 2 {
 		t.Errorf("fail to get votes: have %d, want 1", len(votes))
 	}
-	if !votes[0].BlockHash.Equal(vote3.BlockHash) {
-		t.Errorf("get wrong vote: have %s, want %s", votes[0], vote3)
+	if !votes[0].BlockHash.Equal(resultVotes[0].BlockHash) {
+		t.Errorf("get wrong vote: have %s, want %s", votes[0], resultVotes[0])
 	}
-	if !votes[1].BlockHash.Equal(vote4.BlockHash) {
-		t.Errorf("get wrong vote: have %s, want %s", votes[1], vote4)
+	if !votes[1].BlockHash.Equal(resultVotes[1].BlockHash) {
+		t.Errorf("get wrong vote: have %s, want %s", votes[1], resultVotes[1])
 	}
 }
 
