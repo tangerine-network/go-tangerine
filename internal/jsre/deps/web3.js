@@ -3811,6 +3811,16 @@ var outputTransactionReceiptFormatter = function (receipt){
     return receipt;
 };
 
+var outputTransactionReceiptsFormatter = function (receipts){
+    if(utils.isArray(receipts)) {
+        receipts = receipts.map(function(receipt){
+            return outputTransactionReceiptFormatter(receipt);
+        });
+    }
+
+    return receipts;
+};
+
 /**
  * Formats the output of a block to its proper values
  *
@@ -3957,6 +3967,7 @@ module.exports = {
     outputBigNumberFormatter: outputBigNumberFormatter,
     outputTransactionFormatter: outputTransactionFormatter,
     outputTransactionReceiptFormatter: outputTransactionReceiptFormatter,
+    outputTransactionReceiptsFormatter: outputTransactionReceiptsFormatter,
     outputBlockFormatter: outputBlockFormatter,
     outputLogFormatter: outputLogFormatter,
     outputPostFormatter: outputPostFormatter,
@@ -5289,6 +5300,14 @@ var methods = function () {
         inputFormatter: [formatters.inputAddressFormatter, formatters.inputDefaultBlockNumberFormatter]
     });
 
+    var getBlockReceiptsByHash = new Method({
+        name: 'getBlockReceiptsByHash',
+        call: 'eth_getBlockReceiptsByHash',
+        params: 1,
+        inputFormatter: [formatters.inputBlockNumberFormatter],
+        outputFormatter: formatters.outputTransactionReceiptsFormatter,
+    });
+
     var getBlock = new Method({
         name: 'getBlock',
         call: blockCall,
@@ -5435,6 +5454,7 @@ var methods = function () {
         getBalance,
         getStorageAt,
         getCode,
+        getBlockReceiptsByHash,
         getBlock,
         getUncle,
         getCompilers,
