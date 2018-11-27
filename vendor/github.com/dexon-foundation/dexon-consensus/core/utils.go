@@ -20,6 +20,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"sort"
 	"time"
@@ -60,7 +61,7 @@ func Debugf(format string, args ...interface{}) {
 // Debugln is like fmt.Println, but only output when we are in debug mode.
 func Debugln(args ...interface{}) {
 	if debug {
-		fmt.Println(args)
+		fmt.Println(args...)
 	}
 }
 
@@ -112,6 +113,11 @@ func removeFromSortedUint32Slice(xs []uint32, x uint32) []uint32 {
 		return xs
 	}
 	return append(xs[:indexToRemove], xs[indexToRemove+1:]...)
+}
+
+// pickBiasedTime returns a biased time based on a given range.
+func pickBiasedTime(base time.Time, biasedRange time.Duration) time.Time {
+	return base.Add(time.Duration(rand.Intn(int(biasedRange))))
 }
 
 // HashConfigurationBlock returns the hash value of configuration block.
