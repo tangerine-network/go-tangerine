@@ -7,6 +7,12 @@ fi
 
 NETWORK="${1}"
 
+if [ "$2" == "--local" ]; then
+  NETWORK="${NETWORK} --bootnodes enode://0478aa13c91aa0db8e93b668313b7eb0532fbdb24f64772375373b14dbe326c238ad09ab4469f6442c9a9753f1275aeec2e531912c14a958ed1feb4ae7e227ef@127.0.0.1:30301"
+  # Start bootnode.
+  bootnode -nodekey bootnode.key --verbosity=9 > bootnode.log 2>&1 &
+fi
+
 GDEX=../build/bin/gdex
 
 # Kill all previous instances.
