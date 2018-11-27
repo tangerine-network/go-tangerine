@@ -60,7 +60,7 @@ func NewEVMContext(msg Message, header *types.Header, chain ChainContext, author
 		Transfer:       Transfer,
 		GetHash:        GetHashFn(header, chain),
 		StateAtNumber:  StateAtNumberFn(chain),
-		GetRoundHeight: chain.GetRoundHeight,
+		GetRoundHeight: GetRoundHeightFn(chain),
 		Origin:         msg.From(),
 		Coinbase:       beneficiary,
 		BlockNumber:    new(big.Int).Set(header.Number),
@@ -78,6 +78,15 @@ func StateAtNumberFn(chain ChainContext) func(n uint64) (*state.StateDB, error) 
 	return func(n uint64) (*state.StateDB, error) {
 		header := chain.GetHeaderByNumber(n)
 		return chain.StateAt(header.Root)
+	}
+}
+
+func GetRoundHeightFn(chain ChainContext) func(uint64) (uint64, bool) {
+	if chain != nil {
+		return chain.GetRoundHeight
+	}
+	return func(uint64) (uint64, bool) {
+		return 0, false
 	}
 }
 
