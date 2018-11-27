@@ -22,38 +22,58 @@ import (
 )
 
 var (
-	propTxnInPacketsMeter     = metrics.NewRegisteredMeter("eth/prop/txns/in/packets", nil)
-	propTxnInTrafficMeter     = metrics.NewRegisteredMeter("eth/prop/txns/in/traffic", nil)
-	propTxnOutPacketsMeter    = metrics.NewRegisteredMeter("eth/prop/txns/out/packets", nil)
-	propTxnOutTrafficMeter    = metrics.NewRegisteredMeter("eth/prop/txns/out/traffic", nil)
-	propHashInPacketsMeter    = metrics.NewRegisteredMeter("eth/prop/hashes/in/packets", nil)
-	propHashInTrafficMeter    = metrics.NewRegisteredMeter("eth/prop/hashes/in/traffic", nil)
-	propHashOutPacketsMeter   = metrics.NewRegisteredMeter("eth/prop/hashes/out/packets", nil)
-	propHashOutTrafficMeter   = metrics.NewRegisteredMeter("eth/prop/hashes/out/traffic", nil)
-	propBlockInPacketsMeter   = metrics.NewRegisteredMeter("eth/prop/blocks/in/packets", nil)
-	propBlockInTrafficMeter   = metrics.NewRegisteredMeter("eth/prop/blocks/in/traffic", nil)
-	propBlockOutPacketsMeter  = metrics.NewRegisteredMeter("eth/prop/blocks/out/packets", nil)
-	propBlockOutTrafficMeter  = metrics.NewRegisteredMeter("eth/prop/blocks/out/traffic", nil)
-	reqHeaderInPacketsMeter   = metrics.NewRegisteredMeter("eth/req/headers/in/packets", nil)
-	reqHeaderInTrafficMeter   = metrics.NewRegisteredMeter("eth/req/headers/in/traffic", nil)
-	reqHeaderOutPacketsMeter  = metrics.NewRegisteredMeter("eth/req/headers/out/packets", nil)
-	reqHeaderOutTrafficMeter  = metrics.NewRegisteredMeter("eth/req/headers/out/traffic", nil)
-	reqBodyInPacketsMeter     = metrics.NewRegisteredMeter("eth/req/bodies/in/packets", nil)
-	reqBodyInTrafficMeter     = metrics.NewRegisteredMeter("eth/req/bodies/in/traffic", nil)
-	reqBodyOutPacketsMeter    = metrics.NewRegisteredMeter("eth/req/bodies/out/packets", nil)
-	reqBodyOutTrafficMeter    = metrics.NewRegisteredMeter("eth/req/bodies/out/traffic", nil)
-	reqStateInPacketsMeter    = metrics.NewRegisteredMeter("eth/req/states/in/packets", nil)
-	reqStateInTrafficMeter    = metrics.NewRegisteredMeter("eth/req/states/in/traffic", nil)
-	reqStateOutPacketsMeter   = metrics.NewRegisteredMeter("eth/req/states/out/packets", nil)
-	reqStateOutTrafficMeter   = metrics.NewRegisteredMeter("eth/req/states/out/traffic", nil)
-	reqReceiptInPacketsMeter  = metrics.NewRegisteredMeter("eth/req/receipts/in/packets", nil)
-	reqReceiptInTrafficMeter  = metrics.NewRegisteredMeter("eth/req/receipts/in/traffic", nil)
-	reqReceiptOutPacketsMeter = metrics.NewRegisteredMeter("eth/req/receipts/out/packets", nil)
-	reqReceiptOutTrafficMeter = metrics.NewRegisteredMeter("eth/req/receipts/out/traffic", nil)
-	miscInPacketsMeter        = metrics.NewRegisteredMeter("eth/misc/in/packets", nil)
-	miscInTrafficMeter        = metrics.NewRegisteredMeter("eth/misc/in/traffic", nil)
-	miscOutPacketsMeter       = metrics.NewRegisteredMeter("eth/misc/out/packets", nil)
-	miscOutTrafficMeter       = metrics.NewRegisteredMeter("eth/misc/out/traffic", nil)
+	propTxnInPacketsMeter                  = metrics.NewRegisteredMeter("dex/prop/txns/in/packets", nil)
+	propTxnInTrafficMeter                  = metrics.NewRegisteredMeter("dex/prop/txns/in/traffic", nil)
+	propTxnOutPacketsMeter                 = metrics.NewRegisteredMeter("dex/prop/txns/out/packets", nil)
+	propTxnOutTrafficMeter                 = metrics.NewRegisteredMeter("dex/prop/txns/out/traffic", nil)
+	propHashInPacketsMeter                 = metrics.NewRegisteredMeter("dex/prop/hashes/in/packets", nil)
+	propHashInTrafficMeter                 = metrics.NewRegisteredMeter("dex/prop/hashes/in/traffic", nil)
+	propHashOutPacketsMeter                = metrics.NewRegisteredMeter("dex/prop/hashes/out/packets", nil)
+	propHashOutTrafficMeter                = metrics.NewRegisteredMeter("dex/prop/hashes/out/traffic", nil)
+	propBlockInPacketsMeter                = metrics.NewRegisteredMeter("dex/prop/blocks/in/packets", nil)
+	propBlockInTrafficMeter                = metrics.NewRegisteredMeter("dex/prop/blocks/in/traffic", nil)
+	propBlockOutPacketsMeter               = metrics.NewRegisteredMeter("dex/prop/blocks/out/packets", nil)
+	propBlockOutTrafficMeter               = metrics.NewRegisteredMeter("dex/prop/blocks/out/traffic", nil)
+	propLatticeBlockInPacketsMeter         = metrics.NewRegisteredMeter("dex/prop/latticeblocks/in/packets", nil)
+	propLatticeBlockInTrafficMeter         = metrics.NewRegisteredMeter("dex/prop/latticeblocks/in/traffic", nil)
+	propLatticeBlockOutPacketsMeter        = metrics.NewRegisteredMeter("dex/prop/latticeblocks/out/packets", nil)
+	propLatticeBlockOutTrafficMeter        = metrics.NewRegisteredMeter("dex/prop/latticeblocks/out/traffic", nil)
+	propVoteInPacketsMeter                 = metrics.NewRegisteredMeter("dex/prop/votes/in/packets", nil)
+	propVoteInTrafficMeter                 = metrics.NewRegisteredMeter("dex/prop/votes/in/traffic", nil)
+	propVoteOutPacketsMeter                = metrics.NewRegisteredMeter("dex/prop/votes/out/packets", nil)
+	propVoteOutTrafficMeter                = metrics.NewRegisteredMeter("dex/prop/votes/out/traffic", nil)
+	propDKGPartialSignatureInPacketsMeter  = metrics.NewRegisteredMeter("dex/prop/dkgpartialsignatures/in/packets", nil)
+	propDKGPartialSignatureInTrafficMeter  = metrics.NewRegisteredMeter("dex/prop/dkgpartialsignatures/in/traffic", nil)
+	propDKGPartialSignatureOutPacketsMeter = metrics.NewRegisteredMeter("dex/prop/dkgpartialsignatures/out/packets", nil)
+	propDKGPartialSignatureOutTrafficMeter = metrics.NewRegisteredMeter("dex/prop/dkgpartialsignatures/out/traffic", nil)
+	reqHeaderInPacketsMeter                = metrics.NewRegisteredMeter("dex/req/headers/in/packets", nil)
+	reqHeaderInTrafficMeter                = metrics.NewRegisteredMeter("dex/req/headers/in/traffic", nil)
+	reqHeaderOutPacketsMeter               = metrics.NewRegisteredMeter("dex/req/headers/out/packets", nil)
+	reqHeaderOutTrafficMeter               = metrics.NewRegisteredMeter("dex/req/headers/out/traffic", nil)
+	reqBodyInPacketsMeter                  = metrics.NewRegisteredMeter("dex/req/bodies/in/packets", nil)
+	reqBodyInTrafficMeter                  = metrics.NewRegisteredMeter("dex/req/bodies/in/traffic", nil)
+	reqBodyOutPacketsMeter                 = metrics.NewRegisteredMeter("dex/req/bodies/out/packets", nil)
+	reqBodyOutTrafficMeter                 = metrics.NewRegisteredMeter("dex/req/bodies/out/traffic", nil)
+	reqStateInPacketsMeter                 = metrics.NewRegisteredMeter("dex/req/states/in/packets", nil)
+	reqStateInTrafficMeter                 = metrics.NewRegisteredMeter("dex/req/states/in/traffic", nil)
+	reqStateOutPacketsMeter                = metrics.NewRegisteredMeter("dex/req/states/out/packets", nil)
+	reqStateOutTrafficMeter                = metrics.NewRegisteredMeter("dex/req/states/out/traffic", nil)
+	reqReceiptInPacketsMeter               = metrics.NewRegisteredMeter("dex/req/receipts/in/packets", nil)
+	reqReceiptInTrafficMeter               = metrics.NewRegisteredMeter("dex/req/receipts/in/traffic", nil)
+	reqReceiptOutPacketsMeter              = metrics.NewRegisteredMeter("dex/req/receipts/out/packets", nil)
+	reqReceiptOutTrafficMeter              = metrics.NewRegisteredMeter("dex/req/receipts/out/traffic", nil)
+	reqLatticeBlockInPacketsMeter          = metrics.NewRegisteredMeter("dex/req/latticeblocks/in/packets", nil)
+	reqLatticeBlockInTrafficMeter          = metrics.NewRegisteredMeter("dex/req/latticeblocks/in/traffic", nil)
+	reqLatticeBlockOutPacketsMeter         = metrics.NewRegisteredMeter("dex/req/latticeblocks/out/packets", nil)
+	reqLatticeBlockOutTrafficMeter         = metrics.NewRegisteredMeter("dex/req/latticeblocks/out/traffic", nil)
+	reqVoteInPacketsMeter                  = metrics.NewRegisteredMeter("dex/req/votes/in/packets", nil)
+	reqVoteInTrafficMeter                  = metrics.NewRegisteredMeter("dex/req/votes/in/traffic", nil)
+	reqVoteOutPacketsMeter                 = metrics.NewRegisteredMeter("dex/req/votes/out/packets", nil)
+	reqVoteOutTrafficMeter                 = metrics.NewRegisteredMeter("dex/req/votes/out/traffic", nil)
+	miscInPacketsMeter                     = metrics.NewRegisteredMeter("dex/misc/in/packets", nil)
+	miscInTrafficMeter                     = metrics.NewRegisteredMeter("dex/misc/in/traffic", nil)
+	miscOutPacketsMeter                    = metrics.NewRegisteredMeter("dex/misc/out/packets", nil)
+	miscOutTrafficMeter                    = metrics.NewRegisteredMeter("dex/misc/out/traffic", nil)
 )
 
 // meteredMsgReadWriter is a wrapper around a p2p.MsgReadWriter, capable of
@@ -103,6 +123,22 @@ func (rw *meteredMsgReadWriter) ReadMsg() (p2p.Msg, error) {
 		packets, traffic = propBlockInPacketsMeter, propBlockInTrafficMeter
 	case msg.Code == TxMsg:
 		packets, traffic = propTxnInPacketsMeter, propTxnInTrafficMeter
+
+	case msg.Code == LatticeBlockMsg:
+		packets = propLatticeBlockInPacketsMeter
+		traffic = propLatticeBlockInTrafficMeter
+	case msg.Code == VoteMsg:
+		packets, traffic = propVoteInPacketsMeter, propVoteInTrafficMeter
+
+	case msg.Code == PullBlocksMsg:
+		packets = reqLatticeBlockInPacketsMeter
+		traffic = reqLatticeBlockInTrafficMeter
+	case msg.Code == PullVotesMsg:
+		packets, traffic = reqVoteInPacketsMeter, reqVoteInTrafficMeter
+
+	case msg.Code == DKGPartialSignatureMsg:
+		packets = propDKGPartialSignatureInPacketsMeter
+		traffic = propDKGPartialSignatureInTrafficMeter
 	}
 	packets.Mark(1)
 	traffic.Mark(int64(msg.Size))
@@ -130,6 +166,22 @@ func (rw *meteredMsgReadWriter) WriteMsg(msg p2p.Msg) error {
 		packets, traffic = propBlockOutPacketsMeter, propBlockOutTrafficMeter
 	case msg.Code == TxMsg:
 		packets, traffic = propTxnOutPacketsMeter, propTxnOutTrafficMeter
+
+	case msg.Code == LatticeBlockMsg:
+		packets = propLatticeBlockOutPacketsMeter
+		traffic = propLatticeBlockOutTrafficMeter
+	case msg.Code == VoteMsg:
+		packets, traffic = propVoteOutPacketsMeter, propVoteOutTrafficMeter
+
+	case msg.Code == PullBlocksMsg:
+		packets = reqLatticeBlockOutPacketsMeter
+		traffic = reqLatticeBlockOutTrafficMeter
+	case msg.Code == PullVotesMsg:
+		packets, traffic = reqVoteOutPacketsMeter, reqVoteOutTrafficMeter
+
+	case msg.Code == DKGPartialSignatureMsg:
+		packets = propDKGPartialSignatureOutPacketsMeter
+		traffic = propDKGPartialSignatureOutTrafficMeter
 	}
 	packets.Mark(1)
 	traffic.Mark(int64(msg.Size))
