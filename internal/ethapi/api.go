@@ -683,6 +683,7 @@ func (s *PublicBlockChainAPI) GetBlockReceiptsByHash(ctx context.Context, blockH
 	resp := make([]map[string]interface{}, 0, len(receipts))
 	for _, receipt := range receipts {
 		fields := map[string]interface{}{
+			"transactionHash":   receipt.TxHash,
 			"gasUsed":           hexutil.Uint64(receipt.GasUsed),
 			"cumulativeGasUsed": hexutil.Uint64(receipt.CumulativeGasUsed),
 			"contractAddress":   nil,
