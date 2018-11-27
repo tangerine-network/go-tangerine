@@ -34,7 +34,7 @@ ios:
 	@echo "Done building."
 	@echo "Import \"$(GOBIN)/Geth.framework\" to use the library."
 
-test: all
+test: all libbls
 	build/env.sh go run build/ci.go test
 
 lint: ## Run linters.
