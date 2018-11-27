@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	ipcAPIs  = "admin:1.0 debug:1.0 eth:1.0 ethash:1.0 miner:1.0 net:1.0 personal:1.0 rpc:1.0 shh:1.0 txpool:1.0 web3:1.0"
+	ipcAPIs  = "admin:1.0 debug:1.0 dexcon:1.0 eth:1.0 net:1.0 personal:1.0 rpc:1.0 shh:1.0 txpool:1.0 web3:1.0"
 	httpAPIs = "eth:1.0 net:1.0 rpc:1.0 web3:1.0"
 )
 
@@ -51,16 +51,15 @@ func TestConsoleWelcome(t *testing.T) {
 	gdex.SetTemplateFunc("goarch", func() string { return runtime.GOARCH })
 	gdex.SetTemplateFunc("gover", runtime.Version)
 	gdex.SetTemplateFunc("gethver", func() string { return params.VersionWithMeta })
-	gdex.SetTemplateFunc("niltime", func() string { return time.Unix(0, 0).Format(time.RFC1123) })
+	gdex.SetTemplateFunc("dextime", func() string { return time.Unix(1540024964, 0).Format(time.RFC1123) })
 	gdex.SetTemplateFunc("apis", func() string { return ipcAPIs })
 
 	// Verify the actual welcome message to the required template
 	gdex.Expect(`
 Welcome to the Geth JavaScript console!
 
-instance: Geth/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
-coinbase: {{.Etherbase}}
-at block: 0 ({{niltime}})
+instance: gdex/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
+at block: 0 ({{dextime}})
  datadir: {{.Datadir}}
  modules: {{apis}}
 
@@ -135,7 +134,7 @@ func testAttachWelcome(t *testing.T, gdex *testgdex, endpoint, apis string) {
 	attach.SetTemplateFunc("gover", runtime.Version)
 	attach.SetTemplateFunc("gethver", func() string { return params.VersionWithMeta })
 	attach.SetTemplateFunc("etherbase", func() string { return gdex.Etherbase })
-	attach.SetTemplateFunc("niltime", func() string { return time.Unix(0, 0).Format(time.RFC1123) })
+	attach.SetTemplateFunc("dextime", func() string { return time.Unix(1540024964, 0).Format(time.RFC1123) })
 	attach.SetTemplateFunc("ipc", func() bool { return strings.HasPrefix(endpoint, "ipc") })
 	attach.SetTemplateFunc("datadir", func() string { return gdex.Datadir })
 	attach.SetTemplateFunc("apis", func() string { return apis })
@@ -144,9 +143,8 @@ func testAttachWelcome(t *testing.T, gdex *testgdex, endpoint, apis string) {
 	attach.Expect(`
 Welcome to the Geth JavaScript console!
 
-instance: Geth/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
-coinbase: {{etherbase}}
-at block: 0 ({{niltime}}){{if ipc}}
+instance: gdex/v{{gethver}}/{{goos}}-{{goarch}}/{{gover}}
+at block: 0 ({{dextime}}){{if ipc}}
  datadir: {{datadir}}{{end}}
  modules: {{apis}}
 

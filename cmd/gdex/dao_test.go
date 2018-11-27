@@ -77,7 +77,7 @@ var daoProForkGenesis = `{
 	}
 }`
 
-var daoGenesisHash = common.HexToHash("5e1fc79cb4ffa4739177b5408045cd5d51c6cf766133f23f7cd72ee1f8d790e0")
+var daoGenesisHash = common.HexToHash("0x81e17c54ca08eb60d9455df5600813b637fc460b86ccbd6ac322fb2d2bd2a935")
 var daoGenesisForkBlock = big.NewInt(314)
 
 // TestDAOForkBlockNewChain tests that the DAO hard-fork number and the nodes support/opposition is correctly
@@ -127,7 +127,7 @@ func testDAOForkBlockNewChain(t *testing.T, test int, genesis string, expectBloc
 	}
 	defer db.Close()
 
-	genesisHash := common.HexToHash("0xd4e56740f876aef8c010b86a40d5f56745a118d0906a34e69aec8c0db1cb8fa3")
+	genesisHash := common.HexToHash("0x52b1459248252fcec3e9429362bdbc576c09515cfac0a87b278b2bf98d640c42")
 	if genesis != "" {
 		genesisHash = daoGenesisHash
 	}
