@@ -52,8 +52,9 @@ const (
 	bucketMinDistance = hashBits - nBuckets // Log distance of closest bucket
 
 	// IP address limits.
-	bucketIPLimit, bucketSubnet = 2, 24 // at most 2 addresses from the same /24
-	tableIPLimit, tableSubnet   = 10, 24
+	// TODO(sonic): revert this change
+	bucketIPLimit, bucketSubnet = 8, 24 // at most 2 addresses from the same /24
+	tableIPLimit, tableSubnet   = 16, 24
 
 	maxFindnodeFailures = 5 // Nodes exceeding this limit are dropped
 	refreshInterval     = 30 * time.Minute
