@@ -2238,7 +2238,12 @@ func (bc *BlockChain) InsertDexonHeaderChain(chain []*types.HeaderWithGovState, 
 	whFunc := func(header *types.HeaderWithGovState) error {
 		bc.mu.Lock()
 		defer bc.mu.Unlock()
-		_, err := bc.hc.WriteDexonHeader(header)
+		status, err := bc.hc.WriteDexonHeader(header)
+		if status == SideStatTy {
+			log.Debug("Inserted forked block header", "number", header.Number, "hash", header.Hash, "diff", header.Difficulty,
+				"gas", header.GasUsed)
+			panic("fork found")
+		}
 		return err
 	}
 
