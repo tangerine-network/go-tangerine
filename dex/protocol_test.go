@@ -330,7 +330,7 @@ func TestRecvLatticeBlock(t *testing.T) {
 		},
 		Timestamp: time.Now().UTC(),
 		Acks: coreCommon.NewSortedHashes(coreCommon.Hashes([]coreCommon.Hash{
-			coreCommon.Hash{101}, coreCommon.Hash{100}, coreCommon.Hash{102},
+			{101}, {100}, {102},
 		})),
 		Payload: []byte{3, 3, 3, 3, 3},
 		Witness: coreTypes.Witness{
@@ -385,7 +385,7 @@ func TestSendLatticeBlock(t *testing.T) {
 		},
 		Timestamp: time.Now().UTC(),
 		Acks: coreCommon.NewSortedHashes(coreCommon.Hashes([]coreCommon.Hash{
-			coreCommon.Hash{101}, coreCommon.Hash{100}, coreCommon.Hash{102},
+			{101}, {100}, {102},
 		})),
 		Payload: []byte{3, 3, 3, 3, 3},
 		Witness: coreTypes.Witness{

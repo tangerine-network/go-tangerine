@@ -54,7 +54,7 @@ func (g *Governance) GetHeadHelper() *vm.GovernanceStateHelper {
 		log.Error("Governance head state not ready", "err", err)
 		panic(err)
 	}
-	return &vm.GovernanceStateHelper{headState}
+	return &vm.GovernanceStateHelper{StateDB: headState}
 }
 
 func (g *Governance) getHelperAtRound(round uint64) *vm.GovernanceStateHelper {
@@ -71,7 +71,7 @@ func (g *Governance) getHelperAtRound(round uint64) *vm.GovernanceStateHelper {
 		log.Error("Governance state not ready", "round", round, "height", height, "err", err)
 		panic(err)
 	}
-	return &vm.GovernanceStateHelper{s}
+	return &vm.GovernanceStateHelper{StateDB: s}
 }
 
 func (g *Governance) GetConfigHelper(round uint64) *vm.GovernanceStateHelper {

@@ -46,7 +46,7 @@ import (
 	"github.com/dexon-foundation/dexon/rpc"
 )
 
-// Dexon implementes the DEXON fullnode service.
+// Dexon implements the DEXON fullnode service.
 type Dexon struct {
 	config      *Config
 	chainConfig *params.ChainConfig

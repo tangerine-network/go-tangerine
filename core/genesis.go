@@ -261,7 +261,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		db = ethdb.NewMemDatabase()
 	}
 	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
-	govStateHelper := vm.GovernanceStateHelper{statedb}
+	govStateHelper := vm.GovernanceStateHelper{StateDB: statedb}
 
 	totalStaked := big.NewInt(0)
 

@@ -145,9 +145,9 @@ func TestCacheBlock(t *testing.T) {
 
 	hashes := coreCommon.Hashes{block1.Hash, block2.Hash, block3.Hash, block4.Hash}
 	hashMap := map[coreCommon.Hash]struct{}{
-		block1.Hash: struct{}{},
-		block2.Hash: struct{}{},
-		block3.Hash: struct{}{},
+		block1.Hash: {},
+		block2.Hash: {},
+		block3.Hash: {},
 	}
 	blocks := cache.blocks(hashes)
 	if len(blocks) != 3 {

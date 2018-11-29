@@ -39,7 +39,7 @@ const (
 	verifyBlockMaxRetries = 4
 )
 
-// DexconApp implementes the DEXON consensus core application interface.
+// DexconApp implements the DEXON consensus core application interface.
 type DexconApp struct {
 	txPool     *core.TxPool
 	blockchain *core.BlockChain
@@ -382,7 +382,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 			log.Error("Failed to convert tx to message", "error", err)
 			return coreTypes.VerifyInvalidBlock
 		}
-		balance, _ := addressesBalance[msg.From()]
+		balance := addressesBalance[msg.From()]
 		intrGas, err := core.IntrinsicGas(msg.Data(), msg.To() == nil, true)
 		if err != nil {
 			log.Error("Failed to calculate intrinsic gas", "err", err)

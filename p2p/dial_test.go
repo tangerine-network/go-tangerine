@@ -613,7 +613,7 @@ func TestDialStateDirectDial(t *testing.T) {
 
 func TestDialStateGroupDial(t *testing.T) {
 	groups := []*dialGroup{
-		&dialGroup{
+		{
 			name: "g1",
 			nodes: map[enode.ID]*enode.Node{
 				uintID(1): newNode(uintID(1), nil),
@@ -621,7 +621,7 @@ func TestDialStateGroupDial(t *testing.T) {
 			},
 			num: 2,
 		},
-		&dialGroup{
+		{
 			name: "g2",
 			nodes: map[enode.ID]*enode.Node{
 				uintID(2): newNode(uintID(2), nil),

@@ -30,19 +30,19 @@ func TestPeerSetBuildAndForgetNotaryConn(t *testing.T) {
 	}
 
 	round10 := [][]*enode.Node{
-		[]*enode.Node{self, nodes[1], nodes[2]},
-		[]*enode.Node{nodes[1], nodes[3]},
-		[]*enode.Node{nodes[2], nodes[4]},
+		{self, nodes[1], nodes[2]},
+		{nodes[1], nodes[3]},
+		{nodes[2], nodes[4]},
 	}
 	round11 := [][]*enode.Node{
-		[]*enode.Node{self, nodes[1], nodes[5]},
-		[]*enode.Node{nodes[5], nodes[6]},
-		[]*enode.Node{self, nodes[2], nodes[4]},
+		{self, nodes[1], nodes[5]},
+		{nodes[5], nodes[6]},
+		{self, nodes[2], nodes[4]},
 	}
 	round12 := [][]*enode.Node{
-		[]*enode.Node{self, nodes[3], nodes[5]},
-		[]*enode.Node{self, nodes[7], nodes[8]},
-		[]*enode.Node{self, nodes[2], nodes[6]},
+		{self, nodes[3], nodes[5]},
+		{self, nodes[7], nodes[8]},
+		{self, nodes[2], nodes[6]},
 	}
 
 	gov.notarySetFunc = func(
@@ -71,11 +71,11 @@ func TestPeerSetBuildAndForgetNotaryConn(t *testing.T) {
 	ps.BuildNotaryConn(10)
 
 	err = checkPeer2Labels(ps, map[string][]peerLabel{
-		nodes[1].ID().String(): []peerLabel{
-			peerLabel{notaryset, 0, 10},
+		nodes[1].ID().String(): {
+			{notaryset, 0, 10},
 		},
-		nodes[2].ID().String(): []peerLabel{
-			peerLabel{notaryset, 0, 10},
+		nodes[2].ID().String(): {
+			{notaryset, 0, 10},
 		},
 	})
 	if err != nil {
@@ -103,19 +103,19 @@ func TestPeerSetBuildAndForgetNotaryConn(t *testing.T) {
 	ps.BuildNotaryConn(11)
 
 	err = checkPeer2Labels(ps, map[string][]peerLabel{
-		nodes[1].ID().String(): []peerLabel{
-			peerLabel{notaryset, 0, 10},
-			peerLabel{notaryset, 0, 11},
+		nodes[1].ID().String(): {
+			{notaryset, 0, 10},
+			{notaryset, 0, 11},
 		},
-		nodes[2].ID().String(): []peerLabel{
-			peerLabel{notaryset, 0, 10},
-			peerLabel{notaryset, 2, 11},
+		nodes[2].ID().String(): {
+			{notaryset, 0, 10},
+			{notaryset, 2, 11},
 		},
-		nodes[4].ID().String(): []peerLabel{
-			peerLabel{notaryset, 2, 11},
+		nodes[4].ID().String(): {
+			{notaryset, 2, 11},
 		},
-		nodes[5].ID().String(): []peerLabel{
-			peerLabel{notaryset, 0, 11},
+		nodes[5].ID().String(): {
+			{notaryset, 0, 11},
 		},
 	})
 	if err != nil {
@@ -144,33 +144,33 @@ func TestPeerSetBuildAndForgetNotaryConn(t *testing.T) {
 	ps.BuildNotaryConn(12)
 
 	err = checkPeer2Labels(ps, map[string][]peerLabel{
-		nodes[1].ID().String(): []peerLabel{
-			peerLabel{notaryset, 0, 10},
-			peerLabel{notaryset, 0, 11},
+		nodes[1].ID().String(): {
+			{notaryset, 0, 10},
+			{notaryset, 0, 11},
 		},
-		nodes[2].ID().String(): []peerLabel{
-			peerLabel{notaryset, 0, 10},
-			peerLabel{notaryset, 2, 11},
-			peerLabel{notaryset, 2, 12},
+		nodes[2].ID().String(): {
+			{notaryset, 0, 10},
+			{notaryset, 2, 11},
+			{notaryset, 2, 12},
 		},
-		nodes[3].ID().String(): []peerLabel{
-			peerLabel{notaryset, 0, 12},
+		nodes[3].ID().String(): {
+			{notaryset, 0, 12},
 		},
-		nodes[4].ID().String(): []peerLabel{
-			peerLabel{notaryset, 2, 11},
+		nodes[4].ID().String(): {
+			{notaryset, 2, 11},
 		},
-		nodes[5].ID().String(): []peerLabel{
-			peerLabel{notaryset, 0, 11},
-			peerLabel{notaryset, 0, 12},
+		nodes[5].ID().String(): {
+			{notaryset, 0, 11},
+			{notaryset, 0, 12},
 		},
-		nodes[6].ID().String(): []peerLabel{
-			peerLabel{notaryset, 2, 12},
+		nodes[6].ID().String(): {
+			{notaryset, 2, 12},
 		},
-		nodes[7].ID().String(): []peerLabel{
-			peerLabel{notaryset, 1, 12},
+		nodes[7].ID().String(): {
+			{notaryset, 1, 12},
 		},
-		nodes[8].ID().String(): []peerLabel{
-			peerLabel{notaryset, 1, 12},
+		nodes[8].ID().String(): {
+			{notaryset, 1, 12},
 		},
 	})
 	if err != nil {
@@ -200,23 +200,23 @@ func TestPeerSetBuildAndForgetNotaryConn(t *testing.T) {
 	ps.ForgetNotaryConn(11)
 
 	err = checkPeer2Labels(ps, map[string][]peerLabel{
-		nodes[2].ID().String(): []peerLabel{
-			peerLabel{notaryset, 2, 12},
+		nodes[2].ID().String(): {
+			{notaryset, 2, 12},
 		},
-		nodes[3].ID().String(): []peerLabel{
-			peerLabel{notaryset, 0, 12},
+		nodes[3].ID().String(): {
+			{notaryset, 0, 12},
 		},
-		nodes[5].ID().String(): []peerLabel{
-			peerLabel{notaryset, 0, 12},
+		nodes[5].ID().String(): {
+			{notaryset, 0, 12},
 		},
-		nodes[6].ID().String(): []peerLabel{
-			peerLabel{notaryset, 2, 12},
+		nodes[6].ID().String(): {
+			{notaryset, 2, 12},
 		},
-		nodes[7].ID().String(): []peerLabel{
-			peerLabel{notaryset, 1, 12},
+		nodes[7].ID().String(): {
+			{notaryset, 1, 12},
 		},
-		nodes[8].ID().String(): []peerLabel{
-			peerLabel{notaryset, 1, 12},
+		nodes[8].ID().String(): {
+			{notaryset, 1, 12},
 		},
 	})
 	if err != nil {
@@ -277,9 +277,9 @@ func TestPeerSetBuildDKGConn(t *testing.T) {
 
 	gov.dkgSetFunc = func(round uint64) (map[string]struct{}, error) {
 		m := map[uint64][]*enode.Node{
-			10: []*enode.Node{self, nodes[1], nodes[2]},
-			11: []*enode.Node{nodes[1], nodes[2], nodes[5]},
-			12: []*enode.Node{self, nodes[3], nodes[5]},
+			10: {self, nodes[1], nodes[2]},
+			11: {nodes[1], nodes[2], nodes[5]},
+			12: {self, nodes[3], nodes[5]},
 		}
 		return newTestNodeSet(m[round]), nil
 	}
@@ -300,11 +300,11 @@ func TestPeerSetBuildDKGConn(t *testing.T) {
 	ps.BuildDKGConn(10)
 
 	err = checkPeer2Labels(ps, map[string][]peerLabel{
-		nodes[1].ID().String(): []peerLabel{
-			peerLabel{dkgset, 0, 10},
+		nodes[1].ID().String(): {
+			{dkgset, 0, 10},
 		},
-		nodes[2].ID().String(): []peerLabel{
-			peerLabel{dkgset, 0, 10},
+		nodes[2].ID().String(): {
+			{dkgset, 0, 10},
 		},
 	})
 	if err != nil {
@@ -325,11 +325,11 @@ func TestPeerSetBuildDKGConn(t *testing.T) {
 	ps.BuildDKGConn(11)
 
 	err = checkPeer2Labels(ps, map[string][]peerLabel{
-		nodes[1].ID().String(): []peerLabel{
-			peerLabel{dkgset, 0, 10},
+		nodes[1].ID().String(): {
+			{dkgset, 0, 10},
 		},
-		nodes[2].ID().String(): []peerLabel{
-			peerLabel{dkgset, 0, 10},
+		nodes[2].ID().String(): {
+			{dkgset, 0, 10},
 		},
 	})
 	if err != nil {
@@ -350,17 +350,17 @@ func TestPeerSetBuildDKGConn(t *testing.T) {
 	ps.BuildDKGConn(12)
 
 	err = checkPeer2Labels(ps, map[string][]peerLabel{
-		nodes[1].ID().String(): []peerLabel{
-			peerLabel{dkgset, 0, 10},
+		nodes[1].ID().String(): {
+			{dkgset, 0, 10},
 		},
-		nodes[2].ID().String(): []peerLabel{
-			peerLabel{dkgset, 0, 10},
+		nodes[2].ID().String(): {
+			{dkgset, 0, 10},
 		},
-		nodes[3].ID().String(): []peerLabel{
-			peerLabel{dkgset, 0, 12},
+		nodes[3].ID().String(): {
+			{dkgset, 0, 12},
 		},
-		nodes[5].ID().String(): []peerLabel{
-			peerLabel{dkgset, 0, 12},
+		nodes[5].ID().String(): {
+			{dkgset, 0, 12},
 		},
 	})
 	if err != nil {
@@ -381,11 +381,11 @@ func TestPeerSetBuildDKGConn(t *testing.T) {
 	ps.ForgetDKGConn(11)
 
 	err = checkPeer2Labels(ps, map[string][]peerLabel{
-		nodes[3].ID().String(): []peerLabel{
-			peerLabel{dkgset, 0, 12},
+		nodes[3].ID().String(): {
+			{dkgset, 0, 12},
 		},
-		nodes[5].ID().String(): []peerLabel{
-			peerLabel{dkgset, 0, 12},
+		nodes[5].ID().String(): {
+			{dkgset, 0, 12},
 		},
 	})
 	if err != nil {
@@ -438,7 +438,7 @@ func checkPeer2Labels(ps *peerSet, want map[string][]peerLabel) error {
 
 		for _, label := range wantLabels {
 			if _, ok := gotLabels[label]; !ok {
-				fmt.Errorf("label: %+v not exists", label)
+				return fmt.Errorf("label: %+v not exists", label)
 			}
 		}
 	}

@@ -67,12 +67,14 @@ const (
 	maxKnownMetas  = 32768 // Maximum metas hashes to keep in the known list (prevent DOS)
 	maxKnownBlocks = 1024  // Maximum block hashes to keep in the known list (prevent DOS)
 
-	maxKnownLatticeBLocks       = 2048
-	maxKnownVotes               = 2048
-	maxKnownAgreements          = 10240
-	maxKnownRandomnesses        = 10240
-	maxKnownDKGPrivateShare     = 1024 // this related to DKG Size
-	maxKnownDKGPartialSignature = 1024 // this related to DKG Size
+	/*
+		maxKnownLatticeBLocks       = 2048
+		maxKnownVotes               = 2048
+		maxKnownAgreements          = 10240
+		maxKnownRandomnesses        = 10240
+		maxKnownDKGPrivateShare     = 1024 // this related to DKG Size
+		maxKnownDKGPartialSignature = 1024 // this related to DKG Size
+	*/
 
 	// maxQueuedTxs is the maximum number of transaction lists to queue up before
 	// dropping broadcasts. This is a sensitive number as a transaction list might

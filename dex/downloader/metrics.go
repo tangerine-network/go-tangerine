@@ -28,10 +28,10 @@ var (
 	headerDropMeter    = metrics.NewRegisteredMeter("dex/downloader/headers/drop", nil)
 	headerTimeoutMeter = metrics.NewRegisteredMeter("dex/downloader/headers/timeout", nil)
 
-	govStateInMeter      = metrics.NewRegisteredMeter("dex/downloader/govStates/in", nil)
-	govStateReqTimer     = metrics.NewRegisteredTimer("dex/downloader/govStates/req", nil)
-	govStateDropMeter    = metrics.NewRegisteredMeter("dex/downloader/govStates/drop", nil)
-	govStateTimeoutMeter = metrics.NewRegisteredMeter("dex/downloader/govStates/timeout", nil)
+	govStateInMeter = metrics.NewRegisteredMeter("dex/downloader/govStates/in", nil)
+	// govStateReqTimer     = metrics.NewRegisteredTimer("dex/downloader/govStates/req", nil)
+	govStateDropMeter = metrics.NewRegisteredMeter("dex/downloader/govStates/drop", nil)
+	// govStateTimeoutMeter = metrics.NewRegisteredMeter("dex/downloader/govStates/timeout", nil)
 
 	bodyInMeter      = metrics.NewRegisteredMeter("dex/downloader/bodies/in", nil)
 	bodyReqTimer     = metrics.NewRegisteredTimer("dex/downloader/bodies/req", nil)

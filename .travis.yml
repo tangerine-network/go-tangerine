@@ -11,6 +11,7 @@ matrix:
       - sudo modprobe fuse
       - sudo chmod 666 /dev/fuse
       - sudo chown root:$USER /etc/fuse.conf
+      - make libbls
       - go run build/ci.go install
       - go run build/ci.go test -coverage $TEST_PACKAGES
 
@@ -23,6 +24,7 @@ matrix:
         - sudo modprobe fuse
         - sudo chmod 666 /dev/fuse
         - sudo chown root:$USER /etc/fuse.conf
+        - make libbls
         - go run build/ci.go install
         - go run build/ci.go test -coverage $TEST_PACKAGES
 
@@ -38,6 +40,7 @@ matrix:
         - ulimit -S -n $NOFILE
         - ulimit -n
         - unset -f cd # workaround for https://github.com/travis-ci/travis-ci/issues/8703
+        - make libbls
         - go run build/ci.go install
         - go run build/ci.go test -coverage $TEST_PACKAGES
 

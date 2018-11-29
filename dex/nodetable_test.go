@@ -17,13 +17,13 @@ func TestNodeTable(t *testing.T) {
 	table.SubscribeNewMetasEvent(ch)
 
 	metas1 := []*NodeMeta{
-		&NodeMeta{ID: randomID()},
-		&NodeMeta{ID: randomID()},
+		{ID: randomID()},
+		{ID: randomID()},
 	}
 
 	metas2 := []*NodeMeta{
-		&NodeMeta{ID: randomID()},
-		&NodeMeta{ID: randomID()},
+		{ID: randomID()},
+		{ID: randomID()},
 	}
 
 	go table.Add(metas1)
