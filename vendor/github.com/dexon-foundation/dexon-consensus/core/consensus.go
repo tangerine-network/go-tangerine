@@ -401,7 +401,7 @@ func NewConsensus(
 		ID:               ID,
 		ccModule:         newCompactionChain(gov),
 		lattice:          lattice,
-		app:              app,
+		app:              newNonBlocking(app, debugApp),
 		gov:              gov,
 		db:               db,
 		network:          network,
@@ -639,9 +639,9 @@ func (con *Consensus) initialRound(
 
 // Stop the Consensus core.
 func (con *Consensus) Stop() {
+	con.ctxCancel()
 	con.baMgr.stop()
 	con.event.Reset()
-	con.ctxCancel()
 }
 
 func (con *Consensus) processMsg(msgChan <-chan interface{}) {
@@ -761,43 +761,8 @@ func (con *Consensus) ProcessVote(vote *types.Vote) (err error) {
 func (con *Consensus) ProcessAgreementResult(
 	rand *types.AgreementResult) error {
 	// Sanity Check.
-	notarySet, err := con.nodeSetCache.GetNotarySet(
-		rand.Position.Round, rand.Position.ChainID)
-	if err != nil {
+	if err := VerifyAgreementResult(rand, con.nodeSetCache); err != nil {
 		return err
-	}
-	if len(rand.Votes) < len(notarySet)/3*2+1 {
-		return ErrNotEnoughVotes
-	}
-	if len(rand.Votes) > len(notarySet) {
-		return ErrIncorrectVoteProposer
-	}
-	for _, vote := range rand.Votes {
-		if rand.IsEmptyBlock {
-			if (vote.BlockHash != common.Hash{}) {
-				return ErrIncorrectVoteBlockHash
-			}
-		} else {
-			if vote.BlockHash != rand.BlockHash {
-				return ErrIncorrectVoteBlockHash
-			}
-		}
-		if vote.Type != types.VoteCom {
-			return ErrIncorrectVoteType
-		}
-		if vote.Position != rand.Position {
-			return ErrIncorrectVotePosition
-		}
-		if _, exist := notarySet[vote.ProposerID]; !exist {
-			return ErrIncorrectVoteProposer
-		}
-		ok, err := verifyVoteSignature(&vote)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			return ErrIncorrectVoteSignature
-		}
 	}
 	// Syncing BA Module.
 	if err := con.baMgr.processAgreementResult(rand); err != nil {
@@ -956,39 +921,9 @@ func (con *Consensus) processBlock(block *types.Block) (err error) {
 	return
 }
 
-// processFinalizedBlock is the entry point for syncing blocks.
-func (con *Consensus) processFinalizedBlock(block *types.Block) (err error) {
-	if err = con.lattice.SanityCheck(block); err != nil {
-		if err != ErrRetrySanityCheckLater {
-			return
-		}
-		err = nil
-	}
-	con.ccModule.processFinalizedBlock(block)
-	for {
-		confirmed := con.ccModule.extractFinalizedBlocks()
-		if len(confirmed) == 0 {
-			break
-		}
-		if err = con.lattice.ctModule.processBlocks(confirmed); err != nil {
-			return
-		}
-		for _, b := range confirmed {
-			if err = con.db.Put(*b); err != nil {
-				if err != blockdb.ErrBlockExists {
-					return
-				}
-				err = nil
-			}
-			con.lattice.ProcessFinalizedBlock(b)
-			// TODO(jimmy): BlockConfirmed and DeliverBlock may not be removed if
-			// application implements state snapshot.
-			con.logger.Debug("Calling Application.BlockConfirmed", "block", b)
-			con.app.BlockConfirmed(*b.Clone())
-			con.deliverBlock(b)
-		}
-	}
-	return
+// processFinalizedBlock is the entry point for handling finalized blocks.
+func (con *Consensus) processFinalizedBlock(block *types.Block) error {
+	return con.ccModule.processFinalizedBlock(block)
 }
 
 // PrepareBlock would setup header fields of block based on its ProposerID.
