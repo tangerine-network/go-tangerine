@@ -1734,6 +1734,10 @@ func (bc *BlockChain) insertDexonChain(chain types.Blocks) (int, []interface{}, 
 	return 0, events, coalescedLogs, nil
 }
 
+func (bc *BlockChain) VerifyDexonHeader(header *types.Header) error {
+	return bc.hc.verifyTSig(header, bc.verifierCache)
+}
+
 func (bc *BlockChain) ProcessPendingBlock(block *types.Block, witness *coreTypes.Witness) (*common.Hash, error) {
 	n, events, logs, err := bc.processPendingBlock(block, witness)
 	bc.PostChainEvents(events, logs)
