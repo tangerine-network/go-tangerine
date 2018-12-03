@@ -150,7 +150,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 
 	// Dexcon related objects.
 	dex.governance = NewDexconGovernance(dex.APIBackend, dex.chainConfig, config.PrivateKey)
-	dex.app = NewDexconApp(dex.txPool, dex.blockchain, dex.governance, chainDb, config, vmConfig)
+	dex.app = NewDexconApp(dex.txPool, dex.blockchain, dex.governance, chainDb, config)
 
 	// Set config fetcher so engine can fetch current system configuration from state.
 	engine.SetConfigFetcher(dex.governance)

@@ -102,18 +102,22 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 }
 
 func (v *BlockValidator) ValidateWitnessData(height uint64, data types.WitnessData) error {
-	currentBlock := v.bc.CurrentBlock()
-	if height > currentBlock.NumberU64() && height != 0 {
-		pendingBlock := v.bc.GetPendingBlockByNumber(height)
+	b := v.bc.GetPendingBlockByNumber(height)
+	if b == nil {
+		b = v.bc.GetBlockByNumber(height)
+		if b == nil {
+			return fmt.Errorf("can not find block %v either pending or confirmed block", height)
+		}
+	}
 
-		if pendingBlock.Root() != data.Root {
-			return fmt.Errorf("invalid witness root %s vs %s",
-				pendingBlock.Root().String(), data.Root.String())
-		}
-		if pendingBlock.ReceiptHash() != data.ReceiptHash {
-			return fmt.Errorf("invalid witness receipt hash %s vs %s",
-				pendingBlock.ReceiptHash().String(), data.ReceiptHash.String())
-		}
+	if b.Root() != data.Root {
+		return fmt.Errorf("invalid witness root %s vs %s",
+			b.Root().String(), data.Root.String())
+	}
+
+	if b.ReceiptHash() != data.ReceiptHash {
+		return fmt.Errorf("invalid witness receipt hash %s vs %s",
+			b.ReceiptHash().String(), data.ReceiptHash.String())
 	}
 	return nil
 }

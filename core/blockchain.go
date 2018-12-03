@@ -356,6 +356,18 @@ func (bc *BlockChain) GetChainLastConfirmedHeight(chainID uint32) uint64 {
 	return val.(uint64)
 }
 
+func (bc *BlockChain) GetAddressInfo(chainID uint32, address common.Address) (
+	info struct {
+		Nonce   uint64
+		Cost    *big.Int
+		Counter uint64
+	}) {
+	info.Nonce = bc.addressNonce[chainID][address]
+	info.Cost = bc.addressCost[chainID][address]
+	info.Counter = bc.addressCounter[chainID][address]
+	return
+}
+
 // loadLastState loads the last known chain state from the database. This method
 // assumes that the chain manager mutex is held.
 func (bc *BlockChain) loadLastState() error {
@@ -1775,11 +1787,11 @@ func (bc *BlockChain) processPendingBlock(
 	var witnessData types.WitnessData
 	if err := rlp.Decode(bytes.NewReader(witness.Data), &witnessData); err != nil {
 		log.Error("Witness rlp decode failed", "error", err)
-		panic(err)
+		return nil, nil, nil, fmt.Errorf("rlp decode fail: %v", err)
 	}
 
 	if err := bc.Validator().ValidateWitnessData(witness.Height, witnessData); err != nil {
-		return nil, nil, nil, fmt.Errorf("valiadte witness data error: %v", err)
+		return nil, nil, nil, fmt.Errorf("validate witness data error: %v", err)
 	}
 
 	currentBlock := bc.CurrentBlock()

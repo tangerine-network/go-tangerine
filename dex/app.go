@@ -29,7 +29,6 @@ import (
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/core/vm"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/rlp"
@@ -46,18 +45,11 @@ type DexconApp struct {
 	gov        *DexconGovernance
 	chainDB    ethdb.Database
 	config     *Config
-	vmConfig   vm.Config
 
 	chainLocksInitMu sync.Mutex
 	chainLocks       map[uint32]*sync.RWMutex
 
-	notifyMu        sync.Mutex
-	notifyChan      sync.Map
 	chainLatestRoot sync.Map
-}
-
-type notify struct {
-	results []chan uint64
 }
 
 type witnessData struct {
@@ -67,14 +59,13 @@ type witnessData struct {
 }
 
 func NewDexconApp(txPool *core.TxPool, blockchain *core.BlockChain, gov *DexconGovernance,
-	chainDB ethdb.Database, config *Config, vmConfig vm.Config) *DexconApp {
+	chainDB ethdb.Database, config *Config) *DexconApp {
 	return &DexconApp{
 		txPool:     txPool,
 		blockchain: blockchain,
 		gov:        gov,
 		chainDB:    chainDB,
 		config:     config,
-		vmConfig:   vmConfig,
 		chainLocks: make(map[uint32]*sync.RWMutex),
 	}
 }
@@ -275,17 +266,39 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 	}
 
 	// Wait until the witnessed root is seen on our local chain.
-	for i := 0; i < verifyBlockMaxRetries && err != nil; i++ {
+	for i := 0; i < verifyBlockMaxRetries; i++ {
+		if d.blockchain.GetPendingHeight() < block.Witness.Height {
+			log.Debug("Pending height < witness height")
+			time.Sleep(500 * time.Millisecond)
+			continue
+		}
+
+		b := d.blockchain.GetPendingBlockByNumber(block.Witness.Height)
+		if b == nil {
+			b = d.blockchain.GetBlockByNumber(block.Witness.Height)
+			if b == nil {
+				log.Error("Can not get block by height %v", block.Witness.Height)
+				return coreTypes.VerifyInvalidBlock
+			}
+		}
+
+		if b.Root() != witnessData.Root {
+			log.Error("Witness root not correct expect %v but %v", b.Root(), witnessData.Root)
+			return coreTypes.VerifyInvalidBlock
+		}
+
+		if b.ReceiptHash() != witnessData.ReceiptHash {
+			log.Error("Witness receipt hash not correct expect %v but %v", b.ReceiptHash(), witnessData.ReceiptHash)
+			return coreTypes.VerifyInvalidBlock
+		}
+
 		_, err = d.blockchain.StateAt(witnessData.Root)
 		if err != nil {
-			log.Debug("Witness root not found, retry in 500ms", "error", err)
-			time.Sleep(500 * time.Millisecond)
+			log.Error("Get state by root %v error: %v", witnessData.Root, err)
+			return coreTypes.VerifyInvalidBlock
 		}
-	}
 
-	if err != nil {
-		log.Error("Expected witness root not in stateDB", "err", err)
-		return coreTypes.VerifyRetryLater
+		break
 	}
 
 	d.chainRLock(block.Position.ChainID)
@@ -457,5 +470,7 @@ func (d *DexconApp) BlockConfirmed(block coreTypes.Block) {
 	d.chainLock(block.Position.ChainID)
 	defer d.chainUnlock(block.Position.ChainID)
 
-	d.blockchain.AddConfirmedBlock(&block)
+	if err := d.blockchain.AddConfirmedBlock(&block); err != nil {
+		panic(err)
+	}
 }

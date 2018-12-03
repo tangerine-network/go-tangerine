@@ -20,12 +20,16 @@ import (
 	"fmt"
 	"math/big"
 	"math/rand"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/consensus"
+	"github.com/dexon-foundation/dexon/consensus/dexcon"
 	"github.com/dexon-foundation/dexon/consensus/ethash"
 	"github.com/dexon-foundation/dexon/core/rawdb"
 	"github.com/dexon-foundation/dexon/core/state"
@@ -34,6 +38,7 @@ import (
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/params"
+	"github.com/dexon-foundation/dexon/rlp"
 )
 
 // So we can deterministically seed different blockchains
@@ -41,6 +46,8 @@ var (
 	canonicalSeed = 1
 	forkSeed      = 2
 )
+
+const processNum = 9
 
 // newCanonical creates a chain database, and injects a deterministic canonical
 // chain. Depending on the full flag, if creates either a full block chain or a
@@ -1591,6 +1598,238 @@ func TestLargeReorgTrieGC(t *testing.T) {
 		if node, _ := chain.stateCache.TrieDB().Node(block.Root()); node != nil {
 			t.Fatalf("competitor %d: competing chain state missing", i)
 		}
+	}
+}
+
+type dexconTest struct {
+	dexcon.Dexcon
+
+	blockReward *big.Int
+	numChains   uint32
+}
+
+// Finalize for skip governance access.
+func (d *dexconTest) Finalize(chain consensus.ChainReader, header *types.Header,
+	state *state.StateDB, txs []*types.Transaction, uncles []*types.Header,
+	receipts []*types.Receipt) (*types.Block, error) {
+	reward := new(big.Int).Div(d.blockReward, big.NewInt(int64(d.numChains)))
+	state.AddBalance(header.Coinbase, reward)
+
+	header.Reward = reward
+	header.Root = state.IntermediateRoot(true)
+	return types.NewBlock(header, txs, uncles, receipts), nil
+}
+
+func TestProcessPendingBlock(t *testing.T) {
+	db := ethdb.NewMemDatabase()
+
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		t.Fatalf("new private key error: %v", err)
+	}
+
+	addr := crypto.PubkeyToAddress(key.PublicKey)
+	gspec := &Genesis{
+		Config: params.TestnetChainConfig,
+		Alloc: GenesisAlloc{
+			addr: {
+				Balance: big.NewInt(10000000000),
+				Staked:  big.NewInt(0),
+			}},
+	}
+
+	chainConfig, _, genesisErr := SetupGenesisBlock(db, gspec)
+	if genesisErr != nil {
+		t.Fatalf("set up genesis block error: %v", genesisErr)
+	}
+
+	engine := &dexconTest{
+		blockReward: chainConfig.Dexcon.BlockReward,
+		numChains:   chainConfig.Dexcon.NumChains,
+	}
+	chain, err := NewBlockChain(db, nil, chainConfig, engine, vm.Config{}, nil)
+	if err != nil {
+		t.Fatalf("failed to create tester chain: %v", err)
+	}
+
+	// Process 1 ~ N success blocks.
+	for i := 0; i < processNum; i++ {
+		var witnessDataBytes []byte
+		if i == 0 {
+			witnessData := types.WitnessData{
+				Root:        gspec.ToBlock(nil).Root(),
+				TxHash:      gspec.ToBlock(nil).TxHash(),
+				ReceiptHash: gspec.ToBlock(nil).ReceiptHash(),
+			}
+			witnessDataBytes, err = rlp.EncodeToBytes(&witnessData)
+			if err != nil {
+				t.Fatalf("rlp encode fail: %v", err)
+			}
+		} else {
+			witnessData := types.WitnessData{
+				Root:        chain.pendingBlocks[uint64(i)].block.Root(),
+				TxHash:      chain.pendingBlocks[uint64(i)].block.TxHash(),
+				ReceiptHash: chain.pendingBlocks[uint64(i)].block.ReceiptHash(),
+			}
+			witnessDataBytes, err = rlp.EncodeToBytes(&witnessData)
+			if err != nil {
+				t.Fatalf("rlp encode fail: %v", err)
+			}
+		}
+
+		tx := types.NewTransaction(uint64(i), common.Address{9}, big.NewInt(1),
+			21000, big.NewInt(1), nil)
+		signer := types.NewEIP155Signer(chainConfig.ChainID)
+		tx, err = types.SignTx(tx, signer, key)
+		if err != nil {
+			t.Fatalf("sign tx error: %v", err)
+		}
+
+		_, err = chain.ProcessPendingBlock(types.NewBlock(&types.Header{
+			Number:     new(big.Int).SetUint64(uint64(i) + 1),
+			Time:       uint64(time.Now().UnixNano() / 1000000),
+			GasLimit:   10000,
+			Difficulty: big.NewInt(1),
+			Round:      0,
+		}, types.Transactions{tx}, nil, nil), &coreTypes.Witness{
+			Height: uint64(i),
+			Data:   witnessDataBytes,
+		})
+		if err != nil {
+			t.Fatalf("process pending block error: %v", err)
+		}
+
+		if chain.CurrentBlock().NumberU64() != uint64(i) {
+			t.Fatalf("expect current height %v but %v", uint64(i), chain.CurrentBlock().NumberU64())
+		}
+	}
+
+	// Witness rlp decode fail.
+	_, err = chain.ProcessPendingBlock(types.NewBlock(&types.Header{
+		Number:     new(big.Int).SetUint64(processNum + 1),
+		Time:       uint64(time.Now().UnixNano() / 1000000),
+		GasLimit:   10000,
+		Difficulty: big.NewInt(1),
+		Round:      0,
+	}, nil, nil, nil), &coreTypes.Witness{
+		Height: processNum,
+	})
+	if err == nil || !strings.Contains(err.Error(), "rlp decode fail") {
+		t.Fatalf("not expected fail: %v", err)
+	}
+
+	// Validate witness fail with unknown block.
+	witnessData := types.WitnessData{
+		Root:        chain.pendingBlocks[processNum].block.Root(),
+		TxHash:      chain.pendingBlocks[processNum].block.TxHash(),
+		ReceiptHash: chain.pendingBlocks[processNum].block.ReceiptHash(),
+	}
+	witnessDataBytes, err := rlp.EncodeToBytes(&witnessData)
+	if err != nil {
+		t.Fatalf("rlp encode fail: %v", err)
+	}
+	_, err = chain.ProcessPendingBlock(types.NewBlock(&types.Header{
+		Number:     new(big.Int).SetUint64(processNum + 1),
+		Time:       uint64(time.Now().UnixNano() / 1000000),
+		GasLimit:   10000,
+		Difficulty: big.NewInt(1),
+		Round:      0,
+	}, nil, nil, nil), &coreTypes.Witness{
+		Height: processNum + 1,
+		Data:   witnessDataBytes,
+	})
+	if err == nil || !strings.Contains(err.Error(), "can not find block") {
+		t.Fatalf("not expected fail: %v", err)
+	}
+
+	// Validate witness fail with unexpected root.
+	witnessData = types.WitnessData{
+		Root:        chain.pendingBlocks[processNum].block.Root(),
+		TxHash:      chain.pendingBlocks[processNum].block.TxHash(),
+		ReceiptHash: chain.pendingBlocks[processNum].block.ReceiptHash(),
+	}
+	witnessDataBytes, err = rlp.EncodeToBytes(&witnessData)
+	if err != nil {
+		t.Fatalf("rlp encode fail: %v", err)
+	}
+	_, err = chain.ProcessPendingBlock(types.NewBlock(&types.Header{
+		Number:     new(big.Int).SetUint64(processNum + 1),
+		Time:       uint64(time.Now().UnixNano() / 1000000),
+		GasLimit:   10000,
+		Difficulty: big.NewInt(1),
+		Round:      0,
+	}, nil, nil, nil), &coreTypes.Witness{
+		Height: processNum - 1,
+		Data:   witnessDataBytes,
+	})
+	if err == nil || !strings.Contains(err.Error(), "invalid witness root") {
+		t.Fatalf("not expected fail: %v", err)
+	}
+
+	// Apply transaction fail with insufficient fund.
+	witnessData = types.WitnessData{
+		Root:        chain.pendingBlocks[processNum].block.Root(),
+		TxHash:      chain.pendingBlocks[processNum].block.TxHash(),
+		ReceiptHash: chain.pendingBlocks[processNum].block.ReceiptHash(),
+	}
+	witnessDataBytes, err = rlp.EncodeToBytes(&witnessData)
+	if err != nil {
+		t.Fatalf("rlp encode fail: %v", err)
+	}
+
+	tx := types.NewTransaction(processNum, common.Address{9}, big.NewInt(99999999999999),
+		21000, big.NewInt(1), nil)
+	signer := types.NewEIP155Signer(chainConfig.ChainID)
+	tx, err = types.SignTx(tx, signer, key)
+	if err != nil {
+		t.Fatalf("sign tx error: %v", err)
+	}
+
+	_, err = chain.ProcessPendingBlock(types.NewBlock(&types.Header{
+		Number:     new(big.Int).SetUint64(processNum + 1),
+		Time:       uint64(time.Now().UnixNano() / 1000000),
+		GasLimit:   10000,
+		Difficulty: big.NewInt(1),
+		Round:      0,
+	}, types.Transactions{tx}, nil, nil), &coreTypes.Witness{
+		Height: processNum,
+		Data:   witnessDataBytes,
+	})
+	if err == nil || !strings.Contains(err.Error(), "apply transaction error") {
+		t.Fatalf("not expected fail: %v", err)
+	}
+
+	// Apply transaction fail with nonce too height.
+	witnessData = types.WitnessData{
+		Root:        chain.pendingBlocks[processNum].block.Root(),
+		TxHash:      chain.pendingBlocks[processNum].block.TxHash(),
+		ReceiptHash: chain.pendingBlocks[processNum].block.ReceiptHash(),
+	}
+	witnessDataBytes, err = rlp.EncodeToBytes(&witnessData)
+	if err != nil {
+		t.Fatalf("rlp encode fail: %v", err)
+	}
+
+	tx = types.NewTransaction(999, common.Address{9}, big.NewInt(1),
+		21000, big.NewInt(1), nil)
+	signer = types.NewEIP155Signer(chainConfig.ChainID)
+	tx, err = types.SignTx(tx, signer, key)
+	if err != nil {
+		t.Fatalf("sign tx error: %v", err)
+	}
+
+	_, err = chain.ProcessPendingBlock(types.NewBlock(&types.Header{
+		Number:     new(big.Int).SetUint64(processNum + 1),
+		Time:       uint64(time.Now().UnixNano() / 1000000),
+		GasLimit:   10000,
+		Difficulty: big.NewInt(1),
+		Round:      0,
+	}, types.Transactions{tx}, nil, nil), &coreTypes.Witness{
+		Height: processNum,
+		Data:   witnessDataBytes,
+	})
+	if err == nil || !strings.Contains(err.Error(), "apply transaction error") {
+		t.Fatalf("not expected fail: %v", err)
 	}
 }
 
