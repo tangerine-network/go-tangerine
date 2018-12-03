@@ -194,7 +194,7 @@ func NewProtocolManager(
 				return manager.NodeInfo()
 			},
 			PeerInfo: func(id enode.ID) interface{} {
-				if p := manager.peers.Peer(fmt.Sprintf("%x", id[:8])); p != nil {
+				if p := manager.peers.Peer(id.String()); p != nil {
 					return p.Info()
 				}
 				return nil
