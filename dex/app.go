@@ -47,9 +47,7 @@ type DexconApp struct {
 	chainDB    ethdb.Database
 	config     *Config
 
-	chainLocksInitMu sync.Mutex
-	chainLocks       map[uint32]*sync.RWMutex
-
+	chainLocks      sync.Map
 	chainLatestRoot sync.Map
 }
 
@@ -67,7 +65,6 @@ func NewDexconApp(txPool *core.TxPool, blockchain *core.BlockChain, gov *DexconG
 		gov:        gov,
 		chainDB:    chainDB,
 		config:     config,
-		chainLocks: make(map[uint32]*sync.RWMutex),
 	}
 }
 
@@ -75,32 +72,38 @@ func (d *DexconApp) addrBelongsToChain(address common.Address, chainSize, chainI
 	return new(big.Int).Mod(address.Big(), chainSize).Cmp(chainID) == 0
 }
 
-func (d *DexconApp) chainLockInit(chainID uint32) {
-	d.chainLocksInitMu.Lock()
-	defer d.chainLocksInitMu.Unlock()
-
-	_, exist := d.chainLocks[chainID]
-	if !exist {
-		d.chainLocks[chainID] = &sync.RWMutex{}
-	}
-}
-
 func (d *DexconApp) chainLock(chainID uint32) {
-	d.chainLockInit(chainID)
-	d.chainLocks[chainID].Lock()
+	v, ok := d.chainLocks.Load(chainID)
+	if !ok {
+		v = &sync.RWMutex{}
+		d.chainLocks.Store(chainID, v)
+	}
+	v.(*sync.RWMutex).Lock()
 }
 
 func (d *DexconApp) chainUnlock(chainID uint32) {
-	d.chainLocks[chainID].Unlock()
+	v, ok := d.chainLocks.Load(chainID)
+	if !ok {
+		panic(fmt.Errorf("chain %v is not init yet", chainID))
+	}
+	v.(*sync.RWMutex).Unlock()
 }
 
 func (d *DexconApp) chainRLock(chainID uint32) {
-	d.chainLockInit(chainID)
-	d.chainLocks[chainID].RLock()
+	v, ok := d.chainLocks.Load(chainID)
+	if !ok {
+		v = &sync.RWMutex{}
+		d.chainLocks.Store(chainID, v)
+	}
+	v.(*sync.RWMutex).RLock()
 }
 
 func (d *DexconApp) chainRUnlock(chainID uint32) {
-	d.chainLocks[chainID].RUnlock()
+	v, ok := d.chainLocks.Load(chainID)
+	if !ok {
+		panic(fmt.Errorf("chain %v is not init yet", chainID))
+	}
+	v.(*sync.RWMutex).RUnlock()
 }
 
 // validateNonce check if nonce is in order and return first nonce of every address.
@@ -189,21 +192,9 @@ func (d *DexconApp) preparePayload(ctx context.Context, position coreTypes.Posit
 		}
 	}
 
-	var root *common.Hash
-	value, ok := d.chainLatestRoot.Load(position.ChainID)
-	if ok {
-		root = value.(*common.Hash)
-	} else {
-		currentRoot := d.blockchain.CurrentBlock().Root()
-		root = &currentRoot
-	}
-
-	// Set state to the chain latest height.
-	latestState, err := d.blockchain.StateAt(*root)
-	if err != nil {
-		log.Error("Get pending state", "error", err)
-		return nil, fmt.Errorf("get pending state error: %v", err)
-	}
+	b, latestState := d.blockchain.GetPending()
+	log.Debug("Prepare payload", "chain", position.ChainID, "height", position.Height, "state",
+		b.Root().String())
 
 	txsMap, err := d.txPool.Pending()
 	if err != nil {
@@ -367,21 +358,10 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 		}
 	}
 
-	// Find the latest state for the given block height.
-	var root *common.Hash
-	value, ok := d.chainLatestRoot.Load(block.Position.ChainID)
-	if ok {
-		root = value.(*common.Hash)
-	} else {
-		currentRoot := d.blockchain.CurrentBlock().Root()
-		root = &currentRoot
-	}
-
-	latestState, err := d.blockchain.StateAt(*root)
-	if err != nil {
-		log.Error("Failed to get pending state", "error", err)
-		return coreTypes.VerifyInvalidBlock
-	}
+	// Get latest pending state.
+	b, latestState := d.blockchain.GetPending()
+	log.Debug("Verify block", "chain", block.Position.ChainID, "height", block.Position.Height, "state",
+		b.Root().String())
 
 	var transactions types.Transactions
 	if len(block.Payload) == 0 {
