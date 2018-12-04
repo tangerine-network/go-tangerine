@@ -60,7 +60,10 @@ type resultEntry struct {
 
 // Add adds a list of transactions into sig cache.
 func (c *globalSigCache) Add(signer Signer, txs Transactions) (errorTx *Transaction, err error) {
-	num := runtime.NumCPU()
+	num := runtime.NumCPU() - 2
+	if num < 1 {
+		num = 1
+	}
 	batchSize := len(txs) / num
 	wg := sync.WaitGroup{}
 	wg.Add(num)

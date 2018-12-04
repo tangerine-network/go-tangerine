@@ -18,6 +18,7 @@
 package dex
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 	"sync"
@@ -129,8 +130,54 @@ func (d *DexconApp) validateNonce(txs types.Transactions) (map[common.Address]ui
 
 // PreparePayload is called when consensus core is preparing payload for block.
 func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte, err error) {
+	// softLimit limits the runtime of inner call to preparePayload.
+	// hardLimit limits the runtime of outer PreparePayload.
+	// If hardLimit is hit, it is possible that no payload is prepared.
+	softLimit := 100 * time.Millisecond
+	hardLimit := 150 * time.Millisecond
+	ctx, cancel := context.WithTimeout(context.Background(), hardLimit)
+	defer cancel()
+	payloadCh := make(chan []byte, 1)
+	errCh := make(chan error, 1)
+	doneCh := make(chan struct{}, 1)
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), softLimit)
+		defer cancel()
+		payload, err := d.preparePayload(ctx, position)
+		if err != nil {
+			errCh <- err
+		}
+		payloadCh <- payload
+		doneCh <- struct{}{}
+	}()
+	select {
+	case <-ctx.Done():
+	case <-doneCh:
+	}
+	select {
+	case err = <-errCh:
+		if err != nil {
+			return
+		}
+	default:
+	}
+	select {
+	case payload = <-payloadCh:
+	default:
+	}
+	return
+}
+
+func (d *DexconApp) preparePayload(ctx context.Context, position coreTypes.Position) (
+	payload []byte, err error) {
 	d.chainRLock(position.ChainID)
 	defer d.chainRUnlock(position.ChainID)
+	select {
+	// This case will hit if previous RLock took too much time.
+	case <-ctx.Done():
+		return
+	default:
+	}
 
 	if position.Height != 0 {
 		// Check if chain block height is strictly increamental.
@@ -171,6 +218,11 @@ func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte,
 
 addressMap:
 	for address, txs := range txsMap {
+		select {
+		case <-ctx.Done():
+			break addressMap
+		default:
+		}
 		// TX hash need to be slot to the given chain in order to be included in the block.
 		if !d.addrBelongsToChain(address, chainNums, chainID) {
 			continue
@@ -332,6 +384,9 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 	}
 
 	var transactions types.Transactions
+	if len(block.Payload) == 0 {
+		return coreTypes.VerifyOK
+	}
 	err = rlp.DecodeBytes(block.Payload, &transactions)
 	if err != nil {
 		log.Error("Payload rlp decode", "error", err)

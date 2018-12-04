@@ -270,13 +270,15 @@ func (bc *BlockChain) AddConfirmedBlock(block *coreTypes.Block) error {
 	bc.confirmedBlockInitMu.Unlock()
 
 	var transactions types.Transactions
-	err := rlp.Decode(bytes.NewReader(block.Payload), &transactions)
-	if err != nil {
-		return err
-	}
-	_, err = types.GlobalSigCache.Add(types.NewEIP155Signer(bc.Config().ChainID), transactions)
-	if err != nil {
-		return err
+	if len(block.Payload) != 0 {
+		err := rlp.Decode(bytes.NewReader(block.Payload), &transactions)
+		if err != nil {
+			return err
+		}
+		_, err = types.GlobalSigCache.Add(types.NewEIP155Signer(bc.Config().ChainID), transactions)
+		if err != nil {
+			return err
+		}
 	}
 
 	addressMap := map[common.Address]struct{}{}
