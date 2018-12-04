@@ -96,7 +96,6 @@ type testChain struct {
 	headerm  map[common.Hash]*types.Header
 	blockm   map[common.Hash]*types.Block
 	receiptm map[common.Hash][]*types.Receipt
-	tdm      map[common.Hash]*big.Int
 }
 
 // newTestChain creates a blockchain of the given length.
@@ -105,7 +104,6 @@ func newTestChain(length int, genesis *types.Block) *testChain {
 	tc.genesis = genesis
 	tc.chain = append(tc.chain, genesis.Hash())
 	tc.headerm[tc.genesis.Hash()] = tc.genesis.Header()
-	tc.tdm[tc.genesis.Hash()] = tc.genesis.Difficulty()
 	tc.blockm[tc.genesis.Hash()] = tc.genesis
 	tc.generate(length-1, 0, genesis, false)
 	return tc
@@ -133,12 +131,10 @@ func (tc *testChain) copy(newlen int) *testChain {
 		headerm:  make(map[common.Hash]*types.Header, newlen),
 		blockm:   make(map[common.Hash]*types.Block, newlen),
 		receiptm: make(map[common.Hash][]*types.Receipt, newlen),
-		tdm:      make(map[common.Hash]*big.Int, newlen),
 	}
 	for i := 0; i < len(tc.chain) && i < newlen; i++ {
 		hash := tc.chain[i]
 		cpy.chain = append(cpy.chain, tc.chain[i])
-		cpy.tdm[hash] = tc.tdm[hash]
 		cpy.blockm[hash] = tc.blockm[hash]
 		cpy.headerm[hash] = tc.headerm[hash]
 		cpy.receiptm[hash] = tc.receiptm[hash]
@@ -179,15 +175,12 @@ func (tc *testChain) generate(n int, seed byte, parent *types.Block, heavy bool)
 	})
 
 	// Convert the block-chain into a hash-chain and header/block maps
-	td := new(big.Int).Set(tc.td(parent.Hash()))
 	for i, b := range blocks {
-		td := td.Add(td, b.Difficulty())
 		hash := b.Hash()
 		tc.chain = append(tc.chain, hash)
 		tc.blockm[hash] = b
 		tc.headerm[hash] = b.Header()
 		tc.receiptm[hash] = receipts[i]
-		tc.tdm[hash] = new(big.Int).Set(td)
 	}
 }
 
@@ -199,11 +192,6 @@ func (tc *testChain) len() int {
 // headBlock returns the head of the chain.
 func (tc *testChain) headBlock() *types.Block {
 	return tc.blockm[tc.chain[len(tc.chain)-1]]
-}
-
-// td returns the total difficulty of the given block.
-func (tc *testChain) td(hash common.Hash) *big.Int {
-	return tc.tdm[hash]
 }
 
 // headersByHash returns headers in ascending order from the given hash.

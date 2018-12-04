@@ -257,12 +257,13 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 	if peer == nil {
 		return
 	}
-	// Make sure the peer's TD is higher than our own
+	// Make sure the peer's number is higher than our own
 	currentBlock := pm.blockchain.CurrentBlock()
-	td := pm.blockchain.GetTd(currentBlock.Hash(), currentBlock.NumberU64())
+	number := currentBlock.NumberU64()
 
-	pHead, pTd := peer.Head()
-	if pTd.Cmp(td) <= 0 {
+	pHead, pNumber := peer.Head()
+
+	if pNumber <= number {
 		return
 	}
 	// Otherwise try to sync with the downloader
@@ -282,13 +283,13 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 
 	if mode == downloader.FastSync {
 		// Make sure the peer's total difficulty we are synchronizing is higher.
-		if pm.blockchain.GetTdByHash(pm.blockchain.CurrentFastBlock().Hash()).Cmp(pTd) >= 0 {
+		if pm.blockchain.CurrentFastBlock().NumberU64() >= pNumber {
 			return
 		}
 	}
 
 	// Run the sync cycle, and disable fast sync if we've went past the pivot block
-	if err := pm.downloader.Synchronise(peer.id, pHead, pTd, mode); err != nil {
+	if err := pm.downloader.Synchronise(peer.id, pHead, pNumber, mode); err != nil {
 		return
 	}
 	if atomic.LoadUint32(&pm.fastSync) == 1 {
@@ -302,7 +303,7 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 		// all its out-of-date peers of the availability of a new block. This failure
 		// scenario will most often crop up in private and hackathon networks with
 		// degenerate connectivity, but it should be healthy for the mainnet too to
-		// more reliably update peers or the local TD state.
+		// more reliably update peers or the local number state.
 		go pm.BroadcastBlock(head, false)
 	}
 }

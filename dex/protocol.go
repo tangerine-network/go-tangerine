@@ -37,7 +37,6 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"io"
-	"math/big"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core"
@@ -172,7 +171,7 @@ type p2pServer interface {
 type statusData struct {
 	ProtocolVersion uint32
 	NetworkId       uint64
-	TD              *big.Int
+	Number          uint64
 	CurrentBlock    common.Hash
 	GenesisBlock    common.Hash
 }
@@ -232,7 +231,6 @@ func (hn *hashOrNumber) DecodeRLP(s *rlp.Stream) error {
 // newBlockData is the network packet for the block propagation message.
 type newBlockData struct {
 	Block *types.Block
-	TD    *big.Int
 }
 
 // blockBody represents the data content of a single block.
