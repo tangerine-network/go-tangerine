@@ -32,6 +32,10 @@ const (
 	forceSyncCycle      = 10 * time.Second // Time interval to force syncs, even if few peers are available
 	minDesiredPeerCount = 5                // Amount of peers desired to start syncing
 
+	// The distance between us and peer that we can accept.
+	// This distance is related to numChains and lambdaBA dexcon config.
+	acceptableDist = 16
+
 	// This is the target size for the packs of transactions sent by txsyncLoop.
 	// A pack can get larger than this if a single transactions exceeds this size.
 	txsyncPackSize = 100 * 1024
@@ -263,7 +267,9 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 
 	pHead, pNumber := peer.Head()
 
-	if pNumber <= number {
+	// If we are behind the peer, but not more than acceptable distance, don't
+	// trigger a sync. Fetcher is able to cover this.
+	if pNumber <= number+acceptableDist {
 		return
 	}
 	// Otherwise try to sync with the downloader

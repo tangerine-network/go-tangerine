@@ -153,6 +153,11 @@ type governance interface {
 	DKGSet(uint64) (map[string]struct{}, error)
 }
 
+type dexconApp interface {
+	SubscribeNewFinalizedBlockEvent(
+		chan<- core.NewFinalizedBlockEvent) event.Subscription
+}
+
 type p2pServer interface {
 	Self() *enode.Node
 

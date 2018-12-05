@@ -98,6 +98,15 @@ func (s *testP2PServer) RemoveGroup(name string) {
 	delete(s.group, name)
 }
 
+type testApp struct {
+	finalizedBlockFeed event.Feed
+}
+
+func (a *testApp) SubscribeNewFinalizedBlockEvent(
+	ch chan<- core.NewFinalizedBlockEvent) event.Subscription {
+	return a.finalizedBlockFeed.Subscribe(ch)
+}
+
 // newTestProtocolManager creates a new protocol manager for testing purposes,
 // with the given number of blocks already known, and potential notification
 // channels for different events.
@@ -125,7 +134,7 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 		notarySetFunc: func(uint64, uint32) (map[string]struct{}, error) { return nil, nil },
 	}
 
-	pm, err := NewProtocolManager(gspec.Config, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, blockchain, db, true, tgov)
+	pm, err := NewProtocolManager(gspec.Config, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, blockchain, db, true, tgov, &testApp{})
 	if err != nil {
 		return nil, nil, err
 	}
