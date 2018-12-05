@@ -8,7 +8,8 @@ DEXON implementation is based-on the go-ethereum project. The consensus layer is
 https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 )](https://godoc.org/github.com/dexon-foundation/dexon)
 [![Go Report Card](https://goreportcard.com/badge/github.com/dexon-foundation/dexon)](https://goreportcard.com/report/github.com/dexon-foundation/dexon)
-[![Travis](https://travis-ci.com/dexon-foundation/dexon.svg?branch=master)](https://travis-ci.com/dexon-foundation/dexon)
+[![Travis](https://travis-ci.com/dexon-foundation/dexon.svg?branch=dev)](https://travis-ci.com/dexon-foundation/dexon)
+[![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/dexon-foundation/Lobby)
 
 <!--
 Automated builds are available for stable releases and the unstable master branch.
@@ -263,7 +264,7 @@ anyone on the internet, and are grateful for even the smallest of fixes!
 
 If you'd like to contribute to dexon, please fork, fix, commit and send a pull request
 for the maintainers to review and merge into the main code base. If you wish to submit more
-complex changes though, please check up with the core devs first <!-- on [our gitter channel](https://gitter.im/ethereum/dexon) -->
+complex changes though, please check up with the core devs first on [our gitter channel](https://gitter.im/dexon-foundation/Lobby)
 to ensure those changes are in line with the general philosophy of the project and/or get some
 early feedback which can make both your efforts much lighter as well as our review and merge
 procedures quick and simple.
