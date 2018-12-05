@@ -36,10 +36,6 @@ import (
 	"github.com/dexon-foundation/dexon/rlp"
 )
 
-const (
-	verifyBlockMaxRetries = 4
-)
-
 // DexconApp implements the DEXON consensus core application interface.
 type DexconApp struct {
 	txPool     *core.TxPool
@@ -312,40 +308,35 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 		return coreTypes.VerifyInvalidBlock
 	}
 
-	// Wait until the witnessed root is seen on our local chain.
-	for i := 0; i < verifyBlockMaxRetries; i++ {
-		if d.blockchain.GetPendingHeight() < block.Witness.Height {
-			log.Debug("Pending height < witness height")
-			time.Sleep(500 * time.Millisecond)
-			continue
-		}
+	// Validate witness height.
+	if d.blockchain.GetPendingHeight() < block.Witness.Height {
+		log.Debug("Pending height < witness height")
+		return coreTypes.VerifyRetryLater
+	}
 
-		b := d.blockchain.GetPendingBlockByNumber(block.Witness.Height)
+	b := d.blockchain.GetPendingBlockByNumber(block.Witness.Height)
+	if b == nil {
+		b = d.blockchain.GetBlockByNumber(block.Witness.Height)
 		if b == nil {
-			b = d.blockchain.GetBlockByNumber(block.Witness.Height)
-			if b == nil {
-				log.Error("Can not get block by height %v", block.Witness.Height)
-				return coreTypes.VerifyInvalidBlock
-			}
-		}
-
-		if b.Root() != witnessData.Root {
-			log.Error("Witness root not correct expect %v but %v", b.Root(), witnessData.Root)
+			log.Error("Can not get block by height %v", block.Witness.Height)
 			return coreTypes.VerifyInvalidBlock
 		}
+	}
 
-		if b.ReceiptHash() != witnessData.ReceiptHash {
-			log.Error("Witness receipt hash not correct expect %v but %v", b.ReceiptHash(), witnessData.ReceiptHash)
-			return coreTypes.VerifyInvalidBlock
-		}
+	if b.Root() != witnessData.Root {
+		log.Error("Witness root not correct expect %v but %v", b.Root(), witnessData.Root)
+		return coreTypes.VerifyInvalidBlock
+	}
 
-		_, err = d.blockchain.StateAt(witnessData.Root)
-		if err != nil {
-			log.Error("Get state by root %v error: %v", witnessData.Root, err)
-			return coreTypes.VerifyInvalidBlock
-		}
+	if b.ReceiptHash() != witnessData.ReceiptHash {
+		log.Error("Witness receipt hash not correct expect %v but %v", b.ReceiptHash(), witnessData.ReceiptHash)
+		return coreTypes.VerifyInvalidBlock
+	}
 
-		break
+	_, err = d.blockchain.StateAt(witnessData.Root)
+	if err != nil {
+		log.Error("Get state by root %v error: %v", witnessData.Root, err)
+		return coreTypes.VerifyInvalidBlock
 	}
 
 	d.chainRLock(block.Position.ChainID)
