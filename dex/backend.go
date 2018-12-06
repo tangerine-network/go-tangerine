@@ -23,7 +23,6 @@ import (
 
 	dexCore "github.com/dexon-foundation/dexon-consensus/core"
 	coreEcdsa "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 
 	"github.com/dexon-foundation/dexon/accounts"
 	"github.com/dexon-foundation/dexon/consensus"
@@ -251,7 +250,7 @@ func (s *Dexon) Stop() error {
 
 func (s *Dexon) StartProposing() error {
 	// TODO: Run with the latest confirmed block in compaction chain.
-	s.consensus.Run(&coreTypes.Block{})
+	s.consensus.Run()
 	return nil
 }
 
