@@ -8,7 +8,7 @@ DEXON implementation is based-on the go-ethereum project. The consensus layer is
 https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
 )](https://godoc.org/github.com/dexon-foundation/dexon)
 [![Go Report Card](https://goreportcard.com/badge/github.com/dexon-foundation/dexon)](https://goreportcard.com/report/github.com/dexon-foundation/dexon)
-[![Travis](https://travis-ci.com/dexon-foundation/dexon.svg?branch=dev)](https://travis-ci.com/dexon-foundation/dexon)
+[![Travis](https://travis-ci.org/dexon-foundation/dexon.svg?branch=dev)](https://travis-ci.org/dexon-foundation/dexon)
 [![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/dexon-foundation/Lobby)
 
 <!--
