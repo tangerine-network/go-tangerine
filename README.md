@@ -2,7 +2,7 @@
 
 Official golang implementation of the DEXON fullnode.
 
-DEXON implementation is based-on the go-ethereum project. The consensus layer is replaced with the [DEXON consensus](https://github.com/dexon-foundation/dexon-consensus) implementation.
+DEXON implementation is based-on the [go-ethereum](https://github.com/ethereum/go-ethereum) project. The consensus layer is replaced with the [DEXON consensus](https://github.com/dexon-foundation/dexon-consensus) implementation.
 
 [![API Reference](
 https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
