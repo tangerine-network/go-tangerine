@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
+	coreBlockdb "github.com/dexon-foundation/dexon-consensus/core/blockdb"
 	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 )
 
@@ -41,7 +42,11 @@ func (v byHash) Swap(i int, j int) {
 }
 
 func TestCacheVote(t *testing.T) {
-	cache := newCache(3)
+	db, err := coreBlockdb.NewMemBackedBlockDB()
+	if err != nil {
+		panic(err)
+	}
+	cache := newCache(3, db)
 	pos0 := coreTypes.Position{
 		Height: uint64(0),
 	}
@@ -126,7 +131,11 @@ func TestCacheVote(t *testing.T) {
 }
 
 func TestCacheBlock(t *testing.T) {
-	cache := newCache(3)
+	db, err := coreBlockdb.NewMemBackedBlockDB()
+	if err != nil {
+		panic(err)
+	}
+	cache := newCache(3, db)
 	block1 := &coreTypes.Block{
 		Hash: coreCommon.NewRandomHash(),
 	}
@@ -177,5 +186,20 @@ func TestCacheBlock(t *testing.T) {
 	}
 	if !hasNewBlock {
 		t.Errorf("expect block %s in cache, have %v", block4, blocks)
+	}
+
+	block5 := &coreTypes.Block{
+		Hash: coreCommon.NewRandomHash(),
+	}
+	if err := db.Put(*block5); err != nil {
+		panic(err)
+	}
+	blocks = cache.blocks(coreCommon.Hashes{block5.Hash})
+	if len(blocks) != 1 {
+		t.Errorf("fail to get blocks: have %d, want 1", len(blocks))
+	} else {
+		if !blocks[0].Hash.Equal(block5.Hash) {
+			t.Errorf("get wrong block: have %s, want %s", blocks[0], block5)
+		}
 	}
 }

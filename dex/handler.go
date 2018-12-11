@@ -53,6 +53,7 @@ import (
 	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/dexon-foundation/dexon/dex/blockdb"
 	"github.com/dexon-foundation/dexon/dex/downloader"
 	"github.com/dexon-foundation/dexon/dex/fetcher"
 	"github.com/dexon-foundation/dexon/ethdb"
@@ -157,7 +158,7 @@ func NewProtocolManager(
 		nodeTable:       tab,
 		gov:             gov,
 		blockchain:      blockchain,
-		cache:           newCache(128),
+		cache:           newCache(5120, blockdb.NewDatabase(chaindb)),
 		chainconfig:     config,
 		newPeerCh:       make(chan *peer),
 		noMorePeers:     make(chan struct{}),

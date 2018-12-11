@@ -21,6 +21,7 @@ import (
 	"sync"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
+	coreBlockdb "github.com/dexon-foundation/dexon-consensus/core/blockdb"
 	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 )
 
@@ -47,14 +48,16 @@ type cache struct {
 	blockCache   map[coreCommon.Hash]*coreTypes.Block
 	voteCache    map[coreTypes.Position]map[voteKey]*coreTypes.Vote
 	votePosition []coreTypes.Position
+	db           coreBlockdb.BlockDatabase
 	voteSize     int
 	size         int
 }
 
-func newCache(size int) *cache {
+func newCache(size int, db coreBlockdb.BlockDatabase) *cache {
 	return &cache{
 		blockCache: make(map[coreCommon.Hash]*coreTypes.Block),
 		voteCache:  make(map[coreTypes.Position]map[voteKey]*coreTypes.Vote),
+		db:         db,
 		size:       size,
 	}
 }
@@ -111,6 +114,14 @@ func (c *cache) blocks(hashes coreCommon.Hashes) []*coreTypes.Block {
 	for _, hash := range hashes {
 		if block, exist := c.blockCache[hash]; exist {
 			cacheBlocks = append(cacheBlocks, block)
+		} else {
+			block, err := c.db.Get(hash)
+			if err != nil {
+				continue
+			}
+			// Blocks request from the cache do not need the finalization info.
+			block.Finalization = coreTypes.FinalizationResult{}
+			cacheBlocks = append(cacheBlocks, &block)
 		}
 	}
 	return cacheBlocks
