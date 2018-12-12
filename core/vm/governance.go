@@ -1608,6 +1608,25 @@ func (s *GovernanceStateHelper) DKGMasterPublicKeys(round *big.Int) [][]byte {
 func (s *GovernanceStateHelper) PushDKGMasterPublicKey(round *big.Int, mpk []byte) {
 	s.appendTo2DByteArray(big.NewInt(dkgMasterPublicKeysLoc), round, mpk)
 }
+func (s *GovernanceStateHelper) UniqueDKGMasterPublicKeys(round *big.Int) []*dkgTypes.MasterPublicKey {
+	// Prepare DKGMasterPublicKeys.
+	var dkgMasterPKs []*dkgTypes.MasterPublicKey
+	existence := make(map[coreTypes.NodeID]struct{})
+	for _, mpk := range s.DKGMasterPublicKeys(round) {
+		x := new(dkgTypes.MasterPublicKey)
+		if err := rlp.DecodeBytes(mpk, x); err != nil {
+			panic(err)
+		}
+
+		// Only the first DKG MPK submission is valid.
+		if _, exists := existence[x.ProposerID]; exists {
+			continue
+		}
+		existence[x.ProposerID] = struct{}{}
+		dkgMasterPKs = append(dkgMasterPKs, x)
+	}
+	return dkgMasterPKs
+}
 
 // bytes[][] public dkgComplaints;
 func (s *GovernanceStateHelper) DKGComplaints(round *big.Int) [][]byte {
@@ -2214,21 +2233,7 @@ func (g *GovernanceContract) proposeCRS(nextRound *big.Int, signedCRS []byte) ([
 	prevCRS := g.state.CRS(round)
 
 	// Prepare DKGMasterPublicKeys.
-	var dkgMasterPKs []*dkgTypes.MasterPublicKey
-	existence := make(map[coreTypes.NodeID]struct{})
-	for _, mpk := range g.state.DKGMasterPublicKeys(round) {
-		x := new(dkgTypes.MasterPublicKey)
-		if err := rlp.DecodeBytes(mpk, x); err != nil {
-			panic(err)
-		}
-
-		// Only the first DKG MPK submission is valid.
-		if _, exists := existence[x.ProposerID]; exists {
-			continue
-		}
-		existence[x.ProposerID] = struct{}{}
-		dkgMasterPKs = append(dkgMasterPKs, x)
-	}
+	dkgMasterPKs := g.state.UniqueDKGMasterPublicKeys(round)
 
 	// Prepare DKGComplaints.
 	var dkgComplaints []*dkgTypes.Complaint

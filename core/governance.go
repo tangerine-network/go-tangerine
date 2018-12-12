@@ -118,15 +118,7 @@ func (g *Governance) DKGComplaints(round uint64) []*dkgTypes.Complaint {
 
 func (g *Governance) DKGMasterPublicKeys(round uint64) []*dkgTypes.MasterPublicKey {
 	headHelper := g.GetHeadHelper()
-	var dkgMasterPKs []*dkgTypes.MasterPublicKey
-	for _, pk := range headHelper.DKGMasterPublicKeys(big.NewInt(int64(round))) {
-		x := new(dkgTypes.MasterPublicKey)
-		if err := rlp.DecodeBytes(pk, x); err != nil {
-			panic(err)
-		}
-		dkgMasterPKs = append(dkgMasterPKs, x)
-	}
-	return dkgMasterPKs
+	return headHelper.UniqueDKGMasterPublicKeys(big.NewInt(int64(round)))
 }
 
 func (g *Governance) IsDKGFinal(round uint64) bool {
