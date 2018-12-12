@@ -927,6 +927,7 @@ func (pool *TxPool) Get(hash common.Hash) *types.Transaction {
 // removeTx removes a single transaction from the queue, moving all subsequent
 // transactions back to the future queue.
 func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) {
+	types.GlobalSigCache.Prune([]common.Hash{hash})
 	// Fetch the transaction we wish to delete
 	tx := pool.all.Get(hash)
 	if tx == nil {
@@ -965,8 +966,6 @@ func (pool *TxPool) removeTx(hash common.Hash, outofbound bool) {
 			delete(pool.queue, addr)
 		}
 	}
-
-	types.GlobalSigCache.Prune([]common.Hash{hash})
 }
 
 // promoteExecutables moves transactions that have become processable from the
