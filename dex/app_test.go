@@ -417,17 +417,7 @@ func TestBlockDelivered(t *testing.T) {
 			Height:    1,
 		})
 
-	pendingBlock, pendingState := dex.blockchain.GetPending()
-
-	r, ok := dex.app.chainLatestRoot.Load(firstBlocksInfo[0].Block.Position.ChainID)
-	if !ok {
-		t.Errorf("lastest root cache not exist")
-	}
-
-	if *r.(*common.Hash) != pendingBlock.Root() {
-		t.Errorf("incorrect pending root")
-	}
-
+	_, pendingState := dex.blockchain.GetPending()
 	currentBlock := dex.blockchain.CurrentBlock()
 	if currentBlock.NumberU64() != 0 {
 		t.Errorf("unexpected current block number %v", currentBlock.NumberU64())

@@ -47,8 +47,7 @@ type DexconApp struct {
 	finalizedBlockFeed event.Feed
 	scope              event.SubscriptionScope
 
-	chainLocks      sync.Map
-	chainLatestRoot sync.Map
+	chainLocks sync.Map
 }
 
 type witnessData struct {
@@ -486,12 +485,11 @@ func (d *DexconApp) BlockDelivered(
 	}, txs, nil, nil)
 
 	h := d.blockchain.CurrentBlock().NumberU64() + 1
-	root, err := d.blockchain.ProcessPendingBlock(newBlock, &block.Witness)
+	_, err = d.blockchain.ProcessPendingBlock(newBlock, &block.Witness)
 	if err != nil {
 		log.Error("Failed to process pending block", "error", err)
 		panic(err)
 	}
-	d.chainLatestRoot.Store(block.Position.ChainID, root)
 
 	d.blockchain.RemoveConfirmedBlock(chainID, blockHash)
 
