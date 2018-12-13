@@ -20,6 +20,7 @@ package core
 import (
 	"context"
 	"errors"
+	"math"
 	"sync"
 	"time"
 
@@ -174,7 +175,7 @@ func (mgr *agreementMgr) appendConfig(
 		recv := &consensusBAReceiver{
 			consensus:     mgr.con,
 			chainID:       i,
-			restartNotary: make(chan bool, 1),
+			restartNotary: make(chan types.Position, 1),
 		}
 		agrModule := newAgreement(
 			mgr.con.ID,
@@ -252,7 +253,9 @@ func (mgr *agreementMgr) processAgreementResult(
 			int(mgr.gov.Configuration(result.Position.Round).NotarySetSize),
 			types.NewNotarySetTarget(crs, result.Position.ChainID))
 		for key := range result.Votes {
-			agreement.processVote(&result.Votes[key])
+			if err := agreement.processVote(&result.Votes[key]); err != nil {
+				return err
+			}
 		}
 		agreement.restart(nIDs, result.Position, crs)
 	}
@@ -298,7 +301,7 @@ func (mgr *agreementMgr) runBA(initRound uint64, chainID uint32) {
 
 	// Check if this routine needs to awake in this round and prepare essential
 	// variables when yes.
-	checkRound := func() (awake bool) {
+	checkRound := func() (isNotary, isDisabled bool) {
 		defer func() {
 			currentRound = nextRound
 			nextRound++
@@ -318,7 +321,8 @@ func (mgr *agreementMgr) runBA(initRound uint64, chainID uint32) {
 		roundEndTime = config.beginTime.Add(config.roundInterval)
 		// Check if this chain handled by this routine included in this round.
 		if chainID >= config.numChains {
-			return false
+			isDisabled = true
+			return
 		}
 		// Check if this node in notary set of this chain in this round.
 		nodeSet, err := mgr.cache.GetNodeSet(nextRound)
@@ -329,7 +333,18 @@ func (mgr *agreementMgr) runBA(initRound uint64, chainID uint32) {
 		setting.notarySet = nodeSet.GetSubSet(
 			int(config.notarySetSize),
 			types.NewNotarySetTarget(config.crs, chainID))
-		_, awake = setting.notarySet[mgr.ID]
+		_, isNotary = setting.notarySet[mgr.ID]
+		if isNotary {
+			mgr.logger.Info("selected as notary set",
+				"ID", mgr.ID,
+				"round", nextRound,
+				"chainID", chainID)
+		} else {
+			mgr.logger.Info("not selected as notary set",
+				"ID", mgr.ID,
+				"round", nextRound,
+				"chainID", chainID)
+		}
 		// Setup ticker
 		if tickDuration != config.lambdaBA {
 			if setting.ticker != nil {
@@ -348,12 +363,9 @@ Loop:
 		default:
 		}
 		now := time.Now().UTC()
-		if !checkRound() {
-			if now.After(roundEndTime) {
-				// That round is passed.
-				continue Loop
-			}
-			// Sleep until next checkpoint.
+		var isDisabled bool
+		setting.recv.isNotary, isDisabled = checkRound()
+		if isDisabled {
 			select {
 			case <-mgr.ctx.Done():
 				break Loop
@@ -379,7 +391,7 @@ Loop:
 		// Run BA for this round.
 		recv.round = currentRound
 		recv.changeNotaryTime = roundEndTime
-		recv.restartNotary <- false
+		recv.restartNotary <- types.Position{ChainID: math.MaxUint32}
 		if err := mgr.baRoutineForOneRound(&setting); err != nil {
 			mgr.logger.Error("BA routine failed",
 				"error", err,
@@ -394,6 +406,7 @@ func (mgr *agreementMgr) baRoutineForOneRound(
 	setting *baRoundSetting) (err error) {
 	agr := setting.agr
 	recv := setting.recv
+	oldPos := agr.agreementID()
 Loop:
 	for {
 		select {
@@ -402,12 +415,18 @@ Loop:
 		default:
 		}
 		select {
-		case newNotary := <-recv.restartNotary:
-			if newNotary {
-				// This round is finished.
-				break Loop
+		case restartPos := <-recv.restartNotary:
+			if !isStop(restartPos) {
+				if restartPos.Round > oldPos.Round {
+					// This round is finished.
+					break Loop
+				}
+				if restartPos.Older(&oldPos) {
+					// The restartNotary event is triggered by 'BlockConfirmed'
+					// of some older block.
+					break
+				}
 			}
-			oldPos := agr.agreementID()
 			var nextHeight uint64
 			for {
 				nextHeight, err = mgr.lattice.NextHeight(recv.round, setting.chainID)
@@ -425,15 +444,16 @@ Loop:
 				if nextHeight > oldPos.Height {
 					break
 				}
-				time.Sleep(100 * time.Millisecond)
 				mgr.logger.Debug("Lattice not ready!!!",
 					"old", &oldPos, "next", nextHeight)
+				time.Sleep(100 * time.Millisecond)
 			}
 			nextPos := types.Position{
 				Round:   recv.round,
 				ChainID: setting.chainID,
 				Height:  nextHeight,
 			}
+			oldPos = nextPos
 			agr.restart(setting.notarySet, nextPos, setting.crs)
 		default:
 		}
