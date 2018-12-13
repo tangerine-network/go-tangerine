@@ -166,12 +166,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 
 	privKey := coreEcdsa.NewPrivateKeyFromECDSA(config.PrivateKey)
 
-	// TODO(w): set this correctly in config.
-	now := time.Now()
-	dMoment := time.Date(
-		now.Year(), now.Month(), now.Day(),
-		now.Hour(), now.Minute(), (now.Second()/5+1)*5,
-		0, now.Location())
+	dMoment := time.Unix(config.DMoment, int64(0))
+	log.Info("DEXON Consensus DMoment", "time", dMoment)
 
 	dex.consensus = dexCore.NewConsensus(dMoment,
 		dex.app, dex.governance, blockdb.NewDatabase(chainDb), dex.network, privKey, log.Root())

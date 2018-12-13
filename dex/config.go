@@ -118,4 +118,7 @@ type Config struct {
 
 	// RPCGasCap is the global gas cap for eth-call variants.
 	RPCGasCap *big.Int `toml:",omitempty"`
+
+	// Dexon options
+	DMoment int64
 }
