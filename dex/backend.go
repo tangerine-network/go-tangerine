@@ -31,7 +31,7 @@ import (
 	"github.com/dexon-foundation/dexon/core/bloombits"
 	"github.com/dexon-foundation/dexon/core/rawdb"
 	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/dex/blockdb"
+	dexDB "github.com/dexon-foundation/dexon/dex/db"
 	"github.com/dexon-foundation/dexon/dex/downloader"
 	"github.com/dexon-foundation/dexon/eth/filters"
 	"github.com/dexon-foundation/dexon/eth/gasprice"
@@ -170,7 +170,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	log.Info("DEXON Consensus DMoment", "time", dMoment)
 
 	dex.consensus = dexCore.NewConsensus(dMoment,
-		dex.app, dex.governance, blockdb.NewDatabase(chainDb), dex.network, privKey, log.Root())
+		dex.app, dex.governance, dexDB.NewDatabase(chainDb), dex.network, privKey, log.Root())
 	return dex, nil
 }
 

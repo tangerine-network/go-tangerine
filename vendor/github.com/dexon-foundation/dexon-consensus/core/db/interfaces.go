@@ -22,6 +22,7 @@ import (
 	"fmt"
 
 	"github.com/dexon-foundation/dexon-consensus/common"
+	"github.com/dexon-foundation/dexon-consensus/core/crypto/dkg"
 	"github.com/dexon-foundation/dexon-consensus/core/types"
 )
 
@@ -38,6 +39,17 @@ var (
 	ErrClosed = fmt.Errorf("db closed")
 	// ErrNotImplemented is the error that some interface is not implemented.
 	ErrNotImplemented = fmt.Errorf("not implemented")
+	// ErrInvalidCompactionChainTipHeight means the newly updated height of
+	// the tip of compaction chain is invalid, usually means it's smaller than
+	// current cached one.
+	ErrInvalidCompactionChainTipHeight = fmt.Errorf(
+		"invalid compaction chain tip height")
+	// ErrDKGPrivateKeyExists raised when attempting to save DKG private key
+	// that already saved.
+	ErrDKGPrivateKeyExists = errors.New("dkg private key exists")
+	// ErrDKGPrivateKeyDoesNotExist raised when the DKG private key of the
+	// requested round does not exists.
+	ErrDKGPrivateKeyDoesNotExist = errors.New("dkg private key does not exists")
 )
 
 // Database is the interface for a Database.
@@ -55,12 +67,23 @@ type Reader interface {
 	HasBlock(hash common.Hash) bool
 	GetBlock(hash common.Hash) (types.Block, error)
 	GetAllBlocks() (BlockIterator, error)
+
+	// GetCompactionChainTipInfo returns the block hash and finalization height
+	// of the tip block of compaction chain. Empty hash and zero height means
+	// the compaction chain is empty.
+	GetCompactionChainTipInfo() (common.Hash, uint64)
+
+	// DKG Private Key related methods.
+	HasDKGPrivateKey(round uint64) (bool, error)
+	GetDKGPrivateKey(round uint64) (dkg.PrivateKey, error)
 }
 
 // Writer defines the interface for writing blocks into DB.
 type Writer interface {
 	UpdateBlock(block types.Block) error
 	PutBlock(block types.Block) error
+	PutCompactionChainTipInfo(common.Hash, uint64) error
+	PutDKGPrivateKey(uint64, dkg.PrivateKey) error
 }
 
 // BlockIterator defines an iterator on blocks hold

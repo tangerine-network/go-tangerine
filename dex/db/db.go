@@ -15,10 +15,11 @@
 // along with the dexon-consensus library. If not, see
 // <http://www.gnu.org/licenses/>.
 
-package blockdb
+package db
 
 import (
 	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
+	coreDKG "github.com/dexon-foundation/dexon-consensus/core/crypto/dkg"
 	coreDb "github.com/dexon-foundation/dexon-consensus/core/db"
 	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 
@@ -27,20 +28,20 @@ import (
 	"github.com/dexon-foundation/dexon/ethdb"
 )
 
-// BlockDB implement dexon-consensus BlockDatabase interface.
-type BlockDB struct {
+// DB implement dexon-consensus BlockDatabase interface.
+type DB struct {
 	db ethdb.Database
 }
 
-func NewDatabase(db ethdb.Database) *BlockDB {
-	return &BlockDB{db}
+func NewDatabase(db ethdb.Database) *DB {
+	return &DB{db}
 }
 
-func (d *BlockDB) HasBlock(hash coreCommon.Hash) bool {
+func (d *DB) HasBlock(hash coreCommon.Hash) bool {
 	return rawdb.HasCoreBlock(d.db, common.Hash(hash))
 }
 
-func (d *BlockDB) GetBlock(hash coreCommon.Hash) (coreTypes.Block, error) {
+func (d *DB) GetBlock(hash coreCommon.Hash) (coreTypes.Block, error) {
 	block := rawdb.ReadCoreBlock(d.db, common.Hash(hash))
 	if block == nil {
 		return coreTypes.Block{}, coreDb.ErrBlockDoesNotExist
@@ -48,11 +49,11 @@ func (d *BlockDB) GetBlock(hash coreCommon.Hash) (coreTypes.Block, error) {
 	return *block, nil
 }
 
-func (d *BlockDB) GetAllBlocks() (coreDb.BlockIterator, error) {
+func (d *DB) GetAllBlocks() (coreDb.BlockIterator, error) {
 	return nil, coreDb.ErrNotImplemented
 }
 
-func (d *BlockDB) UpdateBlock(block coreTypes.Block) error {
+func (d *DB) UpdateBlock(block coreTypes.Block) error {
 	if !d.HasBlock(block.Hash) {
 		return coreDb.ErrBlockDoesNotExist
 	}
@@ -60,7 +61,7 @@ func (d *BlockDB) UpdateBlock(block coreTypes.Block) error {
 	return nil
 }
 
-func (d *BlockDB) PutBlock(block coreTypes.Block) error {
+func (d *DB) PutBlock(block coreTypes.Block) error {
 	if d.HasBlock(block.Hash) {
 		return coreDb.ErrBlockExists
 	}
@@ -68,4 +69,39 @@ func (d *BlockDB) PutBlock(block coreTypes.Block) error {
 	return nil
 }
 
-func (d *BlockDB) Close() error { return nil }
+func (d *DB) HasDKGPrivateKey(round uint64) (bool, error) {
+	return rawdb.HasCoreDKGPrivateKey(d.db, round)
+}
+
+func (d *DB) GetDKGPrivateKey(round uint64) (coreDKG.PrivateKey, error) {
+	key := rawdb.ReadCoreDKGPrivateKey(d.db, round)
+	if key == nil {
+		return coreDKG.PrivateKey{}, coreDb.ErrDKGPrivateKeyDoesNotExist
+	}
+	return *key, nil
+}
+
+func (d *DB) PutDKGPrivateKey(round uint64, key coreDKG.PrivateKey) error {
+	has, err := d.HasDKGPrivateKey(round)
+	if err != nil {
+		return err
+	}
+	if has {
+		return coreDb.ErrDKGPrivateKeyExists
+	}
+	return rawdb.WriteCoreDKGPrivateKey(d.db, round, &key)
+}
+
+func (d *DB) PutCompactionChainTipInfo(hash coreCommon.Hash, height uint64) error {
+	_, currentHeight := d.GetCompactionChainTipInfo()
+	if height <= currentHeight {
+		return coreDb.ErrInvalidCompactionChainTipHeight
+	}
+	return rawdb.WriteCoreCompactionChainTip(d.db, hash, height)
+}
+
+func (d *DB) GetCompactionChainTipInfo() (hash coreCommon.Hash, height uint64) {
+	return rawdb.ReadCoreCompactionChainTip(d.db)
+}
+
+func (d *DB) Close() error { return nil }

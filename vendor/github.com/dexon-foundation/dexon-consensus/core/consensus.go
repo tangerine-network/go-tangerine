@@ -424,6 +424,7 @@ func NewConsensus(
 		recv,
 		gov,
 		nodeSetCache,
+		db,
 		logger)
 	recv.cfgModule = cfgModule
 	// Construct Consensus instance.
@@ -490,6 +491,7 @@ func NewConsensusFromSyncer(
 		recv,
 		gov,
 		nodeSetCache,
+		db,
 		logger)
 	recv.cfgModule = cfgModule
 	// Setup Consensus instance.
@@ -576,7 +578,7 @@ func (con *Consensus) prepare(initBlock *types.Block) error {
 	}
 	if _, exist := dkgSet[con.ID]; exist {
 		con.logger.Info("Selected as DKG set", "round", initRound)
-		con.cfgModule.registerDKG(initRound, int(initConfig.DKGSetSize)/3+1)
+		con.cfgModule.registerDKG(initRound, getDKGThreshold(initConfig))
 		con.event.RegisterTime(con.dMoment.Add(initConfig.RoundInterval/4),
 			func(time.Time) {
 				con.runDKG(initRound, initConfig)
@@ -742,8 +744,7 @@ func (con *Consensus) initialRound(
 					return
 				}
 				con.logger.Info("Selected as DKG set", "round", nextRound)
-				con.cfgModule.registerDKG(
-					nextRound, int(config.DKGSetSize/3)+1)
+				con.cfgModule.registerDKG(nextRound, getDKGThreshold(config))
 				con.event.RegisterTime(
 					startTime.Add(config.RoundInterval*2/3),
 					func(time.Time) {
@@ -1003,6 +1004,14 @@ func (con *Consensus) preProcessBlock(b *types.Block) (err error) {
 
 // deliverBlock deliver a block to application layer.
 func (con *Consensus) deliverBlock(b *types.Block) {
+	if err := con.db.UpdateBlock(*b); err != nil {
+		panic(err)
+	}
+	if err := con.db.PutCompactionChainTipInfo(
+		b.Hash, b.Finalization.Height); err != nil {
+		panic(err)
+	}
+	con.cfgModule.untouchTSigHash(b.Hash)
 	con.logger.Debug("Calling Application.BlockDelivered", "block", b)
 	con.app.BlockDelivered(b.Hash, b.Position, b.Finalization.Clone())
 	if b.Position.Round == con.roundToNotify {
@@ -1031,6 +1040,9 @@ func (con *Consensus) deliverBlock(b *types.Block) {
 		con.gov.NotifyRoundHeight(
 			con.roundToNotify, b.Finalization.Height)
 		con.roundToNotify++
+	}
+	if con.debugApp != nil {
+		con.debugApp.BlockReady(b.Hash)
 	}
 }
 
@@ -1072,14 +1084,7 @@ func (con *Consensus) processBlock(block *types.Block) (err error) {
 		"delivered", con.ccModule.lastDeliveredBlock(),
 		"pending", con.ccModule.lastPendingBlock())
 	for _, b := range deliveredBlocks {
-		if err = con.db.UpdateBlock(*b); err != nil {
-			panic(err)
-		}
-		con.cfgModule.untouchTSigHash(b.Hash)
 		con.deliverBlock(b)
-		if con.debugApp != nil {
-			con.debugApp.BlockReady(b.Hash)
-		}
 	}
 	if err = con.lattice.PurgeBlocks(deliveredBlocks); err != nil {
 		return
