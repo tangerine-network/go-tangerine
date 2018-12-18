@@ -165,6 +165,10 @@ const GovernanceABIJSON = `
       {
         "name": "url",
         "type": "string"
+      },
+      {
+        "name": "unstaked",
+        "type": "bool"
       }
     ],
     "payable": false,
@@ -252,6 +256,10 @@ const GovernanceABIJSON = `
       },
       {
         "name": "value",
+        "type": "uint256"
+      },
+      {
+        "name": "undelegated_at",
         "type": "uint256"
       }
     ],
@@ -443,6 +451,20 @@ const GovernanceABIJSON = `
   },
   {
     "constant": true,
+    "inputs": [],
+    "name": "lockupPeriod",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
     "inputs": [
       {
         "name": "",
@@ -565,6 +587,10 @@ const GovernanceABIJSON = `
     "inputs": [
       {
         "name": "MinStake",
+        "type": "uint256"
+      },
+      {
+        "name": "LockupPeriod",
         "type": "uint256"
       },
       {
@@ -807,6 +833,20 @@ const GovernanceABIJSON = `
     "payable": false,
     "stateMutability": "nonpayable",
     "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "NodeAddress",
+        "type": "address"
+      }
+    ],
+    "name": "withdraw",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
   }
 ]
 `
@@ -958,6 +998,12 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 			return nil, errExecutionReverted
 		}
 		return g.updateConfiguration(&cfg)
+	case "withdraw":
+		address := common.Address{}
+		if err := method.Inputs.Unpack(&address, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.withdraw(address)
 
 	// --------------------------------
 	// Solidity auto generated methods.
@@ -1087,6 +1133,12 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 			return nil, errExecutionReverted
 		}
 		return res, nil
+	case "lockupPeriod":
+		res, err := method.Outputs.Pack(g.state.LockupPeriod())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	case "minBlockInterval":
 		res, err := method.Outputs.Pack(g.state.MinBlockInterval())
 		if err != nil {
@@ -1180,6 +1232,7 @@ const (
 	dkgFinalizedsCountLoc
 	ownerLoc
 	minStakeLoc
+	lockupPeriodLoc
 	blockRewardLoc
 	blockGasLimitLoc
 	numChainsLoc
@@ -1360,6 +1413,7 @@ func (s *GovernanceStateHelper) PushRoundHeight(height *big.Int) {
 //     string email;
 //     string location;
 //     string url;
+//     bool unstaked;
 // }
 //
 // Node[] nodes;
@@ -1372,9 +1426,10 @@ type nodeInfo struct {
 	Email     string
 	Location  string
 	Url       string
+	Unstaked  bool
 }
 
-const nodeStructSize = 7
+const nodeStructSize = 8
 
 func (s *GovernanceStateHelper) LenNodes() *big.Int {
 	return s.getStateBigInt(big.NewInt(nodesLoc))
@@ -1413,6 +1468,10 @@ func (s *GovernanceStateHelper) Node(index *big.Int) *nodeInfo {
 	// Url.
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(6))
 	node.Url = string(s.readBytes(loc))
+
+	// Unstaked.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(7))
+	node.Unstaked = s.getStateBigInt(loc).Cmp(big.NewInt(0)) > 0
 
 	return node
 }
@@ -1454,6 +1513,14 @@ func (s *GovernanceStateHelper) UpdateNode(index *big.Int, n *nodeInfo) {
 	// Url.
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(6))
 	s.writeBytes(loc, []byte(n.Url))
+
+	// Unstaked.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(7))
+	val := big.NewInt(0)
+	if n.Unstaked {
+		val = big.NewInt(1)
+	}
+	s.setStateBigInt(loc, val)
 }
 func (s *GovernanceStateHelper) PopLastNode() {
 	// Decrease length by 1.
@@ -1499,14 +1566,16 @@ func (s *GovernanceStateHelper) DeleteNodesOffset(addr common.Address) {
 //     address node;
 //     address owner;
 //     uint256 value;
+//     uint256 undelegated_at;
 // }
 
 type delegatorInfo struct {
-	Owner common.Address
-	Value *big.Int
+	Owner         common.Address
+	Value         *big.Int
+	UndelegatedAt *big.Int
 }
 
-const delegatorStructSize = 2
+const delegatorStructSize = 3
 
 // mapping(address => Delegator[]) public delegators;
 func (s *GovernanceStateHelper) LenDelegators(nodeAddr common.Address) *big.Int {
@@ -1527,6 +1596,10 @@ func (s *GovernanceStateHelper) Delegator(nodeAddr common.Address, offset *big.I
 	// Value.
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(1))
 	delegator.Value = s.getStateBigInt(loc)
+
+	// UndelegatedAt.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(2))
+	delegator.UndelegatedAt = s.getStateBigInt(loc)
 
 	return delegator
 }
@@ -1550,6 +1623,10 @@ func (s *GovernanceStateHelper) UpdateDelegator(nodeAddr common.Address, offset 
 	// Value.
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(1))
 	s.setStateBigInt(loc, delegator.Value)
+
+	// UndelegatedAt.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(2))
+	s.setStateBigInt(loc, delegator.UndelegatedAt)
 }
 func (s *GovernanceStateHelper) PopLastDelegator(nodeAddr common.Address) {
 	// Decrease length by 1.
@@ -1558,7 +1635,10 @@ func (s *GovernanceStateHelper) PopLastDelegator(nodeAddr common.Address) {
 	loc := s.getMapLoc(big.NewInt(delegatorsLoc), nodeAddr.Bytes())
 	s.setStateBigInt(loc, newArrayLength)
 
-	s.UpdateDelegator(nodeAddr, newArrayLength, &delegatorInfo{Value: big.NewInt(0)})
+	s.UpdateDelegator(nodeAddr, newArrayLength, &delegatorInfo{
+		Value:         big.NewInt(0),
+		UndelegatedAt: big.NewInt(0),
+	})
 }
 
 // mapping(address => mapping(address => uint256)) delegatorsOffset;
@@ -1676,16 +1756,15 @@ func (s *GovernanceStateHelper) SetOwner(newOwner common.Address) {
 func (s *GovernanceStateHelper) MinStake() *big.Int {
 	return s.getStateBigInt(big.NewInt(minStakeLoc))
 }
-func (s *GovernanceStateHelper) SetMinStake(stake *big.Int) {
-	s.setStateBigInt(big.NewInt(minStakeLoc), stake)
+
+// uint256 public lockupPeriod;
+func (s *GovernanceStateHelper) LockupPeriod() *big.Int {
+	return s.getStateBigInt(big.NewInt(lockupPeriodLoc))
 }
 
 // uint256 public blockReward;
 func (s *GovernanceStateHelper) BlockReward() *big.Int {
 	return s.getStateBigInt(big.NewInt(blockRewardLoc))
-}
-func (s *GovernanceStateHelper) SetBlockReward(reward *big.Int) {
-	s.setStateBigInt(big.NewInt(blockRewardLoc), reward)
 }
 
 // uint256 public blockGasLimit;
@@ -1764,6 +1843,7 @@ const phiRatioMultiplier = 1000000.0
 func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
 	return &params.DexconConfig{
 		MinStake:         s.getStateBigInt(big.NewInt(minStakeLoc)),
+		LockupPeriod:     s.getStateBigInt(big.NewInt(lockupPeriodLoc)).Uint64(),
 		BlockReward:      s.getStateBigInt(big.NewInt(blockRewardLoc)),
 		BlockGasLimit:    s.getStateBigInt(big.NewInt(blockGasLimitLoc)).Uint64(),
 		NumChains:        uint32(s.getStateBigInt(big.NewInt(numChainsLoc)).Uint64()),
@@ -1781,6 +1861,7 @@ func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
 // UpdateConfiguration updates system configuration.
 func (s *GovernanceStateHelper) UpdateConfiguration(cfg *params.DexconConfig) {
 	s.setStateBigInt(big.NewInt(minStakeLoc), cfg.MinStake)
+	s.setStateBigInt(big.NewInt(lockupPeriodLoc), big.NewInt(int64(cfg.LockupPeriod)))
 	s.setStateBigInt(big.NewInt(blockRewardLoc), cfg.BlockReward)
 	s.setStateBigInt(big.NewInt(blockGasLimitLoc), big.NewInt(int64(cfg.BlockGasLimit)))
 	s.setStateBigInt(big.NewInt(numChainsLoc), big.NewInt(int64(cfg.NumChains)))
@@ -1796,6 +1877,7 @@ func (s *GovernanceStateHelper) UpdateConfiguration(cfg *params.DexconConfig) {
 
 type rawConfigStruct struct {
 	MinStake         *big.Int
+	LockupPeriod     *big.Int
 	BlockReward      *big.Int
 	BlockGasLimit    *big.Int
 	NumChains        *big.Int
@@ -1812,6 +1894,7 @@ type rawConfigStruct struct {
 // UpdateConfigurationRaw updates system configuration.
 func (s *GovernanceStateHelper) UpdateConfigurationRaw(cfg *rawConfigStruct) {
 	s.setStateBigInt(big.NewInt(minStakeLoc), cfg.MinStake)
+	s.setStateBigInt(big.NewInt(lockupPeriodLoc), cfg.LockupPeriod)
 	s.setStateBigInt(big.NewInt(blockRewardLoc), cfg.BlockReward)
 	s.setStateBigInt(big.NewInt(blockGasLimitLoc), cfg.BlockGasLimit)
 	s.setStateBigInt(big.NewInt(numChainsLoc), cfg.NumChains)
@@ -2082,8 +2165,9 @@ func (g *GovernanceContract) delegate(nodeAddr common.Address) ([]byte, error) {
 	// Push delegator record.
 	offset = g.state.LenDelegators(nodeAddr)
 	g.state.PushDelegator(nodeAddr, &delegatorInfo{
-		Owner: caller,
-		Value: value,
+		Owner:         caller,
+		Value:         value,
+		UndelegatedAt: big.NewInt(0),
 	})
 	g.state.PutDelegatorOffset(nodeAddr, caller, offset)
 	g.state.emitDelegated(nodeAddr, caller, value)
@@ -2146,18 +2230,62 @@ func (g *GovernanceContract) stake(
 	return g.useGas(100000)
 }
 
-func (g *GovernanceContract) undelegateHelper(nodeAddr, owner common.Address) ([]byte, error) {
+func (g *GovernanceContract) undelegateHelper(nodeAddr, caller common.Address) ([]byte, error) {
 	nodeOffset := g.state.NodesOffset(nodeAddr)
 	if nodeOffset.Cmp(big.NewInt(0)) < 0 {
 		return nil, errExecutionReverted
 	}
 
-	offset := g.state.DelegatorsOffset(nodeAddr, owner)
+	offset := g.state.DelegatorsOffset(nodeAddr, caller)
 	if offset.Cmp(big.NewInt(0)) < 0 {
 		return nil, errExecutionReverted
 	}
 
 	delegator := g.state.Delegator(nodeAddr, offset)
+
+	// Set undelegate time.
+	delegator.UndelegatedAt = g.evm.Time
+	g.state.UpdateDelegator(nodeAddr, offset, delegator)
+
+	// Subtract from the total staked of node.
+	node := g.state.Node(nodeOffset)
+	node.Staked = new(big.Int).Sub(node.Staked, delegator.Value)
+	g.state.UpdateNode(nodeOffset, node)
+
+	g.state.emitUndelegated(nodeAddr, caller)
+
+	return g.useGas(100000)
+}
+
+func (g *GovernanceContract) undelegate(nodeAddr common.Address) ([]byte, error) {
+	return g.undelegateHelper(nodeAddr, g.contract.Caller())
+}
+
+func (g *GovernanceContract) withdraw(nodeAddr common.Address) ([]byte, error) {
+	caller := g.contract.Caller()
+
+	nodeOffset := g.state.NodesOffset(nodeAddr)
+	if nodeOffset.Cmp(big.NewInt(0)) < 0 {
+		return nil, errExecutionReverted
+	}
+
+	offset := g.state.DelegatorsOffset(nodeAddr, caller)
+	if offset.Cmp(big.NewInt(0)) < 0 {
+		return nil, errExecutionReverted
+	}
+
+	delegator := g.state.Delegator(nodeAddr, offset)
+
+	// Not yet undelegated.
+	if delegator.UndelegatedAt.Cmp(big.NewInt(0)) == 0 {
+		return g.penalize()
+	}
+
+	unlockTime := new(big.Int).Add(delegator.UndelegatedAt, g.state.LockupPeriod())
+	if g.evm.Time.Cmp(unlockTime) <= 0 {
+		return g.penalize()
+	}
+
 	length := g.state.LenDelegators(nodeAddr)
 	lastIndex := new(big.Int).Sub(length, big.NewInt(1))
 
@@ -2167,25 +2295,30 @@ func (g *GovernanceContract) undelegateHelper(nodeAddr, owner common.Address) ([
 		g.state.UpdateDelegator(nodeAddr, offset, lastNode)
 		g.state.PutDelegatorOffset(nodeAddr, lastNode.Owner, offset)
 	}
-	g.state.DeleteDelegatorsOffset(nodeAddr, owner)
+	g.state.DeleteDelegatorsOffset(nodeAddr, caller)
 	g.state.PopLastDelegator(nodeAddr)
-
-	// Subtract from the total staked of node.
-	node := g.state.Node(nodeOffset)
-	node.Staked = new(big.Int).Sub(node.Staked, delegator.Value)
-	g.state.UpdateNode(nodeOffset, node)
 
 	// Return the staked fund.
 	if !g.transfer(GovernanceContractAddress, delegator.Owner, delegator.Value) {
 		return nil, errExecutionReverted
 	}
 
-	g.state.emitUndelegated(nodeAddr, owner)
-	return g.useGas(100000)
-}
+	// We are the last delegator to withdraw the fund, remove the node info.
+	if g.state.LenDelegators(nodeAddr).Cmp(big.NewInt(0)) == 0 {
+		length := g.state.LenNodes()
+		lastIndex := new(big.Int).Sub(length, big.NewInt(1))
 
-func (g *GovernanceContract) undelegate(nodeAddr common.Address) ([]byte, error) {
-	return g.undelegateHelper(nodeAddr, g.contract.Caller())
+		// Delete the node.
+		if offset.Cmp(lastIndex) != 0 {
+			lastNode := g.state.Node(lastIndex)
+			g.state.UpdateNode(offset, lastNode)
+			g.state.PutNodesOffset(lastNode.Owner, offset)
+		}
+		g.state.DeleteNodesOffset(nodeAddr)
+		g.state.PopLastNode()
+	}
+
+	return g.useGas(100000)
 }
 
 func (g *GovernanceContract) unstake() ([]byte, error) {
@@ -2206,17 +2339,10 @@ func (g *GovernanceContract) unstake() ([]byte, error) {
 		i = i.Sub(i, big.NewInt(1))
 	}
 
-	length := g.state.LenNodes()
-	lastIndex := new(big.Int).Sub(length, big.NewInt(1))
-
-	// Delete the node.
-	if offset.Cmp(lastIndex) != 0 {
-		lastNode := g.state.Node(lastIndex)
-		g.state.UpdateNode(offset, lastNode)
-		g.state.PutNodesOffset(lastNode.Owner, offset)
-	}
-	g.state.DeleteNodesOffset(caller)
-	g.state.PopLastNode()
+	// Mark node as unstaked.
+	node := g.state.Node(offset)
+	node.Unstaked = true
+	g.state.UpdateNode(offset, node)
 
 	g.state.emitUnstaked(caller)
 

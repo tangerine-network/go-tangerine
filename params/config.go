@@ -26,8 +26,8 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0xc8e4d0c33d92b7751fe3747f778aa27600508c8c922be1dbbc7db6ee967f4e6c")
-	TestnetGenesisHash = common.HexToHash("0x63b758fa30bf833430171514448288d4e67c1d6a989d1474fdd5c5888dfe77fd")
+	MainnetGenesisHash = common.HexToHash("0x5fc1fdb2eca492d256600c0d96a2ca7bdfd9412ac8557bcab54e05332260e26b")
+	TestnetGenesisHash = common.HexToHash("0x252c41c125e4a9137a39a20b810ddcd33a8023c407cac863ad2326a521375d0f")
 )
 
 // TrustedCheckpoints associates each known checkpoint with the genesis hash of
@@ -55,6 +55,7 @@ var (
 			GenesisCRSText:   "In DEXON, we trust.",
 			Owner:            common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
 			MinStake:         new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+			LockupPeriod:     86400 * 3 * 1000,
 			BlockReward:      big.NewInt(1e18),
 			BlockGasLimit:    40000000,
 			NumChains:        4,
@@ -94,6 +95,7 @@ var (
 			GenesisCRSText:   "In DEXON, we trust.",
 			Owner:            common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
 			MinStake:         new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+			LockupPeriod:     86400 * 3 * 1000,
 			BlockReward:      big.NewInt(1e18),
 			BlockGasLimit:    40000000,
 			NumChains:        6,
@@ -123,6 +125,7 @@ var (
 			GenesisCRSText:   "In DEXON, we trust.",
 			Owner:            common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
 			MinStake:         new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+			LockupPeriod:     86400 * 3 * 1000,
 			BlockReward:      big.NewInt(1e18),
 			BlockGasLimit:    40000000,
 			NumChains:        6,
@@ -265,6 +268,7 @@ type DexconConfig struct {
 	GenesisCRSText   string         `json:"genesisCRSText"`
 	Owner            common.Address `json:"owner"`
 	MinStake         *big.Int       `json:"minStake"`
+	LockupPeriod     uint64         `json:"lockupPeriod"`
 	BlockReward      *big.Int       `json:"blockReward"`
 	BlockGasLimit    uint64         `json:"blockGasLimit"`
 	NumChains        uint32         `json:"numChains"`
@@ -285,10 +289,11 @@ type dexconConfigSpecMarshaling struct {
 
 // String implements the stringer interface, returning the consensus engine details.
 func (d *DexconConfig) String() string {
-	return fmt.Sprintf("{GenesisCRSText: %v Owner: %v MinStake: %v BlockReward: %v BlockGasLimit: %v NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v}",
+	return fmt.Sprintf("{GenesisCRSText: %v Owner: %v MinStake: %v LockupPeriod: %v BlockReward: %v BlockGasLimit: %v NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v}",
 		d.GenesisCRSText,
 		d.Owner,
 		d.MinStake,
+		d.LockupPeriod,
 		d.BlockReward,
 		d.BlockGasLimit,
 		d.NumChains,

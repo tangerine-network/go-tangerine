@@ -103,6 +103,8 @@ func (g *GovernanceContractTestSuite) SetupTest() {
 	g.s = &GovernanceStateHelper{stateDB}
 
 	config := params.TestnetChainConfig.Dexcon
+	config.LockupPeriod = 1000
+
 	g.config = config
 
 	// Give governance contract balance so it will not be deleted because of being an empty state object.
@@ -155,7 +157,7 @@ func (g *GovernanceContractTestSuite) call(caller common.Address, input []byte, 
 			}
 			return 0, false
 		},
-		Time:        big.NewInt(time.Now().UnixNano() / 1000000000),
+		Time:        big.NewInt(time.Now().UnixNano() / 1000000),
 		BlockNumber: big.NewInt(0),
 	}
 
@@ -180,7 +182,7 @@ func (g *GovernanceContractTestSuite) TestTransferOwnership() {
 	g.Require().Equal(addr, g.s.Owner())
 }
 
-func (g *GovernanceContractTestSuite) TestStakeUnstakeWithoutDelegators() {
+func (g *GovernanceContractTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
 	privKey, addr := g.newPrefundAccount()
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
 
@@ -210,6 +212,17 @@ func (g *GovernanceContractTestSuite) TestStakeUnstakeWithoutDelegators() {
 	g.Require().Nil(err)
 	_, err = g.call(addr, input, big.NewInt(0))
 	g.Require().Nil(err)
+	g.Require().Equal(1, int(g.s.LenDelegators(addr).Uint64()))
+	g.Require().Equal(1, int(g.s.LenNodes().Uint64()))
+
+	// Wait for lockup time than withdraw.
+	time.Sleep(time.Second * 2)
+	input, err = abiObject.Pack("withdraw", addr)
+	g.Require().Nil(err)
+	_, err = g.call(addr, input, big.NewInt(0))
+	g.Require().Nil(err)
+
+	g.Require().Equal(0, int(g.s.LenDelegators(addr).Uint64()))
 	g.Require().Equal(0, int(g.s.LenNodes().Uint64()))
 
 	// Stake 2 nodes, and unstake the first then the second.
@@ -235,6 +248,12 @@ func (g *GovernanceContractTestSuite) TestStakeUnstakeWithoutDelegators() {
 	g.Require().Nil(err)
 	_, err = g.call(addr2, input, big.NewInt(0))
 	g.Require().Nil(err)
+	time.Sleep(time.Second * 2)
+	input, err = abiObject.Pack("withdraw", addr2)
+	g.Require().Nil(err)
+	_, err = g.call(addr2, input, big.NewInt(0))
+	g.Require().Nil(err)
+
 	g.Require().Equal(1, int(g.s.LenNodes().Uint64()))
 	g.Require().Equal("Test1", g.s.Node(big.NewInt(0)).Name)
 	g.Require().Equal(-1, int(g.s.NodesOffset(addr2).Int64()))
@@ -244,6 +263,12 @@ func (g *GovernanceContractTestSuite) TestStakeUnstakeWithoutDelegators() {
 	g.Require().Nil(err)
 	_, err = g.call(addr, input, big.NewInt(0))
 	g.Require().Nil(err)
+	time.Sleep(time.Second * 2)
+	input, err = abiObject.Pack("withdraw", addr)
+	g.Require().Nil(err)
+	_, err = g.call(addr, input, big.NewInt(0))
+	g.Require().Nil(err)
+
 	g.Require().Equal(0, int(g.s.LenNodes().Uint64()))
 	g.Require().Equal(-1, int(g.s.NodesOffset(addr).Int64()))
 	g.Require().Equal(-1, int(g.s.DelegatorsOffset(addr, addr).Int64()))
@@ -309,9 +334,34 @@ func (g *GovernanceContractTestSuite) TestDelegateUndelegate() {
 	g.Require().Nil(err)
 	_, err = g.call(addrDelegator, input, big.NewInt(0))
 	g.Require().Nil(err)
+
+	// Withdraw within lockup time should fail.
+	input, err = abiObject.Pack("withdraw", addr)
+	g.Require().Nil(err)
+	_, err = g.call(addrDelegator, input, big.NewInt(0))
+	g.Require().NotNil(err)
+
+	g.Require().Equal(3, int(g.s.LenDelegators(addr).Uint64()))
+	g.Require().Equal(balanceBeforeUnDelegate, g.stateDB.GetBalance(addrDelegator))
+	g.Require().NotEqual(-1, int(g.s.DelegatorsOffset(addr, addrDelegator).Int64()))
+
+	// Wait for lockup time than withdraw.
+	time.Sleep(time.Second * 2)
+	input, err = abiObject.Pack("withdraw", addr)
+	g.Require().Nil(err)
+	_, err = g.call(addrDelegator, input, big.NewInt(0))
+	g.Require().Nil(err)
+
 	g.Require().Equal(2, int(g.s.LenDelegators(addr).Uint64()))
 	g.Require().Equal(new(big.Int).Add(balanceBeforeUnDelegate, amount), g.stateDB.GetBalance(addrDelegator))
 	g.Require().Equal(-1, int(g.s.DelegatorsOffset(addr, addrDelegator).Int64()))
+
+	// Withdraw when their is no delegation should fail.
+	time.Sleep(time.Second)
+	input, err = abiObject.Pack("withdraw", addr)
+	g.Require().Nil(err)
+	_, err = g.call(addrDelegator, input, big.NewInt(0))
+	g.Require().NotNil(err)
 
 	// Undelegate addrDelegator2.
 	balanceBeforeUnDelegate = g.stateDB.GetBalance(addrDelegator2)
@@ -319,6 +369,14 @@ func (g *GovernanceContractTestSuite) TestDelegateUndelegate() {
 	g.Require().Nil(err)
 	_, err = g.call(addrDelegator2, input, big.NewInt(0))
 	g.Require().Nil(err)
+
+	// Wait for lockup time than withdraw.
+	time.Sleep(time.Second * 2)
+	input, err = abiObject.Pack("withdraw", addr)
+	g.Require().Nil(err)
+	_, err = g.call(addrDelegator2, input, big.NewInt(0))
+	g.Require().Nil(err)
+
 	g.Require().Equal(1, int(g.s.LenDelegators(addr).Uint64()))
 	g.Require().Equal(new(big.Int).Add(balanceBeforeUnDelegate, amount), g.stateDB.GetBalance(addrDelegator2))
 	g.Require().Equal(-1, int(g.s.DelegatorsOffset(addr, addrDelegator2).Int64()))
@@ -327,7 +385,7 @@ func (g *GovernanceContractTestSuite) TestDelegateUndelegate() {
 	g.Require().Equal(0, len(g.s.QualifiedNodes()))
 }
 
-func (g *GovernanceContractTestSuite) TestUnstakeWithDelegators() {
+func (g *GovernanceContractTestSuite) TestUnstakeWithExtraDelegators() {
 	privKey, addr := g.newPrefundAccount()
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
 
@@ -372,6 +430,17 @@ func (g *GovernanceContractTestSuite) TestUnstakeWithDelegators() {
 	g.Require().Nil(err)
 	_, err = g.call(addr, input, big.NewInt(0))
 	g.Require().Nil(err)
+
+	time.Sleep(time.Second * 2)
+	input, err = abiObject.Pack("withdraw", addr)
+	g.Require().Nil(err)
+	_, err = g.call(addr, input, big.NewInt(0))
+	g.Require().Nil(err)
+	_, err = g.call(addrDelegator, input, big.NewInt(0))
+	g.Require().Nil(err)
+	_, err = g.call(addrDelegator2, input, big.NewInt(0))
+	g.Require().Nil(err)
+
 	g.Require().Equal(0, int(g.s.LenDelegators(addr).Uint64()))
 	g.Require().Equal(0, int(g.s.LenNodes().Uint64()))
 
@@ -386,7 +455,7 @@ func (g *GovernanceContractTestSuite) TestUpdateConfiguration() {
 	_, addr := g.newPrefundAccount()
 
 	input, err := abiObject.Pack("updateConfiguration",
-		new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+		new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)), big.NewInt(1000),
 		big.NewInt(1e18), big.NewInt(8000000), big.NewInt(6), big.NewInt(250), big.NewInt(2500),
 		big.NewInt(0), big.NewInt(667000), big.NewInt(4), big.NewInt(4), big.NewInt(600000), big.NewInt(900))
 	g.Require().Nil(err)
