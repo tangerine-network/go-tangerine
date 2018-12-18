@@ -240,6 +240,7 @@ func (s *Dexon) Start(srvr *p2p.Server) error {
 }
 
 func (s *Dexon) Stop() error {
+	s.consensus.Stop()
 	s.app.Stop()
 	return nil
 }
