@@ -50,12 +50,6 @@ type DexconApp struct {
 	chainLocks sync.Map
 }
 
-type witnessData struct {
-	Root        common.Hash
-	TxHash      common.Hash
-	ReceiptHash common.Hash
-}
-
 func NewDexconApp(txPool *core.TxPool, blockchain *core.BlockChain, gov *DexconGovernance,
 	chainDB ethdb.Database, config *Config) *DexconApp {
 	return &DexconApp{
@@ -283,9 +277,8 @@ func (d *DexconApp) PrepareWitness(consensusHeight uint64) (witness coreTypes.Wi
 		return witness, fmt.Errorf("last pending height < consensus height")
 	}
 
-	witnessData, err := rlp.EncodeToBytes(&witnessData{
+	witnessData, err := rlp.EncodeToBytes(&types.WitnessData{
 		Root:        witnessBlock.Root(),
-		TxHash:      witnessBlock.TxHash(),
 		ReceiptHash: witnessBlock.ReceiptHash(),
 	})
 	if err != nil {
@@ -300,7 +293,7 @@ func (d *DexconApp) PrepareWitness(consensusHeight uint64) (witness coreTypes.Wi
 
 // VerifyBlock verifies if the payloads are valid.
 func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifyStatus {
-	var witnessData witnessData
+	var witnessData types.WitnessData
 	err := rlp.DecodeBytes(block.Witness.Data, &witnessData)
 	if err != nil {
 		log.Error("failed to RLP decode witness data", "error", err)

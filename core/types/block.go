@@ -67,7 +67,6 @@ func (n *BlockNonce) UnmarshalText(input []byte) error {
 // WitnessData represents the witness data.
 type WitnessData struct {
 	Root        common.Hash
-	TxHash      common.Hash
 	ReceiptHash common.Hash
 }
 

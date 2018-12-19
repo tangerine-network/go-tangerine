@@ -115,14 +115,10 @@ func TestPrepareWitness(t *testing.T) {
 		t.Errorf("unexpeted witness height %v", witness.Height)
 	}
 
-	var witnessData witnessData
+	var witnessData types.WitnessData
 	err = rlp.DecodeBytes(witness.Data, &witnessData)
 	if err != nil {
 		t.Errorf("rlp decode error: %v", err)
-	}
-
-	if witnessData.TxHash != currentBlock.TxHash() {
-		t.Errorf("expect tx hash %v but %v", currentBlock.TxHash(), witnessData.TxHash)
 	}
 
 	if witnessData.Root != currentBlock.Root() {
