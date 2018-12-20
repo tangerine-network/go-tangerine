@@ -1165,7 +1165,7 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 		info := g.state.Node(index)
 		res, err := method.Outputs.Pack(
 			info.Owner, info.PublicKey, info.Staked,
-			info.Name, info.Email, info.Location, info.Url)
+			info.Name, info.Email, info.Location, info.Url, info.Unstaked)
 		if err != nil {
 			return nil, errExecutionReverted
 		}
