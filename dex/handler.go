@@ -713,10 +713,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 
 	case msg.Code == NewBlockHashesMsg:
-		// Ignore new block hash messages in block proposer mode.
-		if pm.isBlockProposer {
-			break
-		}
 		var announces newBlockHashesData
 		if err := msg.Decode(&announces); err != nil {
 			return errResp(ErrDecode, "%v: %v", msg, err)
@@ -737,10 +733,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 
 	case msg.Code == NewBlockMsg:
-		// Ignore new block messages in block proposer mode.
-		if pm.isBlockProposer {
-			break
-		}
 		// Retrieve and decode the propagated block
 		var block types.Block
 		if err := msg.Decode(&block); err != nil {

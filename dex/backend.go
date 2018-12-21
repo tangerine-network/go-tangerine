@@ -21,9 +21,6 @@ import (
 	"fmt"
 	"time"
 
-	dexCore "github.com/dexon-foundation/dexon-consensus/core"
-	coreEcdsa "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
-
 	"github.com/dexon-foundation/dexon/accounts"
 	"github.com/dexon-foundation/dexon/consensus"
 	"github.com/dexon-foundation/dexon/consensus/dexcon"
@@ -31,7 +28,6 @@ import (
 	"github.com/dexon-foundation/dexon/core/bloombits"
 	"github.com/dexon-foundation/dexon/core/rawdb"
 	"github.com/dexon-foundation/dexon/core/vm"
-	dexDB "github.com/dexon-foundation/dexon/dex/db"
 	"github.com/dexon-foundation/dexon/dex/downloader"
 	"github.com/dexon-foundation/dexon/eth/filters"
 	"github.com/dexon-foundation/dexon/eth/gasprice"
@@ -74,7 +70,8 @@ type Dexon struct {
 	app        *DexconApp
 	governance *DexconGovernance
 	network    *DexconNetwork
-	consensus  *dexCore.Consensus
+
+	bp *blockProposer
 
 	networkID     uint64
 	netRPCService *ethapi.PublicNetAPI
@@ -154,6 +151,14 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	// Set config fetcher so engine can fetch current system configuration from state.
 	engine.SetConfigFetcher(dex.governance)
 
+	dMoment := time.Unix(config.DMoment, int64(0))
+	log.Info("DEXON Consensus DMoment", "time", dMoment)
+
+	// Force starting with full sync mode if this node is a bootstrap proposer.
+	if config.BlockProposerEnabled && dMoment.After(time.Now()) {
+		config.SyncMode = downloader.FullSync
+	}
+
 	pm, err := NewProtocolManager(dex.chainConfig, config.SyncMode,
 		config.NetworkId, dex.eventMux, dex.txPool, dex.engine, dex.blockchain,
 		chainDb, config.BlockProposerEnabled, dex.governance, dex.app)
@@ -164,13 +169,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	dex.protocolManager = pm
 	dex.network = NewDexconNetwork(pm)
 
-	privKey := coreEcdsa.NewPrivateKeyFromECDSA(config.PrivateKey)
-
-	dMoment := time.Unix(config.DMoment, int64(0))
-	log.Info("DEXON Consensus DMoment", "time", dMoment)
-
-	dex.consensus = dexCore.NewConsensus(dMoment,
-		dex.app, dex.governance, dexDB.NewDatabase(chainDb), dex.network, privKey, log.Root())
+	dex.bp = NewBlockProposer(dex, dMoment)
 	return dex, nil
 }
 
@@ -240,15 +239,25 @@ func (s *Dexon) Start(srvr *p2p.Server) error {
 }
 
 func (s *Dexon) Stop() error {
-	s.consensus.Stop()
+	s.bp.Stop()
 	s.app.Stop()
 	return nil
 }
 
 func (s *Dexon) StartProposing() error {
-	// TODO: Run with the latest confirmed block in compaction chain.
-	s.consensus.Run()
-	return nil
+	return s.bp.Start()
+}
+
+func (s *Dexon) StopProposing() {
+	s.bp.Stop()
+}
+
+func (s *Dexon) IsLatticeSyncing() bool {
+	return s.bp.IsLatticeSyncing()
+}
+
+func (s *Dexon) IsProposing() bool {
+	return s.bp.IsProposing()
 }
 
 // CreateDB creates the chain database.

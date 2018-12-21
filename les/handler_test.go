@@ -562,23 +562,4 @@ func TestTransactionStatusLes2(t *testing.T) {
 	block1hash := rawdb.ReadCanonicalHash(db, 1)
 	test(tx1, false, txStatus{Status: core.TxStatusIncluded, Lookup: &rawdb.TxLookupEntry{BlockHash: block1hash, BlockIndex: 1, Index: 0}})
 	test(tx2, false, txStatus{Status: core.TxStatusIncluded, Lookup: &rawdb.TxLookupEntry{BlockHash: block1hash, BlockIndex: 1, Index: 1}})
-
-	// create a reorg that rolls them back
-	gchain, _ = core.GenerateChain(params.TestChainConfig, chain.GetBlockByNumber(0), ethash.NewFaker(), db, 2, func(i int, block *core.BlockGen) {})
-	if _, err := chain.InsertChain(gchain); err != nil {
-		panic(err)
-	}
-	// wait until TxPool processes the reorg
-	for i := 0; i < 10; i++ {
-		if pending, _ := txpool.Stats(); pending == 3 {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-	if pending, _ := txpool.Stats(); pending != 3 {
-		t.Fatalf("pending count mismatch: have %d, want 3", pending)
-	}
-	// check if their status is pending again
-	test(tx1, false, txStatus{Status: core.TxStatusPending})
-	test(tx2, false, txStatus{Status: core.TxStatusPending})
 }

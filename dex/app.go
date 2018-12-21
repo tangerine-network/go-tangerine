@@ -451,6 +451,9 @@ func (d *DexconApp) BlockDelivered(
 	blockPosition coreTypes.Position,
 	result coreTypes.FinalizationResult) {
 
+	log.Debug("DexconApp block deliver", "height", result.Height, "hash", blockHash, "position", blockPosition.String())
+	defer log.Debug("DexconApp block delivered", "height", result.Height, "hash", blockHash, "position", blockPosition.String())
+
 	chainID := blockPosition.ChainID
 	d.chainLock(chainID)
 	defer d.chainUnlock(chainID)
@@ -461,6 +464,7 @@ func (d *DexconApp) BlockDelivered(
 	}
 
 	block.Payload = nil
+	block.Finalization = result
 	dexconMeta, err := rlp.EncodeToBytes(block)
 	if err != nil {
 		panic(err)
@@ -501,6 +505,7 @@ func (d *DexconApp) BlockConfirmed(block coreTypes.Block) {
 	d.chainLock(block.Position.ChainID)
 	defer d.chainUnlock(block.Position.ChainID)
 
+	log.Debug("DexconApp block confirmed", "block", block.String())
 	if err := d.blockchain.AddConfirmedBlock(&block); err != nil {
 		panic(err)
 	}

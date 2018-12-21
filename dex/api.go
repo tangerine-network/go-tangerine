@@ -131,6 +131,22 @@ func (api *PrivateAdminAPI) ImportChain(file string) (bool, error) {
 	return true, nil
 }
 
+func (api *PrivateAdminAPI) StartProposing() error {
+	return api.dex.StartProposing()
+}
+
+func (api *PrivateAdminAPI) StopProposing() {
+	api.dex.StopProposing()
+}
+
+func (api *PrivateAdminAPI) IsLatticeSyncing() bool {
+	return api.dex.IsLatticeSyncing()
+}
+
+func (api *PrivateAdminAPI) IsProposing() bool {
+	return api.dex.IsProposing()
+}
+
 // PublicDebugAPI is the collection of Ethereum full node APIs exposed
 // over the public debugging endpoint.
 type PublicDebugAPI struct {
