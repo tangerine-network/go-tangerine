@@ -329,6 +329,16 @@ func (recv *consensusDKGReceiver) ProposeDKGAntiNackComplaint(
 	recv.network.BroadcastDKGPrivateShare(prv)
 }
 
+// ProposeDKGMPKReady propose a DKGMPKReady message.
+func (recv *consensusDKGReceiver) ProposeDKGMPKReady(ready *typesDKG.MPKReady) {
+	if err := recv.authModule.SignDKGMPKReady(ready); err != nil {
+		recv.logger.Error("Failed to sign DKG ready", "error", err)
+		return
+	}
+	recv.logger.Debug("Calling Governance.AddDKGMPKReady", "ready", ready)
+	recv.gov.AddDKGMPKReady(ready.Round, ready)
+}
+
 // ProposeDKGFinalize propose a DKGFinalize message.
 func (recv *consensusDKGReceiver) ProposeDKGFinalize(final *typesDKG.Finalize) {
 	if err := recv.authModule.SignDKGFinalize(final); err != nil {
@@ -400,12 +410,7 @@ func NewConsensus(
 	}
 	// Get configuration for genesis round.
 	var round uint64
-	logger.Debug("Calling Governance.Configuration", "round", round)
-	config := gov.Configuration(round)
-	if config == nil {
-		logger.Error("Unable to get configuration", "round", round)
-		return nil
-	}
+	config := utils.GetConfigWithPanic(gov, round, logger)
 	// Init lattice.
 	lattice := NewLattice(
 		dMoment, round, config, authModule, app, debugApp, db, logger)
@@ -494,12 +499,17 @@ func NewConsensusFromSyncer(
 		db,
 		logger)
 	recv.cfgModule = cfgModule
+	// Check if the application implement Debug interface.
+	var debugApp Debug
+	if a, ok := app.(Debug); ok {
+		debugApp = a
+	}
 	// Setup Consensus instance.
 	con := &Consensus{
 		ID:               ID,
 		ccModule:         newCompactionChain(gov),
 		lattice:          latticeModule,
-		app:              app,
+		app:              newNonBlocking(app, debugApp),
 		gov:              gov,
 		db:               db,
 		network:          networkModule,
@@ -545,29 +555,19 @@ func (con *Consensus) prepare(initBlock *types.Block) error {
 	// full node. We don't have to notify it.
 	con.roundToNotify = initBlock.Position.Round + 1
 	initRound := initBlock.Position.Round
-	con.logger.Debug("Calling Governance.Configuration", "round", initRound)
-	initConfig := con.gov.Configuration(initRound)
+	initConfig := utils.GetConfigWithPanic(con.gov, initRound, con.logger)
 	// Setup context.
 	con.ccModule.init(initBlock)
-	// Setup agreementMgr module.
-	con.logger.Debug("Calling Governance.Configuration", "round", initRound)
-	initCfg := con.gov.Configuration(initRound)
-	if initCfg == nil {
-		return ErrConfigurationNotReady
-	}
 	con.logger.Debug("Calling Governance.CRS", "round", initRound)
 	initCRS := con.gov.CRS(initRound)
 	if (initCRS == common.Hash{}) {
 		return ErrCRSNotReady
 	}
-	if err := con.baMgr.appendConfig(initRound, initCfg, initCRS); err != nil {
+	if err := con.baMgr.appendConfig(initRound, initConfig, initCRS); err != nil {
 		return err
 	}
 	// Setup lattice module.
-	initPlusOneCfg := con.gov.Configuration(initRound + 1)
-	if initPlusOneCfg == nil {
-		return ErrConfigurationNotReady
-	}
+	initPlusOneCfg := utils.GetConfigWithPanic(con.gov, initRound+1, con.logger)
 	if err := con.lattice.AppendConfig(initRound+1, initPlusOneCfg); err != nil {
 		return err
 	}
@@ -576,6 +576,7 @@ func (con *Consensus) prepare(initBlock *types.Block) error {
 	if err != nil {
 		return err
 	}
+	// TODO(jimmy): registerDKG should be called after dmoment.
 	if _, exist := dkgSet[con.ID]; exist {
 		con.logger.Info("Selected as DKG set", "round", initRound)
 		con.cfgModule.registerDKG(initRound, getDKGThreshold(initConfig))
@@ -641,7 +642,7 @@ func (con *Consensus) runCRS(round uint64) {
 		}
 		con.logger.Debug("Calling Governance.IsDKGFinal to check if ready to run CRS",
 			"round", round)
-		if con.cfgModule.isDKGReady(round) {
+		if con.cfgModule.isDKGFinal(round) {
 			break
 		}
 		con.logger.Debug("DKG is not ready for running CRS. Retry later...",
@@ -650,7 +651,8 @@ func (con *Consensus) runCRS(round uint64) {
 	}
 	// Start running next round CRS.
 	con.logger.Debug("Calling Governance.CRS", "round", round)
-	psig, err := con.cfgModule.preparePartialSignature(round, con.gov.CRS(round))
+	psig, err := con.cfgModule.preparePartialSignature(
+		round, utils.GetCRSWithPanic(con.gov, round, con.logger))
 	if err != nil {
 		con.logger.Error("Failed to prepare partial signature", "error", err)
 	} else if err = con.authModule.SignDKGPartialSignature(psig); err != nil {
@@ -664,7 +666,8 @@ func (con *Consensus) runCRS(round uint64) {
 			"hash", psig.Hash)
 		con.network.BroadcastDKGPartialSignature(psig)
 		con.logger.Debug("Calling Governance.CRS", "round", round)
-		crs, err := con.cfgModule.runCRSTSig(round, con.gov.CRS(round))
+		crs, err := con.cfgModule.runCRSTSig(
+			round, utils.GetCRSWithPanic(con.gov, round, con.logger))
 		if err != nil {
 			con.logger.Error("Failed to run CRS Tsig", "error", err)
 		} else {
@@ -709,12 +712,11 @@ func (con *Consensus) initialRound(
 					time.Sleep(500 * time.Millisecond)
 				}
 				// Notify BA for new round.
-				con.logger.Debug("Calling Governance.Configuration",
-					"round", nextRound)
-				nextConfig := con.gov.Configuration(nextRound)
+				nextConfig := utils.GetConfigWithPanic(
+					con.gov, nextRound, con.logger)
 				con.logger.Debug("Calling Governance.CRS",
 					"round", nextRound)
-				nextCRS := con.gov.CRS(nextRound)
+				nextCRS := utils.GetCRSWithPanic(con.gov, nextRound, con.logger)
 				if err := con.baMgr.appendConfig(
 					nextRound, nextConfig, nextCRS); err != nil {
 					panic(err)
@@ -753,9 +755,8 @@ func (con *Consensus) initialRound(
 							defer con.dkgReady.L.Unlock()
 							con.dkgRunning = 0
 						}()
-						con.logger.Debug("Calling Governance.Configuration",
-							"round", nextRound)
-						nextConfig := con.gov.Configuration(nextRound)
+						nextConfig := utils.GetConfigWithPanic(
+							con.gov, nextRound, con.logger)
 						con.runDKG(nextRound, nextConfig)
 					})
 			}(round + 1)
@@ -766,9 +767,7 @@ func (con *Consensus) initialRound(
 			// Change round.
 			// Get configuration for next round.
 			nextRound := round + 1
-			con.logger.Debug("Calling Governance.Configuration",
-				"round", nextRound)
-			nextConfig := con.gov.Configuration(nextRound)
+			nextConfig := utils.GetConfigWithPanic(con.gov, nextRound, con.logger)
 			con.initialRound(
 				startTime.Add(config.RoundInterval), nextRound, nextConfig)
 		})
@@ -990,7 +989,7 @@ func (con *Consensus) ProcessBlockRandomnessResult(
 			"randomness", hex.EncodeToString(rand.Randomness))
 		con.network.BroadcastRandomnessResult(rand)
 	}
-	return nil
+	return con.deliverFinalizedBlocks()
 }
 
 // preProcessBlock performs Byzantine Agreement on the block.
@@ -1021,9 +1020,7 @@ func (con *Consensus) deliverBlock(b *types.Block) {
 		//  - roundShift
 		//  - notifyGenesisRound
 		futureRound := con.roundToNotify + 1
-		con.logger.Debug("Calling Governance.Configuration",
-			"round", con.roundToNotify)
-		futureConfig := con.gov.Configuration(futureRound)
+		futureConfig := utils.GetConfigWithPanic(con.gov, futureRound, con.logger)
 		con.logger.Debug("Append Config", "round", futureRound)
 		if err := con.lattice.AppendConfig(
 			futureRound, futureConfig); err != nil {
@@ -1044,6 +1041,28 @@ func (con *Consensus) deliverBlock(b *types.Block) {
 	if con.debugApp != nil {
 		con.debugApp.BlockReady(b.Hash)
 	}
+}
+
+// deliverFinalizedBlocks extracts and delivers finalized blocks to application
+// layer.
+func (con *Consensus) deliverFinalizedBlocks() error {
+	con.lock.Lock()
+	defer con.lock.Unlock()
+	return con.deliverFinalizedBlocksWithoutLock()
+}
+
+func (con *Consensus) deliverFinalizedBlocksWithoutLock() (err error) {
+	deliveredBlocks := con.ccModule.extractBlocks()
+	con.logger.Debug("Last blocks in compaction chain",
+		"delivered", con.ccModule.lastDeliveredBlock(),
+		"pending", con.ccModule.lastPendingBlock())
+	for _, b := range deliveredBlocks {
+		con.deliverBlock(b)
+	}
+	if err = con.lattice.PurgeBlocks(deliveredBlocks); err != nil {
+		return
+	}
+	return
 }
 
 // processBlock is the entry point to submit one block to a Consensus instance.
@@ -1079,14 +1098,7 @@ func (con *Consensus) processBlock(block *types.Block) (err error) {
 		}
 		go con.event.NotifyTime(b.Finalization.Timestamp)
 	}
-	deliveredBlocks = con.ccModule.extractBlocks()
-	con.logger.Debug("Last blocks in compaction chain",
-		"delivered", con.ccModule.lastDeliveredBlock(),
-		"pending", con.ccModule.lastPendingBlock())
-	for _, b := range deliveredBlocks {
-		con.deliverBlock(b)
-	}
-	if err = con.lattice.PurgeBlocks(deliveredBlocks); err != nil {
+	if err = con.deliverFinalizedBlocksWithoutLock(); err != nil {
 		return
 	}
 	return

@@ -121,6 +121,14 @@ func (g *Governance) DKGMasterPublicKeys(round uint64) []*dkgTypes.MasterPublicK
 	return headHelper.UniqueDKGMasterPublicKeys(big.NewInt(int64(round)))
 }
 
+func (g *Governance) IsDKGMPKReady(round uint64) bool {
+	headHelper := g.GetHeadHelper()
+	config := g.Configuration(round)
+	threshold := 2*uint64(config.DKGSetSize)/3 + 1
+	count := headHelper.DKGMPKReadysCount(big.NewInt(int64(round))).Uint64()
+	return count >= threshold
+}
+
 func (g *Governance) IsDKGFinal(round uint64) bool {
 	headHelper := g.GetHeadHelper()
 	config := g.Configuration(round)

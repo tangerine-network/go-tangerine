@@ -241,6 +241,48 @@ const GovernanceABIJSON = `
     "inputs": [
       {
         "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "dkgMPKReadysCount",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      },
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "dkgMPKReadys",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "",
         "type": "address"
       },
       {
@@ -757,6 +799,24 @@ const GovernanceABIJSON = `
         "type": "uint256"
       },
       {
+        "name": "MPKReady",
+        "type": "bytes"
+      }
+    ],
+    "name": "addDKGMPKReady",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "Round",
+        "type": "uint256"
+      },
+      {
         "name": "Finalize",
         "type": "bytes"
       }
@@ -917,6 +977,15 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 			return nil, errExecutionReverted
 		}
 		return g.addDKGMasterPublicKey(args.Round, args.PublicKey)
+	case "addDKGMPKReady":
+		args := struct {
+			Round    *big.Int
+			MPKReady []byte
+		}{}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.addDKGMPKReady(args.Round, args.MPKReady)
 	case "addDKGFinalize":
 		args := struct {
 			Round    *big.Int
@@ -1070,6 +1139,30 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 			return nil, errExecutionReverted
 		}
 		return res, nil
+	case "dkgReadys":
+		round, addr := new(big.Int), common.Address{}
+		args := []interface{}{&round, &addr}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		ready := g.state.DKGMPKReady(round, addr)
+		res, err := method.Outputs.Pack(ready)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgReadysCount":
+		round := new(big.Int)
+		if err := method.Inputs.Unpack(&round, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		count := g.state.DKGMPKReadysCount(round)
+		res, err := method.Outputs.Pack(count)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+
 	case "dkgFinalizeds":
 		round, addr := new(big.Int), common.Address{}
 		args := []interface{}{&round, &addr}
@@ -1228,6 +1321,8 @@ const (
 	crsLoc
 	dkgMasterPublicKeysLoc
 	dkgComplaintsLoc
+	dkgReadyLoc
+	dkgReadysCountLoc
 	dkgFinalizedLoc
 	dkgFinalizedsCountLoc
 	ownerLoc
@@ -1716,6 +1811,33 @@ func (s *GovernanceStateHelper) PushDKGComplaint(round *big.Int, complaint []byt
 	s.appendTo2DByteArray(big.NewInt(dkgComplaintsLoc), round, complaint)
 }
 
+// mapping(address => bool)[] public dkgReady;
+func (s *GovernanceStateHelper) DKGMPKReady(round *big.Int, addr common.Address) bool {
+	baseLoc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgReadyLoc)), round)
+	mapLoc := s.getMapLoc(baseLoc, addr.Bytes())
+	return s.getStateBigInt(mapLoc).Cmp(big.NewInt(0)) != 0
+}
+func (s *GovernanceStateHelper) PutDKGMPKReady(round *big.Int, addr common.Address, ready bool) {
+	baseLoc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgReadyLoc)), round)
+	mapLoc := s.getMapLoc(baseLoc, addr.Bytes())
+	res := big.NewInt(0)
+	if ready {
+		res = big.NewInt(1)
+	}
+	s.setStateBigInt(mapLoc, res)
+}
+
+// uint256[] public dkgReadysCount;
+func (s *GovernanceStateHelper) DKGMPKReadysCount(round *big.Int) *big.Int {
+	loc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgReadysCountLoc)), round)
+	return s.getStateBigInt(loc)
+}
+func (s *GovernanceStateHelper) IncDKGMPKReadysCount(round *big.Int) {
+	loc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgReadysCountLoc)), round)
+	count := s.getStateBigInt(loc)
+	s.setStateBigInt(loc, new(big.Int).Add(count, big.NewInt(1)))
+}
+
 // mapping(address => bool)[] public dkgFinalized;
 func (s *GovernanceStateHelper) DKGFinalized(round *big.Int, addr common.Address) bool {
 	baseLoc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinalizedLoc)), round)
@@ -2087,6 +2209,21 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 		return nil, errExecutionReverted
 	}
 
+	// MPKReady caller is not allowed to propose mpk.
+	if g.state.DKGMPKReady(round, caller) {
+		return g.penalize()
+	}
+
+	// Calculate 2f
+	threshold := new(big.Int).Mul(
+		big.NewInt(2),
+		new(big.Int).Div(g.state.DKGSetSize(), big.NewInt(3)))
+
+	// If 2f + 1 of DKG set is mpk ready, one can not propose mpk anymore.
+	if g.state.DKGMPKReadysCount(round).Cmp(threshold) > 0 {
+		return nil, errExecutionReverted
+	}
+
 	var dkgMasterPK dkgTypes.MasterPublicKey
 	if err := rlp.DecodeBytes(mpk, &dkgMasterPK); err != nil {
 		return g.penalize()
@@ -2107,6 +2244,35 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 	return g.useGas(100000)
 }
 
+func (g *GovernanceContract) addDKGMPKReady(round *big.Int, ready []byte) ([]byte, error) {
+	if round.Cmp(g.state.Round()) != 0 {
+		return g.penalize()
+	}
+
+	caller := g.contract.Caller()
+
+	var dkgReady dkgTypes.MPKReady
+	if err := rlp.DecodeBytes(ready, &dkgReady); err != nil {
+		return g.penalize()
+	}
+
+	// DKGFInalize must belongs to someone in DKG set.
+	if !g.inDKGSet(round, dkgReady.ProposerID) {
+		return g.penalize()
+	}
+
+	verified, _ := core.VerifyDKGMPKReadySignature(&dkgReady)
+	if !verified {
+		return g.penalize()
+	}
+
+	if !g.state.DKGMPKReady(round, caller) {
+		g.state.PutDKGMPKReady(round, caller, true)
+		g.state.IncDKGMPKReadysCount(round)
+	}
+
+	return g.useGas(100000)
+}
 func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]byte, error) {
 	if round.Cmp(g.state.Round()) != 0 {
 		return g.penalize()

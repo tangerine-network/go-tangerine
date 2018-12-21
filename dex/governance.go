@@ -1,3 +1,20 @@
+// Copyright 2018 The dexon-consensus Authors
+// This file is part of the dexon-consensus library.
+//
+// The dexon-consensus library is free software: you can redistribute it
+// and/or modify it under the terms of the GNU Lesser General Public License as
+// published by the Free Software Foundation, either version 3 of the License,
+// or (at your option) any later version.
+//
+// The dexon-consensus library is distributed in the hope that it will be
+// useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser
+// General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the dexon-consensus library. If not, see
+// <http://www.gnu.org/licenses/>.
+
 package dex
 
 import (
@@ -192,6 +209,29 @@ func (d *DexconGovernance) AddDKGMasterPublicKey(round uint64, masterPublicKey *
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
 		log.Error("failed to send addDKGMasterPublicKey tx", "err", err)
+	}
+}
+
+// AddDKGMPKReady adds a DKG mpk ready message.
+func (d *DexconGovernance) AddDKGMPKReady(round uint64, ready *dkgTypes.MPKReady) {
+	method := vm.GovernanceContractName2Method["addDKGMPKReady"]
+
+	encoded, err := rlp.EncodeToBytes(ready)
+	if err != nil {
+		log.Error("failed to RLP encode mpk ready to bytes", "err", err)
+		return
+	}
+
+	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	if err != nil {
+		log.Error("failed to pack addDKGMPKReady input", "err", err)
+		return
+	}
+
+	data := append(method.Id(), res...)
+	err = d.sendGovTx(context.Background(), data)
+	if err != nil {
+		log.Error("failed to send addDKGMPKReady tx", "err", err)
 	}
 }
 

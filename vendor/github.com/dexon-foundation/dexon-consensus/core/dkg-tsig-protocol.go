@@ -26,6 +26,7 @@ import (
 	"github.com/dexon-foundation/dexon-consensus/core/crypto/dkg"
 	"github.com/dexon-foundation/dexon-consensus/core/types"
 	typesDKG "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
+	"github.com/dexon-foundation/dexon-consensus/core/utils"
 )
 
 // Errors for dkg module.
@@ -66,6 +67,9 @@ type dkgReceiver interface {
 
 	// ProposeDKGAntiNackComplaint propose a DKGPrivateShare as an anti complaint.
 	ProposeDKGAntiNackComplaint(prv *typesDKG.PrivateShare)
+
+	// ProposeDKGMPKReady propose a DKGMPKReady message.
+	ProposeDKGMPKReady(ready *typesDKG.MPKReady)
 
 	// ProposeDKGFinalize propose a DKGFinalize message.
 	ProposeDKGFinalize(final *typesDKG.Finalize)
@@ -338,6 +342,13 @@ func (d *dkgProtocol) processPrivateShare(
 	return nil
 }
 
+func (d *dkgProtocol) proposeMPKReady() {
+	d.recv.ProposeDKGMPKReady(&typesDKG.MPKReady{
+		ProposerID: d.ID,
+		Round:      d.round,
+	})
+}
+
 func (d *dkgProtocol) proposeFinalize() {
 	d.recv.ProposeDKGFinalize(&typesDKG.Finalize{
 		ProposerID: d.ID,
@@ -491,7 +502,7 @@ func (tc *TSigVerifierCache) Update(round uint64) (bool, error) {
 	gpk, err := NewDKGGroupPublicKey(round,
 		tc.intf.DKGMasterPublicKeys(round),
 		tc.intf.DKGComplaints(round),
-		int(tc.intf.Configuration(round).DKGSetSize/3)+1)
+		int(utils.GetConfigWithPanic(tc.intf, round, nil).DKGSetSize/3)+1)
 	if err != nil {
 		return false, err
 	}

@@ -25,6 +25,7 @@ import (
 	"github.com/dexon-foundation/dexon-consensus/common"
 	"github.com/dexon-foundation/dexon-consensus/core/crypto"
 	"github.com/dexon-foundation/dexon-consensus/core/types"
+	"github.com/dexon-foundation/dexon-consensus/core/utils"
 )
 
 // Errors for compaction chain module.
@@ -80,7 +81,7 @@ func (cc *compactionChain) init(initBlock *types.Block) {
 	// It's the bootstrap case, compactionChain would only deliver blocks until
 	// tips of all chains are received.
 	if initBlock.Finalization.Height == 0 {
-		cc.chainUnsynced = cc.gov.Configuration(uint64(0)).NumChains
+		cc.chainUnsynced = utils.GetConfigWithPanic(cc.gov, 0, nil).NumChains
 	}
 }
 
@@ -124,8 +125,6 @@ func (cc *compactionChain) processBlock(block *types.Block) error {
 }
 
 func (cc *compactionChain) extractBlocks() []*types.Block {
-	prevBlock := cc.lastDeliveredBlock()
-
 	// Check if we're synced.
 	if !func() bool {
 		cc.lock.RLock()
@@ -134,7 +133,7 @@ func (cc *compactionChain) extractBlocks() []*types.Block {
 			return false
 		}
 		// Finalization.Height == 0 is syncing from bootstrap.
-		if prevBlock.Finalization.Height == 0 {
+		if cc.prevBlock.Finalization.Height == 0 {
 			return cc.chainUnsynced == 0
 		}
 		return true
@@ -144,7 +143,10 @@ func (cc *compactionChain) extractBlocks() []*types.Block {
 	deliveringBlocks := make([]*types.Block, 0)
 	cc.lock.Lock()
 	defer cc.lock.Unlock()
-	var block *types.Block
+	var (
+		block     *types.Block
+		prevBlock = cc.prevBlock
+	)
 	for len(cc.pendingBlocks) > 0 &&
 		(len(cc.blockRandomness[cc.pendingBlocks[0].Hash]) != 0 ||
 			cc.pendingBlocks[0].Position.Round == 0) {
