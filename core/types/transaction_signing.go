@@ -39,23 +39,30 @@ func init() {
 	GlobalSigCache = newGlobalSigCache()
 }
 
+type resultEntry struct {
+	Hash common.Hash
+	Addr common.Address
+}
+
+// SigCache has maximum of `sigCacheSize` and will be purged to `pruneTargetSize`
+// if exceeding `sigCacheSize`.
+const sigCacheSize = 100000
+const pruneTargetSize = 90000
+
 // globalSigCache stores the mapping between txHash and sender address.
 // Since ECRecover is slow, and we run ECRecover very frequently (in
 // app.VerifyBlock, app.ConfirmedBlock), so we need to cache it globally.
 type globalSigCache struct {
-	cache   map[common.Hash]common.Address
+	cacheID map[common.Hash]int
+	cache   []resultEntry
 	cacheMu sync.RWMutex
 }
 
 func newGlobalSigCache() *globalSigCache {
 	return &globalSigCache{
-		cache: make(map[common.Hash]common.Address),
+		cacheID: make(map[common.Hash]int, sigCacheSize),
+		cache:   make([]resultEntry, 0, sigCacheSize),
 	}
-}
-
-type resultEntry struct {
-	Hash common.Hash
-	Addr common.Address
 }
 
 // Add adds a list of transactions into sig cache.
@@ -94,8 +101,22 @@ func (c *globalSigCache) Add(signer Signer, txs Transactions) (errorTx *Transact
 			// Acquire lock and set cache.
 			c.cacheMu.Lock()
 			defer c.cacheMu.Unlock()
+			for len(results)+len(c.cacheID) > sigCacheSize {
+				if len(results) > sigCacheSize {
+					// Purge all cache.
+					c.cacheID = make(map[common.Hash]int, len(results))
+					c.cache = c.cache[:0]
+					break
+				}
+				var prune []resultEntry
+				c.cache, prune = c.cache[:pruneTargetSize], c.cache[pruneTargetSize:]
+				for _, r := range prune {
+					delete(c.cacheID, r.Hash)
+				}
+			}
 			for _, r := range results {
-				c.cache[r.Hash] = r.Addr
+				c.cacheID[r.Hash] = len(c.cache)
+				c.cache = append(c.cache, r)
 			}
 		}(txs[i*batchSize : (i+1)*batchSize])
 	}
@@ -108,23 +129,15 @@ func (c *globalSigCache) Add(signer Signer, txs Transactions) (errorTx *Transact
 	return
 }
 
-// Prune removes a list of hashes of tx from the cache.
-func (c *globalSigCache) Prune(hashes []common.Hash) {
-	c.cacheMu.Lock()
-	defer c.cacheMu.Unlock()
-
-	for _, hash := range hashes {
-		delete(c.cache, hash)
-	}
-}
-
 // Get returns a single address given a tx hash.
 func (c *globalSigCache) Get(hash common.Hash) (common.Address, bool) {
 	c.cacheMu.RLock()
 	defer c.cacheMu.RUnlock()
 
-	res, ok := c.cache[hash]
-	return res, ok
+	if ID, ok := c.cacheID[hash]; ok {
+		return c.cache[ID].Addr, true
+	}
+	return common.Address{}, false
 }
 
 // sigCache is used to cache the derived sender and contains
