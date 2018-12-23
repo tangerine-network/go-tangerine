@@ -42,6 +42,7 @@ var n = flag.Int("n", 100, "number of random accounts")
 var gambler = flag.Bool("gambler", false, "make this monkey a gambler")
 var batch = flag.Bool("batch", false, "monkeys will send transaction in batch")
 var sleep = flag.Int("sleep", 500, "time in millisecond that monkeys sleep between each transaction")
+var feeder = flag.Bool("feeder", false, "make this monkey a feeder")
 
 type Monkey struct {
 	client    *ethclient.Client
@@ -112,9 +113,9 @@ func (m *Monkey) prepareTx(ctx *transferContext) *types.Transaction {
 		ctx.Nonce,
 		ctx.ToAddress,
 		ctx.Amount,
-		uint64(21000),
+		ctx.Gas,
 		big.NewInt(1e9),
-		nil)
+		ctx.Data)
 
 	signer := types.NewEIP155Signer(m.networkID)
 	tx, err := types.SignTx(tx, signer, ctx.Key)
@@ -149,9 +150,9 @@ func (m *Monkey) batchTransfer(ctxs []*transferContext) {
 func (m *Monkey) deploy(
 	key *ecdsa.PrivateKey, code string, ctors []string, amount *big.Int, nonce uint64) common.Address {
 
+	address := crypto.PubkeyToAddress(key.PublicKey)
 	if nonce == math.MaxUint64 {
 		var err error
-		address := crypto.PubkeyToAddress(key.PublicKey)
 		nonce, err = m.client.PendingNonceAt(context.Background(), address)
 		if err != nil {
 			panic(err)
@@ -165,6 +166,7 @@ func (m *Monkey) deploy(
 	data := common.Hex2Bytes(code + input)
 
 	gas, err := m.client.EstimateGas(context.Background(), dexon.CallMsg{
+		From: address,
 		Data: data,
 	})
 	if err != nil {
@@ -274,6 +276,8 @@ func main() {
 	m.Distribute()
 	if *gambler {
 		m.Gamble()
+	} else if *feeder {
+		m.Feed()
 	} else {
 		m.Crazy()
 	}

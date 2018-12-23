@@ -78,9 +78,10 @@ func (m *Monkey) Gamble() {
 			ctx := &transferContext{
 				Key:       key,
 				ToAddress: contract,
-				Amount:    big.NewInt(1),
+				Amount:    big.NewInt(100000),
 				Data:      input,
 				Nonce:     nonce,
+				Gas:       210000,
 			}
 			if *batch {
 				ctxs[i] = ctx
