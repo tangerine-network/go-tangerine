@@ -18,7 +18,9 @@
 package types
 
 import (
+	"database/sql/driver"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"math/big"
 	"sort"
@@ -37,10 +39,15 @@ var (
 	EmptyUncleHash = CalcUncleHash(nil)
 )
 
+const (
+	// Length of block nonce in bytes.
+	BlockNonceLength = 8
+)
+
 // A BlockNonce is a 64-bit hash which proves (combined with the
 // mix-hash) that a sufficient amount of computation has been carried
 // out on a block.
-type BlockNonce [8]byte
+type BlockNonce [BlockNonceLength]byte
 
 // EncodeNonce converts the given integer to a block nonce.
 func EncodeNonce(i uint64) BlockNonce {
@@ -62,6 +69,24 @@ func (n BlockNonce) MarshalText() ([]byte, error) {
 // UnmarshalText implements encoding.TextUnmarshaler.
 func (n *BlockNonce) UnmarshalText(input []byte) error {
 	return hexutil.UnmarshalFixedText("BlockNonce", input, n[:])
+}
+
+// Scan implements Scanner for database/sql.
+func (n *BlockNonce) Scan(src interface{}) error {
+	srcB, ok := src.([]byte)
+	if !ok {
+		return fmt.Errorf("can't scan %T into BlockNonce", src)
+	}
+	if len(srcB) != BlockNonceLength {
+		return fmt.Errorf("can't scan []byte of len %d into BlockNonce, want %d", len(srcB), BlockNonceLength)
+	}
+	copy(n[:], srcB)
+	return nil
+}
+
+// Value implements valuer for database/sql.
+func (n BlockNonce) Value() (driver.Value, error) {
+	return n[:], nil
 }
 
 // WitnessData represents the witness data.

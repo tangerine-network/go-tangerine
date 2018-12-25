@@ -16,17 +16,13 @@
 
 package types
 
-/*
 import (
-	"bytes"
-	"fmt"
-	"math/big"
+	"database/sql/driver"
 	"reflect"
 	"testing"
-
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/rlp"
 )
+
+/*
 
 // from bcValidBlockTest.json, "SimpleTx"
 func TestBlockEncoding(t *testing.T) {
@@ -70,3 +66,86 @@ func TestBlockEncoding(t *testing.T) {
 	}
 }
 */
+
+func TestBlockNonce_Scan(t *testing.T) {
+	type args struct {
+		src interface{}
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "working scan",
+			args: args{src: []byte{
+				0xb2, 0x6f, 0x2b, 0x34, 0x2a, 0xab, 0x24, 0xbc,
+			}},
+			wantErr: false,
+		},
+		{
+			name:    "non working scan",
+			args:    args{src: int64(1234567890)},
+			wantErr: true,
+		},
+		{
+			name: "invalid length scan",
+			args: args{src: []byte{
+				0xb2, 0x6f, 0x2b, 0x34, 0x2a,
+			}},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			n := &BlockNonce{}
+			if err := n.Scan(tt.args.src); (err != nil) != tt.wantErr {
+				t.Errorf("BlockNonce.Scan() error = %v, wantErr %v", err, tt.wantErr)
+			}
+
+			if !tt.wantErr {
+				for i := range n {
+					if n[i] != tt.args.src.([]byte)[i] {
+						t.Errorf(
+							"BlockNonce.Scan() didn't scan the %d src correctly (have %X, want %X)",
+							i, n[i], tt.args.src.([]byte)[i],
+						)
+					}
+				}
+			}
+		})
+	}
+}
+
+func TestBlockNonce_Value(t *testing.T) {
+	b := []byte{
+		0xb2, 0x6f, 0x2b, 0x34, 0x2a, 0xab, 0x24, 0xbc,
+	}
+	var nonce BlockNonce
+	nonce.UnmarshalText([]byte("0xb26f2b342aab24bc"))
+	tests := []struct {
+		name    string
+		n       BlockNonce
+		want    driver.Value
+		wantErr bool
+	}{
+		{
+			name:    "Working value",
+			n:       nonce,
+			want:    b,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.n.Value()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("BlockNonce.Value() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("BlockNonce.Value() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
