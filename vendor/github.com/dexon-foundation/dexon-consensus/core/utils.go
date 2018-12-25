@@ -18,6 +18,7 @@
 package core
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -146,27 +147,6 @@ func HashConfigurationBlock(
 	)
 }
 
-// VerifyBlock verifies the signature of types.Block.
-func VerifyBlock(b *types.Block) (err error) {
-	hash, err := hashBlock(b)
-	if err != nil {
-		return
-	}
-	if hash != b.Hash {
-		err = ErrIncorrectHash
-		return
-	}
-	pubKey, err := crypto.SigToPub(b.Hash, b.Signature)
-	if err != nil {
-		return
-	}
-	if !b.ProposerID.Equal(types.NewNodeID(pubKey)) {
-		err = ErrIncorrectSignature
-		return
-	}
-	return
-}
-
 // VerifyAgreementResult perform sanity check against a types.AgreementResult
 // instance.
 func VerifyAgreementResult(
@@ -201,7 +181,7 @@ func VerifyAgreementResult(
 		if _, exist := notarySet[vote.ProposerID]; !exist {
 			return ErrIncorrectVoteProposer
 		}
-		ok, err := verifyVoteSignature(&vote)
+		ok, err := utils.VerifyVoteSignature(&vote)
 		if err != nil {
 			return err
 		}
@@ -234,4 +214,23 @@ func isTravisCI() bool {
 
 func getDKGThreshold(config *types.Config) int {
 	return int(config.DKGSetSize/3) + 1
+}
+
+// checkWithCancel is a helper to perform periodic checking with cancel.
+func checkWithCancel(parentCtx context.Context, interval time.Duration,
+	checker func() bool) (ret bool) {
+	ctx, cancel := context.WithCancel(parentCtx)
+	defer cancel()
+Loop:
+	for {
+		select {
+		case <-ctx.Done():
+			break Loop
+		case <-time.After(interval):
+		}
+		if ret = checker(); ret {
+			return
+		}
+	}
+	return
 }
