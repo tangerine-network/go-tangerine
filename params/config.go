@@ -120,7 +120,8 @@ var (
 		EIP155Block:         big.NewInt(0),
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
-		ConstantinopleBlock: nil,
+		ConstantinopleBlock: big.NewInt(0),
+		PetersburgBlock:     big.NewInt(0),
 		Dexcon: &DexconConfig{
 			GenesisCRSText:   "In DEXON, we trust.",
 			Owner:            common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
