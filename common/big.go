@@ -63,3 +63,9 @@ func (b Big) Value() (driver.Value, error) {
 	b2 := big.Int(b)
 	return (&b2).String(), nil
 }
+
+// String returns decimal value in string type.
+func (b *Big) String() string { return (*big.Int)(b).String() }
+
+// BigInt convert common.Big to big.Int.
+func (b *Big) BigInt() *big.Int { return (*big.Int)(b) }
