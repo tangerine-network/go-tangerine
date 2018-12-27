@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.com/Spiderpowa/bls.png?branch=dev)](https://travis-ci.com/Spiderpowa/bls)
+[![Build Status](https://travis-ci.com/dexon-foundation/bls.png?branch=dev)](https://travis-ci.com/dexon-foundation/bls)
 
 # BLS threshold signature
 
@@ -10,8 +10,8 @@ Create a working directory (e.g., work) and clone the following repositories.
 ```
 mkdir work
 cd work
-git clone git://github.com/herumi/mcl.git
-git clone git://github.com/herumi/bls.git
+git clone git://github.com/dexon-foundation/mcl.git
+git clone git://github.com/dexon-foundation/bls.git
 git clone git://github.com/herumi/cybozulib_ext ; for only Windows
 ```
 
