@@ -63,7 +63,7 @@ func (m *Monkey) DistributeBanana(contract common.Address) {
 			ToAddress: contract,
 			Data:      input,
 			Nonce:     nonce,
-			Gas:       210000,
+			Gas:       100000,
 		}
 		nonce += 1
 	}
@@ -95,7 +95,7 @@ func (m *Monkey) Feed() {
 				ToAddress: contract,
 				Data:      input,
 				Nonce:     nonce,
-				Gas:       210000,
+				Gas:       42000,
 			}
 			if *batch {
 				ctxs[i] = ctx
