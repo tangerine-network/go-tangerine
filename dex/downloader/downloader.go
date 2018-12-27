@@ -480,9 +480,9 @@ func (d *Downloader) syncWithPeer(p *peerConnection, hash common.Hash, number ui
 			return fmt.Errorf("origin header not exists, number: %d", origin)
 		}
 
-		// prepare state origin - 2
+		// prepare state origin - 3
 		d.gov = newGovernance(govState)
-		for i := uint64(0); i < 3; i++ {
+		for i := uint64(0); i < 4; i++ {
 			if originHeader.Round >= i {
 				h := d.gov.GetRoundHeight(originHeader.Round - i)
 				s, err := d.lightchain.GetGovStateByNumber(h)
@@ -494,6 +494,17 @@ func (d *Downloader) syncWithPeer(p *peerConnection, hash common.Hash, number ui
 		}
 
 		d.verifierCache = dexCore.NewTSigVerifierCache(d.gov, 5)
+
+		// warm up verifierCache
+		if originHeader.Round > 0 {
+			ok, err := d.verifierCache.Update(originHeader.Round - 1)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return fmt.Errorf("can not update verifier cache")
+			}
+		}
 	}
 
 	// Initiate the sync using a concurrent header and content retrieval algorithm
