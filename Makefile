@@ -46,6 +46,8 @@ libbls:
 clean:
 	./build/clean_go_build_cache.sh
 	rm -fr build/_workspace/pkg/ $(GOBIN)/*
+	make -C vendor/github.com/dexon-foundation/bls clean
+	make -C vendor/github.com/dexon-foundation/mcl clean
 
 # The devtools target installs tools required for 'go generate'.
 # You need to put $GOBIN (or $GOPATH/bin) in your PATH to use 'go generate'.
