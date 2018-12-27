@@ -28,6 +28,7 @@ import (
 	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/dex/downloader"
 	"github.com/dexon-foundation/dexon/eth/gasprice"
+	"github.com/dexon-foundation/dexon/indexer"
 	"github.com/dexon-foundation/dexon/params"
 )
 
@@ -48,6 +49,7 @@ var DefaultConfig = Config{
 	},
 	BlockProposerEnabled: false,
 	DefaultGasPrice:      big.NewInt(params.GWei),
+	Indexer:              indexer.Config{},
 }
 
 func init() {
@@ -121,4 +123,7 @@ type Config struct {
 
 	// Dexon options
 	DMoment int64
+
+	// Indexer config
+	Indexer indexer.Config
 }

@@ -648,6 +648,17 @@ var (
 		Usage: "External EVM configuration (default = built-in interpreter)",
 		Value: "",
 	}
+
+	// Data sources options.
+	IndexerEnableFlag = cli.BoolFlag{
+		Name:  "indexer",
+		Usage: "Enable indexer",
+	}
+	IndexerPluginFlag = cli.StringFlag{
+		Name:  "indexer.plugin",
+		Usage: "External indexer plugin shared object path",
+		Value: "",
+	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating
@@ -1282,6 +1293,18 @@ func SetDexConfig(ctx *cli.Context, stack *node.Node, cfg *dex.Config) {
 			now.Hour(), now.Minute(), (now.Second()/5+1)*5,
 			0, now.Location()).Unix()
 	}
+
+	// Set indexer config.
+	setIndexerConfig(ctx, cfg)
+}
+
+func setIndexerConfig(ctx *cli.Context, cfg *dex.Config) {
+	cfg.Indexer.Enable = ctx.GlobalBool(IndexerEnableFlag.Name)
+	if !cfg.Indexer.Enable {
+		return
+	}
+
+	cfg.Indexer.Plugin = ctx.GlobalString(IndexerPluginFlag.Name)
 }
 
 // SetDashboardConfig applies dashboard related command line flags to the config.

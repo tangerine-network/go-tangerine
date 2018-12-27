@@ -33,6 +33,7 @@ import (
 	"github.com/dexon-foundation/dexon/eth/gasprice"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/event"
+	"github.com/dexon-foundation/dexon/indexer"
 	"github.com/dexon-foundation/dexon/internal/ethapi"
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/node"
@@ -75,6 +76,8 @@ type Dexon struct {
 
 	networkID     uint64
 	netRPCService *ethapi.PublicNetAPI
+
+	indexer indexer.Indexer
 }
 
 func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
@@ -131,6 +134,14 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 		rawdb.WriteChainConfig(chainDb, genesisHash, chainConfig)
 	}
 	dex.bloomIndexer.Start(dex.blockchain)
+
+	if config.Indexer.Enable {
+		dex.indexer = indexer.NewIndexerFromConfig(
+			indexer.NewROBlockChain(dex.blockchain),
+			config.Indexer,
+		)
+		dex.indexer.Start()
+	}
 
 	if config.TxPool.Journal != "" {
 		config.TxPool.Journal = ctx.ResolvePath(config.TxPool.Journal)
@@ -241,6 +252,9 @@ func (s *Dexon) Start(srvr *p2p.Server) error {
 func (s *Dexon) Stop() error {
 	s.bp.Stop()
 	s.app.Stop()
+	if s.indexer != nil {
+		s.indexer.Stop()
+	}
 	return nil
 }
 

@@ -240,6 +240,13 @@ var AppHelpFlagGroups = []flagGroup{
 		},
 	},
 	{
+		Name: "INDEXER",
+		Flags: []cli.Flag{
+			utils.IndexerEnableFlag,
+			utils.IndexerPluginFlag,
+		},
+	},
+	{
 		Name:  "WHISPER (EXPERIMENTAL)",
 		Flags: whisperFlags,
 	},

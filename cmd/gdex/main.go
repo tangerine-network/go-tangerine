@@ -137,6 +137,8 @@ var (
 		utils.GpoPercentileFlag,
 		utils.EWASMInterpreterFlag,
 		utils.EVMInterpreterFlag,
+		utils.IndexerEnableFlag,
+		utils.IndexerPluginFlag,
 		configFileFlag,
 	}
 
