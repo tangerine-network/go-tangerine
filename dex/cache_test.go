@@ -18,6 +18,7 @@
 package dex
 
 import (
+	"math/rand"
 	"sort"
 	"strings"
 	"testing"
@@ -200,6 +201,95 @@ func TestCacheBlock(t *testing.T) {
 	} else {
 		if !blocks[0].Hash.Equal(block5.Hash) {
 			t.Errorf("get wrong block: have %s, want %s", blocks[0], block5)
+		}
+	}
+}
+
+func randomBytes() []byte {
+	bytes := make([]byte, 32)
+	for i := range bytes {
+		bytes[i] = byte(rand.Int() % 256)
+	}
+	return bytes
+}
+
+func TestCacheRandomness(t *testing.T) {
+	db, err := coreDb.NewMemBackedDB()
+	if err != nil {
+		panic(err)
+	}
+	cache := newCache(3, db)
+	rand1 := &coreTypes.BlockRandomnessResult{
+		BlockHash:  coreCommon.NewRandomHash(),
+		Randomness: randomBytes(),
+	}
+	rand2 := &coreTypes.BlockRandomnessResult{
+		BlockHash:  coreCommon.NewRandomHash(),
+		Randomness: randomBytes(),
+	}
+	rand3 := &coreTypes.BlockRandomnessResult{
+		BlockHash:  coreCommon.NewRandomHash(),
+		Randomness: randomBytes(),
+	}
+	rand4 := &coreTypes.BlockRandomnessResult{
+		BlockHash:  coreCommon.NewRandomHash(),
+		Randomness: randomBytes(),
+	}
+	cache.addRandomness(rand1)
+	cache.addRandomness(rand2)
+	cache.addRandomness(rand3)
+
+	hashes := coreCommon.Hashes{rand1.BlockHash, rand2.BlockHash, rand3.BlockHash, rand4.BlockHash}
+	hashMap := map[coreCommon.Hash]struct{}{
+		rand1.BlockHash: {},
+		rand2.BlockHash: {},
+		rand3.BlockHash: {},
+	}
+	rands := cache.randomness(hashes)
+	if len(rands) != 3 {
+		t.Errorf("fail to get rands: have %d, want 3", len(rands))
+	}
+	for _, rand := range rands {
+		if _, exist := hashMap[rand.BlockHash]; !exist {
+			t.Errorf("get wrong rand: have %s, want %v", rand, hashMap)
+		}
+	}
+
+	cache.addRandomness(rand4)
+
+	rands = cache.randomness(hashes)
+	hashMap[rand4.BlockHash] = struct{}{}
+	if len(rands) != 3 {
+		t.Errorf("fail to get rands: have %d, want 3", len(rands))
+	}
+	hasNewRandomness := false
+	for _, rand := range rands {
+		if _, exist := hashMap[rand.BlockHash]; !exist {
+			t.Errorf("get wrong rand: have %s, want %v", rand, hashMap)
+		}
+		if rand.BlockHash.Equal(rand4.BlockHash) {
+			hasNewRandomness = true
+		}
+	}
+	if !hasNewRandomness {
+		t.Errorf("expect rand %s in cache, have %v", rand4, rands)
+	}
+
+	block := &coreTypes.Block{
+		Hash: coreCommon.NewRandomHash(),
+		Finalization: coreTypes.FinalizationResult{
+			Randomness: randomBytes(),
+		},
+	}
+	if err := db.PutBlock(*block); err != nil {
+		panic(err)
+	}
+	rands = cache.randomness(coreCommon.Hashes{block.Hash})
+	if len(rands) != 1 {
+		t.Errorf("fail to get rands: have %d, want 1", len(rands))
+	} else {
+		if !rands[0].BlockHash.Equal(block.Hash) {
+			t.Errorf("get wrong rand: have %s, want %s", rands[0], block)
 		}
 	}
 }

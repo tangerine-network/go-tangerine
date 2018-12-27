@@ -100,6 +100,7 @@ const (
 	maxQueuedDKGParitialSignature = 16
 	maxQueuedPullBlocks           = 128
 	maxQueuedPullVotes            = 128
+	maxQueuedPullRandomness       = 128
 
 	handshakeTimeout = 5 * time.Second
 
@@ -160,6 +161,7 @@ type peer struct {
 	queuedDKGPartialSignatures chan *dkgTypes.PartialSignature
 	queuedPullBlocks           chan coreCommon.Hashes
 	queuedPullVotes            chan coreTypes.Position
+	queuedPullRandomness       chan coreCommon.Hashes
 	term                       chan struct{} // Termination channel to stop the broadcaster
 }
 
@@ -190,6 +192,7 @@ func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 		queuedDKGPartialSignatures: make(chan *dkgTypes.PartialSignature, maxQueuedDKGParitialSignature),
 		queuedPullBlocks:           make(chan coreCommon.Hashes, maxQueuedPullBlocks),
 		queuedPullVotes:            make(chan coreTypes.Position, maxQueuedPullVotes),
+		queuedPullRandomness:       make(chan coreCommon.Hashes, maxQueuedPullRandomness),
 		term:                       make(chan struct{}),
 	}
 }
@@ -257,6 +260,11 @@ func (p *peer) broadcast() {
 				return
 			}
 			p.Log().Trace("Pulling Votes", "position", pos)
+		case hashes := <-p.queuedPullRandomness:
+			if err := p.SendPullRandomness(hashes); err != nil {
+				return
+			}
+			p.Log().Trace("Pulling Randomness", "hashes", hashes)
 		case <-p.term:
 			return
 		case <-time.After(100 * time.Millisecond):
@@ -527,6 +535,18 @@ func (p *peer) AsyncSendPullVotes(pos coreTypes.Position) {
 	case p.queuedPullVotes <- pos:
 	default:
 		p.Log().Debug("Dropping Pull Votes")
+	}
+}
+
+func (p *peer) SendPullRandomness(hashes coreCommon.Hashes) error {
+	return p2p.Send(p.rw, PullRandomnessMsg, hashes)
+}
+
+func (p *peer) AsyncSendPullRandomness(hashes coreCommon.Hashes) {
+	select {
+	case p.queuedPullRandomness <- hashes:
+	default:
+		p.Log().Debug("Dropping Pull Randomness")
 	}
 }
 

@@ -891,6 +891,21 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 				return err
 			}
 		}
+	case msg.Code == PullRandomnessMsg:
+		if !pm.isBlockProposer {
+			break
+		}
+		var hashes coreCommon.Hashes
+		if err := msg.Decode(&hashes); err != nil {
+			return errResp(ErrDecode, "msg %v: %v", msg, err)
+		}
+		randomness := pm.cache.randomness(hashes)
+		log.Debug("Push randomness", "randomness", randomness)
+		for _, randomness := range randomness {
+			if err := p.SendRandomness(randomness); err != nil {
+				return err
+			}
+		}
 	case msg.Code == GetGovStateMsg:
 		var hash common.Hash
 		if err := msg.Decode(&hash); err != nil {
@@ -1029,6 +1044,7 @@ func (pm *ProtocolManager) BroadcastAgreementResult(
 
 func (pm *ProtocolManager) BroadcastRandomnessResult(
 	randomness *coreTypes.BlockRandomnessResult) {
+	pm.cache.addRandomness(randomness)
 	// send to notary nodes first (direct)
 	label := peerLabel{
 		set:     notaryset,
@@ -1106,6 +1122,17 @@ func (pm *ProtocolManager) BroadcastPullVotes(
 			break
 		}
 		peer.AsyncSendPullVotes(pos)
+	}
+}
+
+func (pm *ProtocolManager) BroadcastPullRandomness(
+	hashes coreCommon.Hashes) {
+	// TODO(jimmy-dexon): pull from dkg set only.
+	for idx, peer := range pm.peers.Peers() {
+		if idx >= maxPullPeers {
+			break
+		}
+		peer.AsyncSendPullRandomness(hashes)
 	}
 }
 

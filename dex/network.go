@@ -34,12 +34,23 @@ func NewDexconNetwork(pm *ProtocolManager) *DexconNetwork {
 
 // PullBlocks tries to pull blocks from the DEXON network.
 func (n *DexconNetwork) PullBlocks(hashes coreCommon.Hashes) {
+	if len(hashes) == 0 {
+		return
+	}
 	n.pm.BroadcastPullBlocks(hashes)
 }
 
 // PullVotes tries to pull votes from the DEXON network.
 func (n *DexconNetwork) PullVotes(pos types.Position) {
 	n.pm.BroadcastPullVotes(pos)
+}
+
+// PullRandomness tries to pull randomness result from the DEXON network.
+func (n *DexconNetwork) PullRandomness(hashes coreCommon.Hashes) {
+	if len(hashes) == 0 {
+		return
+	}
+	n.pm.BroadcastPullRandomness(hashes)
 }
 
 // BroadcastVote broadcasts vote to all nodes in DEXON network.
