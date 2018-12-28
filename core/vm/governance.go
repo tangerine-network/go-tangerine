@@ -153,6 +153,10 @@ const GovernanceABIJSON = `
         "type": "uint256"
       },
       {
+        "name": "fined",
+        "type": "uint256"
+      },
+      {
         "name": "name",
         "type": "string"
       },
@@ -909,6 +913,20 @@ const GovernanceABIJSON = `
     "payable": false,
     "stateMutability": "nonpayable",
     "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "NodeAddress",
+        "type": "address"
+      }
+    ],
+    "name": "payFine",
+    "outputs": [],
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "function"
   }
 ]
 `
@@ -1075,6 +1093,12 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 			return nil, errExecutionReverted
 		}
 		return g.withdraw(address)
+	case "payFine":
+		address := common.Address{}
+		if err := method.Inputs.Unpack(&address, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.payFine(address)
 
 	// --------------------------------
 	// Solidity auto generated methods.
@@ -1506,6 +1530,7 @@ func (s *GovernanceStateHelper) PushRoundHeight(height *big.Int) {
 //     address owner;
 //     bytes publicKey;
 //     uint256 staked;
+//     uint256 fined;
 //     string name;
 //     string email;
 //     string location;
@@ -1519,6 +1544,7 @@ type nodeInfo struct {
 	Owner     common.Address
 	PublicKey []byte
 	Staked    *big.Int
+	Fined     *big.Int
 	Name      string
 	Email     string
 	Location  string
@@ -1526,7 +1552,7 @@ type nodeInfo struct {
 	Unstaked  bool
 }
 
-const nodeStructSize = 8
+const nodeStructSize = 9
 
 func (s *GovernanceStateHelper) LenNodes() *big.Int {
 	return s.getStateBigInt(big.NewInt(nodesLoc))
@@ -1550,24 +1576,28 @@ func (s *GovernanceStateHelper) Node(index *big.Int) *nodeInfo {
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(2))
 	node.Staked = s.getStateBigInt(loc)
 
-	// Name.
+	// Fined.
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(3))
+	node.Fined = s.getStateBigInt(loc)
+
+	// Name.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(4))
 	node.Name = string(s.readBytes(loc))
 
 	// Email.
-	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(4))
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(5))
 	node.Email = string(s.readBytes(loc))
 
 	// Location.
-	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(5))
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(6))
 	node.Location = string(s.readBytes(loc))
 
 	// Url.
-	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(6))
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(7))
 	node.Url = string(s.readBytes(loc))
 
 	// Unstaked.
-	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(7))
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(8))
 	node.Unstaked = s.getStateBigInt(loc).Cmp(big.NewInt(0)) > 0
 
 	return node
@@ -1595,24 +1625,28 @@ func (s *GovernanceStateHelper) UpdateNode(index *big.Int, n *nodeInfo) {
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(2))
 	s.setStateBigInt(loc, n.Staked)
 
-	// Name.
+	// Fined.
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(3))
+	s.setStateBigInt(loc, n.Fined)
+
+	// Name.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(4))
 	s.writeBytes(loc, []byte(n.Name))
 
 	// Email.
-	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(4))
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(5))
 	s.writeBytes(loc, []byte(n.Email))
 
 	// Location.
-	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(5))
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(6))
 	s.writeBytes(loc, []byte(n.Location))
 
 	// Url.
-	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(6))
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(7))
 	s.writeBytes(loc, []byte(n.Url))
 
 	// Unstaked.
-	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(7))
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(8))
 	val := big.NewInt(0)
 	if n.Unstaked {
 		val = big.NewInt(1)
@@ -1625,7 +1659,10 @@ func (s *GovernanceStateHelper) PopLastNode() {
 	newArrayLength := new(big.Int).Sub(arrayLength, big.NewInt(1))
 	s.setStateBigInt(big.NewInt(nodesLoc), newArrayLength)
 
-	s.UpdateNode(newArrayLength, &nodeInfo{Staked: big.NewInt(0)})
+	s.UpdateNode(newArrayLength, &nodeInfo{
+		Staked: big.NewInt(0),
+		Fined:  big.NewInt(0),
+	})
 }
 func (s *GovernanceStateHelper) Nodes() []*nodeInfo {
 	var nodes []*nodeInfo
@@ -1638,7 +1675,7 @@ func (s *GovernanceStateHelper) QualifiedNodes() []*nodeInfo {
 	var nodes []*nodeInfo
 	for i := int64(0); i < int64(s.LenNodes().Uint64()); i++ {
 		node := s.Node(big.NewInt(i))
-		if node.Staked.Cmp(s.MinStake()) >= 0 {
+		if new(big.Int).Sub(node.Staked, node.Fined).Cmp(s.MinStake()) >= 0 {
 			nodes = append(nodes, node)
 		}
 	}
@@ -1953,6 +1990,7 @@ func (s *GovernanceStateHelper) Stake(
 		Owner:     addr,
 		PublicKey: publicKey,
 		Staked:    staked,
+		Fined:     big.NewInt(0),
 		Name:      name,
 		Email:     email,
 		Location:  location,
@@ -2380,6 +2418,7 @@ func (g *GovernanceContract) stake(
 		Owner:     caller,
 		PublicKey: publicKey,
 		Staked:    big.NewInt(0),
+		Fined:     big.NewInt(0),
 		Name:      name,
 		Email:     email,
 		Location:  location,
@@ -2409,6 +2448,11 @@ func (g *GovernanceContract) undelegateHelper(nodeAddr, caller common.Address) (
 		return nil, errExecutionReverted
 	}
 
+	node := g.state.Node(nodeOffset)
+	if node.Fined.Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
+	}
+
 	delegator := g.state.Delegator(nodeAddr, offset)
 
 	// Set undelegate time.
@@ -2416,7 +2460,6 @@ func (g *GovernanceContract) undelegateHelper(nodeAddr, caller common.Address) (
 	g.state.UpdateDelegator(nodeAddr, offset, delegator)
 
 	// Subtract from the total staked of node.
-	node := g.state.Node(nodeOffset)
 	node.Staked = new(big.Int).Sub(node.Staked, delegator.Value)
 	g.state.UpdateNode(nodeOffset, node)
 
@@ -2496,6 +2539,11 @@ func (g *GovernanceContract) unstake() ([]byte, error) {
 		return nil, errExecutionReverted
 	}
 
+	node := g.state.Node(offset)
+	if node.Fined.Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
+	}
+
 	// Undelegate all delegators.
 	lenDelegators := g.state.LenDelegators(caller)
 	i := new(big.Int).Sub(lenDelegators, big.NewInt(1))
@@ -2508,11 +2556,36 @@ func (g *GovernanceContract) unstake() ([]byte, error) {
 	}
 
 	// Mark node as unstaked.
-	node := g.state.Node(offset)
 	node.Unstaked = true
 	g.state.UpdateNode(offset, node)
 
 	g.state.emitUnstaked(caller)
+
+	return g.useGas(100000)
+}
+
+func (g *GovernanceContract) payFine(nodeAddr common.Address) ([]byte, error) {
+	caller := g.contract.Caller()
+
+	nodeOffset := g.state.NodesOffset(nodeAddr)
+	if nodeOffset.Cmp(big.NewInt(0)) < 0 {
+		return nil, errExecutionReverted
+	}
+
+	offset := g.state.DelegatorsOffset(nodeAddr, caller)
+	if offset.Cmp(big.NewInt(0)) < 0 {
+		return nil, errExecutionReverted
+	}
+
+	node := g.state.Node(nodeOffset)
+	if node.Fined.Cmp(big.NewInt(0)) <= 0 || node.Fined.Cmp(g.contract.Value()) < 0 {
+		return nil, errExecutionReverted
+	}
+
+	node.Fined = new(big.Int).Sub(node.Fined, g.contract.Value())
+	g.state.UpdateNode(nodeOffset, node)
+
+	// TODO: paid fine should be added to award pool.
 
 	return g.useGas(100000)
 }
