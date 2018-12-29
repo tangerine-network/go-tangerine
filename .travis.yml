@@ -41,8 +41,13 @@ matrix:
         - ulimit -n
         - unset -f cd # workaround for https://github.com/travis-ci/travis-ci/issues/8703
         - make libbls
-        - go run build/ci.go install
+        - PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig go run build/ci.go install
         - travis_retry go run build/ci.go test -coverage $TEST_PACKAGES
+      addons:
+        homebrew:
+          packages:
+            - openssl
+            - gmp
 
     # This builder only tests code linters on latest version of Go
     - os: linux
@@ -198,8 +203,14 @@ matrix:
         submodules: false
       script:
         - make libbls
-        - go run build/ci.go install
+        - PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig go run build/ci.go install
         - go run build/ci.go archive -type tar -signer OSX_SIGNING_KEY -upload dexon-builds
+      addons:
+        homebrew:
+          packages:
+            - openssl
+            - gmp
+
     #  - gem uninstall cocoapods -a -x
     #  - gem install cocoapods
     #  - mv ~/.cocoapods/repos/master ~/.cocoapods/repos/master.bak
