@@ -18,6 +18,7 @@
 package syncer
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sort"
@@ -65,7 +66,7 @@ type Consensus struct {
 	validatedChains      map[uint32]struct{}
 	finalizedBlockHashes common.Hashes
 	latticeLastRound     uint64
-	randomnessResults    []*types.BlockRandomnessResult
+	randomnessResults    map[common.Hash]*types.BlockRandomnessResult
 	blocks               []types.ByPosition
 	agreements           []*agreement
 	configs              []*types.Config
@@ -107,9 +108,10 @@ func NewConsensus(
 		configs: []*types.Config{
 			utils.GetConfigWithPanic(gov, 0, logger),
 		},
-		roundBeginTimes: []time.Time{dMoment},
-		receiveChan:     make(chan *types.Block, 1000),
-		pullChan:        make(chan common.Hash, 1000),
+		roundBeginTimes:   []time.Time{dMoment},
+		receiveChan:       make(chan *types.Block, 1000),
+		pullChan:          make(chan common.Hash, 1000),
+		randomnessResults: make(map[common.Hash]*types.BlockRandomnessResult),
 	}
 	con.ctx, con.ctxCancel = context.WithCancel(context.Background())
 	return con
@@ -260,6 +262,9 @@ func (con *Consensus) ensureAgreementOverlapRound() bool {
 		for r = range tipRoundMap {
 			break
 		}
+		con.logger.Info("check agreement round cut",
+			"tip-round", r,
+			"configs", len(con.configs))
 		if tipRoundMap[r] == con.configs[r].NumChains {
 			con.agreementRoundCut = r
 			con.logger.Debug("agreement round cut found, round", r)
@@ -500,11 +505,15 @@ func (con *Consensus) GetSyncedConsensus() (*core.Consensus, error) {
 	// flush all blocks in con.blocks into core.Consensus, and build
 	// core.Consensus from syncer.
 	confirmedBlocks := []*types.Block{}
+	randomnessResults := []*types.BlockRandomnessResult{}
 	func() {
 		con.lock.Lock()
 		defer con.lock.Unlock()
 		for _, bs := range con.blocks {
 			confirmedBlocks = append(confirmedBlocks, bs...)
+		}
+		for _, r := range con.randomnessResults {
+			randomnessResults = append(randomnessResults, r)
 		}
 	}()
 	var err error
@@ -518,7 +527,7 @@ func (con *Consensus) GetSyncedConsensus() (*core.Consensus, error) {
 		con.prv,
 		con.lattice,
 		confirmedBlocks,
-		con.randomnessResults,
+		randomnessResults,
 		con.logger)
 	return con.syncedConsensus, err
 }
@@ -552,6 +561,36 @@ func (con *Consensus) buildEmptyBlock(b *types.Block, parent *types.Block) {
 	b.Acks = common.NewSortedHashes(common.Hashes{parent.Hash})
 }
 
+func (con *Consensus) setupConfigsUntilRound(round uint64) {
+	curMaxNumChains := uint32(0)
+	func() {
+		con.lock.Lock()
+		defer con.lock.Unlock()
+		for r := uint64(len(con.configs)); r <= round; r++ {
+			cfg := utils.GetConfigWithPanic(con.gov, r, con.logger)
+			con.configs = append(con.configs, cfg)
+			con.roundBeginTimes = append(
+				con.roundBeginTimes,
+				con.roundBeginTimes[r-1].Add(con.configs[r-1].RoundInterval))
+			if cfg.NumChains >= curMaxNumChains {
+				curMaxNumChains = cfg.NumChains
+			}
+		}
+		// Notify core.Lattice for new configs.
+		if con.lattice != nil {
+			for con.latticeLastRound+1 <= round {
+				con.latticeLastRound++
+				if err := con.lattice.AppendConfig(
+					con.latticeLastRound,
+					con.configs[con.latticeLastRound]); err != nil {
+					panic(err)
+				}
+			}
+		}
+	}()
+	con.resizeByNumChains(curMaxNumChains)
+}
+
 // setupConfigs is called by SyncBlocks with blocks from compaction chain. In
 // the first time, setupConfigs setups from round 0.
 func (con *Consensus) setupConfigs(blocks []*types.Block) {
@@ -562,40 +601,16 @@ func (con *Consensus) setupConfigs(blocks []*types.Block) {
 			maxRound = b.Position.Round
 		}
 	}
+	con.logger.Info("syncer setupConfigs",
+		"max", maxRound,
+		"lattice", con.latticeLastRound)
 	// Get configs from governance.
 	//
 	// In fullnode, the notification of new round is yet another TX, which
 	// needs to be executed after corresponding block delivered. Thus, the
 	// configuration for 'maxRound + core.ConfigRoundShift' won't be ready when
 	// seeing this block.
-	untilRound := maxRound + core.ConfigRoundShift - 1
-	curMaxNumChains := uint32(0)
-	func() {
-		con.lock.Lock()
-		defer con.lock.Unlock()
-		for r := uint64(len(con.configs)); r <= untilRound; r++ {
-			cfg := utils.GetConfigWithPanic(con.gov, r, con.logger)
-			con.configs = append(con.configs, cfg)
-			con.roundBeginTimes = append(
-				con.roundBeginTimes,
-				con.roundBeginTimes[r-1].Add(con.configs[r-1].RoundInterval))
-			if cfg.NumChains >= curMaxNumChains {
-				curMaxNumChains = cfg.NumChains
-			}
-		}
-	}()
-	con.resizeByNumChains(curMaxNumChains)
-	// Notify core.Lattice for new configs.
-	if con.lattice != nil {
-		for con.latticeLastRound+1 <= untilRound {
-			con.latticeLastRound++
-			if err := con.lattice.AppendConfig(
-				con.latticeLastRound,
-				con.configs[con.latticeLastRound]); err != nil {
-				panic(err)
-			}
-		}
-	}
+	con.setupConfigsUntilRound(maxRound + core.ConfigRoundShift - 1)
 }
 
 // resizeByNumChains resizes fake lattice and agreement if numChains increases.
@@ -648,6 +663,28 @@ func (con *Consensus) startAgreement(numChains uint32) {
 	}()
 }
 
+func (con *Consensus) cacheRandomnessResult(r *types.BlockRandomnessResult) {
+	// We only have to cache randomness result after cutting round.
+	if r.Position.Round < func() uint64 {
+		con.lock.RLock()
+		defer con.lock.RUnlock()
+		return con.agreementRoundCut
+	}() {
+		return
+	}
+	con.lock.Lock()
+	defer con.lock.Unlock()
+	if old, exists := con.randomnessResults[r.BlockHash]; exists {
+		if bytes.Compare(old.Randomness, r.Randomness) != 0 {
+			panic(fmt.Errorf("receive different randomness result: %s, %s",
+				r.BlockHash.String()[:6], &r.Position))
+		}
+		// We don't have to assign the map again.
+		return
+	}
+	con.randomnessResults[r.BlockHash] = r
+}
+
 // startNetwork starts network for receiving blocks and agreement results.
 func (con *Consensus) startNetwork() {
 	go func() {
@@ -664,13 +701,7 @@ func (con *Consensus) startNetwork() {
 				case *types.AgreementResult:
 					pos = v.Position
 				case *types.BlockRandomnessResult:
-					func() {
-						con.lock.Lock()
-						defer con.lock.Unlock()
-						if v.Position.Round >= con.agreementRoundCut {
-							con.randomnessResults = append(con.randomnessResults, v)
-						}
-					}()
+					con.cacheRandomnessResult(v)
 					continue Loop
 				default:
 					continue Loop
@@ -697,12 +728,13 @@ func (con *Consensus) startCRSMonitor() {
 	var lastNotifiedRound uint64
 	// Notify all agreements for new CRS.
 	notifyNewCRS := func(round uint64) {
+		con.setupConfigsUntilRound(round)
+		con.lock.Lock()
+		defer con.lock.Unlock()
 		if round == lastNotifiedRound {
 			return
 		}
-		con.logger.Debug("CRS is ready", "round", round)
-		con.lock.RLock()
-		defer con.lock.RUnlock()
+		con.logger.Info("CRS is ready", "round", round)
 		lastNotifiedRound = round
 		for _, a := range con.agreements {
 			a.inputChan <- round
@@ -719,8 +751,13 @@ func (con *Consensus) startCRSMonitor() {
 			}
 			// Notify agreement modules for the latest round that CRS is
 			// available if the round is not notified yet.
-			if (con.gov.CRS(lastNotifiedRound+1) != common.Hash{}) {
-				notifyNewCRS(lastNotifiedRound + 1)
+			checked := lastNotifiedRound + 1
+			for (con.gov.CRS(checked) != common.Hash{}) {
+				checked++
+			}
+			checked--
+			if checked > lastNotifiedRound {
+				notifyNewCRS(checked)
 			}
 		}
 	}()
