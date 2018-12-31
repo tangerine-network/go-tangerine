@@ -413,7 +413,7 @@ func DefaultTaipeiGenesisBlock() *Genesis {
 		ExtraData:  hexutil.MustDecode("0x3535353535353535353535353535353535353535353535353535353535353535"),
 		GasLimit:   40000000,
 		Difficulty: big.NewInt(1),
-		Alloc:      decodePrealloc(testnetAllocData),
+		Alloc:      decodePrealloc(taipeiAllocData),
 	}
 }
 
