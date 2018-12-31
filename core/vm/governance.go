@@ -1133,7 +1133,7 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 			return nil, errExecutionReverted
 		}
 		delegator := g.state.Delegator(nodeAddr, index)
-		res, err := method.Outputs.Pack(delegator.Owner, delegator.Value)
+		res, err := method.Outputs.Pack(delegator.Owner, delegator.Value, delegator.UndelegatedAt)
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -1283,7 +1283,7 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 		}
 		info := g.state.Node(index)
 		res, err := method.Outputs.Pack(
-			info.Owner, info.PublicKey, info.Staked,
+			info.Owner, info.PublicKey, info.Staked, info.Fined,
 			info.Name, info.Email, info.Location, info.Url, info.Unstaked)
 		if err != nil {
 			return nil, errExecutionReverted

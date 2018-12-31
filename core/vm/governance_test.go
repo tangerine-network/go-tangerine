@@ -755,9 +755,14 @@ func (g *GovernanceContractTestSuite) TestMiscVariableReading() {
 	_, err = g.call(addrDelegator2, input, amount)
 	g.Require().NoError(err)
 
-	input, err = abiObject.Pack("nodesLength")
+	input, err = abiObject.Pack("nodes", big.NewInt(0))
 	g.Require().NoError(err)
 	res, err := g.call(addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+
+	input, err = abiObject.Pack("nodesLength")
+	g.Require().NoError(err)
+	res, err = g.call(addr, input, big.NewInt(0))
 	g.Require().NoError(err)
 	var value *big.Int
 	err = abiObject.Unpack(&value, "nodesLength", res)
@@ -771,6 +776,11 @@ func (g *GovernanceContractTestSuite) TestMiscVariableReading() {
 	err = abiObject.Unpack(&value, "nodesOffset", res)
 	g.Require().NoError(err)
 	g.Require().Equal(0, int(value.Uint64()))
+
+	input, err = abiObject.Pack("delegators", addr, big.NewInt(0))
+	g.Require().NoError(err)
+	res, err = g.call(addr, input, big.NewInt(0))
+	g.Require().NoError(err)
 
 	input, err = abiObject.Pack("delegatorsLength", addr)
 	g.Require().NoError(err)
