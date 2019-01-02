@@ -11,6 +11,9 @@ type Config struct {
 
 	// Plugin path for building components.
 	Plugin string
+
+	// PluginFlags for construction if needed.
+	PluginFlags string
 }
 
 // NewIndexerFromConfig initialize exporter according to given config.

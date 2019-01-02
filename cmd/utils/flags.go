@@ -659,6 +659,11 @@ var (
 		Usage: "External indexer plugin shared object path",
 		Value: "",
 	}
+	IndexerPluginFlagsFlag = cli.StringFlag{
+		Name:  "indexer.plugin-flags",
+		Usage: "External indexer plugin's flags if needed",
+		Value: "",
+	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating
@@ -1305,6 +1310,7 @@ func setIndexerConfig(ctx *cli.Context, cfg *dex.Config) {
 	}
 
 	cfg.Indexer.Plugin = ctx.GlobalString(IndexerPluginFlag.Name)
+	cfg.Indexer.PluginFlags = ctx.GlobalString(IndexerPluginFlagsFlag.Name)
 }
 
 // SetDashboardConfig applies dashboard related command line flags to the config.

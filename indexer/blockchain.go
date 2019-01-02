@@ -7,6 +7,7 @@ import (
 	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 
 	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/consensus"
 	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
@@ -24,6 +25,7 @@ type ReadOnlyBlockChain interface {
 	CurrentBlock() *types.Block
 	CurrentFastBlock() *types.Block
 	CurrentHeader() *types.Header
+	Engine() consensus.Engine
 	GasLimit() uint64
 	Genesis() *types.Block
 	GetAncestor(common.Hash, uint64, uint64, *uint64) (common.Hash, uint64)
