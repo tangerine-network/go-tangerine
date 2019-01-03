@@ -42,7 +42,7 @@ type ReadOnlyBlockChain interface {
 	GetBlocksFromHash(common.Hash, int) (blocks []*types.Block)
 	GetBody(common.Hash) *types.Body
 	GetBodyRLP(common.Hash) rlp.RawValue
-	GetChainLastConfirmedHeight(uint32) uint64
+	GetChainLastConfirmedHeight(uint32) (uint64, bool)
 	GetConfirmedBlockByHash(uint32, coreCommon.Hash) (*coreTypes.Block, types.Transactions)
 	GetCostInConfirmedBlocks(uint32, common.Address) (*big.Int, bool)
 	GetGovStateByHash(common.Hash) (*types.GovState, error)

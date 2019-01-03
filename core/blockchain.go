@@ -395,12 +395,13 @@ func (bc *BlockChain) GetCostInConfirmedBlocks(chainID uint32, address common.Ad
 	return cost, exist
 }
 
-func (bc *BlockChain) GetChainLastConfirmedHeight(chainID uint32) uint64 {
-	val, ok := bc.chainLastHeight.Load(chainID)
-	if !ok {
-		panic(fmt.Errorf("failed to get chain last height, chainID = %d", chainID))
+func (bc *BlockChain) GetChainLastConfirmedHeight(chainID uint32) (uint64, bool) {
+	val := uint64(0)
+	v, ok := bc.chainLastHeight.Load(chainID)
+	if ok {
+		val = v.(uint64)
 	}
-	return val.(uint64)
+	return val, ok
 }
 
 func (bc *BlockChain) GetAddressInfo(chainID uint32, address common.Address) (

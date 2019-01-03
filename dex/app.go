@@ -177,11 +177,11 @@ func (d *DexconApp) preparePayload(ctx context.Context, position coreTypes.Posit
 
 	if position.Height != 0 {
 		// Check if chain block height is strictly increamental.
-		chainLastHeight := d.blockchain.GetChainLastConfirmedHeight(position.ChainID)
-		if chainLastHeight != position.Height-1 {
-			log.Error("Check confirmed block height fail",
-				"chain", position.ChainID, "height", position.Height-1, "cache height", chainLastHeight)
-			return nil, fmt.Errorf("check confirmed block height fail")
+		chainLastHeight, ok := d.blockchain.GetChainLastConfirmedHeight(position.ChainID)
+		if !ok || chainLastHeight != position.Height-1 {
+			log.Debug("Previous confirmed block not exists", "current pos", position.String(),
+				"prev height", chainLastHeight, "ok", ok)
+			return nil, fmt.Errorf("previous block not exists")
 		}
 	}
 
@@ -337,10 +337,10 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 	if block.Position.Height != 0 {
 		// Check if target block is the next height to be verified, we can only
 		// verify the next block in a given chain.
-		chainLastHeight := d.blockchain.GetChainLastConfirmedHeight(block.Position.ChainID)
-		if chainLastHeight != block.Position.Height-1 {
-			log.Error("Check confirmed block height fail", "chain", block.Position.ChainID,
-				"height", block.Position.Height-1, "cache height", chainLastHeight)
+		chainLastHeight, ok := d.blockchain.GetChainLastConfirmedHeight(block.Position.ChainID)
+		if !ok || chainLastHeight != block.Position.Height-1 {
+			log.Debug("Previous confirmed block not exists", "current pos", block.Position.String(),
+				"prev height", chainLastHeight, "ok", ok)
 			return coreTypes.VerifyRetryLater
 		}
 	}
