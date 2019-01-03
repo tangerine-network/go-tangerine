@@ -237,6 +237,51 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	gov := NewGovernance(NewGovernanceStateDB(bc))
 	bc.verifierCache = dexCore.NewTSigVerifierCache(gov, 5)
 
+	// Init round height map
+	curblock := bc.CurrentBlock()
+	r := curblock.Round()
+
+	// Blocks will interleave during round change, so we need to init current
+	// and previous round.
+	if r == 0 {
+		// No previous round.
+		log.Debug("Init round height", "height", curblock.NumberU64(), "round", curblock.Round())
+		bc.storeRoundHeight(uint64(0), uint64(0))
+	} else {
+		prevh := gov.GetRoundHeight(r - 1)
+		if prevh == uint64(0) {
+			// Previous round height should be already snapshoted
+			// in governance state at this moment.
+			panic("can not init previous round height map")
+		}
+		log.Debug("Init previous round height", "height", prevh, "round", r-1)
+		bc.storeRoundHeight(r-1, prevh)
+
+		curh := gov.GetRoundHeight(r)
+
+		// Current round height is not snapshoted in governance state yet,
+		if curh == uint64(0) {
+			// Linear search the first block of current round
+			// from previous round height.
+			h := prevh
+			for h <= curblock.NumberU64() {
+				b := bc.GetBlockByNumber(h)
+				if b.Round() == r {
+					curh = h
+					break
+				}
+			}
+
+			// This case is impossible.
+			if curh == uint64(0) {
+				panic("can find current round height")
+			}
+		}
+
+		log.Debug("Init current round height", "height", curh, "round", r)
+		bc.storeRoundHeight(r, curh)
+	}
+
 	// Take ownership of this particular state
 	go bc.update()
 	return bc, nil
