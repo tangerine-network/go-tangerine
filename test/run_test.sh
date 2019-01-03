@@ -29,6 +29,8 @@ fi
 rm -f log-latest
 ln -s $logsdir log-latest
 
+let dmoment=`date +%s`+7
+
 # A standalone RPC server for accepting RPC requests.
 datadir=$PWD/Dexon.rpc
 rm -rf $datadir
@@ -43,6 +45,7 @@ $GDEX \
   --ws --wsapi=eth,net,web3,debug \
   --wsaddr=0.0.0.0 --wsport=8546  \
   --wsorigins='*' --rpcvhosts='*' --rpccorsdomain="*" \
+  --dmoment=$dmoment \
   > $logsdir/gdex.rpc.log 2>&1 &
 
 # Nodes
@@ -62,6 +65,7 @@ for i in $(seq 0 3); do
     --ws --wsapi=eth,net,web3,debug \
     --wsaddr=0.0.0.0 --wsport=$((8548 + $i * 2)) \
     --wsorigins='*' --rpcvhosts='*' --rpccorsdomain="*" \
+    --dmoment=$dmoment \
     --pprof --pprofaddr=localhost --pprofport=$((6060 + $i)) \
     > $logsdir/gdex.$i.log 2>&1 &
 done
