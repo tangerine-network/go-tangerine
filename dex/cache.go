@@ -71,6 +71,7 @@ func (c *cache) addVote(vote *coreTypes.Vote) {
 		pos := c.votePosition[0]
 		c.voteSize -= len(c.voteCache[pos])
 		delete(c.voteCache, pos)
+		c.votePosition = c.votePosition[1:]
 	}
 	if _, exist := c.voteCache[vote.Position]; !exist {
 		c.votePosition = append(c.votePosition, vote.Position)
