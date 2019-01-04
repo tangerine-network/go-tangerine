@@ -27,6 +27,7 @@ import (
 	dexCore "github.com/dexon-foundation/dexon-consensus/core"
 	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
 	coreEcdsa "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
+	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
 
 	"github.com/dexon-foundation/dexon/common"
@@ -290,4 +291,12 @@ func (d *DexconGovernance) DKGSet(round uint64) (map[string]struct{}, error) {
 		}
 	}
 	return r, nil
+}
+
+func (d *DexconGovernance) ReportForkVote(vote1, vote2 *coreTypes.Vote) {
+	// TODO: finish this.
+}
+
+func (d *DexconGovernance) ReportForkBlock(block1, block2 *coreTypes.Block) {
+	// TODO: finish this.
 }
