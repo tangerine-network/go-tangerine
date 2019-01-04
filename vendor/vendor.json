@@ -123,10 +123,10 @@
 			"revisionTime": "2018-06-03T19:32:48Z"
 		},
 		{
-			"checksumSHA1": "eKtPGrEJZ8yT6A7yVdzYCf3GRnc=",
+			"checksumSHA1": "jqxT0OeSE30j5pVqR+ia/AxtdAI=",
 			"path": "github.com/dexon-foundation/bls",
-			"revision": "1208495d2fd3e5a69edaf7f429607e7ef431a5dd",
-			"revisionTime": "2018-10-23T02:11:18Z",
+			"revision": "dda43effd59cb08b3e99198c6d066a723e10a86b",
+			"revisionTime": "2018-12-27T09:54:38Z",
 			"version": "dev",
 			"versionExact": "dev"
 		},
