@@ -154,7 +154,7 @@ func TestVerifyBlock(t *testing.T) {
 		big.NewInt(int64(dex.chainConfig.Dexcon.NumChains)))
 
 	// Prepare normal block.
-	block := coreTypes.NewBlock()
+	block := &coreTypes.Block{}
 	block.Hash = coreCommon.NewRandomHash()
 	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
@@ -170,7 +170,7 @@ func TestVerifyBlock(t *testing.T) {
 	}
 
 	// Prepare invalid nonce tx.
-	block = coreTypes.NewBlock()
+	block = &coreTypes.Block{}
 	block.Hash = coreCommon.NewRandomHash()
 	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
@@ -186,7 +186,7 @@ func TestVerifyBlock(t *testing.T) {
 	}
 
 	// Prepare invalid block height.
-	block = coreTypes.NewBlock()
+	block = &coreTypes.Block{}
 	block.Hash = coreCommon.NewRandomHash()
 	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 2
@@ -202,7 +202,7 @@ func TestVerifyBlock(t *testing.T) {
 	}
 
 	// Prepare reach block limit.
-	block = coreTypes.NewBlock()
+	block = &coreTypes.Block{}
 	block.Hash = coreCommon.NewRandomHash()
 	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
@@ -218,7 +218,7 @@ func TestVerifyBlock(t *testing.T) {
 	}
 
 	// Prepare insufficient funds.
-	block = coreTypes.NewBlock()
+	block = &coreTypes.Block{}
 	block.Hash = coreCommon.NewRandomHash()
 	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
@@ -252,7 +252,7 @@ func TestVerifyBlock(t *testing.T) {
 	}
 
 	// Prepare invalid intrinsic gas.
-	block = coreTypes.NewBlock()
+	block = &coreTypes.Block{}
 	block.Hash = coreCommon.NewRandomHash()
 	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
@@ -286,7 +286,7 @@ func TestVerifyBlock(t *testing.T) {
 	}
 
 	// Prepare invalid transactions with nonce.
-	block = coreTypes.NewBlock()
+	block = &coreTypes.Block{}
 	block.Hash = coreCommon.NewRandomHash()
 	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
@@ -364,7 +364,7 @@ func TestBlockConfirmed(t *testing.T) {
 		expectCost.Add(&expectCost, &cost)
 		expectNonce = nonce
 
-		block := coreTypes.NewBlock()
+		block := &coreTypes.Block{}
 		block.Hash = coreCommon.NewRandomHash()
 		block.Witness = witness
 		block.Payload = payload
@@ -650,7 +650,7 @@ func prepareConfirmedBlocks(dex *Dexon, keys []*ecdsa.PrivateKey, txNum int) (bl
 			return
 		}
 
-		block := coreTypes.NewBlock()
+		block := &coreTypes.Block{}
 		block.Hash = coreCommon.NewRandomHash()
 		block.Witness = witness
 		block.Payload = payload
