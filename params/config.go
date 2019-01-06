@@ -26,8 +26,8 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0xf0510808109583b9ef62f846886179f2fb40d1d4f1872d33529947bdd03e9bc1")
-	TestnetGenesisHash = common.HexToHash("0x3e14e72125f46254853814b6e9f0b79d296e16b1d60d312516002bf8cfad62f8")
+	MainnetGenesisHash = common.HexToHash("0x81abe3e66f63afe3806b64e7529d2a3f2ae9be7ba3e6fca2a561808bf7875a03")
+	TestnetGenesisHash = common.HexToHash("0x3fe7a48aca63addc5e502fe60a37a865b454c649e106d07d3cd810e086e1fc6d")
 )
 
 // TrustedCheckpoints associates each known checkpoint with the genesis hash of
@@ -67,6 +67,11 @@ var (
 			DKGSetSize:       4,
 			RoundInterval:    600000,
 			MinBlockInterval: 900,
+			FineValues: []*big.Int{
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+			},
 		},
 	}
 
@@ -107,6 +112,11 @@ var (
 			DKGSetSize:       4,
 			RoundInterval:    600000,
 			MinBlockInterval: 900,
+			FineValues: []*big.Int{
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+			},
 		},
 	}
 
@@ -138,6 +148,11 @@ var (
 			DKGSetSize:       13,
 			RoundInterval:    3600000,
 			MinBlockInterval: 900,
+			FineValues: []*big.Int{
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+			},
 		},
 	}
 
@@ -281,16 +296,18 @@ type DexconConfig struct {
 	DKGSetSize       uint32         `json:"dkgSetSize"`
 	RoundInterval    uint64         `json:"roundInterval"`
 	MinBlockInterval uint64         `json:"minBlockInterval"`
+	FineValues       []*big.Int     `json:"fineValues"`
 }
 
 type dexconConfigSpecMarshaling struct {
 	MinStake    *math.HexOrDecimal256
 	BlockReward *math.HexOrDecimal256
+	FineValues  []*math.HexOrDecimal256
 }
 
 // String implements the stringer interface, returning the consensus engine details.
 func (d *DexconConfig) String() string {
-	return fmt.Sprintf("{GenesisCRSText: %v Owner: %v MinStake: %v LockupPeriod: %v BlockReward: %v BlockGasLimit: %v NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v}",
+	return fmt.Sprintf("{GenesisCRSText: %v Owner: %v MinStake: %v LockupPeriod: %v BlockReward: %v BlockGasLimit: %v NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v FineValues: %v}",
 		d.GenesisCRSText,
 		d.Owner,
 		d.MinStake,
@@ -306,6 +323,7 @@ func (d *DexconConfig) String() string {
 		d.DKGSetSize,
 		d.RoundInterval,
 		d.MinBlockInterval,
+		d.FineValues,
 	)
 }
 

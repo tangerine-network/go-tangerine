@@ -259,6 +259,64 @@ func (d *DexconGovernance) AddDKGFinalize(round uint64, final *dkgTypes.Finalize
 	}
 }
 
+// ReportForkVote reports a node for forking votes.
+func (d *DexconGovernance) ReportForkVote(vote1, vote2 *coreTypes.Vote) {
+	method := vm.GovernanceContractName2Method["report"]
+
+	vote1Bytes, err := rlp.EncodeToBytes(vote1)
+	if err != nil {
+		log.Error("failed to RLP encode vote1 to bytes", "err", err)
+		return
+	}
+
+	vote2Bytes, err := rlp.EncodeToBytes(vote2)
+	if err != nil {
+		log.Error("failed to RLP encode vote2 to bytes", "err", err)
+		return
+	}
+
+	res, err := method.Inputs.Pack(big.NewInt(vm.ReportTypeForkVote), vote1Bytes, vote2Bytes)
+	if err != nil {
+		log.Error("failed to pack report input", "err", err)
+		return
+	}
+
+	data := append(method.Id(), res...)
+	err = d.sendGovTx(context.Background(), data)
+	if err != nil {
+		log.Error("failed to send report fork vote tx", "err", err)
+	}
+}
+
+// ReportForkBlock reports a node for forking blocks.
+func (d *DexconGovernance) ReportForkBlock(block1, block2 *coreTypes.Block) {
+	method := vm.GovernanceContractName2Method["report"]
+
+	block1Bytes, err := rlp.EncodeToBytes(block1)
+	if err != nil {
+		log.Error("failed to RLP encode block1 to bytes", "err", err)
+		return
+	}
+
+	block2Bytes, err := rlp.EncodeToBytes(block2)
+	if err != nil {
+		log.Error("failed to RLP encode block2 to bytes", "err", err)
+		return
+	}
+
+	res, err := method.Inputs.Pack(big.NewInt(vm.ReportTypeForkBlock), block1Bytes, block2Bytes)
+	if err != nil {
+		log.Error("failed to pack report input", "err", err)
+		return
+	}
+
+	data := append(method.Id(), res...)
+	err = d.sendGovTx(context.Background(), data)
+	if err != nil {
+		log.Error("failed to send report fork block tx", "err", err)
+	}
+}
+
 func (d *DexconGovernance) GetNumChains(round uint64) uint32 {
 	return d.Configuration(round).NumChains
 }
@@ -291,12 +349,4 @@ func (d *DexconGovernance) DKGSet(round uint64) (map[string]struct{}, error) {
 		}
 	}
 	return r, nil
-}
-
-func (d *DexconGovernance) ReportForkVote(vote1, vote2 *coreTypes.Vote) {
-	// TODO: finish this.
-}
-
-func (d *DexconGovernance) ReportForkBlock(block1, block2 *coreTypes.Block) {
-	// TODO: finish this.
 }

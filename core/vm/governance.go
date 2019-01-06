@@ -18,7 +18,10 @@
 package vm
 
 import (
+	"bytes"
+	"errors"
 	"math/big"
+	"sort"
 	"strings"
 
 	"github.com/dexon-foundation/dexon/accounts/abi"
@@ -331,12 +334,50 @@ const GovernanceABIJSON = `
   },
   {
     "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "nodesOffsetByID",
+    "outputs": [
+      {
+        "name": "",
+        "type": "int256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
     "inputs": [],
     "name": "roundInterval",
     "outputs": [
       {
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "nodesOffsetByAddress",
+    "outputs": [
+      {
+        "name": "",
+        "type": "int256"
       }
     ],
     "payable": false,
@@ -362,14 +403,14 @@ const GovernanceABIJSON = `
     "inputs": [
       {
         "name": "",
-        "type": "address"
+        "type": "bytes32"
       }
     ],
-    "name": "nodesOffset",
+    "name": "finedRecords",
     "outputs": [
       {
         "name": "",
-        "type": "int256"
+        "type": "bool"
       }
     ],
     "payable": false,
@@ -380,6 +421,25 @@ const GovernanceABIJSON = `
     "constant": true,
     "inputs": [],
     "name": "lambdaDKG",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "fineValues",
     "outputs": [
       {
         "name": "",
@@ -684,6 +744,10 @@ const GovernanceABIJSON = `
       {
         "name": "MinBlockInterval",
         "type": "uint256"
+      },
+      {
+        "name": "FineValues",
+        "type": "uint256[]"
       }
     ],
     "name": "updateConfiguration",
@@ -927,6 +991,28 @@ const GovernanceABIJSON = `
     "payable": true,
     "stateMutability": "payable",
     "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "Type",
+        "type": "uint256"
+      },
+      {
+        "name": "Arg1",
+        "type": "bytes"
+      },
+      {
+        "name": "Arg2",
+        "type": "bytes"
+      }
+    ],
+    "name": "report",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
   }
 ]
 `
@@ -935,6 +1021,16 @@ var abiObject abi.ABI
 var GovernanceContractName2Method map[string]abi.Method
 var sig2Method map[string]abi.Method
 var events map[string]abi.Event
+
+type Bytes32 [32]byte
+
+type ReportType uint64
+
+const (
+	ReportTypeInvalidDKG = iota
+	ReportTypeForkVote
+	ReportTypeForkBlock
+)
 
 func init() {
 	var err error
@@ -1037,6 +1133,12 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 			return nil, errExecutionReverted
 		}
 		return res, nil
+	case "payFine":
+		address := common.Address{}
+		if err := method.Inputs.Unpack(&address, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.payFine(address)
 	case "proposeCRS":
 		args := struct {
 			Round     *big.Int
@@ -1046,6 +1148,16 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 			return nil, errExecutionReverted
 		}
 		return g.proposeCRS(args.Round, args.SignedCRS)
+	case "report":
+		args := struct {
+			Type *big.Int
+			Arg1 []byte
+			Arg2 []byte
+		}{}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.report(args.Type, args.Arg1, args.Arg2)
 	case "stake":
 		args := struct {
 			PublicKey []byte
@@ -1093,12 +1205,6 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 			return nil, errExecutionReverted
 		}
 		return g.withdraw(address)
-	case "payFine":
-		address := common.Address{}
-		if err := method.Inputs.Unpack(&address, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.payFine(address)
 
 	// --------------------------------
 	// Solidity auto generated methods.
@@ -1234,6 +1340,28 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 			return nil, errExecutionReverted
 		}
 		return res, nil
+	case "finedRecords":
+		record := Bytes32{}
+		if err := method.Inputs.Unpack(&record, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		value := g.state.FineRecords(record)
+		res, err := method.Outputs.Pack(value)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "fineValues":
+		index := new(big.Int)
+		if err := method.Inputs.Unpack(&index, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		value := g.state.FineValue(index)
+		res, err := method.Outputs.Pack(value)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	case "k":
 		res, err := method.Outputs.Pack(g.state.K())
 		if err != nil {
@@ -1289,12 +1417,22 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 			return nil, errExecutionReverted
 		}
 		return res, nil
-	case "nodesOffset":
+	case "nodesOffsetByAddress":
 		address := common.Address{}
 		if err := method.Inputs.Unpack(&address, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		res, err := method.Outputs.Pack(g.state.NodesOffset(address))
+		res, err := method.Outputs.Pack(g.state.NodesOffsetByAddress(address))
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "nodesOffsetByID":
+		var id Bytes32
+		if err := method.Inputs.Unpack(&id, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		res, err := method.Outputs.Pack(g.state.NodesOffsetByID(id))
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -1341,7 +1479,8 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 const (
 	roundHeightLoc = iota
 	nodesLoc
-	nodesOffsetLoc
+	nodesOffsetByAddressLoc
+	nodesOffsetByIDLoc
 	delegatorsLoc
 	delegatorsOffsetLoc
 	crsLoc
@@ -1365,7 +1504,18 @@ const (
 	dkgSetSizeLoc
 	roundIntervalLoc
 	minBlockIntervalLoc
+	fineValuesLoc
+	finedRecordsLoc
 )
+
+func publicKeyToNodeID(pkBytes []byte) (Bytes32, error) {
+	pk, err := crypto.UnmarshalPubkey(pkBytes)
+	if err != nil {
+		return Bytes32{}, err
+	}
+	id := Bytes32(coreTypes.NewNodeID(ecdsa.NewPublicKeyFromECDSA(pk)).Hash)
+	return id, nil
+}
 
 // State manipulation helper fro the governance contract.
 type GovernanceStateHelper struct {
@@ -1675,6 +1825,9 @@ func (s *GovernanceStateHelper) QualifiedNodes() []*nodeInfo {
 	var nodes []*nodeInfo
 	for i := int64(0); i < int64(s.LenNodes().Uint64()); i++ {
 		node := s.Node(big.NewInt(i))
+		if node.Unstaked {
+			continue
+		}
 		if new(big.Int).Sub(node.Staked, node.Fined).Cmp(s.MinStake()) >= 0 {
 			nodes = append(nodes, node)
 		}
@@ -1682,18 +1835,42 @@ func (s *GovernanceStateHelper) QualifiedNodes() []*nodeInfo {
 	return nodes
 }
 
-// mapping(address => uint256) public nodeOffset;
-func (s *GovernanceStateHelper) NodesOffset(addr common.Address) *big.Int {
-	loc := s.getMapLoc(big.NewInt(nodesOffsetLoc), addr.Bytes())
+// mapping(address => uint256) public nodeOffsetByAddress;
+func (s *GovernanceStateHelper) NodesOffsetByAddress(addr common.Address) *big.Int {
+	loc := s.getMapLoc(big.NewInt(nodesOffsetByAddressLoc), addr.Bytes())
 	return new(big.Int).Sub(s.getStateBigInt(loc), big.NewInt(1))
 }
-func (s *GovernanceStateHelper) PutNodesOffset(addr common.Address, offset *big.Int) {
-	loc := s.getMapLoc(big.NewInt(nodesOffsetLoc), addr.Bytes())
+func (s *GovernanceStateHelper) PutNodesOffsetByAddress(addr common.Address, offset *big.Int) {
+	loc := s.getMapLoc(big.NewInt(nodesOffsetByAddressLoc), addr.Bytes())
 	s.setStateBigInt(loc, new(big.Int).Add(offset, big.NewInt(1)))
 }
-func (s *GovernanceStateHelper) DeleteNodesOffset(addr common.Address) {
-	loc := s.getMapLoc(big.NewInt(nodesOffsetLoc), addr.Bytes())
+func (s *GovernanceStateHelper) DeleteNodesOffsetByAddress(addr common.Address) {
+	loc := s.getMapLoc(big.NewInt(nodesOffsetByAddressLoc), addr.Bytes())
 	s.setStateBigInt(loc, big.NewInt(0))
+}
+
+// mapping(address => uint256) public nodeOffsetByID;
+func (s *GovernanceStateHelper) NodesOffsetByID(id Bytes32) *big.Int {
+	loc := s.getMapLoc(big.NewInt(nodesOffsetByIDLoc), id[:])
+	return new(big.Int).Sub(s.getStateBigInt(loc), big.NewInt(1))
+}
+func (s *GovernanceStateHelper) PutNodesOffsetByID(id Bytes32, offset *big.Int) {
+	loc := s.getMapLoc(big.NewInt(nodesOffsetByIDLoc), id[:])
+	s.setStateBigInt(loc, new(big.Int).Add(offset, big.NewInt(1)))
+}
+func (s *GovernanceStateHelper) DeleteNodesOffsetByID(id Bytes32) {
+	loc := s.getMapLoc(big.NewInt(nodesOffsetByIDLoc), id[:])
+	s.setStateBigInt(loc, big.NewInt(0))
+}
+
+func (s *GovernanceStateHelper) PutNodeOffsets(n *nodeInfo, offset *big.Int) error {
+	id, err := publicKeyToNodeID(n.PublicKey)
+	if err != nil {
+		return err
+	}
+	s.PutNodesOffsetByID(id, offset)
+	s.PutNodesOffsetByAddress(n.Owner, offset)
+	return nil
 }
 
 // struct Delegator {
@@ -1841,6 +2018,20 @@ func (s *GovernanceStateHelper) UniqueDKGMasterPublicKeys(round *big.Int) []*dkg
 	}
 	return dkgMasterPKs
 }
+func (s *GovernanceStateHelper) GetDKGMasterPublicKeyByProposerID(
+	round *big.Int, proposerID coreTypes.NodeID) (*dkgTypes.MasterPublicKey, error) {
+
+	for _, mpk := range s.DKGMasterPublicKeys(round) {
+		x := new(dkgTypes.MasterPublicKey)
+		if err := rlp.DecodeBytes(mpk, x); err != nil {
+			panic(err)
+		}
+		if x.ProposerID.Equal(proposerID) {
+			return x, nil
+		}
+	}
+	return nil, errors.New("not found")
+}
 
 // bytes[][] public dkgComplaints;
 func (s *GovernanceStateHelper) DKGComplaints(round *big.Int) [][]byte {
@@ -1981,12 +2172,48 @@ func (s *GovernanceStateHelper) MinBlockInterval() *big.Int {
 	return s.getStateBigInt(big.NewInt(minBlockIntervalLoc))
 }
 
+// uint256[] public fineValues;
+func (s *GovernanceStateHelper) FineValue(index *big.Int) *big.Int {
+	arrayBaseLoc := s.getSlotLoc(big.NewInt(fineValuesLoc))
+	return s.getStateBigInt(new(big.Int).Add(arrayBaseLoc, index))
+}
+func (s *GovernanceStateHelper) FineValues() []*big.Int {
+	len := s.getStateBigInt(big.NewInt(fineValuesLoc))
+	result := make([]*big.Int, len.Uint64())
+	for i := 0; i < int(len.Uint64()); i++ {
+		result[i] = s.FineValue(big.NewInt(int64(i)))
+	}
+	return result
+}
+func (s *GovernanceStateHelper) SetFineValues(values []*big.Int) {
+	s.setStateBigInt(big.NewInt(fineValuesLoc), big.NewInt(int64(len(values))))
+
+	arrayBaseLoc := s.getSlotLoc(big.NewInt(fineValuesLoc))
+	for i, v := range values {
+		s.setStateBigInt(new(big.Int).Add(arrayBaseLoc, big.NewInt(int64(i))), v)
+	}
+}
+
+// uint256[] public fineRdecords;
+func (s *GovernanceStateHelper) FineRecords(recordHash Bytes32) bool {
+	loc := s.getMapLoc(big.NewInt(finedRecordsLoc), recordHash[:])
+	return s.getStateBigInt(loc).Cmp(big.NewInt(0)) > 0
+}
+func (s *GovernanceStateHelper) SetFineRecords(recordHash Bytes32, status bool) {
+	loc := s.getMapLoc(big.NewInt(finedRecordsLoc), recordHash[:])
+	value := int64(0)
+	if status {
+		value = int64(1)
+	}
+	s.setStateBigInt(loc, big.NewInt(value))
+}
+
 // Stake is a helper function for creating genesis state.
 func (s *GovernanceStateHelper) Stake(
 	addr common.Address, publicKey []byte, staked *big.Int,
 	name, email, location, url string) {
 	offset := s.LenNodes()
-	s.PushNode(&nodeInfo{
+	node := &nodeInfo{
 		Owner:     addr,
 		PublicKey: publicKey,
 		Staked:    staked,
@@ -1995,8 +2222,23 @@ func (s *GovernanceStateHelper) Stake(
 		Email:     email,
 		Location:  location,
 		Url:       url,
+	}
+	s.PushNode(node)
+	if err := s.PutNodeOffsets(node, offset); err != nil {
+		panic(err)
+	}
+
+	if staked.Cmp(big.NewInt(0)) == 0 {
+		return
+	}
+
+	offset = s.LenDelegators(addr)
+	s.PushDelegator(addr, &delegatorInfo{
+		Owner:         addr,
+		Value:         staked,
+		UndelegatedAt: big.NewInt(0),
 	})
-	s.PutNodesOffset(addr, offset)
+	s.PutDelegatorOffset(addr, addr, offset)
 }
 
 const phiRatioMultiplier = 1000000.0
@@ -2017,6 +2259,7 @@ func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
 		DKGSetSize:       uint32(s.getStateBigInt(big.NewInt(dkgSetSizeLoc)).Uint64()),
 		RoundInterval:    s.getStateBigInt(big.NewInt(roundIntervalLoc)).Uint64(),
 		MinBlockInterval: s.getStateBigInt(big.NewInt(minBlockIntervalLoc)).Uint64(),
+		FineValues:       s.FineValues(),
 	}
 }
 
@@ -2035,6 +2278,7 @@ func (s *GovernanceStateHelper) UpdateConfiguration(cfg *params.DexconConfig) {
 	s.setStateBigInt(big.NewInt(dkgSetSizeLoc), big.NewInt(int64(cfg.DKGSetSize)))
 	s.setStateBigInt(big.NewInt(roundIntervalLoc), big.NewInt(int64(cfg.RoundInterval)))
 	s.setStateBigInt(big.NewInt(minBlockIntervalLoc), big.NewInt(int64(cfg.MinBlockInterval)))
+	s.SetFineValues(cfg.FineValues)
 }
 
 type rawConfigStruct struct {
@@ -2051,6 +2295,7 @@ type rawConfigStruct struct {
 	DKGSetSize       *big.Int
 	RoundInterval    *big.Int
 	MinBlockInterval *big.Int
+	FineValues       []*big.Int
 }
 
 // UpdateConfigurationRaw updates system configuration.
@@ -2068,6 +2313,7 @@ func (s *GovernanceStateHelper) UpdateConfigurationRaw(cfg *rawConfigStruct) {
 	s.setStateBigInt(big.NewInt(dkgSetSizeLoc), cfg.DKGSetSize)
 	s.setStateBigInt(big.NewInt(roundIntervalLoc), cfg.RoundInterval)
 	s.setStateBigInt(big.NewInt(minBlockIntervalLoc), cfg.MinBlockInterval)
+	s.SetFineValues(cfg.FineValues)
 }
 
 // event ConfigurationChanged();
@@ -2229,6 +2475,32 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 		return g.penalize()
 	}
 
+	mpk, err := g.state.GetDKGMasterPublicKeyByProposerID(
+		round, dkgComplaint.PrivateShare.ProposerID)
+	if err != nil {
+		return g.penalize()
+	}
+
+	// Verify DKG complaint is correct.
+	ok, err := coreUtils.VerifyDKGComplaint(&dkgComplaint, mpk)
+	if !ok || err != nil {
+		return g.penalize()
+	}
+
+	// Fine the attacker.
+	need, err := coreUtils.NeedPenaltyDKGPrivateShare(&dkgComplaint, mpk)
+	if err != nil {
+		return g.penalize()
+	}
+	if need {
+		fineValue := g.state.FineValue(big.NewInt(ReportTypeInvalidDKG))
+		offset := g.state.NodesOffsetByID(Bytes32(dkgComplaint.PrivateShare.ProposerID.Hash))
+		node := g.state.Node(offset)
+		if err := g.fine(node.Owner, fineValue, comp, nil); err != nil {
+			return g.penalize()
+		}
+	}
+
 	g.state.PushDKGComplaint(round, comp)
 
 	// Set this to relatively high to prevent spamming
@@ -2242,7 +2514,7 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 	}
 
 	caller := g.contract.Caller()
-	offset := g.state.NodesOffset(caller)
+	offset := g.state.NodesOffsetByAddress(caller)
 
 	// Can not add dkg mpk if not staked.
 	if offset.Cmp(big.NewInt(0)) < 0 {
@@ -2344,7 +2616,7 @@ func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]
 }
 
 func (g *GovernanceContract) delegate(nodeAddr common.Address) ([]byte, error) {
-	offset := g.state.NodesOffset(nodeAddr)
+	offset := g.state.NodesOffsetByAddress(nodeAddr)
 	if offset.Cmp(big.NewInt(0)) < 0 {
 		return nil, errExecutionReverted
 	}
@@ -2401,12 +2673,7 @@ func (g *GovernanceContract) stake(
 	}
 
 	caller := g.contract.Caller()
-	offset := g.state.NodesOffset(caller)
-
-	// Check if public key is valid.
-	if _, err := crypto.UnmarshalPubkey(publicKey); err != nil {
-		return g.penalize()
-	}
+	offset := g.state.NodesOffsetByAddress(caller)
 
 	// Can not stake if already staked.
 	if offset.Cmp(big.NewInt(0)) >= 0 {
@@ -2414,7 +2681,7 @@ func (g *GovernanceContract) stake(
 	}
 
 	offset = g.state.LenNodes()
-	g.state.PushNode(&nodeInfo{
+	node := &nodeInfo{
 		Owner:     caller,
 		PublicKey: publicKey,
 		Staked:    big.NewInt(0),
@@ -2423,8 +2690,11 @@ func (g *GovernanceContract) stake(
 		Email:     email,
 		Location:  location,
 		Url:       url,
-	})
-	g.state.PutNodesOffset(caller, offset)
+	}
+	g.state.PushNode(node)
+	if err := g.state.PutNodeOffsets(node, offset); err != nil {
+		return g.penalize()
+	}
 
 	// Delegate fund to itself.
 	if g.contract.Value().Cmp(big.NewInt(0)) > 0 {
@@ -2438,7 +2708,7 @@ func (g *GovernanceContract) stake(
 }
 
 func (g *GovernanceContract) undelegateHelper(nodeAddr, caller common.Address) ([]byte, error) {
-	nodeOffset := g.state.NodesOffset(nodeAddr)
+	nodeOffset := g.state.NodesOffsetByAddress(nodeAddr)
 	if nodeOffset.Cmp(big.NewInt(0)) < 0 {
 		return nil, errExecutionReverted
 	}
@@ -2475,7 +2745,7 @@ func (g *GovernanceContract) undelegate(nodeAddr common.Address) ([]byte, error)
 func (g *GovernanceContract) withdraw(nodeAddr common.Address) ([]byte, error) {
 	caller := g.contract.Caller()
 
-	nodeOffset := g.state.NodesOffset(nodeAddr)
+	nodeOffset := g.state.NodesOffsetByAddress(nodeAddr)
 	if nodeOffset.Cmp(big.NewInt(0)) < 0 {
 		return nil, errExecutionReverted
 	}
@@ -2523,9 +2793,11 @@ func (g *GovernanceContract) withdraw(nodeAddr common.Address) ([]byte, error) {
 		if offset.Cmp(lastIndex) != 0 {
 			lastNode := g.state.Node(lastIndex)
 			g.state.UpdateNode(offset, lastNode)
-			g.state.PutNodesOffset(lastNode.Owner, offset)
+			if err := g.state.PutNodeOffsets(lastNode, offset); err != nil {
+				panic(err)
+			}
 		}
-		g.state.DeleteNodesOffset(nodeAddr)
+		g.state.DeleteNodesOffsetByAddress(nodeAddr)
 		g.state.PopLastNode()
 	}
 
@@ -2534,7 +2806,7 @@ func (g *GovernanceContract) withdraw(nodeAddr common.Address) ([]byte, error) {
 
 func (g *GovernanceContract) unstake() ([]byte, error) {
 	caller := g.contract.Caller()
-	offset := g.state.NodesOffset(caller)
+	offset := g.state.NodesOffsetByAddress(caller)
 	if offset.Cmp(big.NewInt(0)) < 0 {
 		return nil, errExecutionReverted
 	}
@@ -2567,7 +2839,7 @@ func (g *GovernanceContract) unstake() ([]byte, error) {
 func (g *GovernanceContract) payFine(nodeAddr common.Address) ([]byte, error) {
 	caller := g.contract.Caller()
 
-	nodeOffset := g.state.NodesOffset(nodeAddr)
+	nodeOffset := g.state.NodesOffsetByAddress(nodeAddr)
 	if nodeOffset.Cmp(big.NewInt(0)) < 0 {
 		return nil, errExecutionReverted
 	}
@@ -2637,6 +2909,89 @@ func (g *GovernanceContract) proposeCRS(nextRound *big.Int, signedCRS []byte) ([
 	// To encourage DKG set to propose the correct value, correctly submitting
 	// this should cause nothing.
 	return g.useGas(0)
+}
+
+type sortBytes [][]byte
+
+func (s sortBytes) Less(i, j int) bool {
+	return bytes.Compare(s[i], s[j]) < 0
+}
+
+func (s sortBytes) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (s sortBytes) Len() int {
+	return len(s)
+}
+
+func (g *GovernanceContract) fine(nodeAddr common.Address, amount *big.Int, payloads ...[]byte) error {
+	sort.Sort(sortBytes(payloads))
+
+	hash := Bytes32(crypto.Keccak256Hash(payloads...))
+	if g.state.FineRecords(hash) {
+		return errors.New("already fined")
+	}
+	g.state.SetFineRecords(hash, true)
+
+	nodeOffset := g.state.NodesOffsetByAddress(nodeAddr)
+	if nodeOffset.Cmp(big.NewInt(0)) < 0 {
+		return errExecutionReverted
+	}
+
+	// Set fined value.
+	node := g.state.Node(nodeOffset)
+	node.Fined = new(big.Int).Add(node.Fined, amount)
+	g.state.UpdateNode(nodeOffset, node)
+
+	return nil
+}
+
+func (g *GovernanceContract) report(reportType *big.Int, arg1, arg2 []byte) ([]byte, error) {
+	typeEnum := ReportType(reportType.Uint64())
+	var reportedNodeID coreTypes.NodeID
+
+	switch typeEnum {
+	case ReportTypeForkVote:
+		vote1 := new(coreTypes.Vote)
+		if err := rlp.DecodeBytes(arg1, vote1); err != nil {
+			return g.penalize()
+		}
+		vote2 := new(coreTypes.Vote)
+		if err := rlp.DecodeBytes(arg2, vote2); err != nil {
+			return g.penalize()
+		}
+		need, err := coreUtils.NeedPenaltyForkVote(vote1, vote2)
+		if !need || err != nil {
+			return g.penalize()
+		}
+		reportedNodeID = vote1.ProposerID
+	case ReportTypeForkBlock:
+		block1 := new(coreTypes.Block)
+		if err := rlp.DecodeBytes(arg1, block1); err != nil {
+			return g.penalize()
+		}
+		block2 := new(coreTypes.Block)
+		if err := rlp.DecodeBytes(arg2, block2); err != nil {
+			return g.penalize()
+		}
+		need, err := coreUtils.NeedPenaltyForkBlock(block1, block2)
+		if !need || err != nil {
+			return g.penalize()
+		}
+		reportedNodeID = block1.ProposerID
+	default:
+		return g.penalize()
+	}
+
+	offset := g.state.NodesOffsetByID(Bytes32(reportedNodeID.Hash))
+	node := g.state.Node(offset)
+
+	fineValue := g.state.FineValue(reportType)
+	if err := g.fine(node.Owner, fineValue, arg1, arg2); err != nil {
+		return nil, errExecutionReverted
+	}
+	return nil, nil
 }
 
 func (g *GovernanceContract) transferOwnership(newOwner common.Address) ([]byte, error) {

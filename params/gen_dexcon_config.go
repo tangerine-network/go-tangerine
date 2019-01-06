@@ -15,21 +15,22 @@ var _ = (*dexconConfigSpecMarshaling)(nil)
 // MarshalJSON marshals as JSON.
 func (d DexconConfig) MarshalJSON() ([]byte, error) {
 	type DexconConfig struct {
-		GenesisCRSText   string                `json:"genesisCRSText"`
-		Owner            common.Address        `json:"owner"`
-		MinStake         *math.HexOrDecimal256 `json:"minStake"`
-		LockupPeriod     uint64                `json:"lockupPeriod"`
-		BlockReward      *math.HexOrDecimal256 `json:"blockReward"`
-		BlockGasLimit    uint64                `json:"blockGasLimit"`
-		NumChains        uint32                `json:"numChains"`
-		LambdaBA         uint64                `json:"lambdaBA"`
-		LambdaDKG        uint64                `json:"lambdaDKG"`
-		K                uint32                `json:"k"`
-		PhiRatio         float32               `json:"phiRatio"`
-		NotarySetSize    uint32                `json:"notarySetSize"`
-		DKGSetSize       uint32                `json:"dkgSetSize"`
-		RoundInterval    uint64                `json:"roundInterval"`
-		MinBlockInterval uint64                `json:"minBlockInterval"`
+		GenesisCRSText   string                  `json:"genesisCRSText"`
+		Owner            common.Address          `json:"owner"`
+		MinStake         *math.HexOrDecimal256   `json:"minStake"`
+		LockupPeriod     uint64                  `json:"lockupPeriod"`
+		BlockReward      *math.HexOrDecimal256   `json:"blockReward"`
+		BlockGasLimit    uint64                  `json:"blockGasLimit"`
+		NumChains        uint32                  `json:"numChains"`
+		LambdaBA         uint64                  `json:"lambdaBA"`
+		LambdaDKG        uint64                  `json:"lambdaDKG"`
+		K                uint32                  `json:"k"`
+		PhiRatio         float32                 `json:"phiRatio"`
+		NotarySetSize    uint32                  `json:"notarySetSize"`
+		DKGSetSize       uint32                  `json:"dkgSetSize"`
+		RoundInterval    uint64                  `json:"roundInterval"`
+		MinBlockInterval uint64                  `json:"minBlockInterval"`
+		FineValues       []*math.HexOrDecimal256 `json:"fineValues"`
 	}
 	var enc DexconConfig
 	enc.GenesisCRSText = d.GenesisCRSText
@@ -47,27 +48,34 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 	enc.DKGSetSize = d.DKGSetSize
 	enc.RoundInterval = d.RoundInterval
 	enc.MinBlockInterval = d.MinBlockInterval
+	if d.FineValues != nil {
+		enc.FineValues = make([]*math.HexOrDecimal256, len(d.FineValues))
+		for k, v := range d.FineValues {
+			enc.FineValues[k] = (*math.HexOrDecimal256)(v)
+		}
+	}
 	return json.Marshal(&enc)
 }
 
 // UnmarshalJSON unmarshals from JSON.
 func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 	type DexconConfig struct {
-		GenesisCRSText   *string               `json:"genesisCRSText"`
-		Owner            *common.Address       `json:"owner"`
-		MinStake         *math.HexOrDecimal256 `json:"minStake"`
-		LockupPeriod     *uint64               `json:"lockupPeriod"`
-		BlockReward      *math.HexOrDecimal256 `json:"blockReward"`
-		BlockGasLimit    *uint64               `json:"blockGasLimit"`
-		NumChains        *uint32               `json:"numChains"`
-		LambdaBA         *uint64               `json:"lambdaBA"`
-		LambdaDKG        *uint64               `json:"lambdaDKG"`
-		K                *uint32               `json:"k"`
-		PhiRatio         *float32              `json:"phiRatio"`
-		NotarySetSize    *uint32               `json:"notarySetSize"`
-		DKGSetSize       *uint32               `json:"dkgSetSize"`
-		RoundInterval    *uint64               `json:"roundInterval"`
-		MinBlockInterval *uint64               `json:"minBlockInterval"`
+		GenesisCRSText   *string                 `json:"genesisCRSText"`
+		Owner            *common.Address         `json:"owner"`
+		MinStake         *math.HexOrDecimal256   `json:"minStake"`
+		LockupPeriod     *uint64                 `json:"lockupPeriod"`
+		BlockReward      *math.HexOrDecimal256   `json:"blockReward"`
+		BlockGasLimit    *uint64                 `json:"blockGasLimit"`
+		NumChains        *uint32                 `json:"numChains"`
+		LambdaBA         *uint64                 `json:"lambdaBA"`
+		LambdaDKG        *uint64                 `json:"lambdaDKG"`
+		K                *uint32                 `json:"k"`
+		PhiRatio         *float32                `json:"phiRatio"`
+		NotarySetSize    *uint32                 `json:"notarySetSize"`
+		DKGSetSize       *uint32                 `json:"dkgSetSize"`
+		RoundInterval    *uint64                 `json:"roundInterval"`
+		MinBlockInterval *uint64                 `json:"minBlockInterval"`
+		FineValues       []*math.HexOrDecimal256 `json:"fineValues"`
 	}
 	var dec DexconConfig
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -117,6 +125,12 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 	}
 	if dec.MinBlockInterval != nil {
 		d.MinBlockInterval = *dec.MinBlockInterval
+	}
+	if dec.FineValues != nil {
+		d.FineValues = make([]*big.Int, len(dec.FineValues))
+		for k, v := range dec.FineValues {
+			d.FineValues[k] = (*big.Int)(v)
+		}
 	}
 	return nil
 }

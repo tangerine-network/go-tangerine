@@ -22,14 +22,22 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 	"math/rand"
+	"sort"
 	"testing"
 	"time"
+
+	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
+	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
+	coreEcdsa "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
+	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+	coreUtils "github.com/dexon-foundation/dexon-consensus/core/utils"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/params"
+	"github.com/dexon-foundation/dexon/rlp"
 	"github.com/stretchr/testify/suite"
 )
 
@@ -187,16 +195,15 @@ func (g *GovernanceContractTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
 
 	// Stake.
-	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e4))
+	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5))
 	balanceBeforeStake := g.stateDB.GetBalance(addr)
 	input, err := abiObject.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
 	g.Require().NoError(err)
 	_, err = g.call(addr, input, amount)
 	g.Require().NoError(err)
 
-	// Node staked but staked fund < MinStake so is still unqualified.
 	g.Require().Equal(1, int(g.s.LenNodes().Uint64()))
-	g.Require().Equal(0, len(g.s.QualifiedNodes()))
+	g.Require().Equal(1, len(g.s.QualifiedNodes()))
 	g.Require().Equal("Test1", g.s.Node(big.NewInt(0)).Name)
 
 	// Check balance.
@@ -235,7 +242,7 @@ func (g *GovernanceContractTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
 	_, err = g.call(addr2, input, amount)
 	g.Require().NoError(err)
 	g.Require().Equal("Test2", g.s.Node(big.NewInt(0)).Name)
-	g.Require().Equal(0, int(g.s.NodesOffset(addr2).Int64()))
+	g.Require().Equal(0, int(g.s.NodesOffsetByAddress(addr2).Int64()))
 
 	// 1st node Stake.
 	input, err = abiObject.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
@@ -243,26 +250,35 @@ func (g *GovernanceContractTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
 	_, err = g.call(addr, input, amount)
 	g.Require().NoError(err)
 
+	g.Require().Equal(2, len(g.s.QualifiedNodes()))
+
 	// 2nd node Unstake.
 	input, err = abiObject.Pack("unstake")
 	g.Require().NoError(err)
 	_, err = g.call(addr2, input, big.NewInt(0))
 	g.Require().NoError(err)
+	node := g.s.Node(big.NewInt(0))
+	g.Require().Equal("Test2", node.Name)
+	g.Require().Equal(true, node.Unstaked)
+	g.Require().Equal(1, len(g.s.QualifiedNodes()))
+
 	time.Sleep(time.Second * 2)
 	input, err = abiObject.Pack("withdraw", addr2)
 	g.Require().NoError(err)
 	_, err = g.call(addr2, input, big.NewInt(0))
 	g.Require().NoError(err)
+	g.Require().Equal(1, len(g.s.QualifiedNodes()))
 
 	g.Require().Equal(1, int(g.s.LenNodes().Uint64()))
 	g.Require().Equal("Test1", g.s.Node(big.NewInt(0)).Name)
-	g.Require().Equal(-1, int(g.s.NodesOffset(addr2).Int64()))
+	g.Require().Equal(-1, int(g.s.NodesOffsetByAddress(addr2).Int64()))
 
 	// 1st node Unstake.
 	input, err = abiObject.Pack("unstake")
 	g.Require().NoError(err)
 	_, err = g.call(addr, input, big.NewInt(0))
 	g.Require().NoError(err)
+	g.Require().Equal(0, len(g.s.QualifiedNodes()))
 	time.Sleep(time.Second * 2)
 	input, err = abiObject.Pack("withdraw", addr)
 	g.Require().NoError(err)
@@ -270,7 +286,7 @@ func (g *GovernanceContractTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
 	g.Require().NoError(err)
 
 	g.Require().Equal(0, int(g.s.LenNodes().Uint64()))
-	g.Require().Equal(-1, int(g.s.NodesOffset(addr).Int64()))
+	g.Require().Equal(-1, int(g.s.NodesOffsetByAddress(addr).Int64()))
 	g.Require().Equal(-1, int(g.s.DelegatorsOffset(addr, addr).Int64()))
 
 	// Check balance.
@@ -424,7 +440,7 @@ func (g *GovernanceContractTestSuite) TestFine() {
 	g.Require().NotNil(err)
 
 	// Fined.
-	offset := g.s.NodesOffset(addr)
+	offset := g.s.NodesOffsetByAddress(addr)
 	g.Require().True(offset.Cmp(big.NewInt(0)) >= 0)
 	node := g.s.Node(offset)
 	node.Fined = new(big.Int).Set(amount)
@@ -544,7 +560,8 @@ func (g *GovernanceContractTestSuite) TestUpdateConfiguration() {
 	input, err := abiObject.Pack("updateConfiguration",
 		new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)), big.NewInt(1000),
 		big.NewInt(1e18), big.NewInt(8000000), big.NewInt(6), big.NewInt(250), big.NewInt(2500),
-		big.NewInt(0), big.NewInt(667000), big.NewInt(4), big.NewInt(4), big.NewInt(600000), big.NewInt(900))
+		big.NewInt(0), big.NewInt(667000), big.NewInt(4), big.NewInt(4), big.NewInt(600000), big.NewInt(900),
+		[]*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)})
 	g.Require().NoError(err)
 
 	// Call with non-owner.
@@ -729,6 +746,149 @@ func (g *GovernanceContractTestSuite) TestConfigurationReading() {
 	g.Require().Equal(g.config.MinBlockInterval, value.Uint64())
 }
 
+func (g *GovernanceContractTestSuite) TestReportForkVote() {
+	key, addr := g.newPrefundAccount()
+	pkBytes := crypto.FromECDSAPub(&key.PublicKey)
+
+	// Stake.
+	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e4))
+	input, err := abiObject.Pack("stake", pkBytes, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
+	g.Require().NoError(err)
+	_, err = g.call(addr, input, amount)
+	g.Require().NoError(err)
+
+	pubKey := coreEcdsa.NewPublicKeyFromECDSA(&key.PublicKey)
+	privKey := coreEcdsa.NewPrivateKeyFromECDSA(key)
+	vote1 := coreTypes.NewVote(coreTypes.VoteCom, coreCommon.NewRandomHash(), uint64(0))
+	vote1.ProposerID = coreTypes.NewNodeID(pubKey)
+
+	vote2 := vote1.Clone()
+	for vote2.BlockHash == vote1.BlockHash {
+		vote2.BlockHash = coreCommon.NewRandomHash()
+	}
+	vote1.Signature, err = privKey.Sign(coreUtils.HashVote(vote1))
+	g.Require().NoError(err)
+	vote2.Signature, err = privKey.Sign(coreUtils.HashVote(vote2))
+	g.Require().NoError(err)
+
+	vote1Bytes, err := rlp.EncodeToBytes(vote1)
+	g.Require().NoError(err)
+	vote2Bytes, err := rlp.EncodeToBytes(vote2)
+	g.Require().NoError(err)
+
+	// Report wrong type (fork block)
+	input, err = abiObject.Pack("report", big.NewInt(2), vote1Bytes, vote2Bytes)
+	g.Require().NoError(err)
+	_, err = g.call(addr, input, big.NewInt(0))
+	g.Require().Error(err)
+
+	input, err = abiObject.Pack("report", big.NewInt(1), vote1Bytes, vote2Bytes)
+	g.Require().NoError(err)
+	_, err = g.call(addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+
+	node := g.s.Node(big.NewInt(0))
+	g.Require().Equal(node.Fined, g.s.FineValue(big.NewInt(1)))
+
+	// Duplicate report should fail.
+	input, err = abiObject.Pack("report", big.NewInt(1), vote1Bytes, vote2Bytes)
+	g.Require().NoError(err)
+	_, err = g.call(addr, input, big.NewInt(0))
+	g.Require().Error(err)
+
+	// Check if finedRecords is set.
+	payloads := [][]byte{vote1Bytes, vote2Bytes}
+	sort.Sort(sortBytes(payloads))
+
+	hash := Bytes32(crypto.Keccak256Hash(payloads...))
+	input, err = abiObject.Pack("finedRecords", hash)
+	g.Require().NoError(err)
+	res, err := g.call(addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+
+	var value bool
+	err = abiObject.Unpack(&value, "finedRecords", res)
+	g.Require().NoError(err)
+	g.Require().True(value)
+}
+
+func (g *GovernanceContractTestSuite) TestReportForkBlock() {
+	key, addr := g.newPrefundAccount()
+	pkBytes := crypto.FromECDSAPub(&key.PublicKey)
+
+	// Stake.
+	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e4))
+	input, err := abiObject.Pack("stake", pkBytes, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
+	g.Require().NoError(err)
+	_, err = g.call(addr, input, amount)
+	g.Require().NoError(err)
+
+	privKey := coreEcdsa.NewPrivateKeyFromECDSA(key)
+	block1 := &coreTypes.Block{
+		ProposerID: coreTypes.NewNodeID(privKey.PublicKey()),
+		ParentHash: coreCommon.NewRandomHash(),
+		Timestamp:  time.Now(),
+	}
+
+	block2 := block1.Clone()
+	for block2.ParentHash == block1.ParentHash {
+		block2.ParentHash = coreCommon.NewRandomHash()
+	}
+
+	hashBlock := func(block *coreTypes.Block) coreCommon.Hash {
+		block.PayloadHash = coreCrypto.Keccak256Hash(block.Payload)
+		var err error
+		block.Hash, err = coreUtils.HashBlock(block)
+		g.Require().NoError(err)
+		return block.Hash
+	}
+
+	block1.Signature, err = privKey.Sign(hashBlock(block1))
+	g.Require().NoError(err)
+	block2.Signature, err = privKey.Sign(hashBlock(block2))
+	g.Require().NoError(err)
+
+	block1Bytes, err := rlp.EncodeToBytes(block1)
+	g.Require().NoError(err)
+	block2Bytes, err := rlp.EncodeToBytes(block2)
+	g.Require().NoError(err)
+
+	// Report wrong type (fork vote)
+	input, err = abiObject.Pack("report", big.NewInt(1), block1Bytes, block2Bytes)
+	g.Require().NoError(err)
+	_, err = g.call(addr, input, big.NewInt(0))
+	g.Require().Error(err)
+
+	input, err = abiObject.Pack("report", big.NewInt(2), block1Bytes, block2Bytes)
+	g.Require().NoError(err)
+	_, err = g.call(addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+
+	node := g.s.Node(big.NewInt(0))
+	g.Require().Equal(node.Fined, g.s.FineValue(big.NewInt(2)))
+
+	// Duplicate report should fail.
+	input, err = abiObject.Pack("report", big.NewInt(2), block1Bytes, block2Bytes)
+	g.Require().NoError(err)
+	_, err = g.call(addr, input, big.NewInt(0))
+	g.Require().Error(err)
+
+	// Check if finedRecords is set.
+	payloads := [][]byte{block1Bytes, block2Bytes}
+	sort.Sort(sortBytes(payloads))
+
+	hash := Bytes32(crypto.Keccak256Hash(payloads...))
+	input, err = abiObject.Pack("finedRecords", hash)
+	g.Require().NoError(err)
+	res, err := g.call(addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+
+	var value bool
+	err = abiObject.Unpack(&value, "finedRecords", res)
+	g.Require().NoError(err)
+	g.Require().True(value)
+}
+
 func (g *GovernanceContractTestSuite) TestMiscVariableReading() {
 	privKey, addr := g.newPrefundAccount()
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
@@ -769,11 +929,21 @@ func (g *GovernanceContractTestSuite) TestMiscVariableReading() {
 	g.Require().NoError(err)
 	g.Require().Equal(1, int(value.Uint64()))
 
-	input, err = abiObject.Pack("nodesOffset", addr)
+	input, err = abiObject.Pack("nodesOffsetByAddress", addr)
 	g.Require().NoError(err)
 	res, err = g.call(addr, input, big.NewInt(0))
 	g.Require().NoError(err)
-	err = abiObject.Unpack(&value, "nodesOffset", res)
+	err = abiObject.Unpack(&value, "nodesOffsetByAddress", res)
+	g.Require().NoError(err)
+	g.Require().Equal(0, int(value.Uint64()))
+
+	id, err := publicKeyToNodeID(pk)
+	g.Require().NoError(err)
+	input, err = abiObject.Pack("nodesOffsetByID", id)
+	g.Require().NoError(err)
+	res, err = g.call(addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+	err = abiObject.Unpack(&value, "nodesOffsetByID", res)
 	g.Require().NoError(err)
 	g.Require().Equal(0, int(value.Uint64()))
 
@@ -797,6 +967,11 @@ func (g *GovernanceContractTestSuite) TestMiscVariableReading() {
 	err = abiObject.Unpack(&value, "delegatorsOffset", res)
 	g.Require().NoError(err)
 	g.Require().Equal(2, int(value.Uint64()))
+
+	input, err = abiObject.Pack("fineValues", big.NewInt(0))
+	g.Require().NoError(err)
+	res, err = g.call(addr, input, big.NewInt(0))
+	g.Require().NoError(err)
 }
 
 func TestGovernanceContract(t *testing.T) {

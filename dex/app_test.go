@@ -494,20 +494,21 @@ func BenchmarkBlockDeliveredFlow(b *testing.B) {
 func newTestDexonWithGenesis(allocKey *ecdsa.PrivateKey) (*Dexon, error) {
 	db := ethdb.NewMemDatabase()
 
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+
 	testBankAddress := crypto.PubkeyToAddress(allocKey.PublicKey)
 	genesis := core.DefaultTestnetGenesisBlock()
 	genesis.Alloc = core.GenesisAlloc{
 		testBankAddress: {
-			Balance: big.NewInt(100000000000000000),
-			Staked:  big.NewInt(50000000000000000),
+			Balance:   big.NewInt(100000000000000000),
+			Staked:    big.NewInt(50000000000000000),
+			PublicKey: crypto.FromECDSAPub(&key.PublicKey),
 		},
 	}
 	chainConfig, _, err := core.SetupGenesisBlock(db, genesis)
-	if err != nil {
-		return nil, err
-	}
-
-	key, err := crypto.GenerateKey()
 	if err != nil {
 		return nil, err
 	}

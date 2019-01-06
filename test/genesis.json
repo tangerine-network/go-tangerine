@@ -2,17 +2,18 @@
   "config": {
     "chainId": 238,
     "homesteadBlock": 0,
-    "daoForkBlock": 0,
     "daoForkSupport": true,
     "eip150Block": 0,
     "eip150Hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
     "eip155Block": 0,
     "eip158Block": 0,
     "byzantiumBlock": 0,
+    "constantinopleBlock": 0,
     "dexcon": {
       "genesisCRSText": "In DEXON, we trust.",
-      "owner": "0xBF8C48A620bacc46907f9B89732D25E47A2D7Cf7",
+      "owner": "0xbf8c48a620bacc46907f9b89732d25e47a2d7cf7",
       "minStake": "0x152d02c7e14af6800000",
+      "lockupPeriod": 259200000,
       "blockReward": "0xde0b6b3a7640000",
       "blockGasLimit": 40000000,
       "numChains": 6,
@@ -23,7 +24,12 @@
       "notarySetSize": 4,
       "dkgSetSize": 4,
       "roundInterval": 600000,
-      "minBlockInterval": 900
+      "minBlockInterval": 900,
+      "fineValues": [
+        "0x21e19e0c9bab2400000",
+        "0x21e19e0c9bab2400000",
+        "0x152d02c7e14af6800000"
+      ]
     }
   },
   "nonce": "0x42",
