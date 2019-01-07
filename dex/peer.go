@@ -52,6 +52,7 @@ import (
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/p2p"
 	"github.com/dexon-foundation/dexon/p2p/enode"
+	"github.com/dexon-foundation/dexon/p2p/enr"
 	"github.com/dexon-foundation/dexon/rlp"
 )
 
@@ -62,9 +63,9 @@ var (
 )
 
 const (
-	maxKnownTxs    = 32768 // Maximum transactions hashes to keep in the known list (prevent DOS)
-	maxKnownMetas  = 32768 // Maximum metas hashes to keep in the known list (prevent DOS)
-	maxKnownBlocks = 1024  // Maximum block hashes to keep in the known list (prevent DOS)
+	maxKnownTxs     = 32768 // Maximum transactions hashes to keep in the known list (prevent DOS)
+	maxKnownRecords = 32768 // Maximum records hashes to keep in the known list (prevent DOS)
+	maxKnownBlocks  = 1024  // Maximum block hashes to keep in the known list (prevent DOS)
 
 	/*
 		maxKnownLatticeBLocks       = 2048
@@ -80,7 +81,7 @@ const (
 	// contain a single transaction, or thousands.
 	maxQueuedTxs = 1024
 
-	maxQueuedMetas = 512
+	maxQueuedRecords = 512
 
 	// maxQueuedProps is the maximum number of block propagations to queue up before
 	// dropping broadcasts. There's not much point in queueing stale blocks, so a few
@@ -141,7 +142,7 @@ type peer struct {
 	lock   sync.RWMutex
 
 	knownTxs                   mapset.Set // Set of transaction hashes known to be known by this peer
-	knownMetas                 mapset.Set // Set of node metas known to be known by this peer
+	knownRecords               mapset.Set // Set of node record known to be known by this peer
 	knownBlocks                mapset.Set // Set of block hashes known to be known by this peer
 	knownLatticeBlocks         mapset.Set
 	knownVotes                 mapset.Set
@@ -150,7 +151,7 @@ type peer struct {
 	knownDKGPrivateShares      mapset.Set
 	knownDKGPartialSignatures  mapset.Set
 	queuedTxs                  chan []*types.Transaction // Queue of transactions to broadcast to the peer
-	queuedMetas                chan []*NodeMeta          // Queue of node metas to broadcast to the peer
+	queuedRecords              chan []*enr.Record        // Queue of node records to broadcast to the peer
 	queuedProps                chan *types.Block         // Queue of blocks to broadcast to the peer
 	queuedAnns                 chan *types.Block         // Queue of blocks to announce to the peer
 	queuedLatticeBlocks        chan *coreTypes.Block
@@ -172,7 +173,7 @@ func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 		version:                    version,
 		id:                         p.ID().String(),
 		knownTxs:                   mapset.NewSet(),
-		knownMetas:                 mapset.NewSet(),
+		knownRecords:               mapset.NewSet(),
 		knownBlocks:                mapset.NewSet(),
 		knownLatticeBlocks:         mapset.NewSet(),
 		knownVotes:                 mapset.NewSet(),
@@ -181,7 +182,7 @@ func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 		knownDKGPrivateShares:      mapset.NewSet(),
 		knownDKGPartialSignatures:  mapset.NewSet(),
 		queuedTxs:                  make(chan []*types.Transaction, maxQueuedTxs),
-		queuedMetas:                make(chan []*NodeMeta, maxQueuedMetas),
+		queuedRecords:              make(chan []*enr.Record, maxQueuedRecords),
 		queuedProps:                make(chan *types.Block, maxQueuedProps),
 		queuedAnns:                 make(chan *types.Block, maxQueuedAnns),
 		queuedLatticeBlocks:        make(chan *coreTypes.Block, maxQueuedLatticeBlocks),
@@ -198,16 +199,16 @@ func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 }
 
 // broadcast is a write loop that multiplexes block propagations, announcements,
-// transaction and notary node metas broadcasts into the remote peer.
+// transaction and notary node records broadcasts into the remote peer.
 // The goal is to have an async writer that does not lock up node internals.
 func (p *peer) broadcast() {
 	for {
 		select {
-		case metas := <-p.queuedMetas:
-			if err := p.SendNodeMetas(metas); err != nil {
+		case records := <-p.queuedRecords:
+			if err := p.SendNodeRecords(records); err != nil {
 				return
 			}
-			p.Log().Trace("Broadcast node metas", "count", len(metas))
+			p.Log().Trace("Broadcast node records", "count", len(records))
 
 		case block := <-p.queuedProps:
 			if err := p.SendNewBlock(block); err != nil {
@@ -335,11 +336,11 @@ func (p *peer) MarkTransaction(hash common.Hash) {
 	p.knownTxs.Add(hash)
 }
 
-func (p *peer) MarkNodeMeta(hash common.Hash) {
-	for p.knownMetas.Cardinality() >= maxKnownMetas {
-		p.knownMetas.Pop()
+func (p *peer) MarkNodeRecord(hash common.Hash) {
+	for p.knownRecords.Cardinality() >= maxKnownRecords {
+		p.knownRecords.Pop()
 	}
-	p.knownMetas.Add(hash)
+	p.knownRecords.Add(hash)
 }
 
 // SendTransactions sends transactions to the peer and includes the hashes
@@ -364,26 +365,26 @@ func (p *peer) AsyncSendTransactions(txs []*types.Transaction) {
 	}
 }
 
-// SendNodeMetas sends the metas to the peer and includes the hashes
-// in its metas hash set for future reference.
-func (p *peer) SendNodeMetas(metas []*NodeMeta) error {
-	for _, meta := range metas {
-		p.knownMetas.Add(meta.Hash())
+// SendNodeRecords sends the records to the peer and includes the hashes
+// in its records hash set for future reference.
+func (p *peer) SendNodeRecords(records []*enr.Record) error {
+	for _, record := range records {
+		p.knownRecords.Add(rlpHash(record))
 	}
-	return p2p.Send(p.rw, MetaMsg, metas)
+	return p2p.Send(p.rw, RecordMsg, records)
 }
 
-// AsyncSendNodeMeta queues list of notary node meta propagation to a
+// AsyncSendNodeRecord queues list of notary node records propagation to a
 // remote peer. If the peer's broadcast queue is full, the event is silently
 // dropped.
-func (p *peer) AsyncSendNodeMetas(metas []*NodeMeta) {
+func (p *peer) AsyncSendNodeRecords(records []*enr.Record) {
 	select {
-	case p.queuedMetas <- metas:
-		for _, meta := range metas {
-			p.knownMetas.Add(meta.Hash())
+	case p.queuedRecords <- records:
+		for _, record := range records {
+			p.knownRecords.Add(rlpHash(record))
 		}
 	default:
-		p.Log().Debug("Dropping node meta propagation", "count", len(metas))
+		p.Log().Debug("Dropping node record propagation", "count", len(records))
 	}
 }
 
@@ -851,14 +852,14 @@ func (ps *peerSet) PeersWithoutVote(hash common.Hash, label peerLabel) []*peer {
 	return list
 }
 
-// PeersWithoutNodeMeta retrieves a list of peers that do not have a
-// given meta in their set of known hashes.
-func (ps *peerSet) PeersWithoutNodeMeta(hash common.Hash) []*peer {
+// PeersWithoutNodeRecord retrieves a list of peers that do not have a
+// given record in their set of known hashes.
+func (ps *peerSet) PeersWithoutNodeRecord(hash common.Hash) []*peer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
 	list := make([]*peer, 0, len(ps.peers))
 	for _, p := range ps.peers {
-		if !p.knownMetas.Contains(hash) {
+		if !p.knownRecords.Contains(hash) {
 			list = append(list, p)
 		}
 	}
@@ -1118,11 +1119,11 @@ func (ps *peerSet) BuildNotaryConn(round uint64) {
 }
 
 func (ps *peerSet) dumpPeerLabel(s string) {
-	log.Trace(s, "peer num", len(ps.peers))
+	log.Debug(s, "peer num", len(ps.peers))
 	for id, labels := range ps.peer2Labels {
 		_, ok := ps.peers[id]
 		for label := range labels {
-			log.Trace(s, "connected", ok, "id", id[:16],
+			log.Debug(s, "connected", ok, "id", id[:16],
 				"round", label.round, "cid", label.chainID, "set", label.set)
 		}
 	}
@@ -1277,6 +1278,7 @@ func (ps *peerSet) removeLabel(node *enode.Node, label peerLabel) {
 	}
 }
 
+// TODO: improve this by not using pk.
 func (ps *peerSet) newNode(pk string) *enode.Node {
 	var ip net.IP
 	var tcp, udp int
@@ -1290,14 +1292,10 @@ func (ps *peerSet) newNode(pk string) *enode.Node {
 	if err != nil {
 		panic(err)
 	}
-	n := enode.NewV4(pubkey, net.IP{}, 0, 0)
 
-	meta := ps.tab.Get(n.ID())
-	if meta != nil {
-		ip = meta.IP
-		tcp = int(meta.TCP)
-		udp = int(meta.UDP)
+	node := ps.tab.GetNode(enode.PubkeyToIDV4(pubkey))
+	if node != nil {
+		return node
 	}
-
 	return enode.NewV4(pubkey, ip, tcp, udp)
 }

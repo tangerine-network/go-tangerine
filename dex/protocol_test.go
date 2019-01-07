@@ -36,6 +36,7 @@ import (
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/dex/downloader"
 	"github.com/dexon-foundation/dexon/p2p"
+	"github.com/dexon-foundation/dexon/p2p/enr"
 	"github.com/dexon-foundation/dexon/rlp"
 )
 
@@ -231,73 +232,71 @@ func TestGetBlockHeadersDataEncodeDecode(t *testing.T) {
 	}
 }
 
-func TestRecvNodeMetas(t *testing.T) {
+func TestRecvNodeRecords(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
 	p, _ := newTestPeer("peer", dex64, pm, true)
 	defer pm.Stop()
 	defer p.close()
 
-	meta := NodeMeta{
-		ID: randomID(),
-	}
+	record := randomNode().Record()
 
-	ch := make(chan newMetasEvent)
-	pm.nodeTable.SubscribeNewMetasEvent(ch)
+	ch := make(chan newRecordsEvent)
+	pm.nodeTable.SubscribeNewRecordsEvent(ch)
 
-	if err := p2p.Send(p.app, MetaMsg, []interface{}{meta}); err != nil {
+	if err := p2p.Send(p.app, RecordMsg, []interface{}{record}); err != nil {
 		t.Fatalf("send error: %v", err)
 	}
 
 	select {
 	case event := <-ch:
-		metas := event.Metas
-		if len(metas) != 1 {
-			t.Errorf("wrong number of new metas: got %d, want 1", len(metas))
-		} else if metas[0].Hash() != meta.Hash() {
-			t.Errorf("added wrong meta hash: got %v, want %v", metas[0].Hash(), meta.Hash())
+		records := event.Records
+		if len(records) != 1 {
+			t.Errorf("wrong number of new records: got %d, want 1", len(records))
+		} else if rlpHash(records[0]) != rlpHash(record) {
+			t.Errorf("added wrong records hash: got %v, want %v", rlpHash(records[0]), rlpHash(record))
 		}
 	case <-time.After(3 * time.Second):
-		t.Errorf("no newMetasEvent received within 3 seconds")
+		t.Errorf("no newRecordsEvent received within 3 seconds")
 	}
 }
 
-func TestSendNodeMetas(t *testing.T) {
+func TestSendNodeRecords(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
 	defer pm.Stop()
 
-	allmetas := make([]*NodeMeta, 100)
-	for i := 0; i < len(allmetas); i++ {
-		allmetas[i] = &NodeMeta{ID: randomID()}
+	allrecords := make([]*enr.Record, 100)
+	for i := 0; i < len(allrecords); i++ {
+		allrecords[i] = randomNode().Record()
 	}
 
 	// Connect several peers. They should all receive the pending transactions.
 	var wg sync.WaitGroup
-	checkmetas := func(p *testPeer) {
+	checkrecords := func(p *testPeer) {
 		defer wg.Done()
 		defer p.close()
 		seen := make(map[common.Hash]bool)
-		for _, meta := range allmetas {
-			seen[meta.Hash()] = false
+		for _, record := range allrecords {
+			seen[rlpHash(record)] = false
 		}
-		for n := 0; n < len(allmetas) && !t.Failed(); {
-			var metas []*NodeMeta
+		for n := 0; n < len(allrecords) && !t.Failed(); {
+			var records []*enr.Record
 			msg, err := p.app.ReadMsg()
 			if err != nil {
 				t.Errorf("%v: read error: %v", p.Peer, err)
-			} else if msg.Code != MetaMsg {
-				t.Errorf("%v: got code %d, want MetaMsg", p.Peer, msg.Code)
+			} else if msg.Code != RecordMsg {
+				t.Errorf("%v: got code %d, want RecordMsg", p.Peer, msg.Code)
 			}
-			if err := msg.Decode(&metas); err != nil {
+			if err := msg.Decode(&records); err != nil {
 				t.Errorf("%v: %v", p.Peer, err)
 			}
-			for _, meta := range metas {
-				hash := meta.Hash()
-				seenmeta, want := seen[hash]
-				if seenmeta {
-					t.Errorf("%v: got meta more than once: %x", p.Peer, hash)
+			for _, record := range records {
+				hash := rlpHash(record)
+				seenrecord, want := seen[hash]
+				if seenrecord {
+					t.Errorf("%v: got record more than once: %x", p.Peer, hash)
 				}
 				if !want {
-					t.Errorf("%v: got unexpected meta: %x", p.Peer, hash)
+					t.Errorf("%v: got unexpected record: %x", p.Peer, hash)
 				}
 				seen[hash] = true
 				n++
@@ -307,9 +306,9 @@ func TestSendNodeMetas(t *testing.T) {
 	for i := 0; i < 3; i++ {
 		p, _ := newTestPeer(fmt.Sprintf("peer #%d", i), dex64, pm, true)
 		wg.Add(1)
-		go checkmetas(p)
+		go checkrecords(p)
 	}
-	pm.nodeTable.Add(allmetas)
+	pm.nodeTable.AddRecords(allrecords)
 	wg.Wait()
 }
 
@@ -364,7 +363,7 @@ func TestRecvLatticeBlock(t *testing.T) {
 			t.Errorf("block mismatch")
 		}
 	case <-time.After(3 * time.Second):
-		t.Errorf("no newMetasEvent received within 3 seconds")
+		t.Errorf("no newRecordsEvent received within 3 seconds")
 	}
 }
 

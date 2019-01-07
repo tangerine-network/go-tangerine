@@ -26,6 +26,7 @@ import (
 	"github.com/dexon-foundation/dexon/dex/downloader"
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/p2p/enode"
+	"github.com/dexon-foundation/dexon/p2p/enr"
 )
 
 const (
@@ -40,8 +41,8 @@ const (
 	// A pack can get larger than this if a single transactions exceeds this size.
 	txsyncPackSize = 100 * 1024
 
-	// This is the target number for the packs of metas sent by metasyncLoop.
-	metasyncPackNum = 1024
+	// This is the target number for the packs of records sent by recordsyncLoop.
+	recordsyncPackNum = 1024
 )
 
 type txsync struct {
@@ -136,58 +137,59 @@ func (pm *ProtocolManager) txsyncLoop() {
 	}
 }
 
-type metasync struct {
-	p     *peer
-	metas []*NodeMeta
+type recordsync struct {
+	p       *peer
+	records []*enr.Record
 }
 
-// syncNodeMetas starts sending all node metas to the given peer.
-func (pm *ProtocolManager) syncNodeMetas(p *peer) {
-	metas := pm.nodeTable.Metas()
-	if len(metas) == 0 {
+// syncNodeRecords starts sending all node records to the given peer.
+func (pm *ProtocolManager) syncNodeRecords(p *peer) {
+	records := pm.nodeTable.Records()
+	p.Log().Debug("Sync node records", "num", len(records))
+	if len(records) == 0 {
 		return
 	}
 	select {
-	case pm.metasyncCh <- &metasync{p, metas}:
+	case pm.recordsyncCh <- &recordsync{p, records}:
 	case <-pm.quitSync:
 	}
 }
 
-// metasyncLoop takes care of the initial node meta sync for each new
-// connection. When a new peer appears, we relay all currently node metas.
+// recordsyncLoop takes care of the initial node record sync for each new
+// connection. When a new peer appears, we relay all currently node records.
 // In order to minimise egress bandwidth usage, we send
-// the metas in small packs to one peer at a time.
-func (pm *ProtocolManager) metasyncLoop() {
+// the records in small packs to one peer at a time.
+func (pm *ProtocolManager) recordsyncLoop() {
 	var (
-		pending = make(map[enode.ID]*metasync)
+		pending = make(map[enode.ID]*recordsync)
 		sending = false               // whether a send is active
-		pack    = new(metasync)       // the pack that is being sent
+		pack    = new(recordsync)     // the pack that is being sent
 		done    = make(chan error, 1) // result of the send
 	)
 
 	// send starts a sending a pack of transactions from the sync.
-	send := func(s *metasync) {
-		// Fill pack with node metas up to the target num.
+	send := func(s *recordsync) {
+		// Fill pack with node records up to the target num.
 		var num int
 		pack.p = s.p
-		pack.metas = pack.metas[:0]
-		for i := 0; i < len(s.metas) && num < metasyncPackNum; i++ {
-			pack.metas = append(pack.metas, s.metas[i])
+		pack.records = pack.records[:0]
+		for i := 0; i < len(s.records) && num < recordsyncPackNum; i++ {
+			pack.records = append(pack.records, s.records[i])
 			num += 1
 		}
-		// Remove the metas that will be sent.
-		s.metas = s.metas[:copy(s.metas, s.metas[len(pack.metas):])]
-		if len(s.metas) == 0 {
+		// Remove the records that will be sent.
+		s.records = s.records[:copy(s.records, s.records[len(pack.records):])]
+		if len(s.records) == 0 {
 			delete(pending, s.p.ID())
 		}
 		// Send the pack in the background.
-		s.p.Log().Trace("Sending batch of transactions", "count", len(pack.metas), "bytes", num)
+		s.p.Log().Trace("Sending batch of records", "count", len(pack.records), "bytes", num)
 		sending = true
-		go func() { done <- pack.p.SendNodeMetas(pack.metas) }()
+		go func() { done <- pack.p.SendNodeRecords(pack.records) }()
 	}
 
 	// pick chooses the next pending sync.
-	pick := func() *metasync {
+	pick := func() *recordsync {
 		if len(pending) == 0 {
 			return nil
 		}
@@ -202,7 +204,7 @@ func (pm *ProtocolManager) metasyncLoop() {
 
 	for {
 		select {
-		case s := <-pm.metasyncCh:
+		case s := <-pm.recordsyncCh:
 			pending[s.p.ID()] = s
 			if !sending {
 				send(s)
@@ -211,7 +213,7 @@ func (pm *ProtocolManager) metasyncLoop() {
 			sending = false
 			// Stop tracking peers that cause send failures.
 			if err != nil {
-				pack.p.Log().Debug("NodeMeta send failed", "err", err)
+				pack.p.Log().Debug("Record send failed", "err", err)
 				delete(pending, pack.p.ID())
 			}
 			// Schedule the next send.

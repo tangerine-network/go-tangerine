@@ -82,7 +82,7 @@ const (
 	ReceiptsMsg    = 0x10
 
 	// Protocol messages belonging to dex/64
-	MetaMsg = 0x11
+	RecordMsg = 0x11
 
 	LatticeBlockMsg        = 0x20
 	VoteMsg                = 0x21

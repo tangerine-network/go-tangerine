@@ -245,7 +245,7 @@ func (s *Dexon) Start(srvr *p2p.Server) error {
 	}
 	// Start the networking layer and the light server if requested
 	s.protocolManager.Start(srvr, maxPeers)
-	s.protocolManager.addSelfMeta()
+	s.protocolManager.addSelfRecord()
 	return nil
 }
 

@@ -26,7 +26,7 @@ func TestPeerSetBuildAndForgetNotaryConn(t *testing.T) {
 
 	var nodes []*enode.Node
 	for i := 0; i < 9; i++ {
-		nodes = append(nodes, randomEnode())
+		nodes = append(nodes, randomNode())
 	}
 
 	round10 := [][]*enode.Node{
@@ -270,7 +270,7 @@ func TestPeerSetBuildDKGConn(t *testing.T) {
 
 	var nodes []*enode.Node
 	for i := 0; i < 6; i++ {
-		nodes = append(nodes, randomEnode())
+		nodes = append(nodes, randomNode())
 	}
 
 	gov := &testGovernance{}

@@ -9,85 +9,90 @@ import (
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/p2p/enode"
+	"github.com/dexon-foundation/dexon/p2p/enr"
 )
 
 func TestNodeTable(t *testing.T) {
 	table := newNodeTable()
-	ch := make(chan newMetasEvent)
-	table.SubscribeNewMetasEvent(ch)
+	ch := make(chan newRecordsEvent)
+	table.SubscribeNewRecordsEvent(ch)
 
-	metas1 := []*NodeMeta{
-		{ID: randomID()},
-		{ID: randomID()},
+	records1 := []*enr.Record{
+		randomNode().Record(),
+		randomNode().Record(),
 	}
 
-	metas2 := []*NodeMeta{
-		{ID: randomID()},
-		{ID: randomID()},
+	records2 := []*enr.Record{
+		randomNode().Record(),
+		randomNode().Record(),
 	}
 
-	go table.Add(metas1)
+	go table.AddRecords(records1)
 
 	select {
-	case newMetas := <-ch:
+	case newRecords := <-ch:
 		m := map[common.Hash]struct{}{}
-		for _, meta := range newMetas.Metas {
-			m[meta.Hash()] = struct{}{}
+		for _, record := range newRecords.Records {
+			m[rlpHash(record)] = struct{}{}
 		}
 
-		if len(m) != len(metas1) {
+		if len(m) != len(records1) {
 			t.Errorf("len mismatch: got %d, want: %d",
-				len(m), len(metas1))
+				len(m), len(records1))
 		}
 
-		for _, meta := range metas1 {
-			if _, ok := m[meta.Hash()]; !ok {
-				t.Errorf("expected meta (%s) not exists", meta.Hash())
+		for _, record := range records1 {
+			if _, ok := m[rlpHash(record)]; !ok {
+				t.Errorf("expected record (%s) not exists", rlpHash(record))
 			}
 		}
 	case <-time.After(1 * time.Second):
-		t.Error("did not receive new metas event within one second")
+		t.Error("did not receive new records event within one second")
 	}
 
-	go table.Add(metas2)
+	go table.AddRecords(records2)
 	select {
-	case newMetas := <-ch:
+	case newRecords := <-ch:
 		m := map[common.Hash]struct{}{}
-		for _, meta := range newMetas.Metas {
-			m[meta.Hash()] = struct{}{}
+		for _, record := range newRecords.Records {
+			m[rlpHash(record)] = struct{}{}
 		}
 
-		if len(m) != len(metas1) {
+		if len(m) != len(records2) {
 			t.Errorf("len mismatch: got %d, want: %d",
-				len(m), len(metas2))
+				len(m), len(records2))
 		}
 
-		for _, meta := range metas2 {
-			if _, ok := m[meta.Hash()]; !ok {
-				t.Errorf("expected meta (%s) not exists", meta.Hash())
+		for _, record := range records2 {
+			if _, ok := m[rlpHash(record)]; !ok {
+				t.Errorf("expected record (%s) not exists", rlpHash(record))
 			}
 		}
 	case <-time.After(1 * time.Second):
-		t.Error("did not receive new metas event within one second")
+		t.Error("did not receive new records event within one second")
 	}
 
-	var metas []*NodeMeta
-	metas = append(metas, metas1...)
-	metas = append(metas, metas2...)
-	allMetas := table.Metas()
-	if len(allMetas) != len(metas) {
+	var records []*enr.Record
+	records = append(records, records1...)
+	records = append(records, records2...)
+	allRecords := table.Records()
+	if len(allRecords) != len(records) {
 		t.Errorf("all metas num mismatch: got %d, want %d",
-			len(metas), len(allMetas))
+			len(records), len(allRecords))
 	}
 
-	for _, m := range metas {
-		if m.Hash() != table.Get(m.ID).Hash() {
-			t.Errorf("meta (%s) mismatch", m.ID.String())
+	for _, r := range records {
+		n, err := enode.New(enode.V4ID{}, r)
+		if err != nil {
+			t.Errorf(err.Error())
+		}
+		if rlpHash(r) != rlpHash(table.GetNode(n.ID()).Record()) {
+			t.Errorf("record (%s) mismatch", n.ID().String())
 		}
 	}
 }
 
-func randomEnode() *enode.Node {
+func randomNode() *enode.Node {
 	var err error
 	var privkey *ecdsa.PrivateKey
 	for {
@@ -96,9 +101,21 @@ func randomEnode() *enode.Node {
 			break
 		}
 	}
-	return enode.NewV4(&privkey.PublicKey, net.IP{}, 0, 0)
+	var r enr.Record
+	r.Set(enr.IP(net.IP{}))
+	r.Set(enr.UDP(0))
+	r.Set(enr.TCP(0))
+	if err := enode.SignV4(&r, privkey); err != nil {
+		panic(err)
+	}
+	node, err := enode.New(enode.V4ID{}, &r)
+	if err != nil {
+		panic(err)
+
+	}
+	return node
 }
 
 func randomID() enode.ID {
-	return randomEnode().ID()
+	return randomNode().ID()
 }

@@ -1,82 +1,71 @@
 package dex
 
 import (
-	"net"
 	"sync"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/crypto/sha3"
 	"github.com/dexon-foundation/dexon/event"
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/dexon-foundation/dexon/p2p/enr"
 )
 
-type NodeMeta struct {
-	ID        enode.ID
-	IP        net.IP
-	UDP       uint
-	TCP       uint
-	Timestamp uint64
-	Sig       []byte
-}
-
-func (n *NodeMeta) Hash() (h common.Hash) {
-	hw := sha3.NewKeccak256()
-	rlp.Encode(hw, n)
-	hw.Sum(h[:0])
-	return h
-}
-
-type newMetasEvent struct{ Metas []*NodeMeta }
+type newRecordsEvent struct{ Records []*enr.Record }
 
 type nodeTable struct {
 	mu    sync.RWMutex
-	entry map[enode.ID]*NodeMeta
+	entry map[enode.ID]*enode.Node
 	feed  event.Feed
 }
 
 func newNodeTable() *nodeTable {
 	return &nodeTable{
-		entry: make(map[enode.ID]*NodeMeta),
+		entry: make(map[enode.ID]*enode.Node),
 	}
 }
 
-func (t *nodeTable) Get(id enode.ID) *NodeMeta {
+func (t *nodeTable) GetNode(id enode.ID) *enode.Node {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
 	return t.entry[id]
 }
 
-func (t *nodeTable) Add(metas []*NodeMeta) {
+func (t *nodeTable) AddRecords(records []*enr.Record) {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	var newMetas []*NodeMeta
-	for _, meta := range metas {
-		// TODO: validate the meta
-		if e, ok := t.entry[meta.ID]; ok && e.Timestamp > meta.Timestamp {
+	var newRecords []*enr.Record
+	for _, record := range records {
+		node, err := enode.New(enode.ValidSchemes, record)
+		if err != nil {
+			log.Error("invalid node record", "err", err)
+			return
+		}
+
+		if n, ok := t.entry[node.ID()]; ok && n.Seq() >= node.Seq() {
+			log.Debug("Ignore new record, already exists", "id", node.ID().String(),
+				"ip", node.IP().String(), "udp", node.UDP(), "tcp", node.TCP())
 			continue
 		}
-		t.entry[meta.ID] = meta
-		newMetas = append(newMetas, meta)
-		log.Trace("add new node meta", "id", meta.ID[:8],
-			"ip", meta.IP, "udp", meta.UDP, "tcp", meta.TCP)
+
+		t.entry[node.ID()] = node
+		newRecords = append(newRecords, record)
+		log.Debug("Add new record to node table", "id", node.ID().String(),
+			"ip", node.IP().String(), "udp", node.UDP(), "tcp", node.TCP())
 	}
-	t.feed.Send(newMetasEvent{newMetas})
+	t.feed.Send(newRecordsEvent{newRecords})
 }
 
-func (t *nodeTable) Metas() []*NodeMeta {
+func (t *nodeTable) Records() []*enr.Record {
 	t.mu.RLock()
 	defer t.mu.RUnlock()
-	metas := make([]*NodeMeta, 0, len(t.entry))
-	for _, meta := range t.entry {
-		metas = append(metas, meta)
+	records := make([]*enr.Record, 0, len(t.entry))
+	for _, node := range t.entry {
+		records = append(records, node.Record())
 	}
-	return metas
+	return records
 }
 
-func (t *nodeTable) SubscribeNewMetasEvent(
-	ch chan<- newMetasEvent) event.Subscription {
+func (t *nodeTable) SubscribeNewRecordsEvent(
+	ch chan<- newRecordsEvent) event.Subscription {
 	return t.feed.Subscribe(ch)
 }
