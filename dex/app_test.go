@@ -4,12 +4,14 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
+	"strings"
 	"testing"
 	"time"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
 	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 
+	"github.com/dexon-foundation/dexon/accounts/abi"
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/consensus/dexcon"
 	"github.com/dexon-foundation/dexon/core"
@@ -158,6 +160,7 @@ func TestVerifyBlock(t *testing.T) {
 	block.Hash = coreCommon.NewRandomHash()
 	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
+	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	block.Payload, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 100)
 	if err != nil {
 		t.Errorf("prepare data error: %v", err)
@@ -174,6 +177,7 @@ func TestVerifyBlock(t *testing.T) {
 	block.Hash = coreCommon.NewRandomHash()
 	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
+	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	block.Payload, block.Witness, err = prepareDataWithoutTxPool(dex, key, 1, 100)
 	if err != nil {
 		t.Errorf("prepare data error: %v", err)
@@ -190,6 +194,7 @@ func TestVerifyBlock(t *testing.T) {
 	block.Hash = coreCommon.NewRandomHash()
 	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 2
+	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	block.Payload, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 100)
 	if err != nil {
 		t.Errorf("prepare data error: %v", err)
@@ -206,6 +211,7 @@ func TestVerifyBlock(t *testing.T) {
 	block.Hash = coreCommon.NewRandomHash()
 	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
+	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	block.Payload, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 10000)
 	if err != nil {
 		t.Errorf("prepare data error: %v", err)
@@ -222,6 +228,7 @@ func TestVerifyBlock(t *testing.T) {
 	block.Hash = coreCommon.NewRandomHash()
 	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
+	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	_, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 0)
 	if err != nil {
 		t.Errorf("prepare data error: %v", err)
@@ -256,6 +263,7 @@ func TestVerifyBlock(t *testing.T) {
 	block.Hash = coreCommon.NewRandomHash()
 	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
+	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	_, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 0)
 	if err != nil {
 		t.Errorf("prepare data error: %v", err)
@@ -290,6 +298,7 @@ func TestVerifyBlock(t *testing.T) {
 	block.Hash = coreCommon.NewRandomHash()
 	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
+	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	_, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 0)
 	if err != nil {
 		t.Errorf("prepare data error: %v", err)
@@ -368,6 +377,7 @@ func TestBlockConfirmed(t *testing.T) {
 		block.Hash = coreCommon.NewRandomHash()
 		block.Witness = witness
 		block.Payload = payload
+		block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 		block.Position.ChainID = uint32(chainID.Uint64())
 
 		dex.app.BlockConfirmed(*block)
@@ -461,6 +471,147 @@ func TestBlockDelivered(t *testing.T) {
 	if new(big.Int).Add(balance, &firstBlocksInfo[0].Cost).Cmp(big.NewInt(50000000000000000)) != 0 {
 		t.Errorf("unexpected current state balance %v", balance)
 	}
+}
+
+func TestNumChainsChange(t *testing.T) {
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		t.Errorf("hex to ecdsa error: %v", err)
+	}
+
+	params.TestnetChainConfig.Dexcon.Owner = crypto.PubkeyToAddress(key.PublicKey)
+
+	dex, err := newTestDexonWithGenesis(key)
+	if err != nil {
+		t.Errorf("new test dexon error: %v", err)
+	}
+
+	abiObject, err := abi.JSON(strings.NewReader(vm.GovernanceABIJSON))
+	if err != nil {
+		t.Errorf("get abi object fail: %v", err)
+	}
+
+	// Update config in round 1 and height 1.
+	// Config will affect in round 3.
+	input, err := abiObject.Pack("updateConfiguration",
+		new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)), big.NewInt(2000),
+		big.NewInt(1e17), big.NewInt(9000000), big.NewInt(3), big.NewInt(500), big.NewInt(5000),
+		big.NewInt(1), big.NewInt(700000), big.NewInt(5), big.NewInt(5), big.NewInt(700000), big.NewInt(1000),
+		[]*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)})
+	if err != nil {
+		t.Errorf("updateConfiguration abiObject pack error: %v", err)
+	}
+
+	block, err := prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{input}, 1)
+	if err != nil {
+		t.Errorf("prepare block error: %v", err)
+	}
+	dex.app.BlockDelivered(block.Hash, block.Position,
+		coreTypes.FinalizationResult{
+			Timestamp: time.Now(),
+			Height:    1,
+		})
+
+	// Snapshot round on round 1 and height 2.
+	input, err = abiObject.Pack("snapshotRound", big.NewInt(1), big.NewInt(1))
+	if err != nil {
+		t.Errorf("abiObject pack error: %v", err)
+	}
+
+	block, err = prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{input}, 1)
+	if err != nil {
+		t.Errorf("prepare block error: %v", err)
+	}
+	dex.app.BlockDelivered(block.Hash, block.Position,
+		coreTypes.FinalizationResult{
+			Timestamp: time.Now(),
+			Height:    2,
+		})
+
+	// Make round 1 height 2 block write into chain.
+	block, err = prepareConfirmedBlockWithTxAndData(dex, key, nil, 1)
+	if err != nil {
+		t.Errorf("prepare block error: %v", err)
+	}
+	dex.app.BlockDelivered(block.Hash, block.Position,
+		coreTypes.FinalizationResult{
+			Timestamp: time.Now(),
+			Height:    3,
+		})
+
+	// Round 2 will keep prepare tx as usual.
+	block, err = prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{{1}}, 2)
+	if err != nil {
+		t.Errorf("prepare block error: %v", err)
+	}
+	if block.Payload == nil {
+		t.Errorf("payload should not be nil")
+	}
+	dex.app.BlockDelivered(block.Hash, block.Position,
+		coreTypes.FinalizationResult{
+			Timestamp: time.Now(),
+			Height:    4,
+		})
+
+	// It will prepare empty payload until witness any block in round 3.
+	block, err = prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{{1}}, 3)
+	if err != nil {
+		t.Errorf("prepare block error: %v", err)
+	}
+	if block.Payload != nil {
+		t.Errorf("payload should be nil but %v", block.Payload)
+	}
+
+	// Test non-empty payload.
+	block.Payload = []byte{1}
+	if status := dex.app.VerifyBlock(block); status != coreTypes.VerifyInvalidBlock {
+		t.Errorf("unexpected verify status %v", status)
+	}
+	block.Payload = nil
+
+	dex.app.BlockDelivered(block.Hash, block.Position,
+		coreTypes.FinalizationResult{
+			Timestamp: time.Now(),
+			Height:    5,
+		})
+
+	// Still empty payload because round 3 is not witness yet.
+	// This block just for witness round 3 height 5.
+	block, err = prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{{1}}, 3)
+	if err != nil {
+		t.Errorf("prepare block error: %v", err)
+	}
+	if block.Payload != nil {
+		t.Errorf("payload should be nil but %v", block.Payload)
+	}
+
+	// Test non-empty payload.
+	block.Payload = []byte{1}
+	if status := dex.app.VerifyBlock(block); status != coreTypes.VerifyInvalidBlock {
+		t.Errorf("unexpected verify status %v", status)
+	}
+	block.Payload = nil
+
+	dex.app.BlockDelivered(block.Hash, block.Position,
+		coreTypes.FinalizationResult{
+			Timestamp: time.Now(),
+			Height:    6,
+		})
+
+	// Empty block in round 3 has been delivered.
+	// Now can prepare payload as usual.
+	block, err = prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{{1}}, 3)
+	if err != nil {
+		t.Errorf("prepare block error: %v", err)
+	}
+	if block.Payload == nil {
+		t.Errorf("payload should not be nil")
+	}
+	dex.app.BlockDelivered(block.Hash, block.Position,
+		coreTypes.FinalizationResult{
+			Timestamp: time.Now(),
+			Height:    7,
+		})
 }
 
 func BenchmarkBlockDeliveredFlow(b *testing.B) {
@@ -594,6 +745,61 @@ func prepareData(dex *Dexon, key *ecdsa.PrivateKey, startNonce, txNum int) (
 	return
 }
 
+func prepareConfirmedBlockWithTxAndData(dex *Dexon, key *ecdsa.PrivateKey, data [][]byte, round uint64) (
+	Block *coreTypes.Block, err error) {
+	address := crypto.PubkeyToAddress(key.PublicKey)
+	numChains := dex.governance.GetConfigHelper(round).Configuration().NumChains
+	chainID := new(big.Int).Mod(address.Big(), big.NewInt(int64(numChains)))
+
+	for _, d := range data {
+		// Prepare one block for pending.
+		nonce := dex.txPool.State().GetNonce(address)
+		signer := types.NewEIP155Signer(dex.chainConfig.ChainID)
+		tx := types.NewTransaction(uint64(nonce), vm.GovernanceContractAddress, big.NewInt(0), params.TxGas*2,
+			big.NewInt(1), d)
+		tx, err = types.SignTx(tx, signer, key)
+		if err != nil {
+			return nil, err
+		}
+
+		dex.txPool.AddRemote(tx)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var (
+		payload []byte
+		witness coreTypes.Witness
+	)
+
+	payload, err = dex.app.PreparePayload(coreTypes.Position{Round: round, ChainID: uint32(chainID.Uint64())})
+	if err != nil {
+		return
+	}
+
+	witness, err = dex.app.PrepareWitness(0)
+	if err != nil {
+		return nil, err
+	}
+
+	block := &coreTypes.Block{}
+	block.Hash = coreCommon.NewRandomHash()
+	block.Witness = witness
+	block.Payload = payload
+	block.Position.ChainID = uint32(chainID.Uint64())
+	block.Position.Round = round
+	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
+
+	status := dex.app.VerifyBlock(block)
+	if status != coreTypes.VerifyOK {
+		err = fmt.Errorf("verify fail: %v", status)
+		return nil, err
+	}
+
+	dex.app.BlockConfirmed(*block)
+	return block, nil
+}
+
 func prepareDataWithoutTxPool(dex *Dexon, key *ecdsa.PrivateKey, startNonce, txNum int) (
 	payload []byte, witness coreTypes.Witness, err error) {
 	signer := types.NewEIP155Signer(dex.chainConfig.ChainID)
@@ -656,6 +862,7 @@ func prepareConfirmedBlocks(dex *Dexon, keys []*ecdsa.PrivateKey, txNum int) (bl
 		block.Witness = witness
 		block.Payload = payload
 		block.Position.ChainID = uint32(chainID.Uint64())
+		block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 
 		status := dex.app.VerifyBlock(block)
 		if status != coreTypes.VerifyOK {

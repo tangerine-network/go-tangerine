@@ -348,6 +348,21 @@ func WriteBlock(db DatabaseWriter, block *types.Block) {
 	WriteHeader(db, block.Header())
 }
 
+// ReadLastRoundNumber get current round number.
+func ReadLastRoundNumber(db DatabaseReader) (uint64, error) {
+	number, err := db.Get(lastRoundNum)
+	if err != nil {
+		return 0, err
+	}
+
+	return new(big.Int).SetBytes(number).Uint64(), nil
+}
+
+// WriteLastRoundNumber write current round number.
+func WriteLastRoundNumber(db DatabaseWriter, number uint64) error {
+	return db.Put(lastRoundNum, new(big.Int).SetUint64(number).Bytes())
+}
+
 // DeleteBlock removes all block data associated with a hash.
 func DeleteBlock(db DatabaseDeleter, hash common.Hash, number uint64) {
 	DeleteReceipts(db, hash, number)

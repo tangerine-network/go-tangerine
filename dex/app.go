@@ -29,6 +29,7 @@ import (
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core"
+	"github.com/dexon-foundation/dexon/core/rawdb"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/event"
@@ -175,6 +176,22 @@ func (d *DexconApp) preparePayload(ctx context.Context, position coreTypes.Posit
 	default:
 	}
 
+	if position.Round > 0 {
+		// If round chain number changed but new round is not delivered yet, payload must be nil.
+		previousNumChains := d.gov.Configuration(position.Round - 1).NumChains
+		currentNumChains := d.gov.Configuration(position.Round).NumChains
+		if previousNumChains != currentNumChains {
+			deliveredRound, err := rawdb.ReadLastRoundNumber(d.chainDB)
+			if err != nil {
+				panic(fmt.Errorf("read current round error: %v", err))
+			}
+
+			if deliveredRound < position.Round {
+				return nil, nil
+			}
+		}
+	}
+
 	if position.Height != 0 {
 		// Check if chain block height is strictly increamental.
 		chainLastHeight, ok := d.blockchain.GetChainLastConfirmedHeight(position.ChainID)
@@ -186,8 +203,7 @@ func (d *DexconApp) preparePayload(ctx context.Context, position coreTypes.Posit
 	}
 
 	b, latestState := d.blockchain.GetPending()
-	log.Debug("Prepare payload", "chain", position.ChainID, "height", position.Height, "state",
-		b.Root().String())
+	log.Debug("Prepare payload", "chain", position.ChainID, "height", position.Height, "state", b.Root().String())
 
 	txsMap, err := d.txPool.Pending()
 	if err != nil {
@@ -345,6 +361,26 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 		}
 	}
 
+	if block.Position.Round > 0 {
+		// If round chain number changed but new round is not delivered yet, payload must be nil.
+		previousNumChains := d.gov.Configuration(block.Position.Round - 1).NumChains
+		currentNumChains := d.gov.Configuration(block.Position.Round).NumChains
+		if previousNumChains != currentNumChains {
+			deliveredRound, err := rawdb.ReadLastRoundNumber(d.chainDB)
+			if err != nil {
+				panic(fmt.Errorf("read current round error: %v", err))
+			}
+
+			if deliveredRound < block.Position.Round {
+				if len(block.Payload) > 0 {
+					return coreTypes.VerifyInvalidBlock
+				}
+
+				return coreTypes.VerifyOK
+			}
+		}
+	}
+
 	// Get latest pending state.
 	b, latestState := d.blockchain.GetPending()
 	log.Debug("Verify block", "chain", block.Position.ChainID, "height", block.Position.Height, "state",
@@ -482,10 +518,18 @@ func (d *DexconApp) BlockDelivered(
 	}, txs, nil, nil)
 
 	h := d.blockchain.CurrentBlock().NumberU64() + 1
-	_, err = d.blockchain.ProcessPendingBlock(newBlock, &block.Witness)
-	if err != nil {
-		log.Error("Failed to process pending block", "error", err)
-		panic(err)
+	if block.IsEmpty() {
+		err = d.blockchain.ProcessEmptyBlock(newBlock)
+		if err != nil {
+			log.Error("Failed to process empty block", "error", err)
+			panic(err)
+		}
+	} else {
+		_, err = d.blockchain.ProcessPendingBlock(newBlock, &block.Witness)
+		if err != nil {
+			log.Error("Failed to process pending block", "error", err)
+			panic(err)
+		}
 	}
 
 	d.blockchain.RemoveConfirmedBlock(chainID, blockHash)

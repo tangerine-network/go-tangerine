@@ -160,6 +160,7 @@ type BlockChain struct {
 	pendingBlocks     map[uint64]struct {
 		block    *types.Block
 		receipts types.Receipts
+		proctime time.Duration
 	}
 }
 
@@ -199,6 +200,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		pendingBlocks: make(map[uint64]struct {
 			block    *types.Block
 			receipts types.Receipts
+			proctime time.Duration
 		}),
 		confirmedBlocks: make(map[uint32]map[coreCommon.Hash]*blockInfo),
 		addressNonce:    make(map[uint32]map[common.Address]uint64),
@@ -1073,6 +1075,13 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 			bytes += batch.ValueSize()
 			batch.Reset()
 		}
+
+		if i == len(blockChain)-1 {
+			err := bc.updateLastRoundNumber(block.Round())
+			if err != nil {
+				return 0, err
+			}
+		}
 	}
 	if batch.ValueSize() > 0 {
 		bytes += batch.ValueSize()
@@ -1350,7 +1359,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 	case err == consensus.ErrPrunedAncestor:
 		return bc.insertSidechain(block, it)
 
-	// First block is future, shove it (and all children) to the future queue (unknown ancestor)
+		// First block is future, shove it (and all children) to the future queue (unknown ancestor)
 	case err == consensus.ErrFutureBlock || (err == consensus.ErrUnknownAncestor && bc.futureBlocks.Contains(it.first().ParentHash())):
 		for block != nil && (it.index == 0 || err == consensus.ErrUnknownAncestor) {
 			if err := bc.addFutureBlock(block); err != nil {
@@ -1364,10 +1373,10 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		// If there are any still remaining, mark as ignored
 		return it.index, events, coalescedLogs, err
 
-	// First block (and state) is known
-	//   1. We did a roll-back, and should now do a re-import
-	//   2. The block is stored as a sidechain, and is lying about it's stateroot, and passes a stateroot
-	// 	    from the canonical chain, which has not been verified.
+		// First block (and state) is known
+		//   1. We did a roll-back, and should now do a re-import
+		//   2. The block is stored as a sidechain, and is lying about it's stateroot, and passes a stateroot
+		// 	    from the canonical chain, which has not been verified.
 	case err == ErrKnownBlock:
 		// Skip all known blocks that behind us
 		current := bc.CurrentBlock().NumberU64()
@@ -1378,7 +1387,7 @@ func (bc *BlockChain) insertChain(chain types.Blocks, verifySeals bool) (int, []
 		}
 		// Falls through to the block import
 
-	// Some other error occurred, abort
+		// Some other error occurred, abort
 	case err != nil:
 		stats.ignored += len(it.chain)
 		bc.reportBlock(block, nil, err)
@@ -1786,6 +1795,13 @@ func (bc *BlockChain) insertDexonChain(chain types.Blocks) (int, []interface{}, 
 
 		cache, _ := bc.stateCache.TrieDB().Size()
 		stats.report(chain, i, cache)
+
+		if i == len(chain)-1 {
+			err = bc.updateLastRoundNumber(block.Round())
+			if err != nil {
+				return 0, nil, nil, err
+			}
+		}
 	}
 	// Append a single chain head event if we've progressed the chain
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {
@@ -1823,15 +1839,7 @@ func (bc *BlockChain) processPendingBlock(
 		coalescedLogs []*types.Log
 	)
 
-	// Start a parallel signature recovery (signer will fluke on fork transition, minimal perf loss)
-	senderCacher.recoverFromBlocks(types.MakeSigner(bc.chainConfig, block.Number()), []*types.Block{block})
-
-	if atomic.LoadInt32(&bc.procInterrupt) == 1 {
-		log.Debug("Premature abort during blocks processing")
-		return nil, nil, nil, fmt.Errorf("interrupt")
-	}
 	bstart := time.Now()
-
 	var witnessData types.WitnessData
 	if err := rlp.Decode(bytes.NewReader(witness.Data), &witnessData); err != nil {
 		log.Error("Witness rlp decode failed", "error", err)
@@ -1898,13 +1906,18 @@ func (bc *BlockChain) processPendingBlock(
 	}
 
 	// Add into pending blocks.
-	bc.addPendingBlock(newPendingBlock, receipts)
+	bc.addPendingBlock(newPendingBlock, receipts, proctime)
 	events = append(events, BlockConfirmedEvent{newPendingBlock})
 
 	log.Debug("Inserted pending block", "height", newPendingBlock.Number(), "hash", newPendingBlock.Hash())
 
 	// Start insert available pending blocks into db
 	for pendingHeight := bc.CurrentBlock().NumberU64() + 1; pendingHeight <= witness.Height; pendingHeight++ {
+		if atomic.LoadInt32(&bc.procInterrupt) == 1 {
+			log.Debug("Premature abort during blocks processing")
+			return nil, nil, nil, fmt.Errorf("interrupt")
+		}
+
 		pendingIns, exist := bc.pendingBlocks[pendingHeight]
 		if !exist {
 			log.Error("Block has already inserted", "height", pendingHeight)
@@ -1917,6 +1930,7 @@ func (bc *BlockChain) processPendingBlock(
 		}
 
 		// Write the block to the chain and get the status.
+		insertTime := time.Now()
 		status, err := bc.WriteBlockWithState(pendingIns.block, pendingIns.receipts, s)
 		if err != nil {
 			return nil, events, coalescedLogs, fmt.Errorf("WriteBlockWithState error: %v", err)
@@ -1933,12 +1947,12 @@ func (bc *BlockChain) processPendingBlock(
 				allLogs = append(allLogs, r.Logs...)
 			}
 			coalescedLogs = append(coalescedLogs, allLogs...)
-			blockInsertTimer.UpdateSince(bstart)
+			blockInsertTimer.UpdateSince(insertTime)
 			events = append(events, ChainEvent{pendingIns.block, pendingIns.block.Hash(), allLogs})
 			lastCanon = pendingIns.block
 
 			// Only count canonical blocks for GC processing time
-			bc.gcproc += proctime
+			bc.gcproc += pendingIns.proctime
 
 		case SideStatTy:
 			return nil, nil, nil, fmt.Errorf("insert pending block and fork found")
@@ -1950,6 +1964,13 @@ func (bc *BlockChain) processPendingBlock(
 
 		cache, _ := bc.stateCache.TrieDB().Size()
 		stats.report([]*types.Block{pendingIns.block}, 0, cache)
+
+		if pendingHeight == witness.Height {
+			err = bc.updateLastRoundNumber(pendingIns.block.Round())
+			if err != nil {
+				return nil, nil, nil, err
+			}
+		}
 	}
 	// Append a single chain head event if we've progressed the chain
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {
@@ -1960,6 +1981,46 @@ func (bc *BlockChain) processPendingBlock(
 	return &root, events, coalescedLogs, nil
 }
 
+func (bc *BlockChain) ProcessEmptyBlock(block *types.Block) error {
+	bstart := time.Now()
+	var header = block.Header()
+	var parentBlock *types.Block
+	var pendingState *state.StateDB
+	var err error
+	parent, exist := bc.pendingBlocks[block.NumberU64()-1]
+	if !exist {
+		parentBlock = bc.GetBlockByNumber(block.NumberU64() - 1)
+		if parentBlock == nil {
+			return fmt.Errorf("parent block %d not exist", block.NumberU64()-1)
+		}
+	} else {
+		parentBlock = parent.block
+	}
+
+	pendingState, err = state.New(parentBlock.Root(), bc.stateCache)
+	if err != nil {
+		return err
+	}
+
+	header.ParentHash = parentBlock.Hash()
+	header.GasUsed = 0
+	header.Root = pendingState.IntermediateRoot(true)
+	if header.Root != parentBlock.Root() {
+		return fmt.Errorf("empty block state root must same as parent")
+	}
+
+	newPendingBlock := types.NewBlock(header, nil, nil, nil)
+	if _, ok := bc.GetRoundHeight(newPendingBlock.Round()); !ok {
+		bc.storeRoundHeight(newPendingBlock.Round(), newPendingBlock.NumberU64())
+	}
+
+	proctime := time.Since(bstart)
+	bc.addPendingBlock(newPendingBlock, nil, proctime)
+	bc.PostChainEvents([]interface{}{BlockConfirmedEvent{newPendingBlock}}, nil)
+
+	return nil
+}
+
 func (bc *BlockChain) removePendingBlock(height uint64) {
 	bc.pendingBlockMu.Lock()
 	defer bc.pendingBlockMu.Unlock()
@@ -1967,14 +2028,15 @@ func (bc *BlockChain) removePendingBlock(height uint64) {
 	delete(bc.pendingBlocks, height)
 }
 
-func (bc *BlockChain) addPendingBlock(block *types.Block, receipts types.Receipts) {
+func (bc *BlockChain) addPendingBlock(block *types.Block, receipts types.Receipts, proctime time.Duration) {
 	bc.pendingBlockMu.Lock()
 	defer bc.pendingBlockMu.Unlock()
 
 	bc.pendingBlocks[block.NumberU64()] = struct {
 		block    *types.Block
 		receipts types.Receipts
-	}{block: block, receipts: receipts}
+		proctime time.Duration
+	}{block: block, receipts: receipts, proctime: proctime}
 	bc.lastPendingHeight = block.NumberU64()
 }
 
@@ -2439,4 +2501,20 @@ func (bc *BlockChain) GetRoundHeight(round uint64) (uint64, bool) {
 
 func (bc *BlockChain) storeRoundHeight(round uint64, height uint64) {
 	bc.roundHeightMap.Store(round, height)
+}
+
+func (bc *BlockChain) updateLastRoundNumber(round uint64) error {
+	currentLastRound, err := rawdb.ReadLastRoundNumber(bc.db)
+	if err != nil {
+		return err
+	}
+
+	if round > currentLastRound {
+		err = rawdb.WriteLastRoundNumber(bc.db, round)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

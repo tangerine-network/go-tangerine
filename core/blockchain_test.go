@@ -654,6 +654,9 @@ func TestFastVsFullChains(t *testing.T) {
 	// Fast import the chain as a non-archive node to test
 	fastDb := ethdb.NewMemDatabase()
 	gspec.MustCommit(fastDb)
+	if err := rawdb.WriteLastRoundNumber(fastDb, 0); err != nil {
+		t.Fatalf("failed to write last round: %v", err)
+	}
 	fast, _ := NewBlockChain(fastDb, nil, gspec.Config, ethash.NewFaker(), vm.Config{}, nil)
 	defer fast.Stop()
 
@@ -745,6 +748,9 @@ func TestLightVsFastVsFullChainHeads(t *testing.T) {
 	// Import the chain as a non-archive node and ensure all pointers are updated
 	fastDb := ethdb.NewMemDatabase()
 	gspec.MustCommit(fastDb)
+	if err := rawdb.WriteLastRoundNumber(fastDb, 0); err != nil {
+		t.Fatalf("failed to write last round: %v", err)
+	}
 	fast, _ := NewBlockChain(fastDb, nil, gspec.Config, ethash.NewFaker(), vm.Config{}, nil)
 	defer fast.Stop()
 
