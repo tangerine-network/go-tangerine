@@ -251,7 +251,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		bc.storeRoundHeight(uint64(0), uint64(0))
 	} else {
 		prevh := gov.GetRoundHeight(r - 1)
-		if prevh == uint64(0) {
+		if prevh == uint64(0) && (r-1) != uint64(0) {
 			// Previous round height should be already snapshoted
 			// in governance state at this moment.
 			panic("can not init previous round height map")
