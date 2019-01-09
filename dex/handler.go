@@ -1205,10 +1205,6 @@ func (pm *ProtocolManager) peerSetLoop() {
 				pm.peers.BuildConnection(newRound)
 			}
 			round = newRound
-		case <-time.After(5 * time.Second):
-			pm.peers.lock.Lock()
-			pm.peers.dumpPeerLabel("ticker")
-			pm.peers.lock.Unlock()
 		case <-pm.chainHeadSub.Err():
 			return
 		}
