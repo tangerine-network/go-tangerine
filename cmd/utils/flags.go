@@ -1311,6 +1311,10 @@ func setIndexerConfig(ctx *cli.Context, cfg *dex.Config) {
 
 	cfg.Indexer.Plugin = ctx.GlobalString(IndexerPluginFlag.Name)
 	cfg.Indexer.PluginFlags = ctx.GlobalString(IndexerPluginFlagsFlag.Name)
+	// copy required dex configs
+	cfg.Indexer.Genesis = cfg.Genesis
+	cfg.Indexer.NetworkID = cfg.NetworkId
+	cfg.Indexer.SyncMode = cfg.SyncMode
 }
 
 // SetDashboardConfig applies dashboard related command line flags to the config.
