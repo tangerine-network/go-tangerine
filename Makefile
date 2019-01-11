@@ -16,12 +16,12 @@ gdex: libbls
 	@echo "Done building."
 	@echo "Run \"$(GOBIN)/gdex\" to launch gdex."
 
-swarm:
+swarm: libbls
 	build/env.sh go run build/ci.go install ./cmd/swarm
 	@echo "Done building."
 	@echo "Run \"$(GOBIN)/swarm\" to launch swarm."
 
-all:
+all: libbls
 	build/env.sh go run build/ci.go install
 
 android:
