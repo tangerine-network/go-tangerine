@@ -677,6 +677,84 @@ const GovernanceABIJSON = `
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "NodeAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "Amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "Withdrawn",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "NodeAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "Type",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "Arg1",
+        "type": "bytes"
+      },
+      {
+        "indexed": false,
+        "name": "Arg2",
+        "type": "bytes"
+      }
+    ],
+    "name": "ForkReported",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "NodeAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "Amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "Fined",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "NodeAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "Amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "FinePaid",
+    "type": "event"
+  },
+  {
     "constant": false,
     "inputs": [
       {
@@ -2370,6 +2448,65 @@ func (s *GovernanceStateHelper) emitUndelegated(nodeAddr, delegatorAddr common.A
 	})
 }
 
+// event Withdrawn(address indexed NodeAddress, uint256 Amount);
+func (s *GovernanceStateHelper) emitWithdrawn(nodeAddr common.Address, amount *big.Int) {
+	s.StateDB.AddLog(&types.Log{
+		Address: GovernanceContractAddress,
+		Topics:  []common.Hash{events["Withdrawn"].Id(), nodeAddr.Hash()},
+		Data:    common.BigToHash(amount).Bytes(),
+	})
+}
+
+// event ForkReported(address indexed NodeAddress, address indexed Type, bytes Arg1, bytes Arg2);
+func (s *GovernanceStateHelper) emitForkReported(nodeAddr common.Address, reportType *big.Int, arg1, arg2 []byte) {
+
+	t, err := abi.NewType("bytes", nil)
+	if err != nil {
+		panic(err)
+	}
+
+	arg := abi.Arguments{
+		abi.Argument{
+			Name:    "Arg1",
+			Type:    t,
+			Indexed: false,
+		},
+		abi.Argument{
+			Name:    "Arg2",
+			Type:    t,
+			Indexed: false,
+		},
+	}
+
+	data, err := arg.Pack(arg1, arg2)
+	if err != nil {
+		panic(err)
+	}
+	s.StateDB.AddLog(&types.Log{
+		Address: GovernanceContractAddress,
+		Topics:  []common.Hash{events["ForkReported"].Id(), nodeAddr.Hash()},
+		Data:    data,
+	})
+}
+
+// event Fined(address indexed NodeAddress, uint256 Amount);
+func (s *GovernanceStateHelper) emitFined(nodeAddr common.Address, amount *big.Int) {
+	s.StateDB.AddLog(&types.Log{
+		Address: GovernanceContractAddress,
+		Topics:  []common.Hash{events["Fined"].Id(), nodeAddr.Hash()},
+		Data:    common.BigToHash(amount).Bytes(),
+	})
+}
+
+// event FinePaid(address indexed NodeAddress, uint256 Amount);
+func (s *GovernanceStateHelper) emitFinePaid(nodeAddr common.Address, amount *big.Int) {
+	s.StateDB.AddLog(&types.Log{
+		Address: GovernanceContractAddress,
+		Topics:  []common.Hash{events["FinePaid"].Id(), nodeAddr.Hash()},
+		Data:    common.BigToHash(amount).Bytes(),
+	})
+}
+
 // GovernanceContract represents the governance contract of DEXCON.
 type GovernanceContract struct {
 	evm      *EVM
@@ -2784,6 +2921,8 @@ func (g *GovernanceContract) withdraw(nodeAddr common.Address) ([]byte, error) {
 		return nil, errExecutionReverted
 	}
 
+	g.state.emitWithdrawn(nodeAddr, delegator.Value)
+
 	// We are the last delegator to withdraw the fund, remove the node info.
 	if g.state.LenDelegators(nodeAddr).Cmp(big.NewInt(0)) == 0 {
 		length := g.state.LenNodes()
@@ -2858,6 +2997,8 @@ func (g *GovernanceContract) payFine(nodeAddr common.Address) ([]byte, error) {
 	g.state.UpdateNode(nodeOffset, node)
 
 	// TODO: paid fine should be added to award pool.
+
+	g.state.emitFinePaid(nodeAddr, g.contract.Value())
 
 	return g.useGas(100000)
 }
@@ -2944,6 +3085,8 @@ func (g *GovernanceContract) fine(nodeAddr common.Address, amount *big.Int, payl
 	node.Fined = new(big.Int).Add(node.Fined, amount)
 	g.state.UpdateNode(nodeOffset, node)
 
+	g.state.emitFined(nodeAddr, amount)
+
 	return nil
 }
 
@@ -2986,6 +3129,8 @@ func (g *GovernanceContract) report(reportType *big.Int, arg1, arg2 []byte) ([]b
 
 	offset := g.state.NodesOffsetByID(Bytes32(reportedNodeID.Hash))
 	node := g.state.Node(offset)
+
+	g.state.emitForkReported(node.Owner, reportType, arg1, arg2)
 
 	fineValue := g.state.FineValue(reportType)
 	if err := g.fine(node.Owner, fineValue, arg1, arg2); err != nil {
