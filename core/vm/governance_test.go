@@ -205,6 +205,7 @@ func (g *GovernanceContractTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
 	g.Require().Equal(1, int(g.s.LenNodes().Uint64()))
 	g.Require().Equal(1, len(g.s.QualifiedNodes()))
 	g.Require().Equal("Test1", g.s.Node(big.NewInt(0)).Name)
+	g.Require().Equal(amount.String(), g.s.TotalStaked().String())
 
 	// Check balance.
 	g.Require().Equal(new(big.Int).Sub(balanceBeforeStake, amount), g.stateDB.GetBalance(addr))
@@ -219,8 +220,13 @@ func (g *GovernanceContractTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
 	g.Require().NoError(err)
 	_, err = g.call(addr, input, big.NewInt(0))
 	g.Require().NoError(err)
+	g.Require().Equal(0, len(g.s.QualifiedNodes()))
 	g.Require().Equal(1, int(g.s.LenDelegators(addr).Uint64()))
 	g.Require().Equal(1, int(g.s.LenNodes().Uint64()))
+
+	node := g.s.Node(big.NewInt(0))
+	g.Require().Equal(big.NewInt(0).String(), node.Staked.String())
+	g.Require().Equal(big.NewInt(0).String(), g.s.TotalStaked().String())
 
 	// Wait for lockup time than withdraw.
 	time.Sleep(time.Second * 2)
@@ -229,6 +235,7 @@ func (g *GovernanceContractTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
 	_, err = g.call(addr, input, big.NewInt(0))
 	g.Require().NoError(err)
 
+	g.Require().Equal(0, len(g.s.QualifiedNodes()))
 	g.Require().Equal(0, int(g.s.LenDelegators(addr).Uint64()))
 	g.Require().Equal(0, int(g.s.LenNodes().Uint64()))
 
@@ -251,16 +258,18 @@ func (g *GovernanceContractTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
 	g.Require().NoError(err)
 
 	g.Require().Equal(2, len(g.s.QualifiedNodes()))
+	g.Require().Equal(new(big.Int).Mul(amount, big.NewInt(2)).String(), g.s.TotalStaked().String())
 
 	// 2nd node Unstake.
 	input, err = abiObject.Pack("unstake")
 	g.Require().NoError(err)
 	_, err = g.call(addr2, input, big.NewInt(0))
 	g.Require().NoError(err)
-	node := g.s.Node(big.NewInt(0))
+	node = g.s.Node(big.NewInt(0))
 	g.Require().Equal("Test2", node.Name)
-	g.Require().Equal(true, node.Unstaked)
+	g.Require().Equal(big.NewInt(0).String(), node.Staked.String())
 	g.Require().Equal(1, len(g.s.QualifiedNodes()))
+	g.Require().Equal(amount.String(), g.s.TotalStaked().String())
 
 	time.Sleep(time.Second * 2)
 	input, err = abiObject.Pack("withdraw", addr2)
@@ -279,6 +288,8 @@ func (g *GovernanceContractTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
 	_, err = g.call(addr, input, big.NewInt(0))
 	g.Require().NoError(err)
 	g.Require().Equal(0, len(g.s.QualifiedNodes()))
+	g.Require().Equal(big.NewInt(0).String(), g.s.TotalStaked().String())
+
 	time.Sleep(time.Second * 2)
 	input, err = abiObject.Pack("withdraw", addr)
 	g.Require().NoError(err)
@@ -322,6 +333,7 @@ func (g *GovernanceContractTestSuite) TestDelegateUndelegate() {
 	g.Require().Equal(new(big.Int).Sub(balanceBeforeDelegate, amount), g.stateDB.GetBalance(addrDelegator))
 	g.Require().Equal(addrDelegator, g.s.Delegator(addr, big.NewInt(1)).Owner)
 	g.Require().Equal(new(big.Int).Add(amount, ownerStaked), g.s.Node(big.NewInt(0)).Staked)
+	g.Require().Equal(g.s.Node(big.NewInt(0)).Staked.String(), g.s.TotalStaked().String())
 	g.Require().Equal(1, int(g.s.DelegatorsOffset(addr, addrDelegator).Int64()))
 
 	// Same person delegate the 2nd time should fail.
@@ -339,6 +351,7 @@ func (g *GovernanceContractTestSuite) TestDelegateUndelegate() {
 	g.Require().Equal(addrDelegator2, g.s.Delegator(addr, big.NewInt(2)).Owner)
 	g.Require().Equal(new(big.Int).Add(ownerStaked, new(big.Int).Mul(amount, big.NewInt(2))),
 		g.s.Node(big.NewInt(0)).Staked)
+	g.Require().Equal(g.s.Node(big.NewInt(0)).Staked.String(), g.s.TotalStaked().String())
 	g.Require().Equal(2, int(g.s.DelegatorsOffset(addr, addrDelegator2).Int64()))
 
 	// Qualified.
@@ -349,7 +362,13 @@ func (g *GovernanceContractTestSuite) TestDelegateUndelegate() {
 	input, err = abiObject.Pack("undelegate", addr)
 	g.Require().NoError(err)
 	_, err = g.call(addrDelegator, input, big.NewInt(0))
+	g.Require().Equal(new(big.Int).Add(amount, ownerStaked), g.s.Node(big.NewInt(0)).Staked)
+	g.Require().Equal(g.s.Node(big.NewInt(0)).Staked.String(), g.s.TotalStaked().String())
 	g.Require().NoError(err)
+
+	// Undelegate the second time should fail.
+	_, err = g.call(addrDelegator, input, big.NewInt(0))
+	g.Require().Error(err)
 
 	// Withdraw within lockup time should fail.
 	input, err = abiObject.Pack("withdraw", addr)
@@ -377,7 +396,7 @@ func (g *GovernanceContractTestSuite) TestDelegateUndelegate() {
 	input, err = abiObject.Pack("withdraw", addr)
 	g.Require().NoError(err)
 	_, err = g.call(addrDelegator, input, big.NewInt(0))
-	g.Require().NotNil(err)
+	g.Require().Error(err)
 
 	// Undelegate addrDelegator2.
 	balanceBeforeUnDelegate = g.stateDB.GetBalance(addrDelegator2)
@@ -385,6 +404,9 @@ func (g *GovernanceContractTestSuite) TestDelegateUndelegate() {
 	g.Require().NoError(err)
 	_, err = g.call(addrDelegator2, input, big.NewInt(0))
 	g.Require().NoError(err)
+
+	g.Require().Equal(ownerStaked, g.s.Node(big.NewInt(0)).Staked)
+	g.Require().Equal(g.s.Node(big.NewInt(0)).Staked.String(), g.s.TotalStaked().String())
 
 	// Wait for lockup time than withdraw.
 	time.Sleep(time.Second * 2)
@@ -399,6 +421,25 @@ func (g *GovernanceContractTestSuite) TestDelegateUndelegate() {
 
 	// Unqualified
 	g.Require().Equal(0, len(g.s.QualifiedNodes()))
+
+	// Owner undelegate itself.
+	g.Require().Equal(1, int(g.s.LenNodes().Uint64()))
+	g.Require().Equal(1, int(g.s.LenDelegators(addr).Uint64()))
+
+	input, err = abiObject.Pack("undelegate", addr)
+	g.Require().NoError(err)
+	_, err = g.call(addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+	g.Require().Equal(big.NewInt(0).String(), g.s.Node(big.NewInt(0)).Staked.String())
+	g.Require().Equal(big.NewInt(0).String(), g.s.TotalStaked().String())
+
+	time.Sleep(time.Second * 2)
+	input, err = abiObject.Pack("withdraw", addr)
+	g.Require().NoError(err)
+	_, err = g.call(addr, input, big.NewInt(0))
+
+	g.Require().Equal(0, int(g.s.LenNodes().Uint64()))
+	g.Require().Equal(0, int(g.s.LenDelegators(addr).Uint64()))
 }
 
 func (g *GovernanceContractTestSuite) TestFine() {
@@ -485,7 +526,6 @@ func (g *GovernanceContractTestSuite) TestFine() {
 	g.Require().NoError(err)
 	_, err = g.call(addrDelegator, input, big.NewInt(0))
 	g.Require().NoError(err)
-
 }
 
 func (g *GovernanceContractTestSuite) TestUnstakeWithExtraDelegators() {
@@ -893,9 +933,19 @@ func (g *GovernanceContractTestSuite) TestMiscVariableReading() {
 	privKey, addr := g.newPrefundAccount()
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
 
+	input, err := abiObject.Pack("totalSupply")
+	g.Require().NoError(err)
+	res, err := g.call(addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+
+	input, err = abiObject.Pack("totalStaked")
+	g.Require().NoError(err)
+	res, err = g.call(addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+
 	// Stake.
 	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e4))
-	input, err := abiObject.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
+	input, err = abiObject.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
 	g.Require().NoError(err)
 	_, err = g.call(addr, input, amount)
 	g.Require().NoError(err)
@@ -917,7 +967,7 @@ func (g *GovernanceContractTestSuite) TestMiscVariableReading() {
 
 	input, err = abiObject.Pack("nodes", big.NewInt(0))
 	g.Require().NoError(err)
-	res, err := g.call(addr, input, big.NewInt(0))
+	res, err = g.call(addr, input, big.NewInt(0))
 	g.Require().NoError(err)
 
 	input, err = abiObject.Pack("nodesLength")

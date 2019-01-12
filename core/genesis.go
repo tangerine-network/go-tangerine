@@ -265,6 +265,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
 	govStateHelper := vm.GovernanceStateHelper{StateDB: statedb}
 
+	totalSupply := big.NewInt(0)
 	totalStaked := big.NewInt(0)
 
 	for addr, account := range g.Alloc {
@@ -281,6 +282,8 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		for key, value := range account.Storage {
 			statedb.SetState(addr, key, value)
 		}
+
+		totalSupply = new(big.Int).Add(totalSupply, account.Balance)
 	}
 
 	// For DEXON consensus genesis staking.
@@ -316,6 +319,9 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 
 		// Governance configuration.
 		govStateHelper.UpdateConfiguration(g.Config.Dexcon)
+
+		// Set totalSupply.
+		govStateHelper.IncTotalSupply(totalSupply)
 	}
 
 	root := statedb.IntermediateRoot(false)

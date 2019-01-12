@@ -438,7 +438,7 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 		info := g.state.Node(index)
 		res, err := method.Outputs.Pack(
 			info.Owner, info.PublicKey, info.Staked, info.Fined,
-			info.Name, info.Email, info.Location, info.Url, info.Unstaked)
+			info.Name, info.Email, info.Location, info.Url)
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -497,13 +497,27 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 			return nil, errExecutionReverted
 		}
 		return res, nil
+	case "totalStaked":
+		res, err := method.Outputs.Pack(g.state.TotalStaked())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "totalSupply":
+		res, err := method.Outputs.Pack(g.state.TotalSupply())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	}
-	return nil, nil
+	return nil, errExecutionReverted
 }
 
 // Storage position enums.
 const (
 	roundHeightLoc = iota
+	totalSupplyLoc
+	totalStakedLoc
 	nodesLoc
 	nodesOffsetByAddressLoc
 	nodesOffsetByIDLoc
@@ -702,6 +716,28 @@ func (s *GovernanceStateHelper) PushRoundHeight(height *big.Int) {
 	s.setStateBigInt(loc, height)
 }
 
+// uint256 public totalSupply;
+func (s *GovernanceStateHelper) TotalSupply() *big.Int {
+	return s.getStateBigInt(big.NewInt(totalSupplyLoc))
+}
+func (s *GovernanceStateHelper) IncTotalSupply(amount *big.Int) {
+	s.setStateBigInt(big.NewInt(totalSupplyLoc), new(big.Int).Add(s.TotalSupply(), amount))
+}
+func (s *GovernanceStateHelper) DecTotalSupply(amount *big.Int) {
+	s.setStateBigInt(big.NewInt(totalSupplyLoc), new(big.Int).Sub(s.TotalSupply(), amount))
+}
+
+// uint256 public totalStaked;
+func (s *GovernanceStateHelper) TotalStaked() *big.Int {
+	return s.getStateBigInt(big.NewInt(totalStakedLoc))
+}
+func (s *GovernanceStateHelper) IncTotalStaked(amount *big.Int) {
+	s.setStateBigInt(big.NewInt(totalStakedLoc), new(big.Int).Add(s.TotalStaked(), amount))
+}
+func (s *GovernanceStateHelper) DecTotalStaked(amount *big.Int) {
+	s.setStateBigInt(big.NewInt(totalStakedLoc), new(big.Int).Sub(s.TotalStaked(), amount))
+}
+
 // struct Node {
 //     address owner;
 //     bytes publicKey;
@@ -711,7 +747,6 @@ func (s *GovernanceStateHelper) PushRoundHeight(height *big.Int) {
 //     string email;
 //     string location;
 //     string url;
-//     bool unstaked;
 // }
 //
 // Node[] nodes;
@@ -725,10 +760,9 @@ type nodeInfo struct {
 	Email     string
 	Location  string
 	Url       string
-	Unstaked  bool
 }
 
-const nodeStructSize = 9
+const nodeStructSize = 8
 
 func (s *GovernanceStateHelper) LenNodes() *big.Int {
 	return s.getStateBigInt(big.NewInt(nodesLoc))
@@ -772,10 +806,6 @@ func (s *GovernanceStateHelper) Node(index *big.Int) *nodeInfo {
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(7))
 	node.Url = string(s.readBytes(loc))
 
-	// Unstaked.
-	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(8))
-	node.Unstaked = s.getStateBigInt(loc).Cmp(big.NewInt(0)) > 0
-
 	return node
 }
 func (s *GovernanceStateHelper) PushNode(n *nodeInfo) {
@@ -787,7 +817,8 @@ func (s *GovernanceStateHelper) PushNode(n *nodeInfo) {
 }
 func (s *GovernanceStateHelper) UpdateNode(index *big.Int, n *nodeInfo) {
 	arrayBaseLoc := s.getSlotLoc(big.NewInt(nodesLoc))
-	elementBaseLoc := new(big.Int).Add(arrayBaseLoc, new(big.Int).Mul(index, big.NewInt(nodeStructSize)))
+	elementBaseLoc := new(big.Int).Add(arrayBaseLoc,
+		new(big.Int).Mul(index, big.NewInt(nodeStructSize)))
 
 	// Owner.
 	loc := elementBaseLoc
@@ -820,14 +851,6 @@ func (s *GovernanceStateHelper) UpdateNode(index *big.Int, n *nodeInfo) {
 	// Url.
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(7))
 	s.writeBytes(loc, []byte(n.Url))
-
-	// Unstaked.
-	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(8))
-	val := big.NewInt(0)
-	if n.Unstaked {
-		val = big.NewInt(1)
-	}
-	s.setStateBigInt(loc, val)
 }
 func (s *GovernanceStateHelper) PopLastNode() {
 	// Decrease length by 1.
@@ -851,9 +874,6 @@ func (s *GovernanceStateHelper) QualifiedNodes() []*nodeInfo {
 	var nodes []*nodeInfo
 	for i := int64(0); i < int64(s.LenNodes().Uint64()); i++ {
 		node := s.Node(big.NewInt(i))
-		if node.Unstaked {
-			continue
-		}
 		if new(big.Int).Sub(node.Staked, node.Fined).Cmp(s.MinStake()) >= 0 {
 			nodes = append(nodes, node)
 		}
@@ -1265,6 +1285,9 @@ func (s *GovernanceStateHelper) Stake(
 		UndelegatedAt: big.NewInt(0),
 	})
 	s.PutDelegatorOffset(addr, addr, offset)
+
+	// Add to network total staked.
+	s.IncTotalStaked(staked)
 }
 
 const phiRatioMultiplier = 1000000.0
@@ -1725,6 +1748,9 @@ func (g *GovernanceContract) delegate(nodeAddr common.Address) ([]byte, error) {
 	node.Staked = new(big.Int).Add(node.Staked, g.contract.Value())
 	g.state.UpdateNode(offset, node)
 
+	// Add to network total staked.
+	g.state.IncTotalStaked(g.contract.Value())
+
 	// Push delegator record.
 	offset = g.state.LenDelegators(nodeAddr)
 	g.state.PushDelegator(nodeAddr, &delegatorInfo{
@@ -1810,6 +1836,10 @@ func (g *GovernanceContract) undelegateHelper(nodeAddr, caller common.Address) (
 
 	delegator := g.state.Delegator(nodeAddr, offset)
 
+	if delegator.UndelegatedAt.Cmp(big.NewInt(0)) != 0 {
+		return nil, errExecutionReverted
+	}
+
 	// Set undelegate time.
 	delegator.UndelegatedAt = g.evm.Time
 	g.state.UpdateDelegator(nodeAddr, offset, delegator)
@@ -1817,6 +1847,9 @@ func (g *GovernanceContract) undelegateHelper(nodeAddr, caller common.Address) (
 	// Subtract from the total staked of node.
 	node.Staked = new(big.Int).Sub(node.Staked, delegator.Value)
 	g.state.UpdateNode(nodeOffset, node)
+
+	// Subtract to network total staked.
+	g.state.DecTotalStaked(delegator.Value)
 
 	g.state.emitUndelegated(nodeAddr, caller)
 
@@ -1913,10 +1946,6 @@ func (g *GovernanceContract) unstake() ([]byte, error) {
 		}
 		i = i.Sub(i, big.NewInt(1))
 	}
-
-	// Mark node as unstaked.
-	node.Unstaked = true
-	g.state.UpdateNode(offset, node)
 
 	g.state.emitUnstaked(caller)
 

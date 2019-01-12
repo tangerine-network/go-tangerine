@@ -112,6 +112,20 @@ const GovernanceABIJSON = `
   },
   {
     "constant": true,
+    "inputs": [],
+    "name": "totalSupply",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
     "inputs": [
       {
         "name": "",
@@ -151,10 +165,6 @@ const GovernanceABIJSON = `
       {
         "name": "url",
         "type": "string"
-      },
-      {
-        "name": "unstaked",
-        "type": "bool"
       }
     ],
     "payable": false,
@@ -322,6 +332,20 @@ const GovernanceABIJSON = `
       {
         "name": "",
         "type": "int256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "totalStaked",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
       }
     ],
     "payable": false,
