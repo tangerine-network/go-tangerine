@@ -74,7 +74,7 @@ func (g *Governance) getHelperAtRound(round uint64) *vm.GovernanceStateHelper {
 	return &vm.GovernanceStateHelper{StateDB: s}
 }
 
-func (g *Governance) GetConfigHelper(round uint64) *vm.GovernanceStateHelper {
+func (g *Governance) GetGovStateHelperAtRound(round uint64) *vm.GovernanceStateHelper {
 	if round < dexCore.ConfigRoundShift {
 		round = 0
 	} else {
@@ -88,7 +88,7 @@ func (g *Governance) GetRoundHeight(round uint64) uint64 {
 }
 
 func (g *Governance) Configuration(round uint64) *coreTypes.Config {
-	configHelper := g.GetConfigHelper(round)
+	configHelper := g.GetGovStateHelperAtRound(round)
 	c := configHelper.Configuration()
 	return &coreTypes.Config{
 		NumChains:        c.NumChains,

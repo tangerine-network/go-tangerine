@@ -1,17 +1,9 @@
 #!/bin/bash
 
-if [ "$1" != "--testnet" ] && [ "$1" != "--taipei" ]; then
-  echo 'invalid network specified'
-  exit 1
-fi
-
-NETWORK="${1}"
-
-if [ "$2" == "--local" ]; then
-  NETWORK="${NETWORK} --bootnodes enode://0478aa13c91aa0db8e93b668313b7eb0532fbdb24f64772375373b14dbe326c238ad09ab4469f6442c9a9753f1275aeec2e531912c14a958ed1feb4ae7e227ef@127.0.0.1:30301"
-  # Start bootnode.
-  bootnode -nodekey keystore/bootnode.key --verbosity=9 > bootnode.log 2>&1 &
-fi
+NETWORK="--bootnodes enode://0478aa13c91aa0db8e93b668313b7eb0532fbdb24f64772375373b14dbe326c238ad09ab4469f6442c9a9753f1275aeec2e531912c14a958ed1feb4ae7e227ef@127.0.0.1:30301"
+GENESIS="genesis.json"
+# Start bootnode.
+bootnode -nodekey keystore/bootnode.key --verbosity=9 > bootnode.log 2>&1 &
 
 GDEX=../build/bin/gdex
 
@@ -34,10 +26,10 @@ let dmoment=`date +%s`+7
 # A standalone RPC server for accepting RPC requests.
 datadir=$PWD/Dexon.rpc
 rm -rf $datadir
-$GDEX --datadir=$datadir init genesis.json
+$GDEX --datadir=$datadir init ${GENESIS}
 $GDEX \
   ${NETWORK} \
-  --verbosity=4 \
+  --verbosity=3 \
   --gcmode=archive \
   --datadir=$datadir --nodekey=keystore/rpc.key \
   --rpc --rpcapi=eth,net,web3,debug \
@@ -52,11 +44,11 @@ $GDEX \
 for i in $(seq 0 3); do
   datadir=$PWD/Dexon.$i
   rm -rf $datadir
-  $GDEX --datadir=$datadir init genesis.json
+  $GDEX --datadir=$datadir init ${GENESIS}
   $GDEX \
     ${NETWORK} \
     --bp \
-    --verbosity=4 \
+    --verbosity=3 \
     --gcmode=archive \
     --datadir=$datadir --nodekey=keystore/test$i.key \
     --port=$((30305 + $i)) \

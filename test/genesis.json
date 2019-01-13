@@ -1,7 +1,8 @@
 {
   "config": {
-    "chainId": 238,
+    "chainId": 237,
     "homesteadBlock": 0,
+    "daoForkBlock": 0,
     "daoForkSupport": true,
     "eip150Block": 0,
     "eip150Hash": "0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -14,7 +15,9 @@
       "owner": "0xbf8c48a620bacc46907f9b89732d25e47a2d7cf7",
       "minStake": "0x152d02c7e14af6800000",
       "lockupPeriod": 259200000,
-      "blockReward": "0xde0b6b3a7640000",
+      "miningVelocity": 0.1875,
+      "nextHalvingSupply": "0x813f3978f89409844000000",
+      "lastHalvedAmount": "0x4d8c55aefb8c05b5c000000",
       "blockGasLimit": 40000000,
       "numChains": 6,
       "lambdaBA": 250,
@@ -24,7 +27,7 @@
       "notarySetSize": 4,
       "dkgSetSize": 4,
       "roundInterval": 600000,
-      "minBlockInterval": 900,
+      "minBlockInterval": 1000,
       "fineValues": [
         "0x21e19e0c9bab2400000",
         "0x21e19e0c9bab2400000",
@@ -96,5 +99,8 @@
         "url": "https://dexon.org"
       }
     }
-  }
+  },
+  "number": "0x0",
+  "gasUsed": "0x0",
+  "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000"
 }

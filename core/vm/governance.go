@@ -242,12 +242,6 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 			return nil, errExecutionReverted
 		}
 		return res, nil
-	case "blockReward":
-		res, err := method.Outputs.Pack(g.state.BlockReward())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
 	case "crs":
 		round := new(big.Int)
 		if err := method.Inputs.Unpack(&round, arguments); err != nil {
@@ -406,6 +400,12 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 			return nil, errExecutionReverted
 		}
 		return res, nil
+	case "lastHalvedAmount":
+		res, err := method.Outputs.Pack(g.state.LastHalvedAmount())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	case "lockupPeriod":
 		res, err := method.Outputs.Pack(g.state.LockupPeriod())
 		if err != nil {
@@ -418,8 +418,20 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 			return nil, errExecutionReverted
 		}
 		return res, nil
+	case "miningVelocity":
+		res, err := method.Outputs.Pack(g.state.MiningVelocity())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	case "minStake":
 		res, err := method.Outputs.Pack(g.state.MinStake())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "nextHalvingSupply":
+		res, err := method.Outputs.Pack(g.state.NextHalvingSupply())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -533,7 +545,9 @@ const (
 	ownerLoc
 	minStakeLoc
 	lockupPeriodLoc
-	blockRewardLoc
+	miningVelocityLoc
+	nextHalvingSupplyLoc
+	lastHalvedAmountLoc
 	blockGasLimitLoc
 	numChainsLoc
 	lambdaBALoc
@@ -1160,9 +1174,37 @@ func (s *GovernanceStateHelper) LockupPeriod() *big.Int {
 	return s.getStateBigInt(big.NewInt(lockupPeriodLoc))
 }
 
-// uint256 public blockReward;
-func (s *GovernanceStateHelper) BlockReward() *big.Int {
-	return s.getStateBigInt(big.NewInt(blockRewardLoc))
+// uint256 public miningVelocity;
+func (s *GovernanceStateHelper) MiningVelocity() *big.Int {
+	return s.getStateBigInt(big.NewInt(miningVelocityLoc))
+}
+func (s *GovernanceStateHelper) HalfMiningVelocity() {
+	s.setStateBigInt(big.NewInt(miningVelocityLoc),
+		new(big.Int).Div(s.MiningVelocity(), big.NewInt(2)))
+}
+
+// uint256 public nextHalvingSupply;
+func (s *GovernanceStateHelper) NextHalvingSupply() *big.Int {
+	return s.getStateBigInt(big.NewInt(nextHalvingSupplyLoc))
+}
+func (s *GovernanceStateHelper) IncNextHalvingSupply(amount *big.Int) {
+	s.setStateBigInt(big.NewInt(nextHalvingSupplyLoc),
+		new(big.Int).Add(s.NextHalvingSupply(), amount))
+}
+
+// uint256 public lastHalvedAmount;
+func (s *GovernanceStateHelper) LastHalvedAmount() *big.Int {
+	return s.getStateBigInt(big.NewInt(lastHalvedAmountLoc))
+}
+func (s *GovernanceStateHelper) HalfLastHalvedAmount() {
+	s.setStateBigInt(big.NewInt(lastHalvedAmountLoc),
+		new(big.Int).Div(s.LastHalvedAmount(), big.NewInt(2)))
+}
+
+func (s *GovernanceStateHelper) MiningHalved() {
+	s.HalfMiningVelocity()
+	s.HalfLastHalvedAmount()
+	s.IncNextHalvingSupply(s.LastHalvedAmount())
 }
 
 // uint256 public blockGasLimit;
@@ -1290,25 +1332,27 @@ func (s *GovernanceStateHelper) Stake(
 	s.IncTotalStaked(staked)
 }
 
-const phiRatioMultiplier = 1000000.0
+const decimalMultiplier = 100000000.0
 
 // Configuration returns the current configuration.
 func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
 	return &params.DexconConfig{
-		MinStake:         s.getStateBigInt(big.NewInt(minStakeLoc)),
-		LockupPeriod:     s.getStateBigInt(big.NewInt(lockupPeriodLoc)).Uint64(),
-		BlockReward:      s.getStateBigInt(big.NewInt(blockRewardLoc)),
-		BlockGasLimit:    s.getStateBigInt(big.NewInt(blockGasLimitLoc)).Uint64(),
-		NumChains:        uint32(s.getStateBigInt(big.NewInt(numChainsLoc)).Uint64()),
-		LambdaBA:         s.getStateBigInt(big.NewInt(lambdaBALoc)).Uint64(),
-		LambdaDKG:        s.getStateBigInt(big.NewInt(lambdaDKGLoc)).Uint64(),
-		K:                uint32(s.getStateBigInt(big.NewInt(kLoc)).Uint64()),
-		PhiRatio:         float32(s.getStateBigInt(big.NewInt(phiRatioLoc)).Uint64()) / phiRatioMultiplier,
-		NotarySetSize:    uint32(s.getStateBigInt(big.NewInt(notarySetSizeLoc)).Uint64()),
-		DKGSetSize:       uint32(s.getStateBigInt(big.NewInt(dkgSetSizeLoc)).Uint64()),
-		RoundInterval:    s.getStateBigInt(big.NewInt(roundIntervalLoc)).Uint64(),
-		MinBlockInterval: s.getStateBigInt(big.NewInt(minBlockIntervalLoc)).Uint64(),
-		FineValues:       s.FineValues(),
+		MinStake:          s.getStateBigInt(big.NewInt(minStakeLoc)),
+		LockupPeriod:      s.getStateBigInt(big.NewInt(lockupPeriodLoc)).Uint64(),
+		MiningVelocity:    float32(s.getStateBigInt(big.NewInt(miningVelocityLoc)).Uint64()) / decimalMultiplier,
+		NextHalvingSupply: s.getStateBigInt(big.NewInt(nextHalvingSupplyLoc)),
+		LastHalvedAmount:  s.getStateBigInt(big.NewInt(lastHalvedAmountLoc)),
+		BlockGasLimit:     s.getStateBigInt(big.NewInt(blockGasLimitLoc)).Uint64(),
+		NumChains:         uint32(s.getStateBigInt(big.NewInt(numChainsLoc)).Uint64()),
+		LambdaBA:          s.getStateBigInt(big.NewInt(lambdaBALoc)).Uint64(),
+		LambdaDKG:         s.getStateBigInt(big.NewInt(lambdaDKGLoc)).Uint64(),
+		K:                 uint32(s.getStateBigInt(big.NewInt(kLoc)).Uint64()),
+		PhiRatio:          float32(s.getStateBigInt(big.NewInt(phiRatioLoc)).Uint64()) / decimalMultiplier,
+		NotarySetSize:     uint32(s.getStateBigInt(big.NewInt(notarySetSizeLoc)).Uint64()),
+		DKGSetSize:        uint32(s.getStateBigInt(big.NewInt(dkgSetSizeLoc)).Uint64()),
+		RoundInterval:     s.getStateBigInt(big.NewInt(roundIntervalLoc)).Uint64(),
+		MinBlockInterval:  s.getStateBigInt(big.NewInt(minBlockIntervalLoc)).Uint64(),
+		FineValues:        s.FineValues(),
 	}
 }
 
@@ -1316,13 +1360,15 @@ func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
 func (s *GovernanceStateHelper) UpdateConfiguration(cfg *params.DexconConfig) {
 	s.setStateBigInt(big.NewInt(minStakeLoc), cfg.MinStake)
 	s.setStateBigInt(big.NewInt(lockupPeriodLoc), big.NewInt(int64(cfg.LockupPeriod)))
-	s.setStateBigInt(big.NewInt(blockRewardLoc), cfg.BlockReward)
+	s.setStateBigInt(big.NewInt(miningVelocityLoc), big.NewInt(int64(cfg.MiningVelocity*decimalMultiplier)))
+	s.setStateBigInt(big.NewInt(nextHalvingSupplyLoc), cfg.NextHalvingSupply)
+	s.setStateBigInt(big.NewInt(lastHalvedAmountLoc), cfg.LastHalvedAmount)
 	s.setStateBigInt(big.NewInt(blockGasLimitLoc), big.NewInt(int64(cfg.BlockGasLimit)))
 	s.setStateBigInt(big.NewInt(numChainsLoc), big.NewInt(int64(cfg.NumChains)))
 	s.setStateBigInt(big.NewInt(lambdaBALoc), big.NewInt(int64(cfg.LambdaBA)))
 	s.setStateBigInt(big.NewInt(lambdaDKGLoc), big.NewInt(int64(cfg.LambdaDKG)))
 	s.setStateBigInt(big.NewInt(kLoc), big.NewInt(int64(cfg.K)))
-	s.setStateBigInt(big.NewInt(phiRatioLoc), big.NewInt(int64(cfg.PhiRatio*phiRatioMultiplier)))
+	s.setStateBigInt(big.NewInt(phiRatioLoc), big.NewInt(int64(cfg.PhiRatio*decimalMultiplier)))
 	s.setStateBigInt(big.NewInt(notarySetSizeLoc), big.NewInt(int64(cfg.NotarySetSize)))
 	s.setStateBigInt(big.NewInt(dkgSetSizeLoc), big.NewInt(int64(cfg.DKGSetSize)))
 	s.setStateBigInt(big.NewInt(roundIntervalLoc), big.NewInt(int64(cfg.RoundInterval)))
@@ -1333,7 +1379,6 @@ func (s *GovernanceStateHelper) UpdateConfiguration(cfg *params.DexconConfig) {
 type rawConfigStruct struct {
 	MinStake         *big.Int
 	LockupPeriod     *big.Int
-	BlockReward      *big.Int
 	BlockGasLimit    *big.Int
 	NumChains        *big.Int
 	LambdaBA         *big.Int
@@ -1351,7 +1396,6 @@ type rawConfigStruct struct {
 func (s *GovernanceStateHelper) UpdateConfigurationRaw(cfg *rawConfigStruct) {
 	s.setStateBigInt(big.NewInt(minStakeLoc), cfg.MinStake)
 	s.setStateBigInt(big.NewInt(lockupPeriodLoc), cfg.LockupPeriod)
-	s.setStateBigInt(big.NewInt(blockRewardLoc), cfg.BlockReward)
 	s.setStateBigInt(big.NewInt(blockGasLimitLoc), cfg.BlockGasLimit)
 	s.setStateBigInt(big.NewInt(numChainsLoc), cfg.NumChains)
 	s.setStateBigInt(big.NewInt(lambdaBALoc), cfg.LambdaBA)

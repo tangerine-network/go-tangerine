@@ -47,20 +47,6 @@ const GovernanceABIJSON = `
   },
   {
     "constant": true,
-    "inputs": [],
-    "name": "blockReward",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
     "inputs": [
       {
         "name": "",
@@ -165,6 +151,20 @@ const GovernanceABIJSON = `
       {
         "name": "url",
         "type": "string"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "miningVelocity",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -388,11 +388,39 @@ const GovernanceABIJSON = `
   {
     "constant": true,
     "inputs": [],
+    "name": "nextHalvingSupply",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
     "name": "owner",
     "outputs": [
       {
         "name": "",
         "type": "address"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "lastHalvedAmount",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -778,10 +806,6 @@ const GovernanceABIJSON = `
       },
       {
         "name": "LockupPeriod",
-        "type": "uint256"
-      },
-      {
-        "name": "BlockReward",
         "type": "uint256"
       },
       {

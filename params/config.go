@@ -26,8 +26,8 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0x4310c4984de8bf7ac1c509232d21511fae2cd73e8a1bb8365fe4e489042bc407")
-	TestnetGenesisHash = common.HexToHash("0x1fdd7ca7ccdd7c3a481f4162b8ca02a4db03859b4abaed96f7e259266d818a13")
+	MainnetGenesisHash = common.HexToHash("0xeffc8ddbc16ebd98411bb902290ba74a9cc699a4bd02652afecbf864ae542008")
+	TestnetGenesisHash = common.HexToHash("0xde641c0a52093329aaa5096ed19607243c98390285c5a4f4291c635b9f01301c")
 )
 
 // TrustedCheckpoints associates each known checkpoint with the genesis hash of
@@ -52,21 +52,23 @@ var (
 		ConstantinopleBlock: big.NewInt(0),
 		PetersburgBlock:     big.NewInt(0),
 		Dexcon: &DexconConfig{
-			GenesisCRSText:   "In DEXON, we trust.",
-			Owner:            common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
-			MinStake:         new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
-			LockupPeriod:     86400 * 3 * 1000,
-			BlockReward:      big.NewInt(1e18),
-			BlockGasLimit:    40000000,
-			NumChains:        4,
-			LambdaBA:         250,
-			LambdaDKG:        2500,
-			K:                0,
-			PhiRatio:         0.667,
-			NotarySetSize:    4,
-			DKGSetSize:       4,
-			RoundInterval:    600000,
-			MinBlockInterval: 900,
+			GenesisCRSText:    "In DEXON, we trust.",
+			Owner:             common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
+			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+			LockupPeriod:      86400 * 3 * 1000,
+			MiningVelocity:    0.1875,
+			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2.5e9)),
+			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.5e9)),
+			BlockGasLimit:     40000000,
+			NumChains:         6,
+			LambdaBA:          250,
+			LambdaDKG:         2500,
+			K:                 0,
+			PhiRatio:          0.667,
+			NotarySetSize:     4,
+			DKGSetSize:        4,
+			RoundInterval:     600000,
+			MinBlockInterval:  1000,
 			FineValues: []*big.Int{
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
@@ -97,21 +99,23 @@ var (
 		ConstantinopleBlock: big.NewInt(0),
 		PetersburgBlock:     big.NewInt(0),
 		Dexcon: &DexconConfig{
-			GenesisCRSText:   "In DEXON, we trust.",
-			Owner:            common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
-			MinStake:         new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
-			LockupPeriod:     86400 * 3 * 1000,
-			BlockReward:      big.NewInt(1e18),
-			BlockGasLimit:    40000000,
-			NumChains:        6,
-			LambdaBA:         250,
-			LambdaDKG:        2500,
-			K:                0,
-			PhiRatio:         0.667,
-			NotarySetSize:    4,
-			DKGSetSize:       4,
-			RoundInterval:    600000,
-			MinBlockInterval: 900,
+			GenesisCRSText:    "In DEXON, we trust.",
+			Owner:             common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
+			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+			LockupPeriod:      86400 * 3 * 1000,
+			MiningVelocity:    0.1875,
+			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(6e6)),
+			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e6)),
+			BlockGasLimit:     40000000,
+			NumChains:         6,
+			LambdaBA:          250,
+			LambdaDKG:         2500,
+			K:                 0,
+			PhiRatio:          0.667,
+			NotarySetSize:     4,
+			DKGSetSize:        4,
+			RoundInterval:     600000,
+			MinBlockInterval:  1000,
 			FineValues: []*big.Int{
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
@@ -133,21 +137,23 @@ var (
 		ConstantinopleBlock: big.NewInt(0),
 		PetersburgBlock:     big.NewInt(0),
 		Dexcon: &DexconConfig{
-			GenesisCRSText:   "In DEXON, we trust.",
-			Owner:            common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
-			MinStake:         new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
-			LockupPeriod:     86400 * 3 * 1000,
-			BlockReward:      big.NewInt(1e18),
-			BlockGasLimit:    40000000,
-			NumChains:        6,
-			LambdaBA:         400,
-			LambdaDKG:        10000,
-			K:                0,
-			PhiRatio:         0.667,
-			NotarySetSize:    21,
-			DKGSetSize:       13,
-			RoundInterval:    3600000,
-			MinBlockInterval: 900,
+			GenesisCRSText:    "In DEXON, we trust.",
+			Owner:             common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
+			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+			LockupPeriod:      86400 * 3 * 1000,
+			MiningVelocity:    0.1875,
+			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(6e6)),
+			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e6)),
+			BlockGasLimit:     40000000,
+			NumChains:         6,
+			LambdaBA:          400,
+			LambdaDKG:         10000,
+			K:                 0,
+			PhiRatio:          0.667,
+			NotarySetSize:     21,
+			DKGSetSize:        13,
+			RoundInterval:     3600000,
+			MinBlockInterval:  1000,
 			FineValues: []*big.Int{
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
@@ -281,38 +287,43 @@ func (c *CliqueConfig) String() string {
 
 // DexconConfig is the consensus engine configs for DEXON consensus.
 type DexconConfig struct {
-	GenesisCRSText   string         `json:"genesisCRSText"`
-	Owner            common.Address `json:"owner"`
-	MinStake         *big.Int       `json:"minStake"`
-	LockupPeriod     uint64         `json:"lockupPeriod"`
-	BlockReward      *big.Int       `json:"blockReward"`
-	BlockGasLimit    uint64         `json:"blockGasLimit"`
-	NumChains        uint32         `json:"numChains"`
-	LambdaBA         uint64         `json:"lambdaBA"`
-	LambdaDKG        uint64         `json:"lambdaDKG"`
-	K                uint32         `json:"k"`
-	PhiRatio         float32        `json:"phiRatio"`
-	NotarySetSize    uint32         `json:"notarySetSize"`
-	DKGSetSize       uint32         `json:"dkgSetSize"`
-	RoundInterval    uint64         `json:"roundInterval"`
-	MinBlockInterval uint64         `json:"minBlockInterval"`
-	FineValues       []*big.Int     `json:"fineValues"`
+	GenesisCRSText    string         `json:"genesisCRSText"`
+	Owner             common.Address `json:"owner"`
+	MinStake          *big.Int       `json:"minStake"`
+	LockupPeriod      uint64         `json:"lockupPeriod"`
+	MiningVelocity    float32        `json:"miningVelocity"`
+	NextHalvingSupply *big.Int       `json:"nextHalvingSupply"`
+	LastHalvedAmount  *big.Int       `json:"lastHalvedAmount"`
+	BlockGasLimit     uint64         `json:"blockGasLimit"`
+	NumChains         uint32         `json:"numChains"`
+	LambdaBA          uint64         `json:"lambdaBA"`
+	LambdaDKG         uint64         `json:"lambdaDKG"`
+	K                 uint32         `json:"k"`
+	PhiRatio          float32        `json:"phiRatio"`
+	NotarySetSize     uint32         `json:"notarySetSize"`
+	DKGSetSize        uint32         `json:"dkgSetSize"`
+	RoundInterval     uint64         `json:"roundInterval"`
+	MinBlockInterval  uint64         `json:"minBlockInterval"`
+	FineValues        []*big.Int     `json:"fineValues"`
 }
 
 type dexconConfigSpecMarshaling struct {
-	MinStake    *math.HexOrDecimal256
-	BlockReward *math.HexOrDecimal256
-	FineValues  []*math.HexOrDecimal256
+	MinStake          *math.HexOrDecimal256
+	NextHalvingSupply *math.HexOrDecimal256
+	LastHalvedAmount  *math.HexOrDecimal256
+	FineValues        []*math.HexOrDecimal256
 }
 
 // String implements the stringer interface, returning the consensus engine details.
 func (d *DexconConfig) String() string {
-	return fmt.Sprintf("{GenesisCRSText: %v Owner: %v MinStake: %v LockupPeriod: %v BlockReward: %v BlockGasLimit: %v NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v FineValues: %v}",
+	return fmt.Sprintf("{GenesisCRSText: %v Owner: %v MinStake: %v LockupPeriod: %v MiningVelocity: %v NextHalvingSupply: %v LastHalvedAmount: %v BlockGasLimit: %v NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v FineValues: %v}",
 		d.GenesisCRSText,
 		d.Owner,
 		d.MinStake,
 		d.LockupPeriod,
-		d.BlockReward,
+		d.MiningVelocity,
+		d.NextHalvingSupply,
+		d.LastHalvedAmount,
 		d.BlockGasLimit,
 		d.NumChains,
 		d.LambdaBA,

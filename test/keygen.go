@@ -24,15 +24,7 @@ var preFundAddresss = []string{
 }
 
 func main() {
-	data, err := ioutil.ReadFile(genesisFile)
-	if err != nil {
-		panic(err)
-	}
-
-	genesis := new(core.Genesis)
-	if err := json.Unmarshal(data, &genesis); err != nil {
-		panic(err)
-	}
+	genesis := core.DefaultGenesisBlock()
 
 	// Clear previous allocation.
 	genesis.Alloc = make(map[common.Address]core.GenesisAccount)
@@ -71,7 +63,7 @@ func main() {
 		fmt.Printf("Created account %s\n", address.String())
 	}
 
-	data, err = json.MarshalIndent(genesis, "", "  ")
+	data, err := json.MarshalIndent(genesis, "", "  ")
 	if err != nil {
 		panic(err)
 	}

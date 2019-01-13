@@ -68,7 +68,7 @@ func NewDexconGovernance(backend *DexAPIBackend, chainConfig *params.ChainConfig
 
 // DexconConfiguration return raw config in state.
 func (d *DexconGovernance) DexconConfiguration(round uint64) *params.DexconConfig {
-	return d.GetConfigHelper(round).Configuration()
+	return d.GetGovStateHelperAtRound(round).Configuration()
 }
 
 func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
@@ -136,7 +136,7 @@ func (d *DexconGovernance) ProposeCRS(round uint64, signedCRS []byte) {
 
 // NodeSet returns the current node set.
 func (d *DexconGovernance) NodeSet(round uint64) []coreCrypto.PublicKey {
-	s := d.GetConfigHelper(round)
+	s := d.GetGovStateHelperAtRound(round)
 	var pks []coreCrypto.PublicKey
 
 	for _, n := range s.QualifiedNodes() {

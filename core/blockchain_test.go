@@ -1650,7 +1650,7 @@ func TestProcessPendingBlock(t *testing.T) {
 	}
 
 	engine := &dexconTest{
-		blockReward: chainConfig.Dexcon.BlockReward,
+		blockReward: big.NewInt(1e18),
 		numChains:   chainConfig.Dexcon.NumChains,
 	}
 	chain, err := NewBlockChain(db, nil, chainConfig, engine, vm.Config{}, nil)

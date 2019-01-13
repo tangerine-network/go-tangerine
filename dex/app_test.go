@@ -494,9 +494,21 @@ func TestNumChainsChange(t *testing.T) {
 	// Update config in round 1 and height 1.
 	// Config will affect in round 3.
 	input, err := abiObject.Pack("updateConfiguration",
-		new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)), big.NewInt(2000),
-		big.NewInt(1e17), big.NewInt(9000000), big.NewInt(3), big.NewInt(500), big.NewInt(5000),
-		big.NewInt(1), big.NewInt(700000), big.NewInt(5), big.NewInt(5), big.NewInt(700000), big.NewInt(1000),
+		new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
+		big.NewInt(2000),
+		big.NewInt(0.1875*1e8),
+		big.NewInt(1e18),
+		big.NewInt(1e18),
+		big.NewInt(9000000),
+		big.NewInt(3),
+		big.NewInt(500),
+		big.NewInt(5000),
+		big.NewInt(1),
+		big.NewInt(700000),
+		big.NewInt(5),
+		big.NewInt(5),
+		big.NewInt(700000),
+		big.NewInt(1000),
 		[]*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)})
 	if err != nil {
 		t.Errorf("updateConfiguration abiObject pack error: %v", err)
@@ -686,7 +698,7 @@ func newTestDexonWithGenesis(allocKey *ecdsa.PrivateKey) (*Dexon, error) {
 
 	dex.APIBackend = &DexAPIBackend{dex, nil}
 	dex.governance = NewDexconGovernance(dex.APIBackend, dex.chainConfig, config.PrivateKey)
-	engine.SetConfigFetcher(dex.governance)
+	engine.SetGovStateFetcher(dex.governance)
 	dex.app = NewDexconApp(dex.txPool, dex.blockchain, dex.governance, db, &config)
 
 	return dex, nil
@@ -748,7 +760,7 @@ func prepareData(dex *Dexon, key *ecdsa.PrivateKey, startNonce, txNum int) (
 func prepareConfirmedBlockWithTxAndData(dex *Dexon, key *ecdsa.PrivateKey, data [][]byte, round uint64) (
 	Block *coreTypes.Block, err error) {
 	address := crypto.PubkeyToAddress(key.PublicKey)
-	numChains := dex.governance.GetConfigHelper(round).Configuration().NumChains
+	numChains := dex.governance.GetGovStateHelperAtRound(round).Configuration().NumChains
 	chainID := new(big.Int).Mod(address.Big(), big.NewInt(int64(numChains)))
 
 	for _, d := range data {

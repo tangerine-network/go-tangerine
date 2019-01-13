@@ -23,17 +23,17 @@ import (
 	"github.com/dexon-foundation/dexon/consensus"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/params"
+	"github.com/dexon-foundation/dexon/core/vm"
 	"github.com/dexon-foundation/dexon/rpc"
 )
 
-type ConfigurationFetcher interface {
-	DexconConfiguration(round uint64) *params.DexconConfig
+type GovernanceStateFetcher interface {
+	GetGovStateHelperAtRound(round uint64) *vm.GovernanceStateHelper
 }
 
 // Dexcon is a delegated proof-of-stake consensus engine.
 type Dexcon struct {
-	configFetcher ConfigurationFetcher
+	govStateFetcer GovernanceStateFetcher
 }
 
 // New creates a Clique proof-of-authority consensus engine with the initial
@@ -42,11 +42,11 @@ func New() *Dexcon {
 	return &Dexcon{}
 }
 
-// SetConfigFetcher sets the config fetcher for Dexcon. The reason this is not
+// SetGovStateFetcher sets the config fetcher for Dexcon. The reason this is not
 // passed in the New() method is to bypass cycle dependencies when initializing
 // dex backend.
-func (d *Dexcon) SetConfigFetcher(fetcher ConfigurationFetcher) {
-	d.configFetcher = fetcher
+func (d *Dexcon) SetGovStateFetcher(fetcher GovernanceStateFetcher) {
+	d.govStateFetcer = fetcher
 }
 
 // Author implements consensus.Engine, returning the Ethereum address recovered
@@ -107,12 +107,54 @@ func (d *Dexcon) Prepare(chain consensus.ChainReader, header *types.Header) erro
 	return nil
 }
 
+func (d *Dexcon) calculateBlockReward(round int64, state *state.StateDB) *big.Int {
+	gs := d.govStateFetcer.GetGovStateHelperAtRound(uint64(round))
+	config := gs.Configuration()
+
+	gsCurrent := vm.GovernanceStateHelper{state}
+	configCurrent := gsCurrent.Configuration()
+	heightCurrent := gsCurrent.RoundHeight(big.NewInt(round)).Uint64()
+
+	blocksPerRound := uint64(0)
+
+	// The initial round, calculate an approximate number of round base on config.
+	if round == 0 || heightCurrent == 0 {
+		blocksPerRound = uint64(config.NumChains) * config.RoundInterval / config.MinBlockInterval
+	} else {
+		heightPrev := gsCurrent.RoundHeight(big.NewInt(round - 1)).Uint64()
+		blocksPerRound = heightCurrent - heightPrev
+	}
+
+	// blockReard = miningVelocity * totalStaked * roundInterval / aYear / numBlocksInPrevRound
+	numerator, _ := new(big.Float).Mul(
+		new(big.Float).Mul(
+			big.NewFloat(float64(configCurrent.MiningVelocity)),
+			new(big.Float).SetInt(gs.TotalStaked())),
+		new(big.Float).SetInt(gs.RoundInterval())).Int(nil)
+
+	reward := new(big.Int).Div(numerator,
+		new(big.Int).Mul(
+			big.NewInt(86400*1000*365),
+			big.NewInt(int64(blocksPerRound))))
+
+	return reward
+}
+
 // Finalize implements consensus.Engine, ensuring no uncles are set, nor block
 // rewards given, and returns the final block.
 func (d *Dexcon) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
-	config := d.configFetcher.DexconConfiguration(header.Round)
-	reward := new(big.Int).Div(config.BlockReward, big.NewInt(int64(config.NumChains)))
+	reward := d.calculateBlockReward(int64(header.Round), state)
 	state.AddBalance(header.Coinbase, reward)
+
+	gs := vm.GovernanceStateHelper{state}
+	gs.IncTotalSupply(reward)
+
+	config := gs.Configuration()
+
+	// Check if halving checkpoint reached.
+	if gs.TotalSupply().Cmp(config.NextHalvingSupply) >= 0 {
+		gs.MiningHalved()
+	}
 
 	header.Reward = reward
 	header.Root = state.IntermediateRoot(true)
@@ -145,10 +187,5 @@ func (d *Dexcon) Close() error {
 // APIs implements consensus.Engine, returning the user facing RPC API to allow
 // controlling the signer voting.
 func (d *Dexcon) APIs(chain consensus.ChainReader) []rpc.API {
-	return []rpc.API{{
-		Namespace: "dexcon",
-		Version:   "1.0",
-		Service:   &API{dexcon: d},
-		Public:    false,
-	}}
+	return []rpc.API{}
 }

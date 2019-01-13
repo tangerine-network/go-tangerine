@@ -160,7 +160,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	dex.app = NewDexconApp(dex.txPool, dex.blockchain, dex.governance, chainDb, config)
 
 	// Set config fetcher so engine can fetch current system configuration from state.
-	engine.SetConfigFetcher(dex.governance)
+	engine.SetGovStateFetcher(dex.governance)
 
 	dMoment := time.Unix(config.DMoment, int64(0))
 	log.Info("DEXON Consensus DMoment", "time", dMoment)

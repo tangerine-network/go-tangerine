@@ -112,6 +112,9 @@ func (g *GovernanceContractTestSuite) SetupTest() {
 
 	config := params.TestnetChainConfig.Dexcon
 	config.LockupPeriod = 1000
+	config.NextHalvingSupply = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2.5e9))
+	config.LastHalvedAmount = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.5e9))
+	config.MiningVelocity = 0.1875
 
 	g.config = config
 
@@ -598,9 +601,18 @@ func (g *GovernanceContractTestSuite) TestUpdateConfiguration() {
 	_, addr := g.newPrefundAccount()
 
 	input, err := abiObject.Pack("updateConfiguration",
-		new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)), big.NewInt(1000),
-		big.NewInt(1e18), big.NewInt(8000000), big.NewInt(6), big.NewInt(250), big.NewInt(2500),
-		big.NewInt(0), big.NewInt(667000), big.NewInt(4), big.NewInt(4), big.NewInt(600000), big.NewInt(900),
+		new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+		big.NewInt(1000),
+		big.NewInt(8000000),
+		big.NewInt(6),
+		big.NewInt(250),
+		big.NewInt(2500),
+		big.NewInt(0),
+		big.NewInt(667000),
+		big.NewInt(4),
+		big.NewInt(4),
+		big.NewInt(600000),
+		big.NewInt(900),
 		[]*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)})
 	g.Require().NoError(err)
 
@@ -687,13 +699,13 @@ func (g *GovernanceContractTestSuite) TestConfigurationReading() {
 	g.Require().Equal(g.config.MinStake.String(), value.String())
 
 	// BlockReward.
-	input, err = abiObject.Pack("blockReward")
+	input, err = abiObject.Pack("miningVelocity")
 	g.Require().NoError(err)
 	res, err = g.call(addr, input, big.NewInt(0))
 	g.Require().NoError(err)
-	err = abiObject.Unpack(&value, "blockReward", res)
+	err = abiObject.Unpack(&value, "miningVelocity", res)
 	g.Require().NoError(err)
-	g.Require().Equal(g.config.BlockReward.String(), value.String())
+	g.Require().Equal(g.config.MiningVelocity, float32(value.Uint64())/decimalMultiplier)
 
 	// BlockGasLimit.
 	input, err = abiObject.Pack("blockGasLimit")
@@ -747,7 +759,7 @@ func (g *GovernanceContractTestSuite) TestConfigurationReading() {
 	g.Require().NoError(err)
 	err = abiObject.Unpack(&value, "phiRatio", res)
 	g.Require().NoError(err)
-	g.Require().Equal(g.config.PhiRatio, float32(value.Uint64())/phiRatioMultiplier)
+	g.Require().Equal(g.config.PhiRatio, float32(value.Uint64())/decimalMultiplier)
 
 	// NotarySetSize.
 	input, err = abiObject.Pack("notarySetSize")
@@ -1022,6 +1034,22 @@ func (g *GovernanceContractTestSuite) TestMiscVariableReading() {
 	g.Require().NoError(err)
 	res, err = g.call(addr, input, big.NewInt(0))
 	g.Require().NoError(err)
+}
+
+func (g *GovernanceContractTestSuite) TestHalvingCondition() {
+	// TotalSupply 2.5B reached
+	g.s.MiningHalved()
+	g.Require().Equal(new(big.Int).Mul(big.NewInt(1e18), big.NewInt(3.25e9)).String(),
+		g.s.NextHalvingSupply().String())
+	g.Require().Equal(new(big.Int).Mul(big.NewInt(1e18), big.NewInt(0.75e9)).String(),
+		g.s.LastHalvedAmount().String())
+
+	// TotalSupply 3.25B reached
+	g.s.MiningHalved()
+	g.Require().Equal(new(big.Int).Mul(big.NewInt(1e18), big.NewInt(3.625e9)).String(),
+		g.s.NextHalvingSupply().String())
+	g.Require().Equal(new(big.Int).Mul(big.NewInt(1e18), big.NewInt(0.375e9)).String(),
+		g.s.LastHalvedAmount().String())
 }
 
 func TestGovernanceContract(t *testing.T) {
