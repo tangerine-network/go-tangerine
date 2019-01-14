@@ -106,6 +106,7 @@ const (
 	ErrInvalidMsgCode
 	ErrProtocolVersionMismatch
 	ErrNetworkIdMismatch
+	ErrDMomentMismatch
 	ErrGenesisBlockMismatch
 	ErrNoStatusMsg
 	ErrExtraStatusMsg
@@ -123,6 +124,7 @@ var errorToString = map[int]string{
 	ErrInvalidMsgCode:          "Invalid message code",
 	ErrProtocolVersionMismatch: "Protocol version mismatch",
 	ErrNetworkIdMismatch:       "NetworkId mismatch",
+	ErrDMomentMismatch:         "DMoment mismatch",
 	ErrGenesisBlockMismatch:    "Genesis block mismatch",
 	ErrNoStatusMsg:             "No status message",
 	ErrExtraStatusMsg:          "Extra status message",
@@ -177,6 +179,7 @@ type p2pServer interface {
 type statusData struct {
 	ProtocolVersion uint32
 	NetworkId       uint64
+	DMoment         uint64
 	Number          uint64
 	CurrentBlock    common.Hash
 	GenesisBlock    common.Hash

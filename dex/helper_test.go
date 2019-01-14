@@ -46,6 +46,8 @@ var (
 	testBank       = crypto.PubkeyToAddress(testBankKey.PublicKey)
 )
 
+const dMoment = 123456
+
 // testP2PServer is a fake, helper p2p server for testing purposes.
 type testP2PServer struct {
 	mu      sync.Mutex
@@ -134,7 +136,7 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 		notarySetFunc: func(uint64, uint32) (map[string]struct{}, error) { return nil, nil },
 	}
 
-	pm, err := NewProtocolManager(gspec.Config, mode, DefaultConfig.NetworkId, evmux, &testTxPool{added: newtx}, engine, blockchain, db, true, tgov, &testApp{})
+	pm, err := NewProtocolManager(gspec.Config, mode, DefaultConfig.NetworkId, dMoment, evmux, &testTxPool{added: newtx}, engine, blockchain, db, true, tgov, &testApp{})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -275,17 +277,18 @@ func newTestPeer(name string, version int, pm *ProtocolManager, shake bool) (*te
 			head    = pm.blockchain.CurrentHeader()
 			number  = head.Number.Uint64()
 		)
-		tp.handshake(nil, number, head.Hash(), genesis.Hash())
+		tp.handshake(nil, dMoment, number, head.Hash(), genesis.Hash())
 	}
 	return tp, errc
 }
 
 // handshake simulates a trivial handshake that expects the same state from the
 // remote side as we are simulating locally.
-func (p *testPeer) handshake(t *testing.T, number uint64, head common.Hash, genesis common.Hash) {
+func (p *testPeer) handshake(t *testing.T, dMoment uint64, number uint64, head common.Hash, genesis common.Hash) {
 	msg := &statusData{
 		ProtocolVersion: uint32(p.version),
 		NetworkId:       DefaultConfig.NetworkId,
+		DMoment:         uint64(dMoment),
 		Number:          number,
 		CurrentBlock:    head,
 		GenesisBlock:    genesis,

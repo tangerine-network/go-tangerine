@@ -162,8 +162,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	// Set config fetcher so engine can fetch current system configuration from state.
 	engine.SetGovStateFetcher(dex.governance)
 
-	dMoment := time.Unix(config.DMoment, int64(0))
-	log.Info("DEXON Consensus DMoment", "time", dMoment)
+	dMoment := time.Unix(int64(chainConfig.DMoment), 0)
 
 	// Force starting with full sync mode if this node is a bootstrap proposer.
 	if config.BlockProposerEnabled && dMoment.After(time.Now()) {
@@ -171,8 +170,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	}
 
 	pm, err := NewProtocolManager(dex.chainConfig, config.SyncMode,
-		config.NetworkId, dex.eventMux, dex.txPool, dex.engine, dex.blockchain,
-		chainDb, config.BlockProposerEnabled, dex.governance, dex.app)
+		config.NetworkId, chainConfig.DMoment, dex.eventMux, dex.txPool, dex.engine,
+		dex.blockchain, chainDb, config.BlockProposerEnabled, dex.governance, dex.app)
 	if err != nil {
 		return nil, err
 	}

@@ -91,6 +91,7 @@ func errResp(code errCode, format string, v ...interface{}) error {
 
 type ProtocolManager struct {
 	networkID uint64
+	dMoment   uint64
 
 	fastSync  uint32 // Flag whether fast sync is enabled (gets disabled if we already have blocks)
 	acceptTxs uint32 // Flag whether we're considered synchronised (enables transaction processing)
@@ -147,13 +148,14 @@ type ProtocolManager struct {
 // with the Ethereum network.
 func NewProtocolManager(
 	config *params.ChainConfig, mode downloader.SyncMode, networkID uint64,
-	mux *event.TypeMux, txpool txPool, engine consensus.Engine,
+	dMoment uint64, mux *event.TypeMux, txpool txPool, engine consensus.Engine,
 	blockchain *core.BlockChain, chaindb ethdb.Database,
 	isBlockProposer bool, gov governance, app dexconApp) (*ProtocolManager, error) {
 	tab := newNodeTable()
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
 		networkID:       networkID,
+		dMoment:         dMoment,
 		eventMux:        mux,
 		txpool:          txpool,
 		nodeTable:       tab,
@@ -343,7 +345,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		hash    = head.Hash()
 		number  = head.Number.Uint64()
 	)
-	if err := p.Handshake(pm.networkID, number, hash, genesis.Hash()); err != nil {
+	if err := p.Handshake(pm.networkID, pm.dMoment, number, hash, genesis.Hash()); err != nil {
 		p.Log().Debug("Ethereum handshake failed", "err", err)
 		return err
 	}

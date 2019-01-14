@@ -326,10 +326,6 @@ var (
 		Name:  "bp",
 		Usage: "Enable block proposer mode (node set)",
 	}
-	ConsensusDMomentFlag = cli.Uint64Flag{
-		Name:  "dmoment",
-		Usage: "Set the DMoment of DEXON Consensus (unix timestamp)",
-	}
 	// Miner settings
 	MiningEnabledFlag = cli.BoolFlag{
 		Name:  "mine",
@@ -1287,16 +1283,6 @@ func SetDexConfig(ctx *cli.Context, stack *node.Node, cfg *dex.Config) {
 	// TODO(fjl): move trie cache generations into config
 	if gen := ctx.GlobalInt(TrieCacheGenFlag.Name); gen > 0 {
 		state.MaxTrieCacheGen = uint16(gen)
-	}
-	if ctx.GlobalIsSet(ConsensusDMomentFlag.Name) {
-		cfg.DMoment = int64(ctx.GlobalUint64(ConsensusDMomentFlag.Name))
-	} else {
-		// TODO(jimmy): default DMoment should be set based on networkId.
-		now := time.Now()
-		cfg.DMoment = time.Date(
-			now.Year(), now.Month(), now.Day(),
-			now.Hour(), now.Minute(), (now.Second()/5+1)*5,
-			0, now.Location()).Unix()
 	}
 
 	// Set indexer config.
