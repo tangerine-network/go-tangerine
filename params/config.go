@@ -26,8 +26,8 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0xeffc8ddbc16ebd98411bb902290ba74a9cc699a4bd02652afecbf864ae542008")
-	TestnetGenesisHash = common.HexToHash("0xde641c0a52093329aaa5096ed19607243c98390285c5a4f4291c635b9f01301c")
+	MainnetGenesisHash = common.HexToHash("0x73011fcc8abc63e9e3ac52c6762b002e082bd1c5f3ddb8ac918f6cd6fa4c327b")
+	TestnetGenesisHash = common.HexToHash("0xc1cb0aa5b5dae1a7a5e1bd04221ea9b3c735c5ebe208d622261a171dfb5a7302")
 )
 
 // TrustedCheckpoints associates each known checkpoint with the genesis hash of
@@ -54,7 +54,7 @@ var (
 		Dexcon: &DexconConfig{
 			GenesisCRSText:    "In DEXON, we trust.",
 			Owner:             common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
-			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			LockupPeriod:      86400 * 3 * 1000,
 			MiningVelocity:    0.1875,
 			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2.5e9)),
@@ -101,11 +101,11 @@ var (
 		Dexcon: &DexconConfig{
 			GenesisCRSText:    "In DEXON, we trust.",
 			Owner:             common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
-			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			LockupPeriod:      86400 * 3 * 1000,
 			MiningVelocity:    0.1875,
-			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(6e6)),
-			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e6)),
+			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e7)),
+			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(8e6)),
 			BlockGasLimit:     40000000,
 			NumChains:         6,
 			LambdaBA:          250,
@@ -139,11 +139,11 @@ var (
 		Dexcon: &DexconConfig{
 			GenesisCRSText:    "In DEXON, we trust.",
 			Owner:             common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
-			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			LockupPeriod:      86400 * 3 * 1000,
 			MiningVelocity:    0.1875,
-			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(6e6)),
-			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e6)),
+			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(4e7)),
+			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(8e6)),
 			BlockGasLimit:     40000000,
 			NumChains:         6,
 			LambdaBA:          400,

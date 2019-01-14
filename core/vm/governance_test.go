@@ -144,7 +144,7 @@ func (g *GovernanceContractTestSuite) newPrefundAccount() (*ecdsa.PrivateKey, co
 	}
 	address := crypto.PubkeyToAddress(privKey.PublicKey)
 
-	g.stateDB.AddBalance(address, new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e5)))
+	g.stateDB.AddBalance(address, new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e6)))
 	return privKey, address
 }
 
@@ -198,7 +198,7 @@ func (g *GovernanceContractTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
 
 	// Stake.
-	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5))
+	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6))
 	balanceBeforeStake := g.stateDB.GetBalance(addr)
 	input, err := abiObject.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
 	g.Require().NoError(err)
@@ -316,7 +316,7 @@ func (g *GovernanceContractTestSuite) TestDelegateUndelegate() {
 	// Stake.
 	input, err := abiObject.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
 	g.Require().NoError(err)
-	ownerStaked := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e4))
+	ownerStaked := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5))
 	_, err = g.call(addr, input, ownerStaked)
 	g.Require().NoError(err)
 	g.Require().Equal(0, len(g.s.QualifiedNodes()))
@@ -327,7 +327,7 @@ func (g *GovernanceContractTestSuite) TestDelegateUndelegate() {
 	_, addrDelegator := g.newPrefundAccount()
 
 	balanceBeforeDelegate := g.stateDB.GetBalance(addrDelegator)
-	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(3e4))
+	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(3e5))
 	input, err = abiObject.Pack("delegate", addr)
 	g.Require().NoError(err)
 
@@ -452,7 +452,7 @@ func (g *GovernanceContractTestSuite) TestFine() {
 	// Stake.
 	input, err := abiObject.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
 	g.Require().NoError(err)
-	ownerStaked := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e4))
+	ownerStaked := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5))
 	_, err = g.call(addr, input, ownerStaked)
 	g.Require().NoError(err)
 	g.Require().Equal(0, len(g.s.QualifiedNodes()))
@@ -463,7 +463,7 @@ func (g *GovernanceContractTestSuite) TestFine() {
 	_, addrDelegator := g.newPrefundAccount()
 
 	balanceBeforeDelegate := g.stateDB.GetBalance(addrDelegator)
-	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e4))
+	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5))
 	input, err = abiObject.Pack("delegate", addr)
 	g.Require().NoError(err)
 
@@ -505,7 +505,7 @@ func (g *GovernanceContractTestSuite) TestFine() {
 	_, addrDelegator2 := g.newPrefundAccount()
 	input, err = abiObject.Pack("payFine", addr)
 	g.Require().NoError(err)
-	_, err = g.call(addrDelegator2, input, big.NewInt(5e4))
+	_, err = g.call(addrDelegator2, input, big.NewInt(5e5))
 	g.Require().NotNil(err)
 
 	// Paying more than fine should fail.
@@ -536,7 +536,7 @@ func (g *GovernanceContractTestSuite) TestUnstakeWithExtraDelegators() {
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
 
 	// Stake.
-	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e4))
+	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5))
 	input, err := abiObject.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
 	g.Require().NoError(err)
 	_, err = g.call(addr, input, amount)
@@ -546,7 +546,7 @@ func (g *GovernanceContractTestSuite) TestUnstakeWithExtraDelegators() {
 	_, addrDelegator := g.newPrefundAccount()
 
 	balanceBeforeDelegate := g.stateDB.GetBalance(addrDelegator)
-	amount = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(3e4))
+	amount = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(3e5))
 	input, err = abiObject.Pack("delegate", addr)
 	g.Require().NoError(err)
 
@@ -601,7 +601,7 @@ func (g *GovernanceContractTestSuite) TestUpdateConfiguration() {
 	_, addr := g.newPrefundAccount()
 
 	input, err := abiObject.Pack("updateConfiguration",
-		new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+		new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 		big.NewInt(1000),
 		big.NewInt(8000000),
 		big.NewInt(6),
@@ -803,7 +803,7 @@ func (g *GovernanceContractTestSuite) TestReportForkVote() {
 	pkBytes := crypto.FromECDSAPub(&key.PublicKey)
 
 	// Stake.
-	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e4))
+	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5))
 	input, err := abiObject.Pack("stake", pkBytes, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
 	g.Require().NoError(err)
 	_, err = g.call(addr, input, amount)
@@ -869,7 +869,7 @@ func (g *GovernanceContractTestSuite) TestReportForkBlock() {
 	pkBytes := crypto.FromECDSAPub(&key.PublicKey)
 
 	// Stake.
-	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e4))
+	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5))
 	input, err := abiObject.Pack("stake", pkBytes, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
 	g.Require().NoError(err)
 	_, err = g.call(addr, input, amount)
@@ -956,7 +956,7 @@ func (g *GovernanceContractTestSuite) TestMiscVariableReading() {
 	g.Require().NoError(err)
 
 	// Stake.
-	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e4))
+	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5))
 	input, err = abiObject.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
 	g.Require().NoError(err)
 	_, err = g.call(addr, input, amount)
@@ -964,7 +964,7 @@ func (g *GovernanceContractTestSuite) TestMiscVariableReading() {
 
 	// 1st delegator delegate to 1st node.
 	_, addrDelegator := g.newPrefundAccount()
-	amount = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(3e4))
+	amount = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(3e5))
 	input, err = abiObject.Pack("delegate", addr)
 	g.Require().NoError(err)
 	_, err = g.call(addrDelegator, input, amount)

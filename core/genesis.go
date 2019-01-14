@@ -307,6 +307,11 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 			}
 		}
 
+		if g.Config.Dexcon.NextHalvingSupply.Cmp(totalSupply) <= 0 {
+			panic(fmt.Sprintf("invalid genesis found, totalSupply: %s, nextHavlingSupply: %s",
+				totalSupply, g.Config.Dexcon.NextHalvingSupply))
+		}
+
 		// Genesis CRS.
 		crs := crypto.Keccak256Hash([]byte(g.Config.Dexcon.GenesisCRSText))
 		govStateHelper.PushCRS(crs)
