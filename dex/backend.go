@@ -146,7 +146,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	if config.TxPool.Journal != "" {
 		config.TxPool.Journal = ctx.ResolvePath(config.TxPool.Journal)
 	}
-	dex.txPool = core.NewTxPool(config.TxPool, dex.chainConfig, dex.blockchain, config.BlockProposerEnabled)
+	dex.txPool = core.NewTxPool(config.TxPool, dex.chainConfig, dex.blockchain)
 
 	dex.APIBackend = &DexAPIBackend{dex, nil}
 	gpoParams := config.GPO

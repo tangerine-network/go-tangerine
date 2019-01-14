@@ -26,12 +26,12 @@ import (
 func TestPreparePayload(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	if err != nil {
-		t.Errorf("hex to ecdsa error: %v", err)
+		t.Fatalf("hex to ecdsa error: %v", err)
 	}
 
 	dex, err := newTestDexonWithGenesis(key)
 	if err != nil {
-		t.Errorf("new test dexon error: %v", err)
+		t.Fatalf("new test dexon error: %v", err)
 	}
 
 	signer := types.NewEIP155Signer(dex.chainConfig.ChainID)
@@ -40,7 +40,7 @@ func TestPreparePayload(t *testing.T) {
 	for i := 0; i < 5; i++ {
 		tx, err := addTx(dex, i, signer, key)
 		if err != nil {
-			t.Errorf("add tx error: %v", err)
+			t.Fatalf("add tx error: %v", err)
 		}
 		expectTx = append(expectTx, tx)
 	}
@@ -48,7 +48,7 @@ func TestPreparePayload(t *testing.T) {
 	// This transaction will not be included.
 	_, err = addTx(dex, 100, signer, key)
 	if err != nil {
-		t.Errorf("add tx error: %v", err)
+		t.Fatalf("add tx error: %v", err)
 	}
 
 	chainID := new(big.Int).Mod(crypto.PubkeyToAddress(key.PublicKey).Big(),
@@ -56,39 +56,41 @@ func TestPreparePayload(t *testing.T) {
 	var chainNum uint32
 	for chainNum = 0; chainNum < dex.chainConfig.Dexcon.NumChains; chainNum++ {
 
+		root := dex.blockchain.CurrentBlock().Root()
+		dex.app.chainRoot.Store(chainNum, &root)
 		payload, err := dex.app.PreparePayload(coreTypes.Position{ChainID: chainNum})
 		if err != nil {
-			t.Errorf("prepare payload error: %v", err)
+			t.Fatalf("prepare payload error: %v", err)
 		}
 
 		var transactions types.Transactions
 		err = rlp.DecodeBytes(payload, &transactions)
 		if err != nil {
-			t.Errorf("rlp decode error: %v", err)
+			t.Fatalf("rlp decode error: %v", err)
 		}
 
 		// Only one chain id allow prepare transactions.
 		if chainID.Uint64() == uint64(chainNum) && len(transactions) != 5 {
-			t.Errorf("incorrect transaction num expect %v but %v", 5, len(transactions))
+			t.Fatalf("incorrect transaction num expect %v but %v", 5, len(transactions))
 		} else if chainID.Uint64() != uint64(chainNum) && len(transactions) != 0 {
-			t.Errorf("expect empty slice but %v", len(transactions))
+			t.Fatalf("expect empty slice but %v", len(transactions))
 		}
 
 		for i, tx := range transactions {
 			if expectTx[i].Gas() != tx.Gas() {
-				t.Errorf("unexpected gas expect %v but %v", expectTx[i].Gas(), tx.Gas())
+				t.Fatalf("unexpected gas expect %v but %v", expectTx[i].Gas(), tx.Gas())
 			}
 
 			if expectTx[i].Hash() != tx.Hash() {
-				t.Errorf("unexpected hash expect %v but %v", expectTx[i].Hash(), tx.Hash())
+				t.Fatalf("unexpected hash expect %v but %v", expectTx[i].Hash(), tx.Hash())
 			}
 
 			if expectTx[i].Nonce() != tx.Nonce() {
-				t.Errorf("unexpected nonce expect %v but %v", expectTx[i].Nonce(), tx.Nonce())
+				t.Fatalf("unexpected nonce expect %v but %v", expectTx[i].Nonce(), tx.Nonce())
 			}
 
 			if expectTx[i].GasPrice().Uint64() != tx.GasPrice().Uint64() {
-				t.Errorf("unexpected gas price expect %v but %v",
+				t.Fatalf("unexpected gas price expect %v but %v",
 					expectTx[i].GasPrice().Uint64(), tx.GasPrice().Uint64())
 			}
 		}
@@ -98,41 +100,41 @@ func TestPreparePayload(t *testing.T) {
 func TestPrepareWitness(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	if err != nil {
-		t.Errorf("hex to ecdsa error: %v", err)
+		t.Fatalf("hex to ecdsa error: %v", err)
 	}
 
 	dex, err := newTestDexonWithGenesis(key)
 	if err != nil {
-		t.Errorf("new test dexon error: %v", err)
+		t.Fatalf("new test dexon error: %v", err)
 	}
 
 	currentBlock := dex.blockchain.CurrentBlock()
 
 	witness, err := dex.app.PrepareWitness(0)
 	if err != nil {
-		t.Errorf("prepare witness error: %v", err)
+		t.Fatalf("prepare witness error: %v", err)
 	}
 
 	if witness.Height != currentBlock.NumberU64() {
-		t.Errorf("unexpeted witness height %v", witness.Height)
+		t.Fatalf("unexpeted witness height %v", witness.Height)
 	}
 
 	var witnessData types.WitnessData
 	err = rlp.DecodeBytes(witness.Data, &witnessData)
 	if err != nil {
-		t.Errorf("rlp decode error: %v", err)
+		t.Fatalf("rlp decode error: %v", err)
 	}
 
 	if witnessData.Root != currentBlock.Root() {
-		t.Errorf("expect root %v but %v", currentBlock.Root(), witnessData.Root)
+		t.Fatalf("expect root %v but %v", currentBlock.Root(), witnessData.Root)
 	}
 
 	if witnessData.ReceiptHash != currentBlock.ReceiptHash() {
-		t.Errorf("expect receipt hash %v but %v", currentBlock.ReceiptHash(), witnessData.ReceiptHash)
+		t.Fatalf("expect receipt hash %v but %v", currentBlock.ReceiptHash(), witnessData.ReceiptHash)
 	}
 
 	if _, err := dex.app.PrepareWitness(999); err == nil {
-		t.Errorf("it must be get error from prepare")
+		t.Fatalf("it must be get error from prepare")
 	} else {
 		t.Logf("Nice error: %v", err)
 	}
@@ -141,19 +143,25 @@ func TestPrepareWitness(t *testing.T) {
 func TestVerifyBlock(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	if err != nil {
-		t.Errorf("hex to ecdsa error: %v", err)
+		t.Fatalf("hex to ecdsa error: %v", err)
 	}
 
 	dex, err := newTestDexonWithGenesis(key)
 	if err != nil {
-		t.Errorf("new test dexon error: %v", err)
+		t.Fatalf("new test dexon error: %v", err)
 	}
-
-	// Prepare first confirmed block.
-	prepareConfirmedBlocks(dex, []*ecdsa.PrivateKey{key}, 0)
 
 	chainID := new(big.Int).Mod(crypto.PubkeyToAddress(key.PublicKey).Big(),
 		big.NewInt(int64(dex.chainConfig.Dexcon.NumChains)))
+
+	root := dex.blockchain.CurrentBlock().Root()
+	dex.app.chainRoot.Store(uint32(chainID.Uint64()), &root)
+
+	// Prepare first confirmed block.
+	_, err = prepareConfirmedBlocks(dex, []*ecdsa.PrivateKey{key}, 0)
+	if err != nil {
+		t.Fatalf("prepare confirmed blocks error: %v", err)
+	}
 
 	// Prepare normal block.
 	block := &coreTypes.Block{}
@@ -163,13 +171,13 @@ func TestVerifyBlock(t *testing.T) {
 	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	block.Payload, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 100)
 	if err != nil {
-		t.Errorf("prepare data error: %v", err)
+		t.Fatalf("prepare data error: %v", err)
 	}
 
 	// Expect ok.
 	status := dex.app.VerifyBlock(block)
 	if status != coreTypes.VerifyOK {
-		t.Errorf("verify fail: %v", status)
+		t.Fatalf("verify fail: %v", status)
 	}
 
 	// Prepare invalid nonce tx.
@@ -180,13 +188,13 @@ func TestVerifyBlock(t *testing.T) {
 	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	block.Payload, block.Witness, err = prepareDataWithoutTxPool(dex, key, 1, 100)
 	if err != nil {
-		t.Errorf("prepare data error: %v", err)
+		t.Fatalf("prepare data error: %v", err)
 	}
 
 	// Expect invalid block.
 	status = dex.app.VerifyBlock(block)
 	if status != coreTypes.VerifyInvalidBlock {
-		t.Errorf("verify fail: %v", status)
+		t.Fatalf("verify fail: %v", status)
 	}
 
 	// Prepare invalid block height.
@@ -197,13 +205,13 @@ func TestVerifyBlock(t *testing.T) {
 	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	block.Payload, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 100)
 	if err != nil {
-		t.Errorf("prepare data error: %v", err)
+		t.Fatalf("prepare data error: %v", err)
 	}
 
 	// Expect retry later.
 	status = dex.app.VerifyBlock(block)
 	if status != coreTypes.VerifyRetryLater {
-		t.Errorf("verify fail expect retry later but get %v", status)
+		t.Fatalf("verify fail expect retry later but get %v", status)
 	}
 
 	// Prepare reach block limit.
@@ -214,13 +222,13 @@ func TestVerifyBlock(t *testing.T) {
 	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	block.Payload, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 10000)
 	if err != nil {
-		t.Errorf("prepare data error: %v", err)
+		t.Fatalf("prepare data error: %v", err)
 	}
 
 	// Expect invalid block.
 	status = dex.app.VerifyBlock(block)
 	if status != coreTypes.VerifyInvalidBlock {
-		t.Errorf("verify fail expect invalid block but get %v", status)
+		t.Fatalf("verify fail expect invalid block but get %v", status)
 	}
 
 	// Prepare insufficient funds.
@@ -231,7 +239,7 @@ func TestVerifyBlock(t *testing.T) {
 	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	_, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 0)
 	if err != nil {
-		t.Errorf("prepare data error: %v", err)
+		t.Fatalf("prepare data error: %v", err)
 	}
 
 	signer := types.NewEIP155Signer(dex.chainConfig.ChainID)
@@ -255,7 +263,7 @@ func TestVerifyBlock(t *testing.T) {
 	// expect invalid block
 	status = dex.app.VerifyBlock(block)
 	if status != coreTypes.VerifyInvalidBlock {
-		t.Errorf("verify fail expect invalid block but get %v", status)
+		t.Fatalf("verify fail expect invalid block but get %v", status)
 	}
 
 	// Prepare invalid intrinsic gas.
@@ -266,7 +274,7 @@ func TestVerifyBlock(t *testing.T) {
 	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	_, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 0)
 	if err != nil {
-		t.Errorf("prepare data error: %v", err)
+		t.Fatalf("prepare data error: %v", err)
 	}
 
 	signer = types.NewEIP155Signer(dex.chainConfig.ChainID)
@@ -290,7 +298,7 @@ func TestVerifyBlock(t *testing.T) {
 	// Expect invalid block.
 	status = dex.app.VerifyBlock(block)
 	if status != coreTypes.VerifyInvalidBlock {
-		t.Errorf("verify fail expect invalid block but get %v", status)
+		t.Fatalf("verify fail expect invalid block but get %v", status)
 	}
 
 	// Prepare invalid transactions with nonce.
@@ -301,7 +309,7 @@ func TestVerifyBlock(t *testing.T) {
 	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	_, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 0)
 	if err != nil {
-		t.Errorf("prepare data error: %v", err)
+		t.Fatalf("prepare data error: %v", err)
 	}
 
 	signer = types.NewEIP155Signer(dex.chainConfig.ChainID)
@@ -338,23 +346,26 @@ func TestVerifyBlock(t *testing.T) {
 	// Expect invalid block.
 	status = dex.app.VerifyBlock(block)
 	if status != coreTypes.VerifyInvalidBlock {
-		t.Errorf("verify fail expect invalid block but get %v", status)
+		t.Fatalf("verify fail expect invalid block but get %v", status)
 	}
 }
 
 func TestBlockConfirmed(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	if err != nil {
-		t.Errorf("hex to ecdsa error: %v", err)
+		t.Fatalf("hex to ecdsa error: %v", err)
 	}
 
 	dex, err := newTestDexonWithGenesis(key)
 	if err != nil {
-		t.Errorf("new test dexon error: %v", err)
+		t.Fatalf("new test dexon error: %v", err)
 	}
 
 	chainID := new(big.Int).Mod(crypto.PubkeyToAddress(key.PublicKey).Big(),
 		big.NewInt(int64(dex.chainConfig.Dexcon.NumChains)))
+
+	root := dex.blockchain.CurrentBlock().Root()
+	dex.app.chainRoot.Store(uint32(chainID.Uint64()), &root)
 
 	var (
 		expectCost    big.Int
@@ -368,7 +379,7 @@ func TestBlockConfirmed(t *testing.T) {
 		}
 		payload, witness, cost, nonce, err := prepareData(dex, key, startNonce, 50)
 		if err != nil {
-			t.Errorf("prepare data error: %v", err)
+			t.Fatalf("prepare data error: %v", err)
 		}
 		expectCost.Add(&expectCost, &cost)
 		expectNonce = nonce
@@ -388,33 +399,39 @@ func TestBlockConfirmed(t *testing.T) {
 		crypto.PubkeyToAddress(key.PublicKey))
 
 	if info.Counter != expectCounter {
-		t.Errorf("expect address counter is %v but %v", expectCounter, info.Counter)
+		t.Fatalf("expect address counter is %v but %v", expectCounter, info.Counter)
 	}
 
 	if info.Cost.Cmp(&expectCost) != 0 {
-		t.Errorf("expect address cost is %v but %v", expectCost.Uint64(), info.Cost.Uint64())
+		t.Fatalf("expect address cost is %v but %v", expectCost.Uint64(), info.Cost.Uint64())
 	}
 
 	if info.Nonce != expectNonce {
-		t.Errorf("expect address nonce is %v but %v", expectNonce, info.Nonce)
+		t.Fatalf("expect address nonce is %v but %v", expectNonce, info.Nonce)
 	}
 }
 
 func TestBlockDelivered(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	if err != nil {
-		t.Errorf("hex to ecdsa error: %v", err)
+		t.Fatalf("hex to ecdsa error: %v", err)
 	}
 
 	dex, err := newTestDexonWithGenesis(key)
 	if err != nil {
-		t.Errorf("new test dexon error: %v", err)
+		t.Fatalf("new test dexon error: %v", err)
 	}
+
+	chainID := new(big.Int).Mod(crypto.PubkeyToAddress(key.PublicKey).Big(),
+		big.NewInt(int64(dex.chainConfig.Dexcon.NumChains)))
+
+	root := dex.blockchain.CurrentBlock().Root()
+	dex.app.chainRoot.Store(uint32(chainID.Uint64()), &root)
 
 	address := crypto.PubkeyToAddress(key.PublicKey)
 	firstBlocksInfo, err := prepareConfirmedBlocks(dex, []*ecdsa.PrivateKey{key}, 50)
 	if err != nil {
-		t.Errorf("preapare confirmed block error: %v", err)
+		t.Fatalf("preapare confirmed block error: %v", err)
 	}
 
 	dex.app.BlockDelivered(firstBlocksInfo[0].Block.Hash, firstBlocksInfo[0].Block.Position,
@@ -423,72 +440,48 @@ func TestBlockDelivered(t *testing.T) {
 			Height:    1,
 		})
 
-	_, pendingState := dex.blockchain.GetPending()
-	currentBlock := dex.blockchain.CurrentBlock()
-	if currentBlock.NumberU64() != 0 {
-		t.Errorf("unexpected current block number %v", currentBlock.NumberU64())
-	}
-
-	pendingNonce := pendingState.GetNonce(address)
-	if pendingNonce != firstBlocksInfo[0].Nonce+1 {
-		t.Errorf("unexpected pending state nonce %v", pendingNonce)
-	}
-
-	balance := pendingState.GetBalance(address)
-	if new(big.Int).Add(balance, &firstBlocksInfo[0].Cost).Cmp(big.NewInt(50000000000000000)) != 0 {
-		t.Errorf("unexpected pending state balance %v", balance)
-	}
-
-	// prepare second block to witness first block
-	secondBlocksInfo, err := prepareConfirmedBlocks(dex, []*ecdsa.PrivateKey{key}, 25)
-	if err != nil {
-		t.Errorf("preapare confirmed block error: %v", err)
-	}
-
-	dex.app.BlockDelivered(secondBlocksInfo[0].Block.Hash, secondBlocksInfo[0].Block.Position,
-		coreTypes.FinalizationResult{
-			Timestamp: time.Now(),
-			Height:    2,
-		})
-
-	// second block witness first block, so current block number should be 1
-	currentBlock = dex.blockchain.CurrentBlock()
-	if currentBlock.NumberU64() != 1 {
-		t.Errorf("unexpected current block number %v", currentBlock.NumberU64())
-	}
-
 	currentState, err := dex.blockchain.State()
 	if err != nil {
-		t.Errorf("current state error: %v", err)
+		t.Fatalf("get state error: %v", err)
+	}
+	currentBlock := dex.blockchain.CurrentBlock()
+	if currentBlock.NumberU64() != 1 {
+		t.Fatalf("unexpected current block number %v", currentBlock.NumberU64())
 	}
 
 	currentNonce := currentState.GetNonce(address)
 	if currentNonce != firstBlocksInfo[0].Nonce+1 {
-		t.Errorf("unexpected current state nonce %v", currentNonce)
+		t.Fatalf("unexpected pending state nonce %v", currentNonce)
 	}
 
-	balance = currentState.GetBalance(address)
+	balance := currentState.GetBalance(address)
 	if new(big.Int).Add(balance, &firstBlocksInfo[0].Cost).Cmp(big.NewInt(50000000000000000)) != 0 {
-		t.Errorf("unexpected current state balance %v", balance)
+		t.Fatalf("unexpected pending state balance %v", balance)
 	}
 }
 
 func TestNumChainsChange(t *testing.T) {
 	key, err := crypto.GenerateKey()
 	if err != nil {
-		t.Errorf("hex to ecdsa error: %v", err)
+		t.Fatalf("hex to ecdsa error: %v", err)
 	}
 
 	params.TestnetChainConfig.Dexcon.Owner = crypto.PubkeyToAddress(key.PublicKey)
 
 	dex, err := newTestDexonWithGenesis(key)
 	if err != nil {
-		t.Errorf("new test dexon error: %v", err)
+		t.Fatalf("new test dexon error: %v", err)
 	}
+
+	chainID := new(big.Int).Mod(crypto.PubkeyToAddress(key.PublicKey).Big(),
+		big.NewInt(int64(dex.chainConfig.Dexcon.NumChains)))
+
+	root := dex.blockchain.CurrentBlock().Root()
+	dex.app.chainRoot.Store(uint32(chainID.Uint64()), &root)
 
 	abiObject, err := abi.JSON(strings.NewReader(vm.GovernanceABIJSON))
 	if err != nil {
-		t.Errorf("get abi object fail: %v", err)
+		t.Fatalf("get abi object fail: %v", err)
 	}
 
 	// Update config in round 1 and height 1.
@@ -511,12 +504,12 @@ func TestNumChainsChange(t *testing.T) {
 		big.NewInt(1000),
 		[]*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)})
 	if err != nil {
-		t.Errorf("updateConfiguration abiObject pack error: %v", err)
+		t.Fatalf("updateConfiguration abiObject pack error: %v", err)
 	}
 
 	block, err := prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{input}, 1)
 	if err != nil {
-		t.Errorf("prepare block error: %v", err)
+		t.Fatalf("prepare block error: %v", err)
 	}
 	dex.app.BlockDelivered(block.Hash, block.Position,
 		coreTypes.FinalizationResult{
@@ -527,12 +520,12 @@ func TestNumChainsChange(t *testing.T) {
 	// Snapshot round on round 1 and height 2.
 	input, err = abiObject.Pack("snapshotRound", big.NewInt(1), big.NewInt(1))
 	if err != nil {
-		t.Errorf("abiObject pack error: %v", err)
+		t.Fatalf("abiObject pack error: %v", err)
 	}
 
 	block, err = prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{input}, 1)
 	if err != nil {
-		t.Errorf("prepare block error: %v", err)
+		t.Fatalf("prepare block error: %v", err)
 	}
 	dex.app.BlockDelivered(block.Hash, block.Position,
 		coreTypes.FinalizationResult{
@@ -543,7 +536,7 @@ func TestNumChainsChange(t *testing.T) {
 	// Make round 1 height 2 block write into chain.
 	block, err = prepareConfirmedBlockWithTxAndData(dex, key, nil, 1)
 	if err != nil {
-		t.Errorf("prepare block error: %v", err)
+		t.Fatalf("prepare block error: %v", err)
 	}
 	dex.app.BlockDelivered(block.Hash, block.Position,
 		coreTypes.FinalizationResult{
@@ -554,10 +547,10 @@ func TestNumChainsChange(t *testing.T) {
 	// Round 2 will keep prepare tx as usual.
 	block, err = prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{{1}}, 2)
 	if err != nil {
-		t.Errorf("prepare block error: %v", err)
+		t.Fatalf("prepare block error: %v", err)
 	}
 	if block.Payload == nil {
-		t.Errorf("payload should not be nil")
+		t.Fatalf("payload should not be nil")
 	}
 	dex.app.BlockDelivered(block.Hash, block.Position,
 		coreTypes.FinalizationResult{
@@ -568,16 +561,16 @@ func TestNumChainsChange(t *testing.T) {
 	// It will prepare empty payload until witness any block in round 3.
 	block, err = prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{{1}}, 3)
 	if err != nil {
-		t.Errorf("prepare block error: %v", err)
+		t.Fatalf("prepare block error: %v", err)
 	}
 	if block.Payload != nil {
-		t.Errorf("payload should be nil but %v", block.Payload)
+		t.Fatalf("payload should be nil but %v", block.Payload)
 	}
 
 	// Test non-empty payload.
 	block.Payload = []byte{1}
 	if status := dex.app.VerifyBlock(block); status != coreTypes.VerifyInvalidBlock {
-		t.Errorf("unexpected verify status %v", status)
+		t.Fatalf("unexpected verify status %v", status)
 	}
 	block.Payload = nil
 
@@ -587,62 +580,39 @@ func TestNumChainsChange(t *testing.T) {
 			Height:    5,
 		})
 
-	// Still empty payload because round 3 is not witness yet.
-	// This block just for witness round 3 height 5.
-	block, err = prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{{1}}, 3)
-	if err != nil {
-		t.Errorf("prepare block error: %v", err)
-	}
-	if block.Payload != nil {
-		t.Errorf("payload should be nil but %v", block.Payload)
-	}
-
-	// Test non-empty payload.
-	block.Payload = []byte{1}
-	if status := dex.app.VerifyBlock(block); status != coreTypes.VerifyInvalidBlock {
-		t.Errorf("unexpected verify status %v", status)
-	}
-	block.Payload = nil
-
-	dex.app.BlockDelivered(block.Hash, block.Position,
-		coreTypes.FinalizationResult{
-			Timestamp: time.Now(),
-			Height:    6,
-		})
-
 	// Empty block in round 3 has been delivered.
 	// Now can prepare payload as usual.
 	block, err = prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{{1}}, 3)
 	if err != nil {
-		t.Errorf("prepare block error: %v", err)
+		t.Fatalf("prepare block error: %v", err)
 	}
 	if block.Payload == nil {
-		t.Errorf("payload should not be nil")
+		t.Fatalf("payload should not be nil")
 	}
 	dex.app.BlockDelivered(block.Hash, block.Position,
 		coreTypes.FinalizationResult{
 			Timestamp: time.Now(),
-			Height:    7,
+			Height:    6,
 		})
 }
 
 func BenchmarkBlockDeliveredFlow(b *testing.B) {
 	key, err := crypto.GenerateKey()
 	if err != nil {
-		b.Errorf("hex to ecdsa error: %v", err)
+		b.Fatalf("hex to ecdsa error: %v", err)
 		return
 	}
 
 	dex, err := newTestDexonWithGenesis(key)
 	if err != nil {
-		b.Errorf("new test dexon error: %v", err)
+		b.Fatalf("new test dexon error: %v", err)
 	}
 
 	b.ResetTimer()
 	for i := 1; i <= b.N; i++ {
 		blocksInfo, err := prepareConfirmedBlocks(dex, []*ecdsa.PrivateKey{key}, 100)
 		if err != nil {
-			b.Errorf("preapare confirmed block error: %v", err)
+			b.Fatalf("preapare confirmed block error: %v", err)
 			return
 		}
 

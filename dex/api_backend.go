@@ -60,7 +60,7 @@ func (b *DexAPIBackend) SetHead(number uint64) {
 
 func (b *DexAPIBackend) HeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*types.Header, error) {
 	// Otherwise resolve and return the block
-	if blockNr == rpc.LatestBlockNumber {
+	if blockNr == rpc.LatestBlockNumber || blockNr == rpc.PendingBlockNumber {
 		return b.dex.blockchain.CurrentBlock().Header(), nil
 	}
 	return b.dex.blockchain.GetHeaderByNumber(uint64(blockNr)), nil
@@ -79,10 +79,6 @@ func (b *DexAPIBackend) BlockByNumber(ctx context.Context, blockNr rpc.BlockNumb
 }
 
 func (b *DexAPIBackend) StateAndHeaderByNumber(ctx context.Context, blockNr rpc.BlockNumber) (*state.StateDB, *types.Header, error) {
-	if blockNr == rpc.PendingBlockNumber {
-		block, state := b.dex.BlockChain().GetPending()
-		return state, block.Header(), nil
-	}
 	header, err := b.HeaderByNumber(ctx, blockNr)
 	if header == nil || err != nil {
 		return nil, nil, err

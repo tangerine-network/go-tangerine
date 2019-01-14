@@ -51,9 +51,6 @@ type ReadOnlyBlockChain interface {
 	GetHeaderByHash(common.Hash) *types.Header
 	GetHeaderByNumber(number uint64) *types.Header
 	GetLastNonceInConfirmedBlocks(uint32, common.Address) (uint64, bool)
-	GetPending() (*types.Block, *state.StateDB)
-	GetPendingBlockByNumber(uint64) *types.Block
-	GetPendingHeight() uint64
 	GetReceiptsByHash(common.Hash) types.Receipts
 	GetRoundHeight(uint64) (uint64, bool)
 	GetTd(common.Hash, uint64) *big.Int
@@ -64,10 +61,8 @@ type ReadOnlyBlockChain interface {
 	HasBlockAndState(common.Hash, uint64) bool
 	HasHeader(common.Hash, uint64) bool
 	HasState(common.Hash) bool
-	PendingBlock() *types.Block
 	State() (*state.StateDB, error)
 	StateAt(root common.Hash) (*state.StateDB, error)
-	SubscribeBlockConfirmedEvent(chan<- core.BlockConfirmedEvent) event.Subscription
 	SubscribeChainEvent(chan<- core.ChainEvent) event.Subscription
 	SubscribeChainHeadEvent(chan<- core.ChainHeadEvent) event.Subscription
 	SubscribeChainSideEvent(chan<- core.ChainSideEvent) event.Subscription

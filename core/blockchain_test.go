@@ -1626,7 +1626,7 @@ func (d *dexconTest) Finalize(chain consensus.ChainReader, header *types.Header,
 	return types.NewBlock(header, txs, uncles, receipts), nil
 }
 
-func TestProcessPendingBlock(t *testing.T) {
+func TestProcessBlock(t *testing.T) {
 	db := ethdb.NewMemDatabase()
 
 	key, err := crypto.GenerateKey()
@@ -1672,8 +1672,8 @@ func TestProcessPendingBlock(t *testing.T) {
 			}
 		} else {
 			witnessData := types.WitnessData{
-				Root:        chain.pendingBlocks[uint64(i)].block.Root(),
-				ReceiptHash: chain.pendingBlocks[uint64(i)].block.ReceiptHash(),
+				Root:        chain.CurrentBlock().Root(),
+				ReceiptHash: chain.CurrentBlock().ReceiptHash(),
 			}
 			witnessDataBytes, err = rlp.EncodeToBytes(&witnessData)
 			if err != nil {
@@ -1689,7 +1689,7 @@ func TestProcessPendingBlock(t *testing.T) {
 			t.Fatalf("sign tx error: %v", err)
 		}
 
-		_, err = chain.ProcessPendingBlock(types.NewBlock(&types.Header{
+		_, err = chain.ProcessBlock(types.NewBlock(&types.Header{
 			Number:     new(big.Int).SetUint64(uint64(i) + 1),
 			Time:       uint64(time.Now().UnixNano() / 1000000),
 			GasLimit:   10000,
@@ -1703,13 +1703,13 @@ func TestProcessPendingBlock(t *testing.T) {
 			t.Fatalf("process pending block error: %v", err)
 		}
 
-		if chain.CurrentBlock().NumberU64() != uint64(i) {
-			t.Fatalf("expect current height %v but %v", uint64(i), chain.CurrentBlock().NumberU64())
+		if chain.CurrentBlock().NumberU64() != uint64(i+1) {
+			t.Fatalf("expect current height %v but %v", uint64(i+1), chain.CurrentBlock().NumberU64())
 		}
 	}
 
 	// Witness rlp decode fail.
-	_, err = chain.ProcessPendingBlock(types.NewBlock(&types.Header{
+	_, err = chain.ProcessBlock(types.NewBlock(&types.Header{
 		Number:     new(big.Int).SetUint64(processNum + 1),
 		Time:       uint64(time.Now().UnixNano() / 1000000),
 		GasLimit:   10000,
@@ -1724,14 +1724,14 @@ func TestProcessPendingBlock(t *testing.T) {
 
 	// Validate witness fail with unknown block.
 	witnessData := types.WitnessData{
-		Root:        chain.pendingBlocks[processNum].block.Root(),
-		ReceiptHash: chain.pendingBlocks[processNum].block.ReceiptHash(),
+		Root:        chain.CurrentBlock().Root(),
+		ReceiptHash: chain.CurrentBlock().ReceiptHash(),
 	}
 	witnessDataBytes, err := rlp.EncodeToBytes(&witnessData)
 	if err != nil {
 		t.Fatalf("rlp encode fail: %v", err)
 	}
-	_, err = chain.ProcessPendingBlock(types.NewBlock(&types.Header{
+	_, err = chain.ProcessBlock(types.NewBlock(&types.Header{
 		Number:     new(big.Int).SetUint64(processNum + 1),
 		Time:       uint64(time.Now().UnixNano() / 1000000),
 		GasLimit:   10000,
@@ -1747,14 +1747,14 @@ func TestProcessPendingBlock(t *testing.T) {
 
 	// Validate witness fail with unexpected root.
 	witnessData = types.WitnessData{
-		Root:        chain.pendingBlocks[processNum].block.Root(),
-		ReceiptHash: chain.pendingBlocks[processNum].block.ReceiptHash(),
+		Root:        chain.CurrentBlock().Root(),
+		ReceiptHash: chain.CurrentBlock().ReceiptHash(),
 	}
 	witnessDataBytes, err = rlp.EncodeToBytes(&witnessData)
 	if err != nil {
 		t.Fatalf("rlp encode fail: %v", err)
 	}
-	_, err = chain.ProcessPendingBlock(types.NewBlock(&types.Header{
+	_, err = chain.ProcessBlock(types.NewBlock(&types.Header{
 		Number:     new(big.Int).SetUint64(processNum + 1),
 		Time:       uint64(time.Now().UnixNano() / 1000000),
 		GasLimit:   10000,
@@ -1770,8 +1770,8 @@ func TestProcessPendingBlock(t *testing.T) {
 
 	// Apply transaction fail with insufficient fund.
 	witnessData = types.WitnessData{
-		Root:        chain.pendingBlocks[processNum].block.Root(),
-		ReceiptHash: chain.pendingBlocks[processNum].block.ReceiptHash(),
+		Root:        chain.CurrentBlock().Root(),
+		ReceiptHash: chain.CurrentBlock().ReceiptHash(),
 	}
 	witnessDataBytes, err = rlp.EncodeToBytes(&witnessData)
 	if err != nil {
@@ -1786,7 +1786,7 @@ func TestProcessPendingBlock(t *testing.T) {
 		t.Fatalf("sign tx error: %v", err)
 	}
 
-	_, err = chain.ProcessPendingBlock(types.NewBlock(&types.Header{
+	_, err = chain.ProcessBlock(types.NewBlock(&types.Header{
 		Number:     new(big.Int).SetUint64(processNum + 1),
 		Time:       uint64(time.Now().UnixNano() / 1000000),
 		GasLimit:   10000,
@@ -1802,8 +1802,8 @@ func TestProcessPendingBlock(t *testing.T) {
 
 	// Apply transaction fail with nonce too height.
 	witnessData = types.WitnessData{
-		Root:        chain.pendingBlocks[processNum].block.Root(),
-		ReceiptHash: chain.pendingBlocks[processNum].block.ReceiptHash(),
+		Root:        chain.CurrentBlock().Root(),
+		ReceiptHash: chain.CurrentBlock().ReceiptHash(),
 	}
 	witnessDataBytes, err = rlp.EncodeToBytes(&witnessData)
 	if err != nil {
@@ -1818,7 +1818,7 @@ func TestProcessPendingBlock(t *testing.T) {
 		t.Fatalf("sign tx error: %v", err)
 	}
 
-	_, err = chain.ProcessPendingBlock(types.NewBlock(&types.Header{
+	_, err = chain.ProcessBlock(types.NewBlock(&types.Header{
 		Number:     new(big.Int).SetUint64(processNum + 1),
 		Time:       uint64(time.Now().UnixNano() / 1000000),
 		GasLimit:   10000,

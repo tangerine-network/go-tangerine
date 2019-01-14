@@ -37,9 +37,6 @@ import (
 const (
 	// chainHeadChanSize is the size of channel listening to ChainHeadEvent.
 	chainHeadChanSize = 10
-
-	// blockConfirmedChanSize is the size of channel listening to BlockConfirmedEvent.
-	blockConfirmedChanSize = 10
 )
 
 var (
@@ -121,7 +118,6 @@ type blockChain interface {
 	StateAt(root common.Hash) (*state.StateDB, error)
 
 	SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription
-	SubscribeBlockConfirmedEvent(ch chan<- BlockConfirmedEvent) event.Subscription
 }
 
 // TxPoolConfig are the configuration parameters of the transaction pool.
@@ -206,18 +202,16 @@ func (config *TxPoolConfig) sanitize() TxPoolConfig {
 // current state) and future transactions. Transactions move between those
 // two states over time as they are received and processed.
 type TxPool struct {
-	config            TxPoolConfig
-	chainconfig       *params.ChainConfig
-	chain             blockChain
-	gasPrice          *big.Int
-	txFeed            event.Feed
-	scope             event.SubscriptionScope
-	chainHeadCh       chan ChainHeadEvent
-	chainHeadSub      event.Subscription
-	blockConfirmedCh  chan BlockConfirmedEvent
-	blockConfirmedSub event.Subscription
-	signer            types.Signer
-	mu                sync.RWMutex
+	config       TxPoolConfig
+	chainconfig  *params.ChainConfig
+	chain        blockChain
+	gasPrice     *big.Int
+	txFeed       event.Feed
+	scope        event.SubscriptionScope
+	chainHeadCh  chan ChainHeadEvent
+	chainHeadSub event.Subscription
+	signer       types.Signer
+	mu           sync.RWMutex
 
 	currentState  *state.StateDB      // Current state in the blockchain head
 	pendingState  *state.ManagedState // Pending state tracking virtual nonces
@@ -234,30 +228,27 @@ type TxPool struct {
 
 	wg sync.WaitGroup // for shutdown sync
 
-	homestead       bool
-	isBlockProposer bool
+	homestead bool
 }
 
 // NewTxPool creates a new transaction pool to gather, sort and filter inbound
 // transactions from the network.
-func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain blockChain, isBlockProposer bool) *TxPool {
+func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain blockChain) *TxPool {
 	// Sanitize the input to ensure no vulnerable gas prices are set
 	config = (&config).sanitize()
 
 	// Create the transaction pool with its initial settings
 	pool := &TxPool{
-		config:           config,
-		chainconfig:      chainconfig,
-		chain:            chain,
-		signer:           types.NewEIP155Signer(chainconfig.ChainID),
-		pending:          make(map[common.Address]*txList),
-		queue:            make(map[common.Address]*txList),
-		beats:            make(map[common.Address]time.Time),
-		all:              newTxLookup(),
-		chainHeadCh:      make(chan ChainHeadEvent, chainHeadChanSize),
-		blockConfirmedCh: make(chan BlockConfirmedEvent, blockConfirmedChanSize),
-		gasPrice:         new(big.Int).SetUint64(config.PriceLimit),
-		isBlockProposer:  isBlockProposer,
+		config:      config,
+		chainconfig: chainconfig,
+		chain:       chain,
+		signer:      types.NewEIP155Signer(chainconfig.ChainID),
+		pending:     make(map[common.Address]*txList),
+		queue:       make(map[common.Address]*txList),
+		beats:       make(map[common.Address]time.Time),
+		all:         newTxLookup(),
+		chainHeadCh: make(chan ChainHeadEvent, chainHeadChanSize),
+		gasPrice:    new(big.Int).SetUint64(config.PriceLimit),
 	}
 	pool.locals = newAccountSet(pool.signer)
 	for _, addr := range config.Locals {
@@ -279,7 +270,6 @@ func NewTxPool(config TxPoolConfig, chainconfig *params.ChainConfig, chain block
 		}
 	}
 	// Subscribe events from blockchain
-	pool.blockConfirmedSub = pool.chain.SubscribeBlockConfirmedEvent(pool.blockConfirmedCh)
 	pool.chainHeadSub = pool.chain.SubscribeChainHeadEvent(pool.chainHeadCh)
 
 	// Start the event loop and return
@@ -315,9 +305,6 @@ func (pool *TxPool) loop() {
 		select {
 		// Handle ChainHeadEvent
 		case ev := <-pool.chainHeadCh:
-			if pool.isBlockProposer {
-				break
-			}
 			if ev.Block != nil {
 				pool.mu.Lock()
 				if pool.chainconfig.IsHomestead(ev.Block.Number()) {
@@ -330,24 +317,6 @@ func (pool *TxPool) loop() {
 			}
 		// Be unsubscribed due to system stopped
 		case <-pool.chainHeadSub.Err():
-			return
-		// Handle BlockConfirmedEvent
-		case ev := <-pool.blockConfirmedCh:
-			if !pool.isBlockProposer {
-				break
-			}
-			if ev.Block != nil {
-				pool.mu.Lock()
-				if pool.chainconfig.IsHomestead(ev.Block.Number()) {
-					pool.homestead = true
-				}
-				pool.reset(head.Header(), ev.Block.Header())
-				head = ev.Block
-
-				pool.mu.Unlock()
-			}
-		// Be unsubscribed due to system stopped
-		case <-pool.blockConfirmedSub.Err():
 			return
 
 		// Handle stats reporting ticks
@@ -439,7 +408,7 @@ func (pool *TxPool) Stop() {
 	pool.scope.Close()
 
 	// Unsubscribe subscriptions registered from blockchain
-	pool.blockConfirmedSub.Unsubscribe()
+	pool.chainHeadSub.Unsubscribe()
 	pool.wg.Wait()
 
 	if pool.journal != nil {

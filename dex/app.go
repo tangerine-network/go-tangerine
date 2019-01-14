@@ -49,6 +49,7 @@ type DexconApp struct {
 	scope              event.SubscriptionScope
 
 	chainLocks sync.Map
+	chainRoot  sync.Map
 }
 
 func NewDexconApp(txPool *core.TxPool, blockchain *core.BlockChain, gov *DexconGovernance,
@@ -202,8 +203,16 @@ func (d *DexconApp) preparePayload(ctx context.Context, position coreTypes.Posit
 		}
 	}
 
-	b, latestState := d.blockchain.GetPending()
-	log.Debug("Prepare payload", "chain", position.ChainID, "height", position.Height, "state", b.Root().String())
+	root, exist := d.chainRoot.Load(position.ChainID)
+	if !exist {
+		return nil, nil
+	}
+
+	currentState, err := d.blockchain.StateAt(*root.(*common.Hash))
+	if err != nil {
+		return nil, err
+	}
+	log.Debug("Prepare payload", "chain", position.ChainID, "height", position.Height)
 
 	txsMap, err := d.txPool.Pending()
 	if err != nil {
@@ -228,7 +237,7 @@ addressMap:
 			continue
 		}
 
-		balance := latestState.GetBalance(address)
+		balance := currentState.GetBalance(address)
 		cost, exist := d.blockchain.GetCostInConfirmedBlocks(position.ChainID, address)
 		if exist {
 			balance = new(big.Int).Sub(balance, cost)
@@ -237,7 +246,7 @@ addressMap:
 		var expectNonce uint64
 		lastConfirmedNonce, exist := d.blockchain.GetLastNonceInConfirmedBlocks(position.ChainID, address)
 		if !exist {
-			expectNonce = latestState.GetNonce(address)
+			expectNonce = currentState.GetNonce(address)
 		} else {
 			expectNonce = lastConfirmedNonce + 1
 		}
@@ -249,7 +258,8 @@ addressMap:
 		firstNonce := txs[0].Nonce()
 		startIndex := int(expectNonce - firstNonce)
 
-		for i := startIndex; i < len(txs); i++ {
+		// Warning: the pending tx will also affect by syncing, so startIndex maybe negative
+		for i := startIndex; i >= 0 && i < len(txs); i++ {
 			tx := txs[i]
 			intrGas, err := core.IntrinsicGas(tx.Data(), tx.To() == nil, true)
 			if err != nil {
@@ -282,15 +292,12 @@ addressMap:
 // PrepareWitness will return the witness data no lower than consensusHeight.
 func (d *DexconApp) PrepareWitness(consensusHeight uint64) (witness coreTypes.Witness, err error) {
 	var witnessBlock *types.Block
-	lastPendingHeight := d.blockchain.GetPendingHeight()
-	if lastPendingHeight == 0 && consensusHeight == 0 {
+	if d.blockchain.CurrentBlock().NumberU64() >= consensusHeight {
 		witnessBlock = d.blockchain.CurrentBlock()
-	} else if lastPendingHeight >= consensusHeight {
-		witnessBlock = d.blockchain.PendingBlock()
 	} else {
-		log.Error("last pending height too low", "lastPendingHeight", lastPendingHeight,
+		log.Error("Current height too low", "lastPendingHeight", d.blockchain.CurrentBlock().NumberU64(),
 			"consensusHeight", consensusHeight)
-		return witness, fmt.Errorf("last pending height < consensus height")
+		return witness, fmt.Errorf("current height < consensus height")
 	}
 
 	witnessData, err := rlp.EncodeToBytes(&types.WitnessData{
@@ -312,23 +319,20 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 	var witnessData types.WitnessData
 	err := rlp.DecodeBytes(block.Witness.Data, &witnessData)
 	if err != nil {
-		log.Error("failed to RLP decode witness data", "error", err)
+		log.Error("Failed to RLP decode witness data", "error", err)
 		return coreTypes.VerifyInvalidBlock
 	}
 
 	// Validate witness height.
-	if d.blockchain.GetPendingHeight() < block.Witness.Height {
-		log.Debug("Pending height < witness height")
+	if d.blockchain.CurrentBlock().NumberU64() < block.Witness.Height {
+		log.Debug("Current height < witness height")
 		return coreTypes.VerifyRetryLater
 	}
 
-	b := d.blockchain.GetPendingBlockByNumber(block.Witness.Height)
+	b := d.blockchain.GetBlockByNumber(block.Witness.Height)
 	if b == nil {
-		b = d.blockchain.GetBlockByNumber(block.Witness.Height)
-		if b == nil {
-			log.Error("Can not get block by height %v", block.Witness.Height)
-			return coreTypes.VerifyInvalidBlock
-		}
+		log.Error("Can not get block by height %v", block.Witness.Height)
+		return coreTypes.VerifyInvalidBlock
 	}
 
 	if b.Root() != witnessData.Root {
@@ -381,10 +385,18 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 		}
 	}
 
-	// Get latest pending state.
-	b, latestState := d.blockchain.GetPending()
-	log.Debug("Verify block", "chain", block.Position.ChainID, "height", block.Position.Height, "state",
-		b.Root().String())
+	// Get latest state with current chain.
+	root, exist := d.chainRoot.Load(block.Position.ChainID)
+	if !exist {
+		return coreTypes.VerifyRetryLater
+	}
+
+	currentState, err := d.blockchain.StateAt(*root.(*common.Hash))
+	log.Debug("Verify block", "chain", block.Position.ChainID, "height", block.Position.Height)
+	if err != nil {
+		log.Debug("Invalid state root", "root", *root.(*common.Hash), "err", err)
+		return coreTypes.VerifyInvalidBlock
+	}
 
 	var transactions types.Transactions
 	if len(block.Payload) == 0 {
@@ -423,7 +435,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 		if exist {
 			expectNonce = lastConfirmedNonce + 1
 		} else {
-			expectNonce = latestState.GetNonce(address)
+			expectNonce = currentState.GetNonce(address)
 		}
 
 		if expectNonce != firstNonce {
@@ -437,9 +449,9 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 	for address := range addressNonce {
 		cost, exist := d.blockchain.GetCostInConfirmedBlocks(block.Position.ChainID, address)
 		if exist {
-			addressesBalance[address] = new(big.Int).Sub(latestState.GetBalance(address), cost)
+			addressesBalance[address] = new(big.Int).Sub(currentState.GetBalance(address), cost)
 		} else {
-			addressesBalance[address] = latestState.GetBalance(address)
+			addressesBalance[address] = currentState.GetBalance(address)
 		}
 	}
 
@@ -518,19 +530,21 @@ func (d *DexconApp) BlockDelivered(
 	}, txs, nil, nil)
 
 	h := d.blockchain.CurrentBlock().NumberU64() + 1
+	var root *common.Hash
 	if block.IsEmpty() {
-		err = d.blockchain.ProcessEmptyBlock(newBlock)
+		root, err = d.blockchain.ProcessEmptyBlock(newBlock)
 		if err != nil {
 			log.Error("Failed to process empty block", "error", err)
 			panic(err)
 		}
 	} else {
-		_, err = d.blockchain.ProcessPendingBlock(newBlock, &block.Witness)
+		root, err = d.blockchain.ProcessBlock(newBlock, &block.Witness)
 		if err != nil {
 			log.Error("Failed to process pending block", "error", err)
 			panic(err)
 		}
 	}
+	d.chainRoot.Store(chainID, root)
 
 	d.blockchain.RemoveConfirmedBlock(chainID, blockHash)
 

@@ -102,12 +102,9 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 }
 
 func (v *BlockValidator) ValidateWitnessData(height uint64, data types.WitnessData) error {
-	b := v.bc.GetPendingBlockByNumber(height)
+	b := v.bc.GetBlockByNumber(height)
 	if b == nil {
-		b = v.bc.GetBlockByNumber(height)
-		if b == nil {
-			return fmt.Errorf("can not find block %v either pending or confirmed block", height)
-		}
+		return fmt.Errorf("can not find block %v either pending or confirmed block", height)
 	}
 
 	if b.Root() != data.Root {
