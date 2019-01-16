@@ -1959,13 +1959,12 @@ func (bc *BlockChain) ProcessEmptyBlock(block *types.Block) (*common.Hash, error
 	}
 
 	header.ParentHash = parentBlock.Hash()
-	header.GasUsed = 0
-	header.Root = currentState.IntermediateRoot(true)
+	newBlock, err := bc.engine.Finalize(bc, header, currentState, nil, nil, nil)
+
 	if header.Root != parentBlock.Root() {
 		return nil, fmt.Errorf("empty block state root must same as parent")
 	}
 
-	newBlock := types.NewBlock(header, nil, nil, nil)
 	root := newBlock.Root()
 	if _, ok := bc.GetRoundHeight(newBlock.Round()); !ok {
 		bc.storeRoundHeight(newBlock.Round(), newBlock.NumberU64())
