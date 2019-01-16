@@ -70,8 +70,7 @@ func (d *DexconApp) addrBelongsToChain(address common.Address, chainSize, chainI
 func (d *DexconApp) chainLock(chainID uint32) {
 	v, ok := d.chainLocks.Load(chainID)
 	if !ok {
-		v = &sync.RWMutex{}
-		d.chainLocks.Store(chainID, v)
+		v, _ = d.chainLocks.LoadOrStore(chainID, &sync.RWMutex{})
 	}
 	v.(*sync.RWMutex).Lock()
 }
@@ -87,8 +86,7 @@ func (d *DexconApp) chainUnlock(chainID uint32) {
 func (d *DexconApp) chainRLock(chainID uint32) {
 	v, ok := d.chainLocks.Load(chainID)
 	if !ok {
-		v = &sync.RWMutex{}
-		d.chainLocks.Store(chainID, v)
+		v, _ = d.chainLocks.LoadOrStore(chainID, &sync.RWMutex{})
 	}
 	v.(*sync.RWMutex).RLock()
 }
