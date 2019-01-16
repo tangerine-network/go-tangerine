@@ -21,8 +21,17 @@ fi
 rm -f log-latest
 ln -s $logsdir log-latest
 
-let dmoment=`date +%s`+7
-sed -i "s/\"dMoment\": [0-9]\+,/\"dMoment\": $dmoment,/g" $GENESIS
+python << __FILE__
+import re
+import time
+
+with open('$GENESIS', 'r') as f:
+  data = f.read()
+
+with open('$GENESIS', 'w') as f:
+  dMoment = int(time.time()) + 7
+  f.write(re.sub('"dMoment": [0-9]+,', '"dMoment": %d,' % dMoment, data))
+__FILE__
 
 # A standalone RPC server for accepting RPC requests.
 datadir=$PWD/Dexon.rpc
