@@ -31,6 +31,7 @@ import (
 
 // Errors for agreement module.
 var (
+	ErrInvalidVote            = fmt.Errorf("invalid vote")
 	ErrNotInNotarySet         = fmt.Errorf("not in notary set")
 	ErrIncorrectVoteSignature = fmt.Errorf("incorrect vote signature")
 )
@@ -73,6 +74,8 @@ type agreementReceiver interface {
 	// agreement module.
 	ConfirmBlock(common.Hash, map[types.NodeID]*types.Vote)
 	PullBlocks(common.Hashes)
+	ReportForkVote(v1, v2 *types.Vote)
+	ReportForkBlock(b1, b2 *types.Block)
 }
 
 type pendingBlock struct {
@@ -90,6 +93,7 @@ type agreementData struct {
 	recv agreementReceiver
 
 	ID           types.NodeID
+	isLeader     bool
 	leader       *leaderSelector
 	lockValue    common.Hash
 	lockRound    uint64
@@ -114,6 +118,7 @@ type agreement struct {
 	candidateBlock map[common.Hash]*types.Block
 	fastForward    chan uint64
 	signer         *utils.Signer
+	logger         common.Logger
 }
 
 // newAgreement creates a agreement instance.
@@ -121,7 +126,8 @@ func newAgreement(
 	ID types.NodeID,
 	recv agreementReceiver,
 	leader *leaderSelector,
-	signer *utils.Signer) *agreement {
+	signer *utils.Signer,
+	logger common.Logger) *agreement {
 	agreement := &agreement{
 		data: &agreementData{
 			recv:   recv,
@@ -132,6 +138,7 @@ func newAgreement(
 		candidateBlock: make(map[common.Hash]*types.Block),
 		fastForward:    make(chan uint64, 1),
 		signer:         signer,
+		logger:         logger,
 	}
 	agreement.stop()
 	return agreement
@@ -139,8 +146,8 @@ func newAgreement(
 
 // restart the agreement
 func (a *agreement) restart(
-	notarySet map[types.NodeID]struct{}, aID types.Position, crs common.Hash) {
-
+	notarySet map[types.NodeID]struct{}, aID types.Position, leader types.NodeID,
+	crs common.Hash) {
 	if !func() bool {
 		a.lock.Lock()
 		defer a.lock.Unlock()
@@ -162,12 +169,16 @@ func (a *agreement) restart(
 		a.data.leader.restart(crs)
 		a.data.lockValue = nullBlockHash
 		a.data.lockRound = 0
+		a.data.isLeader = a.data.ID == leader
 		a.fastForward = make(chan uint64, 1)
 		a.hasOutput = false
-		a.state = newInitialState(a.data)
+		a.state = newFastState(a.data)
 		a.notarySet = notarySet
 		a.candidateBlock = make(map[common.Hash]*types.Block)
-		a.aID.Store(aID)
+		a.aID.Store(struct {
+			pos    types.Position
+			leader types.NodeID
+		}{aID, leader})
 		return true
 	}() {
 		return
@@ -213,18 +224,24 @@ func (a *agreement) restart(
 	}()
 
 	for _, block := range replayBlock {
-		a.processBlock(block)
+		if err := a.processBlock(block); err != nil {
+			a.logger.Error("failed to process block when restarting agreement",
+				"block", block)
+		}
 	}
 
 	for _, vote := range replayVote {
-		a.processVote(vote)
+		if err := a.processVote(vote); err != nil {
+			a.logger.Error("failed to process vote when restarting agreement",
+				"vote", vote)
+		}
 	}
 }
 
 func (a *agreement) stop() {
 	a.restart(make(map[types.NodeID]struct{}), types.Position{
 		ChainID: math.MaxUint32,
-	}, common.Hash{})
+	}, types.NodeID{}, common.Hash{})
 }
 
 func isStop(aID types.Position) bool {
@@ -235,7 +252,12 @@ func isStop(aID types.Position) bool {
 func (a *agreement) clocks() int {
 	a.data.lock.RLock()
 	defer a.data.lock.RUnlock()
-	return a.state.clocks()
+	scale := int(a.data.period)
+	// 10 is a magic number derived from many years of experience.
+	if scale > 10 {
+		scale = 10
+	}
+	return a.state.clocks() * scale
 }
 
 // pullVotes returns if current agreement requires more votes to continue.
@@ -243,21 +265,31 @@ func (a *agreement) pullVotes() bool {
 	a.data.lock.RLock()
 	defer a.data.lock.RUnlock()
 	return a.state.state() == statePullVote ||
+		a.state.state() == stateFastRollback ||
 		(a.state.state() == statePreCommit && (a.data.period%3) == 0)
 }
 
 // agreementID returns the current agreementID.
 func (a *agreement) agreementID() types.Position {
-	return a.aID.Load().(types.Position)
+	return a.aID.Load().(struct {
+		pos    types.Position
+		leader types.NodeID
+	}).pos
+}
+
+// leader returns the current leader.
+func (a *agreement) leader() types.NodeID {
+	return a.aID.Load().(struct {
+		pos    types.Position
+		leader types.NodeID
+	}).leader
 }
 
 // nextState is called at the specific clock time.
 func (a *agreement) nextState() (err error) {
-	if func() bool {
-		a.lock.RLock()
-		defer a.lock.RUnlock()
-		return a.hasOutput
-	}() {
+	a.lock.Lock()
+	defer a.lock.Unlock()
+	if a.hasOutput {
 		a.state = newSleepState(a.data)
 		return
 	}
@@ -266,6 +298,9 @@ func (a *agreement) nextState() (err error) {
 }
 
 func (a *agreement) sanityCheck(vote *types.Vote) error {
+	if vote.Type >= types.MaxVoteType {
+		return ErrInvalidVote
+	}
 	if _, exist := a.notarySet[vote.ProposerID]; !exist {
 		return ErrNotInNotarySet
 	}
@@ -279,22 +314,21 @@ func (a *agreement) sanityCheck(vote *types.Vote) error {
 	return nil
 }
 
-func (a *agreement) checkForkVote(vote *types.Vote) error {
-	if err := func() error {
-		a.data.lock.RLock()
-		defer a.data.lock.RUnlock()
-		if votes, exist := a.data.votes[vote.Period]; exist {
-			if oldVote, exist := votes[vote.Type][vote.ProposerID]; exist {
-				if vote.BlockHash != oldVote.BlockHash {
-					return &ErrForkVote{vote.ProposerID, oldVote, vote}
-				}
+func (a *agreement) checkForkVote(vote *types.Vote) (
+	alreadyExist bool, err error) {
+	a.data.lock.RLock()
+	defer a.data.lock.RUnlock()
+	if votes, exist := a.data.votes[vote.Period]; exist {
+		if oldVote, exist := votes[vote.Type][vote.ProposerID]; exist {
+			alreadyExist = true
+			if vote.BlockHash != oldVote.BlockHash {
+				a.data.recv.ReportForkVote(oldVote, vote)
+				err = &ErrForkVote{vote.ProposerID, oldVote, vote}
+				return
 			}
 		}
-		return nil
-	}(); err != nil {
-		return err
 	}
-	return nil
+	return
 }
 
 // prepareVote prepares a vote.
@@ -314,6 +348,13 @@ func (a *agreement) processVote(vote *types.Vote) error {
 	aID := a.agreementID()
 	// Agreement module has stopped.
 	if isStop(aID) {
+		// Hacky way to not drop first votes for height 0.
+		if vote.Position.Height == uint64(0) {
+			a.pendingVote = append(a.pendingVote, pendingVote{
+				vote:         vote,
+				receivedTime: time.Now().UTC(),
+			})
+		}
 		return nil
 	}
 	if vote.Position != aID {
@@ -326,8 +367,12 @@ func (a *agreement) processVote(vote *types.Vote) error {
 		})
 		return nil
 	}
-	if err := a.checkForkVote(vote); err != nil {
+	exist, err := a.checkForkVote(vote)
+	if err != nil {
 		return err
+	}
+	if exist {
+		return nil
 	}
 
 	a.data.lock.Lock()
@@ -336,12 +381,13 @@ func (a *agreement) processVote(vote *types.Vote) error {
 		a.data.votes[vote.Period] = newVoteListMap()
 	}
 	a.data.votes[vote.Period][vote.Type][vote.ProposerID] = vote
-	if !a.hasOutput && vote.Type == types.VoteCom {
+	if !a.hasOutput &&
+		(vote.Type == types.VoteCom || vote.Type == types.VoteFast) {
 		if hash, ok := a.data.countVoteNoLock(vote.Period, vote.Type); ok &&
 			hash != skipBlockHash {
 			a.hasOutput = true
 			a.data.recv.ConfirmBlock(hash,
-				a.data.votes[vote.Period][types.VoteCom])
+				a.data.votes[vote.Period][vote.Type])
 			return nil
 		}
 	} else if a.hasOutput {
@@ -443,6 +489,7 @@ func (a *agreement) processBlock(block *types.Block) error {
 	}
 	if b, exist := a.data.blocks[block.ProposerID]; exist {
 		if b.Hash != block.Hash {
+			a.data.recv.ReportForkBlock(b, block)
 			return &ErrFork{block.ProposerID, b.Hash, block.Hash}
 		}
 		return nil
@@ -452,6 +499,39 @@ func (a *agreement) processBlock(block *types.Block) error {
 	}
 	a.data.blocks[block.ProposerID] = block
 	a.addCandidateBlockNoLock(block)
+	if (a.state.state() == stateFast || a.state.state() == stateFastVote) &&
+		block.ProposerID == a.leader() {
+		go func() {
+			for func() bool {
+				a.lock.RLock()
+				defer a.lock.RUnlock()
+				if a.state.state() != stateFast && a.state.state() != stateFastVote {
+					return false
+				}
+				block, exist := a.data.blocks[a.leader()]
+				if !exist {
+					return true
+				}
+				a.data.lock.RLock()
+				defer a.data.lock.RUnlock()
+				ok, err := a.data.leader.validLeader(block)
+				if err != nil {
+					fmt.Println("Error checking validLeader for Fast BA",
+						"error", err, "block", block)
+					return false
+				}
+				if ok {
+					a.data.recv.ProposeVote(
+						types.NewVote(types.VoteFast, block.Hash, a.data.period))
+					return false
+				}
+				return true
+			}() {
+				// TODO(jimmy): retry interval should be related to configurations.
+				time.Sleep(250 * time.Millisecond)
+			}
+		}()
+	}
 	return nil
 }
 

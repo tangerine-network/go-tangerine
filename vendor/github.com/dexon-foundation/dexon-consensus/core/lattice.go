@@ -90,9 +90,7 @@ func (l *Lattice) PrepareBlock(
 	if b.Witness, err = l.app.PrepareWitness(b.Witness.Height); err != nil {
 		return
 	}
-	if err = l.signer.SignBlock(b); err != nil {
-		return
-	}
+	err = l.signer.SignBlock(b)
 	return
 }
 
@@ -103,17 +101,23 @@ func (l *Lattice) PrepareEmptyBlock(b *types.Block) (err error) {
 	if err = l.data.prepareEmptyBlock(b); err != nil {
 		return
 	}
-	if b.Hash, err = utils.HashBlock(b); err != nil {
-		return
-	}
+	b.Hash, err = utils.HashBlock(b)
 	return
+}
+
+// AddShallowBlock adds a hash of a block that is confirmed by other nodes but
+// the content is not arrived yet.
+func (l *Lattice) AddShallowBlock(hash common.Hash, pos types.Position) {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+	l.data.addShallowBlock(hash, pos)
 }
 
 // SanityCheck checks the validity of a block.
 //
 // If any acking block of this block does not exist, Lattice caches this block
 // and retries when Lattice.ProcessBlock is called.
-func (l *Lattice) SanityCheck(b *types.Block) (err error) {
+func (l *Lattice) SanityCheck(b *types.Block, allowShallow bool) (err error) {
 	if b.IsEmpty() {
 		// Only need to verify block's hash.
 		var hash common.Hash
@@ -139,17 +143,12 @@ func (l *Lattice) SanityCheck(b *types.Block) (err error) {
 			return
 		}
 	}
-	if err = func() (err error) {
-		l.lock.RLock()
-		defer l.lock.RUnlock()
-		if err = l.data.sanityCheck(b); err != nil {
-			if _, ok := err.(*ErrAckingBlockNotExists); ok {
-				err = ErrRetrySanityCheckLater
-			}
-			return
+	l.lock.RLock()
+	defer l.lock.RUnlock()
+	if err = l.data.sanityCheck(b, allowShallow); err != nil {
+		if _, ok := err.(*ErrAckingBlockNotExists); ok {
+			err = ErrRetrySanityCheckLater
 		}
-		return
-	}(); err != nil {
 		return
 	}
 	return
@@ -159,10 +158,8 @@ func (l *Lattice) SanityCheck(b *types.Block) (err error) {
 func (l *Lattice) Exist(hash common.Hash) bool {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
-	if _, err := l.data.findBlock(hash); err != nil {
-		return false
-	}
-	return true
+	_, err := l.data.findBlock(hash)
+	return err == nil
 }
 
 // addBlockToLattice adds a block into lattice, and delivers blocks with the
@@ -189,7 +186,7 @@ func (l *Lattice) addBlockToLattice(
 			if tip = l.pool.tip(i); tip == nil {
 				continue
 			}
-			err = l.data.sanityCheck(tip)
+			err = l.data.sanityCheck(tip, false)
 			if err == nil {
 				var output []*types.Block
 				if output, err = l.data.addBlock(tip); err != nil {
@@ -199,6 +196,7 @@ func (l *Lattice) addBlockToLattice(
 						"block", tip, "error", err)
 					panic(err)
 				}
+				delete(l.data.shallowBlocks, tip.Hash)
 				hasOutput = true
 				outputBlocks = append(outputBlocks, output...)
 				l.pool.removeTip(i)
@@ -267,11 +265,11 @@ func (l *Lattice) ProcessBlock(
 		if len(toDelivered) == 0 {
 			break
 		}
-		hashes := make(common.Hashes, len(toDelivered))
-		for idx := range toDelivered {
-			hashes[idx] = toDelivered[idx].Hash
-		}
 		if l.debug != nil {
+			hashes := make(common.Hashes, len(toDelivered))
+			for idx := range toDelivered {
+				hashes[idx] = toDelivered[idx].Hash
+			}
 			l.debug.TotalOrderingDelivered(hashes, deliveredMode)
 		}
 		// Perform consensus timestamp module.
@@ -283,12 +281,13 @@ func (l *Lattice) ProcessBlock(
 	return
 }
 
-// NextHeight returns expected height of incoming block for specified chain and
-// given round.
-func (l *Lattice) NextHeight(round uint64, chainID uint32) (uint64, error) {
+// NextBlock returns expected height and timestamp of incoming block for
+// specified chain and given round.
+func (l *Lattice) NextBlock(round uint64, chainID uint32) (
+	uint64, time.Time, error) {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
-	return l.data.nextHeight(round, chainID)
+	return l.data.nextBlock(round, chainID)
 }
 
 // PurgeBlocks purges blocks' cache in memory, this is called when the caller

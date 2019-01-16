@@ -22,6 +22,7 @@ import (
 	"errors"
 	"math"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dexon-foundation/dexon-consensus/common"
@@ -41,7 +42,7 @@ func genValidLeader(
 		if block.Timestamp.After(time.Now()) {
 			return false, nil
 		}
-		if err := mgr.lattice.SanityCheck(block); err != nil {
+		if err := mgr.lattice.SanityCheck(block, true); err != nil {
 			if err == ErrRetrySanityCheckLater {
 				return false, nil
 			}
@@ -180,12 +181,23 @@ func (mgr *agreementMgr) appendConfig(
 			consensus:     mgr.con,
 			chainID:       i,
 			restartNotary: make(chan types.Position, 1),
+			roundValue:    &atomic.Value{},
 		}
+		recv.roundValue.Store(uint64(0))
 		agrModule := newAgreement(
 			mgr.con.ID,
 			recv,
 			newLeaderSelector(genValidLeader(mgr), mgr.logger),
-			mgr.signer)
+			mgr.signer,
+			mgr.logger)
+		// Hacky way to initialize first notarySet.
+		nodes, err := mgr.cache.GetNodeSet(round)
+		if err != nil {
+			return err
+		}
+		agrModule.notarySet = nodes.GetSubSet(
+			int(config.NotarySetSize),
+			types.NewNotarySetTarget(crs, i))
 		// Hacky way to make agreement module self contained.
 		recv.agreementModule = agrModule
 		mgr.baModules = append(mgr.baModules, agrModule)
@@ -266,7 +278,11 @@ func (mgr *agreementMgr) processAgreementResult(
 				return err
 			}
 		}
-		agreement.restart(nIDs, result.Position, crs)
+		leader, err := mgr.cache.GetLeaderNode(result.Position)
+		if err != nil {
+			return err
+		}
+		agreement.restart(nIDs, result.Position, leader, crs)
 	}
 	return nil
 }
@@ -332,14 +348,12 @@ func (mgr *agreementMgr) runBA(initRound uint64, chainID uint32) {
 			return
 		}
 		// Check if this node in notary set of this chain in this round.
-		nodeSet, err := mgr.cache.GetNodeSet(nextRound)
+		notarySet, err := mgr.cache.GetNotarySet(nextRound, chainID)
 		if err != nil {
 			panic(err)
 		}
 		setting.crs = config.crs
-		setting.notarySet = nodeSet.GetSubSet(
-			int(config.notarySetSize),
-			types.NewNotarySetTarget(config.crs, chainID))
+		setting.notarySet = notarySet
 		_, isNotary = setting.notarySet[mgr.ID]
 		if isNotary {
 			mgr.logger.Info("selected as notary set",
@@ -396,7 +410,7 @@ Loop:
 			<-setting.ticker.Tick()
 		}
 		// Run BA for this round.
-		recv.round = currentRound
+		recv.roundValue.Store(currentRound)
 		recv.changeNotaryTime = roundEndTime
 		recv.restartNotary <- types.Position{ChainID: math.MaxUint32}
 		if err := mgr.baRoutineForOneRound(&setting); err != nil {
@@ -435,12 +449,14 @@ Loop:
 				}
 			}
 			var nextHeight uint64
+			var nextTime time.Time
 			for {
-				nextHeight, err = mgr.lattice.NextHeight(recv.round, setting.chainID)
+				nextHeight, nextTime, err =
+					mgr.lattice.NextBlock(recv.round(), setting.chainID)
 				if err != nil {
 					mgr.logger.Debug("Error getting next height",
 						"error", err,
-						"round", recv.round,
+						"round", recv.round(),
 						"chainID", setting.chainID)
 					err = nil
 					nextHeight = oldPos.Height
@@ -456,12 +472,18 @@ Loop:
 				time.Sleep(100 * time.Millisecond)
 			}
 			nextPos := types.Position{
-				Round:   recv.round,
+				Round:   recv.round(),
 				ChainID: setting.chainID,
 				Height:  nextHeight,
 			}
 			oldPos = nextPos
-			agr.restart(setting.notarySet, nextPos, setting.crs)
+			leader, err := mgr.cache.GetLeaderNode(nextPos)
+			if err != nil {
+				return err
+			}
+			time.Sleep(nextTime.Sub(time.Now()))
+			setting.ticker.Restart()
+			agr.restart(setting.notarySet, nextPos, leader, setting.crs)
 		default:
 		}
 		if agr.pullVotes() {

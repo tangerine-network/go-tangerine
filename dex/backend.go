@@ -163,6 +163,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	engine.SetGovStateFetcher(dex.governance)
 
 	dMoment := time.Unix(int64(chainConfig.DMoment), 0)
+	log.Info("Consensus DMoment", "dMoment", dMoment)
 
 	// Force starting with full sync mode if this node is a bootstrap proposer.
 	if config.BlockProposerEnabled && dMoment.After(time.Now()) {

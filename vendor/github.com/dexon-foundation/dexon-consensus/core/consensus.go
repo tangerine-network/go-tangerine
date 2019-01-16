@@ -22,6 +22,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/dexon-foundation/dexon-consensus/common"
@@ -69,9 +70,13 @@ type consensusBAReceiver struct {
 	agreementModule  *agreement
 	chainID          uint32
 	changeNotaryTime time.Time
-	round            uint64
+	roundValue       *atomic.Value
 	isNotary         bool
 	restartNotary    chan types.Position
+}
+
+func (recv *consensusBAReceiver) round() uint64 {
+	return recv.roundValue.Load().(uint64)
 }
 
 func (recv *consensusBAReceiver) ProposeVote(vote *types.Vote) {
@@ -99,17 +104,20 @@ func (recv *consensusBAReceiver) ProposeBlock() common.Hash {
 	if !recv.isNotary {
 		return common.Hash{}
 	}
-	block := recv.consensus.proposeBlock(recv.chainID, recv.round)
+	block := recv.consensus.proposeBlock(recv.chainID, recv.round())
 	if block == nil {
 		recv.consensus.logger.Error("unable to propose block")
 		return nullBlockHash
 	}
-	if err := recv.consensus.preProcessBlock(block); err != nil {
-		recv.consensus.logger.Error("Failed to pre-process block", "error", err)
-		return common.Hash{}
-	}
-	recv.consensus.logger.Debug("Calling Network.BroadcastBlock", "block", block)
-	recv.consensus.network.BroadcastBlock(block)
+	go func() {
+		if err := recv.consensus.preProcessBlock(block); err != nil {
+			recv.consensus.logger.Error("Failed to pre-process block", "error", err)
+			return
+		}
+		recv.consensus.logger.Debug("Calling Network.BroadcastBlock",
+			"block", block)
+		recv.consensus.network.BroadcastBlock(block)
+	}()
 	return block.Hash
 }
 
@@ -122,7 +130,7 @@ func (recv *consensusBAReceiver) ConfirmBlock(
 		recv.consensus.logger.Info("Empty block is confirmed",
 			"position", &aID)
 		var err error
-		block, err = recv.consensus.proposeEmptyBlock(recv.round, recv.chainID)
+		block, err = recv.consensus.proposeEmptyBlock(recv.round(), recv.chainID)
 		if err != nil {
 			recv.consensus.logger.Error("Propose empty block failed", "error", err)
 			return
@@ -140,9 +148,19 @@ func (recv *consensusBAReceiver) ConfirmBlock(
 				defer recv.consensus.lock.Unlock()
 				recv.consensus.baConfirmedBlock[hash] = ch
 			}()
-			recv.consensus.network.PullBlocks(common.Hashes{hash})
 			go func() {
-				block = <-ch
+				hashes := common.Hashes{hash}
+			PullBlockLoop:
+				for {
+					recv.consensus.logger.Debug("Calling Network.PullBlock for BA block",
+						"hash", hash)
+					recv.consensus.network.PullBlocks(hashes)
+					select {
+					case block = <-ch:
+						break PullBlockLoop
+					case <-time.After(1 * time.Second):
+					}
+				}
 				recv.consensus.logger.Info("Receive unknown block",
 					"hash", hash.String()[:6],
 					"position", &block.Position,
@@ -242,7 +260,7 @@ CleanChannelLoop:
 	}
 	newPos := block.Position
 	if block.Timestamp.After(recv.changeNotaryTime) {
-		recv.round++
+		recv.roundValue.Store(recv.round() + 1)
 		newPos.Round++
 	}
 	recv.restartNotary <- newPos
@@ -254,6 +272,14 @@ func (recv *consensusBAReceiver) PullBlocks(hashes common.Hashes) {
 	}
 	recv.consensus.logger.Debug("Calling Network.PullBlocks", "hashes", hashes)
 	recv.consensus.network.PullBlocks(hashes)
+}
+
+func (recv *consensusBAReceiver) ReportForkVote(v1, v2 *types.Vote) {
+	recv.consensus.gov.ReportForkVote(v1, v2)
+}
+
+func (recv *consensusBAReceiver) ReportForkBlock(b1, b2 *types.Block) {
+	recv.consensus.gov.ReportForkBlock(b1, b2)
 }
 
 // consensusDKGReceiver implements dkgReceiver.
@@ -388,6 +414,14 @@ type Consensus struct {
 	logger                     common.Logger
 	nonFinalizedBlockDelivered bool
 	resetRandomnessTicker      chan struct{}
+	resetDeliveryGuardTicker   chan struct{}
+	msgChan                    chan interface{}
+	waitGroup                  sync.WaitGroup
+
+	// Context of Dummy receiver during switching from syncer.
+	dummyCancel    context.CancelFunc
+	dummyFinished  <-chan struct{}
+	dummyMsgBuffer []interface{}
 }
 
 // NewConsensus construct an Consensus instance.
@@ -423,6 +457,9 @@ func NewConsensusForSimulation(
 // You need to provide the initial block for this newly created Consensus
 // instance to bootstrap with. A proper choice is the last finalized block you
 // delivered to syncer.
+//
+// NOTE: those confirmed blocks should be organized by chainID and sorted by
+//       their positions, in ascending order.
 func NewConsensusFromSyncer(
 	initBlock *types.Block,
 	initRoundBeginTime time.Time,
@@ -432,17 +469,43 @@ func NewConsensusFromSyncer(
 	networkModule Network,
 	prv crypto.PrivateKey,
 	latticeModule *Lattice,
-	blocks []*types.Block,
+	confirmedBlocks [][]*types.Block,
 	randomnessResults []*types.BlockRandomnessResult,
+	cachedMessages []interface{},
 	logger common.Logger) (*Consensus, error) {
 	// Setup Consensus instance.
 	con := newConsensusForRound(initBlock, initRoundBeginTime, app, gov, db,
 		networkModule, prv, logger, latticeModule, true)
-	// Dump all BA-confirmed blocks to the consensus instance.
-	for _, b := range blocks {
-		con.ccModule.registerBlock(b)
-		if err := con.processBlock(b); err != nil {
-			return nil, err
+	// Launch a dummy receiver before we start receiving from network module.
+	con.dummyMsgBuffer = cachedMessages
+	con.dummyCancel, con.dummyFinished = utils.LaunchDummyReceiver(
+		con.ctx, networkModule.ReceiveChan(), func(msg interface{}) {
+			con.dummyMsgBuffer = append(con.dummyMsgBuffer, msg)
+		})
+	// Dump all BA-confirmed blocks to the consensus instance, make sure these
+	// added blocks forming a DAG.
+	for {
+		updated := false
+		for idx, bs := range confirmedBlocks {
+			for bIdx, b := range bs {
+				// Only when its parent block is already added to lattice, we can
+				// then add this block. If not, our pulling mechanism would stop at
+				// the block we added, and lost its parent block forever.
+				if !latticeModule.Exist(b.ParentHash) {
+					logger.Debug("Skip discontinuous confirmed block",
+						"from", b,
+						"until", bs[len(bs)-1])
+					confirmedBlocks[idx] = bs[bIdx:]
+					break
+				}
+				con.ccModule.registerBlock(b)
+				if err := con.processBlock(b); err != nil {
+					return nil, err
+				}
+			}
+		}
+		if !updated {
+			break
 		}
 	}
 	// Dump all randomness result to the consensus instance.
@@ -504,22 +567,25 @@ func newConsensusForRound(
 	}
 	// Construct Consensus instance.
 	con := &Consensus{
-		ID:               ID,
-		ccModule:         newCompactionChain(gov),
-		lattice:          latticeModule,
-		app:              appModule,
-		debugApp:         debugApp,
-		gov:              gov,
-		db:               db,
-		network:          network,
-		baConfirmedBlock: make(map[common.Hash]chan<- *types.Block),
-		dkgReady:         sync.NewCond(&sync.Mutex{}),
-		cfgModule:        cfgModule,
-		dMoment:          initRoundBeginTime,
-		nodeSetCache:     nodeSetCache,
-		signer:           signer,
-		event:            common.NewEvent(),
-		logger:           logger,
+		ID:                       ID,
+		ccModule:                 newCompactionChain(gov),
+		lattice:                  latticeModule,
+		app:                      appModule,
+		debugApp:                 debugApp,
+		gov:                      gov,
+		db:                       db,
+		network:                  network,
+		baConfirmedBlock:         make(map[common.Hash]chan<- *types.Block),
+		dkgReady:                 sync.NewCond(&sync.Mutex{}),
+		cfgModule:                cfgModule,
+		dMoment:                  initRoundBeginTime,
+		nodeSetCache:             nodeSetCache,
+		signer:                   signer,
+		event:                    common.NewEvent(),
+		logger:                   logger,
+		resetRandomnessTicker:    make(chan struct{}),
+		resetDeliveryGuardTicker: make(chan struct{}),
+		msgChan:                  make(chan interface{}, 1024),
 	}
 	con.ctx, con.ctxCancel = context.WithCancel(context.Background())
 	con.baMgr = newAgreementMgr(con, initRound, initRoundBeginTime)
@@ -585,12 +651,40 @@ func (con *Consensus) Run() {
 	con.baMgr.run()
 	// Launch network handler.
 	con.logger.Debug("Calling Network.ReceiveChan")
-	go con.processMsg(con.network.ReceiveChan())
+	con.waitGroup.Add(1)
+	go con.deliverNetworkMsg()
+	con.waitGroup.Add(1)
+	go con.processMsg()
 	// Sleep until dMoment come.
 	time.Sleep(con.dMoment.Sub(time.Now().UTC()))
 	// Take some time to bootstrap.
 	time.Sleep(3 * time.Second)
+	con.waitGroup.Add(1)
 	go con.pullRandomness()
+	// Stop dummy receiver if launched.
+	if con.dummyCancel != nil {
+		con.logger.Trace("Stop dummy receiver")
+		con.dummyCancel()
+		<-con.dummyFinished
+		// Replay those cached messages.
+		con.logger.Trace("Dummy receiver stoped, start dumping cached messages",
+			"count", len(con.dummyMsgBuffer))
+		for _, msg := range con.dummyMsgBuffer {
+		loop:
+			for {
+				select {
+				case con.msgChan <- msg:
+					break loop
+				case <-time.After(50 * time.Millisecond):
+					con.logger.Debug(
+						"internal message channel is full when syncing")
+				}
+			}
+		}
+		con.logger.Trace("Finish dumping cached messages")
+	}
+	con.waitGroup.Add(1)
+	go con.deliveryGuard()
 	// Block until done.
 	select {
 	case <-con.ctx.Done():
@@ -785,18 +879,51 @@ func (con *Consensus) Stop() {
 	con.ctxCancel()
 	con.baMgr.stop()
 	con.event.Reset()
+	con.waitGroup.Wait()
 }
 
-func (con *Consensus) processMsg(msgChan <-chan interface{}) {
-MessageLoop:
+func (con *Consensus) deliverNetworkMsg() {
+	defer con.waitGroup.Done()
+	recv := con.network.ReceiveChan()
 	for {
-		var msg interface{}
 		select {
-		case msg = <-msgChan:
+		case <-con.ctx.Done():
+			return
+		default:
+		}
+		select {
+		case msg := <-recv:
+		innerLoop:
+			for {
+				select {
+				case con.msgChan <- msg:
+					break innerLoop
+				case <-time.After(500 * time.Millisecond):
+					con.logger.Debug("internal message channel is full",
+						"pending", msg)
+				}
+			}
 		case <-con.ctx.Done():
 			return
 		}
+	}
+}
 
+func (con *Consensus) processMsg() {
+	defer con.waitGroup.Done()
+MessageLoop:
+	for {
+		select {
+		case <-con.ctx.Done():
+			return
+		default:
+		}
+		var msg interface{}
+		select {
+		case msg = <-con.msgChan:
+		case <-con.ctx.Done():
+			return
+		}
 		switch val := msg.(type) {
 		case *types.Block:
 			if ch, exist := func() (chan<- *types.Block, bool) {
@@ -805,7 +932,7 @@ MessageLoop:
 				ch, e := con.baConfirmedBlock[val.Hash]
 				return ch, e
 			}(); exist {
-				if err := con.lattice.SanityCheck(val); err != nil {
+				if err := con.lattice.SanityCheck(val, false); err != nil {
 					if err == ErrRetrySanityCheckLater {
 						err = nil
 					} else {
@@ -913,6 +1040,7 @@ func (con *Consensus) ProcessAgreementResult(
 	if err := VerifyAgreementResult(rand, con.nodeSetCache); err != nil {
 		return err
 	}
+	con.lattice.AddShallowBlock(rand.BlockHash, rand.Position)
 	// Syncing BA Module.
 	if err := con.baMgr.processAgreementResult(rand); err != nil {
 		return err
@@ -1007,7 +1135,13 @@ func (con *Consensus) preProcessBlock(b *types.Block) (err error) {
 }
 
 func (con *Consensus) pullRandomness() {
+	defer con.waitGroup.Done()
 	for {
+		select {
+		case <-con.ctx.Done():
+			return
+		default:
+		}
 		select {
 		case <-con.ctx.Done():
 			return
@@ -1024,10 +1158,36 @@ func (con *Consensus) pullRandomness() {
 	}
 }
 
+func (con *Consensus) deliveryGuard() {
+	defer con.waitGroup.Done()
+	time.Sleep(con.dMoment.Sub(time.Now()))
+	// Node takes time to start.
+	time.Sleep(60 * time.Second)
+	for {
+		select {
+		case <-con.ctx.Done():
+			return
+		default:
+		}
+		select {
+		case <-con.ctx.Done():
+			return
+		case <-con.resetDeliveryGuardTicker:
+		case <-time.After(60 * time.Second):
+			con.logger.Error("no blocks delivered for too long", "ID", con.ID)
+			panic(fmt.Errorf("no blocks delivered for too long"))
+		}
+	}
+}
+
 // deliverBlock deliver a block to application layer.
 func (con *Consensus) deliverBlock(b *types.Block) {
 	select {
 	case con.resetRandomnessTicker <- struct{}{}:
+	default:
+	}
+	select {
+	case con.resetDeliveryGuardTicker <- struct{}{}:
 	default:
 	}
 	if err := con.db.UpdateBlock(*b); err != nil {
@@ -1086,9 +1246,7 @@ func (con *Consensus) deliverFinalizedBlocksWithoutLock() (err error) {
 	for _, b := range deliveredBlocks {
 		con.deliverBlock(b)
 	}
-	if err = con.lattice.PurgeBlocks(deliveredBlocks); err != nil {
-		return
-	}
+	err = con.lattice.PurgeBlocks(deliveredBlocks)
 	return
 }
 
@@ -1150,9 +1308,7 @@ func (con *Consensus) prepareBlock(b *types.Block,
 		err = ErrCRSNotReady
 		return
 	}
-	if err = con.signer.SignCRS(b, crs); err != nil {
-		return
-	}
+	err = con.signer.SignCRS(b, crs)
 	return
 }
 
