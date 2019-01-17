@@ -129,7 +129,7 @@ var (
 	// TaipeiChainConfig contains the chain parameters to run a node on the Taipei test network.
 	TaipeiChainConfig = &ChainConfig{
 		ChainID:             big.NewInt(239),
-		DMoment:             1547695800,
+		DMoment:             1548556500,
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
@@ -148,14 +148,14 @@ var (
 			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(8e9)),
 			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.6e9)),
 			BlockGasLimit:     40000000,
-			NumChains:         6,
-			LambdaBA:          3000,
+			NumChains:         1,
+			LambdaBA:          500,
 			LambdaDKG:         20000,
 			K:                 0,
 			PhiRatio:          0.667,
 			NotarySetSize:     21,
 			DKGSetSize:        13,
-			RoundInterval:     3600000,
+			RoundInterval:     1800000,
 			MinBlockInterval:  1000,
 			FineValues: []*big.Int{
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
