@@ -31,7 +31,7 @@ func TestBig_Scan(t *testing.T) {
 		},
 		{
 			name:    "scan bytes",
-			args:    args{src: []byte{0x0a}},
+			args:    args{src: []byte{0x31, 0x30}},
 			value:   Big(*big.NewInt(10)),
 			wantErr: false,
 		},

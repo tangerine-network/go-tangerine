@@ -45,7 +45,11 @@ func (b *Big) Scan(src interface{}) error {
 	case uint64:
 		*b = Big(*newB.SetUint64(t))
 	case []byte:
-		*b = Big(*newB.SetBytes(t))
+		err := newB.UnmarshalText(t)
+		if err != nil {
+			return err
+		}
+		*b = Big(*newB)
 	case string:
 		v, ok := newB.SetString(t, 10)
 		if !ok {
