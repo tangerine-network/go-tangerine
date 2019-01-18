@@ -89,12 +89,6 @@ func (n BlockNonce) Value() (driver.Value, error) {
 	return n[:], nil
 }
 
-// WitnessData represents the witness data.
-type WitnessData struct {
-	Root        common.Hash
-	ReceiptHash common.Hash
-}
-
 //go:generate gencodec -type Header -field-override headerMarshaling -out gen_header_json.go
 
 // Header represents a block header in the Ethereum blockchain.

@@ -119,18 +119,14 @@ func TestPrepareWitness(t *testing.T) {
 		t.Fatalf("unexpeted witness height %v", witness.Height)
 	}
 
-	var witnessData types.WitnessData
-	err = rlp.DecodeBytes(witness.Data, &witnessData)
+	var witnessBlockHash common.Hash
+	err = rlp.DecodeBytes(witness.Data, &witnessBlockHash)
 	if err != nil {
 		t.Fatalf("rlp decode error: %v", err)
 	}
 
-	if witnessData.Root != currentBlock.Root() {
-		t.Fatalf("expect root %v but %v", currentBlock.Root(), witnessData.Root)
-	}
-
-	if witnessData.ReceiptHash != currentBlock.ReceiptHash() {
-		t.Fatalf("expect receipt hash %v but %v", currentBlock.ReceiptHash(), witnessData.ReceiptHash)
+	if witnessBlockHash != currentBlock.Hash() {
+		t.Fatalf("expect root %v but %v", currentBlock.Hash(), witnessBlockHash)
 	}
 
 	if _, err := dex.app.PrepareWitness(999); err == nil {

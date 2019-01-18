@@ -298,10 +298,7 @@ func (d *DexconApp) PrepareWitness(consensusHeight uint64) (witness coreTypes.Wi
 		return witness, fmt.Errorf("current height < consensus height")
 	}
 
-	witnessData, err := rlp.EncodeToBytes(&types.WitnessData{
-		Root:        witnessBlock.Root(),
-		ReceiptHash: witnessBlock.ReceiptHash(),
-	})
+	witnessData, err := rlp.EncodeToBytes(witnessBlock.Hash())
 	if err != nil {
 		return
 	}
@@ -314,8 +311,8 @@ func (d *DexconApp) PrepareWitness(consensusHeight uint64) (witness coreTypes.Wi
 
 // VerifyBlock verifies if the payloads are valid.
 func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifyStatus {
-	var witnessData types.WitnessData
-	err := rlp.DecodeBytes(block.Witness.Data, &witnessData)
+	var witnessBlockHash common.Hash
+	err := rlp.DecodeBytes(block.Witness.Data, &witnessBlockHash)
 	if err != nil {
 		log.Error("Failed to RLP decode witness data", "error", err)
 		return coreTypes.VerifyInvalidBlock
@@ -329,23 +326,19 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 
 	b := d.blockchain.GetBlockByNumber(block.Witness.Height)
 	if b == nil {
-		log.Error("Can not get block by height %v", block.Witness.Height)
+		log.Error("Can not get block by height", "height", block.Witness.Height)
 		return coreTypes.VerifyInvalidBlock
 	}
 
-	if b.Root() != witnessData.Root {
-		log.Error("Witness root not correct expect %v but %v", b.Root(), witnessData.Root)
+	if b.Hash() != witnessBlockHash {
+		log.Error("Witness block hash not match",
+			"expect", b.Hash().String(), "got", witnessBlockHash.String())
 		return coreTypes.VerifyInvalidBlock
 	}
 
-	if b.ReceiptHash() != witnessData.ReceiptHash {
-		log.Error("Witness receipt hash not correct expect %v but %v", b.ReceiptHash(), witnessData.ReceiptHash)
-		return coreTypes.VerifyInvalidBlock
-	}
-
-	_, err = d.blockchain.StateAt(witnessData.Root)
+	_, err = d.blockchain.StateAt(b.Root())
 	if err != nil {
-		log.Error("Get state by root %v error: %v", witnessData.Root, err)
+		log.Error("Get state by root %v error: %v", b.Root(), err)
 		return coreTypes.VerifyInvalidBlock
 	}
 

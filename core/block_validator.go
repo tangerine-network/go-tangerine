@@ -19,6 +19,7 @@ package core
 import (
 	"fmt"
 
+	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/consensus"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
@@ -101,20 +102,15 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 	return nil
 }
 
-func (v *BlockValidator) ValidateWitnessData(height uint64, data types.WitnessData) error {
+func (v *BlockValidator) ValidateWitnessData(height uint64, blockHash common.Hash) error {
 	b := v.bc.GetBlockByNumber(height)
 	if b == nil {
 		return fmt.Errorf("can not find block %v either pending or confirmed block", height)
 	}
 
-	if b.Root() != data.Root {
-		return fmt.Errorf("invalid witness root %s vs %s",
-			b.Root().String(), data.Root.String())
-	}
-
-	if b.ReceiptHash() != data.ReceiptHash {
-		return fmt.Errorf("invalid witness receipt hash %s vs %s",
-			b.ReceiptHash().String(), data.ReceiptHash.String())
+	if b.Hash() != blockHash {
+		return fmt.Errorf("invalid witness block %s vs %s",
+			b.Hash().String(), blockHash.String())
 	}
 	return nil
 }

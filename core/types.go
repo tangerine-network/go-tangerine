@@ -17,6 +17,7 @@
 package core
 
 import (
+	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
@@ -35,7 +36,7 @@ type Validator interface {
 	ValidateState(block, parent *types.Block, state *state.StateDB, receipts types.Receipts, usedGas uint64) error
 
 	// ValidateWitnessData validates the given witness result.
-	ValidateWitnessData(height uint64, data types.WitnessData) error
+	ValidateWitnessData(height uint64, data common.Hash) error
 }
 
 // Processor is an interface for processing blocks using a given initial state.

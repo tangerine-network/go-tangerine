@@ -1834,13 +1834,13 @@ func (bc *BlockChain) processBlock(
 	)
 
 	bstart := time.Now()
-	var witnessData types.WitnessData
-	if err := rlp.Decode(bytes.NewReader(witness.Data), &witnessData); err != nil {
+	var witnessBlockHash common.Hash
+	if err := rlp.Decode(bytes.NewReader(witness.Data), &witnessBlockHash); err != nil {
 		log.Error("Witness rlp decode failed", "error", err)
 		return nil, nil, nil, fmt.Errorf("rlp decode fail: %v", err)
 	}
 
-	if err := bc.Validator().ValidateWitnessData(witness.Height, witnessData); err != nil {
+	if err := bc.Validator().ValidateWitnessData(witness.Height, witnessBlockHash); err != nil {
 		return nil, nil, nil, fmt.Errorf("validate witness data error: %v", err)
 	}
 
