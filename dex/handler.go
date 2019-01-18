@@ -59,6 +59,7 @@ import (
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/event"
 	"github.com/dexon-foundation/dexon/log"
+	"github.com/dexon-foundation/dexon/metrics"
 	"github.com/dexon-foundation/dexon/p2p"
 	"github.com/dexon-foundation/dexon/p2p/enode"
 	"github.com/dexon-foundation/dexon/p2p/enr"
@@ -142,6 +143,9 @@ type ProtocolManager struct {
 
 	finalizedBlockCh  chan core.NewFinalizedBlockEvent
 	finalizedBlockSub event.Subscription
+
+	// metrics
+	blockNumberGauge metrics.Gauge
 }
 
 // NewProtocolManager returns a new Ethereum sub protocol manager. The Ethereum sub protocol manages peers capable
@@ -154,23 +158,24 @@ func NewProtocolManager(
 	tab := newNodeTable()
 	// Create the protocol manager with the base fields
 	manager := &ProtocolManager{
-		networkID:       networkID,
-		dMoment:         dMoment,
-		eventMux:        mux,
-		txpool:          txpool,
-		nodeTable:       tab,
-		gov:             gov,
-		blockchain:      blockchain,
-		cache:           newCache(5120, dexDB.NewDatabase(chaindb)),
-		chainconfig:     config,
-		newPeerCh:       make(chan *peer),
-		noMorePeers:     make(chan struct{}),
-		txsyncCh:        make(chan *txsync),
-		recordsyncCh:    make(chan *recordsync),
-		quitSync:        make(chan struct{}),
-		receiveCh:       make(chan interface{}, 1024),
-		isBlockProposer: isBlockProposer,
-		app:             app,
+		networkID:        networkID,
+		dMoment:          dMoment,
+		eventMux:         mux,
+		txpool:           txpool,
+		nodeTable:        tab,
+		gov:              gov,
+		blockchain:       blockchain,
+		cache:            newCache(5120, dexDB.NewDatabase(chaindb)),
+		chainconfig:      config,
+		newPeerCh:        make(chan *peer),
+		noMorePeers:      make(chan struct{}),
+		txsyncCh:         make(chan *txsync),
+		recordsyncCh:     make(chan *recordsync),
+		quitSync:         make(chan struct{}),
+		receiveCh:        make(chan interface{}, 1024),
+		isBlockProposer:  isBlockProposer,
+		app:              app,
+		blockNumberGauge: metrics.GetOrRegisterGauge("dex/blocknumber", nil),
 	}
 
 	// Figure out whether to allow fast sync or not
@@ -1182,7 +1187,9 @@ func (pm *ProtocolManager) peerSetLoop() {
 
 	for {
 		select {
-		case <-pm.chainHeadCh:
+		case event := <-pm.chainHeadCh:
+			pm.blockNumberGauge.Update(int64(event.Block.NumberU64()))
+
 			if !pm.isBlockProposer {
 				break
 			}
