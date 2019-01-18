@@ -260,7 +260,7 @@ func (p *Peer) pingLoop() {
 	for {
 		select {
 		case <-ping.C:
-			if err := SendItems(p.rw, pingMsg); err != nil {
+			if err := SendItems(p.rw, pingMsg, uint64(time.Now().UnixNano())); err != nil {
 				p.protoErr <- err
 				return
 			}
@@ -290,8 +290,14 @@ func (p *Peer) readLoop(errc chan<- error) {
 func (p *Peer) handle(msg Msg) error {
 	switch {
 	case msg.Code == pingMsg:
-		msg.Discard()
-		go SendItems(p.rw, pongMsg)
+		var pingTime [1]uint64
+		rlp.Decode(msg.Payload, &pingTime)
+		peerRelativeLatency.Update((time.Now().UnixNano() - int64(pingTime[0])) / 1000)
+		go SendItems(p.rw, pongMsg, pingTime[0])
+	case msg.Code == pongMsg:
+		var pingTime [1]uint64
+		rlp.Decode(msg.Payload, &pingTime)
+		peerLatency.Update((time.Now().UnixNano() - int64(pingTime[0])) / 2 / 1000)
 	case msg.Code == discMsg:
 		var reason [1]DiscReason
 		// This is the last message. We don't need to discard or
