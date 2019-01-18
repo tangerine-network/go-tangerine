@@ -231,6 +231,23 @@ matrix:
         submodules: false
       script:
         - go run build/ci.go purge -store dexon-builds -days 14
+    - if: type = push
+      os: osx
+      go: 1.11.x
+      env:
+        - gcp-osx
+      git:
+        submodules: false
+      script:
+        - PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig make all
+        - cd test
+        - ./run_test.sh --ignore-log
+        - cd ..
+        - ./build/fullnode-test.sh
+      addons:
+        homebrew:
+          packages:
+            - ethereum
 before_install:
   - openssl aes-256-cbc -K $encrypted_556a2b2ff7f6_key -iv $encrypted_556a2b2ff7f6_iv
     -in .ci/DEXON-7548b3622930.json.enc -out ./COBINHOOD-7548b3622930.json -d

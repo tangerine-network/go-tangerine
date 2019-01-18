@@ -17,12 +17,11 @@
 
 // A simple monkey that sends random transactions into the network.
 
-package main
+package monkey
 
 import (
 	"context"
 	"crypto/ecdsa"
-	"flag"
 	"fmt"
 	"math"
 	"math/big"
@@ -36,22 +35,32 @@ import (
 	"github.com/dexon-foundation/dexon/ethclient"
 )
 
-var key = flag.String("key", "", "private key path")
-var endpoint = flag.String("endpoint", "http://127.0.0.1:8545", "JSON RPC endpoint")
-var n = flag.Int("n", 100, "number of random accounts")
-var gambler = flag.Bool("gambler", false, "make this monkey a gambler")
-var batch = flag.Bool("batch", false, "monkeys will send transaction in batch")
-var sleep = flag.Int("sleep", 500, "time in millisecond that monkeys sleep between each transaction")
-var feeder = flag.Bool("feeder", false, "make this monkey a feeder")
+var config *MonkeyConfig
+
+type MonkeyConfig struct {
+	Key      string
+	Endpoint string
+	N        int
+	Gambler  bool
+	Feeder   bool
+	Batch    bool
+	Sleep    int
+	Timeout  int
+}
+
+func Init(cfg *MonkeyConfig) {
+	config = cfg
+}
 
 type Monkey struct {
 	client    *ethclient.Client
 	source    *ecdsa.PrivateKey
 	keys      []*ecdsa.PrivateKey
 	networkID *big.Int
+	timer     <-chan time.Time
 }
 
-func New(ep string, source *ecdsa.PrivateKey, num int) *Monkey {
+func New(ep string, source *ecdsa.PrivateKey, num int, timeout time.Duration) *Monkey {
 	client, err := ethclient.Dial(ep)
 	if err != nil {
 		panic(err)
@@ -72,12 +81,18 @@ func New(ep string, source *ecdsa.PrivateKey, num int) *Monkey {
 		panic(err)
 	}
 
-	return &Monkey{
+	monkey := &Monkey{
 		client:    client,
 		source:    source,
 		keys:      keys,
 		networkID: networkID,
 	}
+
+	if timeout > 0 {
+		monkey.timer = time.After(timeout * time.Second)
+	}
+
+	return monkey
 }
 
 type transferContext struct {
@@ -232,9 +247,10 @@ func (m *Monkey) Distribute() {
 	time.Sleep(20 * time.Second)
 }
 
-func (m *Monkey) Crazy() {
+func (m *Monkey) Crazy() uint64 {
 	fmt.Println("Performing random transfers ...")
 	nonce := uint64(0)
+loop:
 	for {
 		ctxs := make([]*transferContext, len(m.keys))
 		for i, key := range m.keys {
@@ -248,37 +264,52 @@ func (m *Monkey) Crazy() {
 				Nonce:     nonce,
 				Gas:       21000,
 			}
-			if *batch {
+			if config.Batch {
 				ctxs[i] = ctx
 			} else {
 				m.transfer(ctx)
 			}
 		}
-		if *batch {
+		if config.Batch {
 			m.batchTransfer(ctxs)
 		}
 		fmt.Printf("Sent %d transactions, nonce = %d\n", len(m.keys), nonce)
 
+		if m.timer != nil {
+			select {
+			case <-m.timer:
+				break loop
+			default:
+			}
+		}
+
 		nonce += 1
-		time.Sleep(time.Duration(*sleep) * time.Millisecond)
+		time.Sleep(time.Duration(config.Sleep) * time.Millisecond)
 	}
+
+	return nonce
 }
 
-func main() {
-	flag.Parse()
+func (m *Monkey) Keys() []*ecdsa.PrivateKey {
+	return m.keys
+}
 
-	privKey, err := crypto.LoadECDSA(*key)
+func Exec() (*Monkey, uint64) {
+	privKey, err := crypto.LoadECDSA(config.Key)
 	if err != nil {
 		panic(err)
 	}
 
-	m := New(*endpoint, privKey, *n)
+	m := New(config.Endpoint, privKey, config.N, time.Duration(config.Timeout))
 	m.Distribute()
-	if *gambler {
-		m.Gamble()
-	} else if *feeder {
-		m.Feed()
+	var finalNonce uint64
+	if config.Gambler {
+		finalNonce = m.Gamble()
+	} else if config.Feeder {
+		finalNonce = m.Feed()
 	} else {
-		m.Crazy()
+		finalNonce = m.Crazy()
 	}
+
+	return m, finalNonce
 }

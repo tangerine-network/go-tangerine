@@ -15,7 +15,7 @@
 // along with the dexon-consensus library. If not, see
 // <http://www.gnu.org/licenses/>.
 
-package main
+package monkey
 
 import (
 	"context"
@@ -71,7 +71,7 @@ func (m *Monkey) DistributeBanana(contract common.Address) {
 	time.Sleep(20 * time.Second)
 }
 
-func (m *Monkey) Feed() {
+func (m *Monkey) Feed() uint64 {
 	fmt.Println("Deploying contract ...")
 	contract := m.deploy(m.source, bananaContract, nil, new(big.Int), math.MaxUint64)
 	fmt.Println("  Contract deployed: ", contract.String())
@@ -80,6 +80,7 @@ func (m *Monkey) Feed() {
 	time.Sleep(5 * time.Second)
 
 	nonce := uint64(0)
+loop:
 	for {
 		fmt.Println("nonce", nonce)
 		ctxs := make([]*transferContext, len(m.keys))
@@ -97,16 +98,27 @@ func (m *Monkey) Feed() {
 				Nonce:     nonce,
 				Gas:       42000,
 			}
-			if *batch {
+			if config.Batch {
 				ctxs[i] = ctx
 			} else {
 				m.transfer(ctx)
 			}
 		}
-		if *batch {
+		if config.Batch {
 			m.batchTransfer(ctxs)
 		}
+
+		if m.timer != nil {
+			select {
+			case <-m.timer:
+				break loop
+			default:
+			}
+		}
+
 		nonce += 1
-		time.Sleep(time.Duration(*sleep) * time.Millisecond)
+		time.Sleep(time.Duration(config.Sleep) * time.Millisecond)
 	}
+
+	return nonce
 }

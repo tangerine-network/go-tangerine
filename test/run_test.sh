@@ -29,7 +29,7 @@ with open('$GENESIS', 'r') as f:
   data = f.read()
 
 with open('$GENESIS', 'w') as f:
-  dMoment = int(time.time()) + 7
+  dMoment = int(time.time()) + 15
   f.write(re.sub('"dMoment": [0-9]+,', '"dMoment": %d,' % dMoment, data))
 __FILE__
 
@@ -57,7 +57,7 @@ for i in $(seq 0 3); do
   $GDEX \
     ${NETWORK} \
     --bp \
-    --verbosity=3 \
+    --verbosity=4 \
     --gcmode=archive \
     --datadir=$datadir --nodekey=keystore/test$i.key \
     --port=$((30305 + $i)) \
@@ -70,4 +70,6 @@ for i in $(seq 0 3); do
     > $logsdir/gdex.$i.log 2>&1 &
 done
 
-tail -f $logsdir/gdex.*.log
+if [ "$1" != "--ignore-log" ]; then
+  tail -f $logsdir/gdex.*.log
+fi
