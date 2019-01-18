@@ -26,8 +26,8 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0x73011fcc8abc63e9e3ac52c6762b002e082bd1c5f3ddb8ac918f6cd6fa4c327b")
-	TestnetGenesisHash = common.HexToHash("0xc1cb0aa5b5dae1a7a5e1bd04221ea9b3c735c5ebe208d622261a171dfb5a7302")
+	MainnetGenesisHash = common.HexToHash("0xe972af2797b02f4dab95ffa229714c35d5c55685f20261b9498c8b8a3fe33856")
+	TestnetGenesisHash = common.HexToHash("0xaa4414cf836c517a6c4e034d55f5133476d5795bfd2247a7f3375bce2bc3cc56")
 )
 
 // TrustedCheckpoints associates each known checkpoint with the genesis hash of
@@ -90,7 +90,7 @@ var (
 	// TestnetChainConfig contains the chain parameters to run a node on the Taiwan test network.
 	TestnetChainConfig = &ChainConfig{
 		ChainID:             big.NewInt(238),
-		DMoment:             1547635100,
+		DMoment:             1547826700,
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
@@ -107,7 +107,7 @@ var (
 			LockupPeriod:      86400 * 3 * 1000,
 			MiningVelocity:    0.1875,
 			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e7)),
-			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(8e6)),
+			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(4e6)),
 			BlockGasLimit:     40000000,
 			NumChains:         6,
 			LambdaBA:          250,
