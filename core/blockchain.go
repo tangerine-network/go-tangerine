@@ -1891,7 +1891,7 @@ func (bc *BlockChain) processBlock(
 	chainBlock := bc.GetBlockByNumber(newBlock.NumberU64())
 	if chainBlock != nil {
 		if chainBlock.Hash() != newBlock.Hash() {
-			return nil, nil, nil, fmt.Errorf("block %v exist but hash is not equal: exist %v expect %v", newBlock.NumberU64(),
+			return nil, nil, nil, fmt.Errorf("block %v exist but hash is not equal: exist %v but get %v", newBlock.NumberU64(),
 				chainBlock.Hash(), newBlock.Hash())
 		}
 

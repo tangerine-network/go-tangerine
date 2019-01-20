@@ -235,7 +235,7 @@ matrix:
       os: osx
       go: 1.11.x
       env:
-        - gcp-osx
+        - smoke-test
       git:
         submodules: false
       script:
@@ -250,4 +250,4 @@ matrix:
             - ethereum
 before_install:
   - openssl aes-256-cbc -K $encrypted_556a2b2ff7f6_key -iv $encrypted_556a2b2ff7f6_iv
-    -in .ci/DEXON-7548b3622930.json.enc -out ./COBINHOOD-7548b3622930.json -d
+    -in .ci/DEXON-7548b3622930.json.enc -out ./DEXON-7548b3622930.json -d
