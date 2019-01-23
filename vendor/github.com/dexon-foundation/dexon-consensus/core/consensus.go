@@ -577,7 +577,7 @@ func newConsensusForRound(
 		logger:                   logger,
 		resetRandomnessTicker:    make(chan struct{}),
 		resetDeliveryGuardTicker: make(chan struct{}),
-		msgChan:                  make(chan interface{}, 1024),
+		msgChan:                  make(chan interface{}, 10240),
 	}
 	con.ctx, con.ctxCancel = context.WithCancel(context.Background())
 	con.baMgr = newAgreementMgr(con, initRound, initRoundBeginTime)
