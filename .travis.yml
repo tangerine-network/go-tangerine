@@ -1,6 +1,10 @@
 language: go
 go_import_path: github.com/dexon-foundation/dexon
 sudo: false
+branches:
+  only:
+  - dev
+  - master
 matrix:
   include:
     - os: linux
