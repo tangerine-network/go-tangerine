@@ -196,15 +196,6 @@ func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []by
 			return nil, errExecutionReverted
 		}
 		return g.stake(args.PublicKey, args.Name, args.Email, args.Location, args.Url)
-	case "snapshotRound":
-		args := struct {
-			Round  *big.Int
-			Height *big.Int
-		}{}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.snapshotRound(args.Round, args.Height)
 	case "transferOwnership":
 		var newOwner common.Address
 		if err := method.Inputs.Unpack(&newOwner, arguments); err != nil {
@@ -711,9 +702,6 @@ func (s *GovernanceStateHelper) appendTo2DByteArray(pos, index *big.Int, data []
 }
 
 // uint256[] public roundHeight;
-func (s *GovernanceStateHelper) LenRoundHeight() *big.Int {
-	return s.getStateBigInt(big.NewInt(roundHeightLoc))
-}
 func (s *GovernanceStateHelper) RoundHeight(round *big.Int) *big.Int {
 	baseLoc := s.getSlotLoc(big.NewInt(roundHeightLoc))
 	loc := new(big.Int).Add(baseLoc, round)
@@ -2169,45 +2157,9 @@ func (g *GovernanceContract) transferOwnership(newOwner common.Address) ([]byte,
 	return nil, nil
 }
 
-func (g *GovernanceContract) snapshotRound(round, height *big.Int) ([]byte, error) {
-	// Validate if this mapping is correct. Only block proposer need to verify this.
-	if g.evm.IsBlockProposer() {
-		realHeight, ok := g.evm.GetRoundHeight(round.Uint64())
-		if !ok {
-			return g.penalize()
-		}
-
-		if height.Cmp(new(big.Int).SetUint64(realHeight)) != 0 {
-			return g.penalize()
-		}
-	}
-
-	// Only allow updating the next round.
-	nextRound := g.state.LenRoundHeight()
-	if round.Cmp(nextRound) != 0 {
-		// No need to penalize, since the only possibility at this point is the
-		// round height is already snapshoted.
-		return nil, errExecutionReverted
-	}
-
-	g.state.PushRoundHeight(height)
-	return nil, nil
-}
-
 func PackProposeCRS(round uint64, signedCRS []byte) ([]byte, error) {
 	method := GovernanceContractName2Method["proposeCRS"]
 	res, err := method.Inputs.Pack(big.NewInt(int64(round)), signedCRS)
-	if err != nil {
-		return nil, err
-	}
-	data := append(method.Id(), res...)
-	return data, nil
-}
-
-func PackNotifyRoundHeight(targetRound, consensusHeight uint64) ([]byte, error) {
-	method := GovernanceContractName2Method["snapshotRound"]
-	res, err := method.Inputs.Pack(
-		big.NewInt(int64(targetRound)), big.NewInt(int64(consensusHeight)))
 	if err != nil {
 		return nil, err
 	}

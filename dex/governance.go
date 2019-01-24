@@ -145,20 +145,6 @@ func (d *DexconGovernance) NodeSet(round uint64) []coreCrypto.PublicKey {
 	return pks
 }
 
-// NotifyRoundHeight register the mapping between round and height.
-func (d *DexconGovernance) NotifyRoundHeight(targetRound, consensusHeight uint64) {
-	data, err := vm.PackNotifyRoundHeight(targetRound, consensusHeight)
-	if err != nil {
-		log.Error("failed to pack snapshotRound input", "err", err)
-		return
-	}
-
-	err = d.sendGovTx(context.Background(), data)
-	if err != nil {
-		log.Error("failed to send snapshotRound tx", "err", err)
-	}
-}
-
 // AddDKGComplaint adds a DKGComplaint.
 func (d *DexconGovernance) AddDKGComplaint(round uint64, complaint *dkgTypes.Complaint) {
 	data, err := vm.PackAddDKGComplaint(round, complaint)

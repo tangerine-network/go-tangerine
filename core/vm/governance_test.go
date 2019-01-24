@@ -625,46 +625,6 @@ func (g *GovernanceContractTestSuite) TestUpdateConfiguration() {
 	g.Require().NoError(err)
 }
 
-func (g *GovernanceContractTestSuite) TestSnapshotRound() {
-	_, addr := g.newPrefundAccount()
-
-	// Wrong height.
-	input, err := abiObject.Pack("snapshotRound", big.NewInt(1), big.NewInt(666))
-	g.Require().NoError(err)
-	_, err = g.call(addr, input, big.NewInt(0))
-	g.Require().NotNil(err)
-
-	// Invalid round.
-	input, err = abiObject.Pack("snapshotRound", big.NewInt(2), big.NewInt(2000))
-	g.Require().NoError(err)
-	_, err = g.call(addr, input, big.NewInt(0))
-	g.Require().NotNil(err)
-
-	// Correct.
-	input, err = abiObject.Pack("snapshotRound", big.NewInt(1), big.NewInt(1000))
-	g.Require().NoError(err)
-	_, err = g.call(addr, input, big.NewInt(0))
-	g.Require().NoError(err)
-
-	// Duplicate round.
-	input, err = abiObject.Pack("snapshotRound", big.NewInt(1), big.NewInt(1000))
-	g.Require().NoError(err)
-	_, err = g.call(addr, input, big.NewInt(0))
-	g.Require().NotNil(err)
-
-	// Invalid round.
-	input, err = abiObject.Pack("snapshotRound", big.NewInt(3), big.NewInt(3000))
-	g.Require().NoError(err)
-	_, err = g.call(addr, input, big.NewInt(0))
-	g.Require().NotNil(err)
-
-	// Correct.
-	input, err = abiObject.Pack("snapshotRound", big.NewInt(2), big.NewInt(2000))
-	g.Require().NoError(err)
-	_, err = g.call(addr, input, big.NewInt(0))
-	g.Require().NoError(err)
-}
-
 func (g *GovernanceContractTestSuite) TestConfigurationReading() {
 	_, addr := g.newPrefundAccount()
 

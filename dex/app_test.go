@@ -513,12 +513,6 @@ func TestNumChainsChange(t *testing.T) {
 			Height:    1,
 		})
 
-	// Snapshot round on round 1 and height 2.
-	input, err = abiObject.Pack("snapshotRound", big.NewInt(1), big.NewInt(1))
-	if err != nil {
-		t.Fatalf("abiObject pack error: %v", err)
-	}
-
 	block, err = prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{input}, 1)
 	if err != nil {
 		t.Fatalf("prepare block error: %v", err)

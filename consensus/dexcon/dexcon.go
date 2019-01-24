@@ -143,13 +143,20 @@ func (d *Dexcon) calculateBlockReward(round int64, state *state.StateDB) *big.In
 // Finalize implements consensus.Engine, ensuring no uncles are set, nor block
 // rewards given, and returns the final block.
 func (d *Dexcon) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
+	gs := vm.GovernanceStateHelper{state}
+
+	height := gs.RoundHeight(new(big.Int).SetUint64(header.Round))
+	if header.Round > 0 && height.Uint64() == 0 {
+		gs.PushRoundHeight(header.Number)
+	}
+
+	// Distribute block reward and halving condition.
 	if header.Coinbase == (common.Address{}) {
 		header.Reward = new(big.Int)
 	} else {
 		reward := d.calculateBlockReward(int64(header.Round), state)
 		state.AddBalance(header.Coinbase, reward)
 
-		gs := vm.GovernanceStateHelper{state}
 		gs.IncTotalSupply(reward)
 
 		config := gs.Configuration()

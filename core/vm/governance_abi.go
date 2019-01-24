@@ -900,24 +900,6 @@ const GovernanceABIJSON = `
         "type": "uint256"
       },
       {
-        "name": "Height",
-        "type": "uint256"
-      }
-    ],
-    "name": "snapshotRound",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "Round",
-        "type": "uint256"
-      },
-      {
         "name": "SignedCRS",
         "type": "bytes"
       }

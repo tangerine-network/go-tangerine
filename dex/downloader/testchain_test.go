@@ -201,15 +201,6 @@ func (tc *testChain) generate(n int, seed byte, parent *types.Block, nodes *dexc
 
 		half := roundInterval / 2
 		switch i % roundInterval {
-		case 0:
-			if round > 0 {
-				node := testNodes.Nodes(round)[0]
-				data, err := vm.PackNotifyRoundHeight(round, uint64(i))
-				if err != nil {
-					panic(err)
-				}
-				addTx(block, node, data)
-			}
 		case half:
 			// Sign current CRS to geneate the next round CRS and propose it.
 			testNodes.SignCRS(round)
