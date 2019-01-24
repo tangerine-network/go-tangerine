@@ -2193,3 +2193,126 @@ func (g *GovernanceContract) snapshotRound(round, height *big.Int) ([]byte, erro
 	g.state.PushRoundHeight(height)
 	return nil, nil
 }
+
+func PackProposeCRS(round uint64, signedCRS []byte) ([]byte, error) {
+	method := GovernanceContractName2Method["proposeCRS"]
+	res, err := method.Inputs.Pack(big.NewInt(int64(round)), signedCRS)
+	if err != nil {
+		return nil, err
+	}
+	data := append(method.Id(), res...)
+	return data, nil
+}
+
+func PackNotifyRoundHeight(targetRound, consensusHeight uint64) ([]byte, error) {
+	method := GovernanceContractName2Method["snapshotRound"]
+	res, err := method.Inputs.Pack(
+		big.NewInt(int64(targetRound)), big.NewInt(int64(consensusHeight)))
+	if err != nil {
+		return nil, err
+	}
+	data := append(method.Id(), res...)
+	return data, nil
+}
+
+func PackAddDKGMasterPublicKey(round uint64, mpk *dkgTypes.MasterPublicKey) ([]byte, error) {
+	method := GovernanceContractName2Method["addDKGMasterPublicKey"]
+	encoded, err := rlp.EncodeToBytes(mpk)
+	if err != nil {
+		return nil, err
+	}
+	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	if err != nil {
+		return nil, err
+	}
+	data := append(method.Id(), res...)
+	return data, nil
+}
+
+func PackAddDKGMPKReady(round uint64, ready *dkgTypes.MPKReady) ([]byte, error) {
+	method := GovernanceContractName2Method["addDKGMPKReady"]
+	encoded, err := rlp.EncodeToBytes(ready)
+	if err != nil {
+		return nil, err
+	}
+	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	if err != nil {
+		return nil, err
+	}
+	data := append(method.Id(), res...)
+	return data, nil
+}
+
+func PackAddDKGComplaint(round uint64, complaint *dkgTypes.Complaint) ([]byte, error) {
+	method := GovernanceContractName2Method["addDKGComplaint"]
+	encoded, err := rlp.EncodeToBytes(complaint)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	if err != nil {
+		return nil, err
+	}
+	data := append(method.Id(), res...)
+	return data, nil
+}
+
+func PackAddDKGFinalize(round uint64, final *dkgTypes.Finalize) ([]byte, error) {
+	method := GovernanceContractName2Method["addDKGFinalize"]
+	encoded, err := rlp.EncodeToBytes(final)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	if err != nil {
+		return nil, err
+	}
+	data := append(method.Id(), res...)
+	return data, nil
+}
+
+func PackReportForkVote(vote1, vote2 *coreTypes.Vote) ([]byte, error) {
+	method := GovernanceContractName2Method["report"]
+
+	vote1Bytes, err := rlp.EncodeToBytes(vote1)
+	if err != nil {
+		return nil, err
+	}
+
+	vote2Bytes, err := rlp.EncodeToBytes(vote2)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := method.Inputs.Pack(big.NewInt(ReportTypeForkVote), vote1Bytes, vote2Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	data := append(method.Id(), res...)
+	return data, nil
+}
+
+func PackReportForkBlock(block1, block2 *coreTypes.Block) ([]byte, error) {
+	method := GovernanceContractName2Method["report"]
+
+	block1Bytes, err := rlp.EncodeToBytes(block1)
+	if err != nil {
+		return nil, err
+	}
+
+	block2Bytes, err := rlp.EncodeToBytes(block2)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := method.Inputs.Pack(big.NewInt(ReportTypeForkBlock), block1Bytes, block2Bytes)
+	if err != nil {
+		return nil, err
+	}
+
+	data := append(method.Id(), res...)
+	return data, nil
+}

@@ -27,6 +27,7 @@ import (
 
 	ethereum "github.com/dexon-foundation/dexon"
 	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/consensus/dexcon"
 	"github.com/dexon-foundation/dexon/core/rawdb"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
@@ -177,7 +178,8 @@ type LightChain interface {
 	GetGovStateByNumber(number uint64) (*types.GovState, error)
 
 	// InsertDexonHeaderChain inserts a batch of headers into the local chain.
-	InsertDexonHeaderChain([]*types.HeaderWithGovState, *dexCore.TSigVerifierCache) (int, error)
+	InsertDexonHeaderChain([]*types.HeaderWithGovState,
+		dexcon.GovernanceStateFetcher, *dexCore.TSigVerifierCache) (int, error)
 
 	// Rollback removes a few recently added elements from the local chain.
 	Rollback([]common.Hash)
@@ -1428,7 +1430,7 @@ func (d *Downloader) processHeaders(origin uint64, pivot uint64, number uint64) 
 						}
 					}
 
-					if n, err := d.lightchain.InsertDexonHeaderChain(chunk, d.verifierCache); err != nil {
+					if n, err := d.lightchain.InsertDexonHeaderChain(chunk, d.gov, d.verifierCache); err != nil {
 						// If some headers were inserted, add them too to the rollback list
 						if n > 0 {
 							for _, h := range chunk[:n] {

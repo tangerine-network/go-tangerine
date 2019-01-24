@@ -17,11 +17,12 @@
 package downloader
 
 import (
+	"crypto/ecdsa"
 	"fmt"
 	"math/big"
 
 	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/consensus/ethash"
+	"github.com/dexon-foundation/dexon/consensus/dexcon"
 	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
@@ -33,17 +34,17 @@ import (
 
 // Test chain parameters.
 var (
-	testKey, _  = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
-	testAddress = crypto.PubkeyToAddress(testKey.PublicKey)
-	testDB      = ethdb.NewMemDatabase()
-	testGenesis = genesisBlockForTesting(testDB, testAddress, big.NewInt(1000000000))
+	testKey, _             = crypto.HexToECDSA("b71c71a67e1177ad4e901695e1b4b9ee17ae16c6668d313eac2f96dbcda3f291")
+	testAddress            = crypto.PubkeyToAddress(testKey.PublicKey)
+	testDB                 = ethdb.NewMemDatabase()
+	testGenesis, testNodes = genesisBlockForTesting(testDB, testAddress, big.NewInt(1000000000))
 )
 
 // The common prefix of all test chains:
-var testChainBase = newTestChain(blockCacheItems+200, testGenesis)
+var testChainBase = newTestChain(blockCacheItems+200, testGenesis, testNodes)
 
 func genesisBlockForTesting(db ethdb.Database,
-	addr common.Address, balance *big.Int) *types.Block {
+	addr common.Address, balance *big.Int) (*types.Block, *dexcon.NodeSet) {
 	var (
 		// genesis node set
 		nodekey1, _ = crypto.HexToECDSA("3cf5bdee098cc34536a7b0e80d85e07a380efca76fc12136299b9e5ba24193c8")
@@ -87,11 +88,17 @@ func genesisBlockForTesting(db ethdb.Database,
 		},
 	}
 	genesis := gspec.MustCommit(db)
-	return genesis
+
+	signedCRS := []byte(gspec.Config.Dexcon.GenesisCRSText)
+	signer := types.NewEIP155Signer(gspec.Config.ChainID)
+	nodeSet := dexcon.NewNodeSet(uint64(0), signedCRS, signer,
+		[]*ecdsa.PrivateKey{nodekey1, nodekey2, nodekey3, nodekey4})
+	return genesis, nodeSet
 }
 
 type testChain struct {
 	genesis  *types.Block
+	nodes    *dexcon.NodeSet
 	chain    []common.Hash
 	headerm  map[common.Hash]*types.Header
 	blockm   map[common.Hash]*types.Block
@@ -99,21 +106,14 @@ type testChain struct {
 }
 
 // newTestChain creates a blockchain of the given length.
-func newTestChain(length int, genesis *types.Block) *testChain {
+func newTestChain(length int, genesis *types.Block, nodes *dexcon.NodeSet) *testChain {
 	tc := new(testChain).copy(length)
 	tc.genesis = genesis
 	tc.chain = append(tc.chain, genesis.Hash())
 	tc.headerm[tc.genesis.Hash()] = tc.genesis.Header()
 	tc.blockm[tc.genesis.Hash()] = tc.genesis
-	tc.generate(length-1, 0, genesis, false)
+	tc.generate(length-1, 0, genesis, nodes, false)
 	return tc
-}
-
-// makeFork creates a fork on top of the test chain.
-func (tc *testChain) makeFork(length int, heavy bool, seed byte) *testChain {
-	fork := tc.copy(tc.len() + length)
-	fork.generate(length, seed, tc.headBlock(), heavy)
-	return fork
 }
 
 // shorten creates a copy of the chain with the given length. It panics if the
@@ -146,16 +146,113 @@ func (tc *testChain) copy(newlen int) *testChain {
 // the returned hash chain is ordered head->parent. In addition, every 22th block
 // contains a transaction and every 5th an uncle to allow testing correct block
 // reassembly.
-func (tc *testChain) generate(n int, seed byte, parent *types.Block, heavy bool) {
+func (tc *testChain) generate(n int, seed byte, parent *types.Block, nodes *dexcon.NodeSet, heavy bool) {
 	// start := time.Now()
 	// defer func() { fmt.Printf("test chain generated in %v\n", time.Since(start)) }()
 
-	blocks, receipts := core.GenerateChain(params.TestnetChainConfig, parent, ethash.NewFaker(), testDB, n, func(i int, block *core.BlockGen) {
+	engine := dexcon.NewFaker(testNodes)
+	govFetcher := newGovStateFetcher(state.NewDatabase(testDB))
+	govFetcher.SnapshotRound(0, tc.genesis.Root())
+	engine.SetGovStateFetcher(govFetcher)
+
+	round := uint64(0)
+	roundInterval := int(100)
+
+	addTx := func(block *core.DexonBlockGen, node *dexcon.Node, data []byte) {
+		nonce := block.TxNonce(node.Address())
+		tx := node.CreateGovTx(nonce, data)
+		block.AddTx(tx)
+	}
+
+	blocks, receipts := core.GenerateDexonChain(params.TestnetChainConfig, parent, engine, testDB, n, func(i int, block *core.DexonBlockGen) {
 		block.SetCoinbase(common.Address{seed})
-		// If a heavy chain is requested, delay blocks to raise difficulty
-		if heavy {
-			block.OffsetTime(-1)
+		if round == 0 {
+			switch i {
+			case 1:
+				testNodes.RunDKG(round, 2)
+				// Add DKG MasterPublicKeys
+				for _, node := range testNodes.Nodes(round) {
+					data, err := vm.PackAddDKGMasterPublicKey(round, node.MasterPublicKey(round))
+					if err != nil {
+						panic(err)
+					}
+					addTx(block, node, data)
+				}
+			case 2:
+				// Add DKG MPKReady
+				for _, node := range testNodes.Nodes(round) {
+					data, err := vm.PackAddDKGMPKReady(round, node.DKGMPKReady(round))
+					if err != nil {
+						panic(err)
+					}
+					addTx(block, node, data)
+				}
+			case 3:
+				// Add DKG Finalize
+				for _, node := range testNodes.Nodes(round) {
+					data, err := vm.PackAddDKGFinalize(round, node.DKGFinalize(round))
+					if err != nil {
+						panic(err)
+					}
+					addTx(block, node, data)
+				}
+			}
 		}
+
+		half := roundInterval / 2
+		switch i % roundInterval {
+		case 0:
+			if round > 0 {
+				node := testNodes.Nodes(round)[0]
+				data, err := vm.PackNotifyRoundHeight(round, uint64(i))
+				if err != nil {
+					panic(err)
+				}
+				addTx(block, node, data)
+			}
+		case half:
+			// Sign current CRS to geneate the next round CRS and propose it.
+			testNodes.SignCRS(round)
+			node := testNodes.Nodes(round)[0]
+			data, err := vm.PackProposeCRS(round, testNodes.SignedCRS(round+1))
+			if err != nil {
+				panic(err)
+			}
+			addTx(block, node, data)
+		case half + 1:
+			// Run the DKG for next round.
+			testNodes.RunDKG(round+1, 2)
+
+			// Add DKG MasterPublicKeys
+			for _, node := range testNodes.Nodes(round + 1) {
+				data, err := vm.PackAddDKGMasterPublicKey(round+1, node.MasterPublicKey(round+1))
+				if err != nil {
+					panic(err)
+				}
+				addTx(block, node, data)
+			}
+		case half + 2:
+			// Add DKG MPKReady
+			for _, node := range testNodes.Nodes(round + 1) {
+				data, err := vm.PackAddDKGMPKReady(round+1, node.DKGMPKReady(round+1))
+				if err != nil {
+					panic(err)
+				}
+				addTx(block, node, data)
+			}
+		case half + 3:
+			// Add DKG Finalize
+			for _, node := range testNodes.Nodes(round + 1) {
+				data, err := vm.PackAddDKGFinalize(round+1, node.DKGFinalize(round+1))
+				if err != nil {
+					panic(err)
+				}
+				addTx(block, node, data)
+			}
+		case roundInterval - 1:
+			round++
+		}
+
 		// Include transactions to the miner to make blocks more interesting.
 		if parent == tc.genesis && i%22 == 0 {
 			signer := types.MakeSigner(params.TestnetChainConfig, block.Number())
@@ -164,13 +261,6 @@ func (tc *testChain) generate(n int, seed byte, parent *types.Block, heavy bool)
 				panic(err)
 			}
 			block.AddTx(tx)
-		}
-		// if the block number is a multiple of 5, add a bonus uncle to the block
-		if i > 0 && i%5 == 0 {
-			block.AddUncle(&types.Header{
-				ParentHash: block.PrevBlock(i - 1).Hash(),
-				Number:     big.NewInt(block.Number().Int64() - 1),
-			})
 		}
 	})
 
@@ -257,4 +347,31 @@ func (tc *testChain) hashToNumber(target common.Hash) (uint64, bool) {
 		}
 	}
 	return 0, false
+}
+
+type govStateFetcher struct {
+	db          state.Database
+	rootByRound map[uint64]common.Hash
+}
+
+func newGovStateFetcher(db state.Database) *govStateFetcher {
+	return &govStateFetcher{
+		db:          db,
+		rootByRound: make(map[uint64]common.Hash),
+	}
+}
+
+func (g *govStateFetcher) SnapshotRound(round uint64, root common.Hash) {
+	g.rootByRound[round] = root
+}
+
+func (g *govStateFetcher) GetGovStateHelperAtRound(round uint64) *vm.GovernanceStateHelper {
+	if root, ok := g.rootByRound[round]; ok {
+		s, err := state.New(root, g.db)
+		if err != nil {
+			panic(err)
+		}
+		return &vm.GovernanceStateHelper{s}
+	}
+	return nil
 }

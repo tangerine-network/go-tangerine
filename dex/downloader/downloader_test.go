@@ -26,12 +26,16 @@ import (
 
 	ethereum "github.com/dexon-foundation/dexon"
 	dexCore "github.com/dexon-foundation/dexon-consensus/core"
+	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+
 	"github.com/dexon-foundation/dexon/common"
+	"github.com/dexon-foundation/dexon/consensus/dexcon"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/event"
+	"github.com/dexon-foundation/dexon/rlp"
 	"github.com/dexon-foundation/dexon/trie"
 )
 
@@ -200,7 +204,8 @@ func (dl *downloadTester) FastSyncCommitHead(hash common.Hash) error {
 }
 
 // InsertDexonHeaderChain injects a new batch of headers into the simulated chain.
-func (dl *downloadTester) InsertDexonHeaderChain(headers []*types.HeaderWithGovState, verifierCache *dexCore.TSigVerifierCache) (i int, err error) {
+func (dl *downloadTester) InsertDexonHeaderChain(headers []*types.HeaderWithGovState,
+	gov dexcon.GovernanceStateFetcher, verifierCache *dexCore.TSigVerifierCache) (i int, err error) {
 	dl.lock.Lock()
 	defer dl.lock.Unlock()
 
@@ -220,6 +225,29 @@ func (dl *downloadTester) InsertDexonHeaderChain(headers []*types.HeaderWithGovS
 		}
 		if _, ok := dl.ownHeaders[header.ParentHash]; !ok {
 			return i, errors.New("unknown parent")
+		}
+
+		// Verify witness
+		var coreBlock coreTypes.Block
+		if err := rlp.DecodeBytes(header.DexconMeta, &coreBlock); err != nil {
+			return i, err
+		}
+
+		var witnessBlockHash common.Hash
+		if err := rlp.DecodeBytes(coreBlock.Witness.Data, &witnessBlockHash); err != nil {
+			return i, err
+		}
+
+		if uint64(len(dl.ownHashes)) < coreBlock.Witness.Height+1 {
+			return i, errors.New("unknown witness")
+		}
+		h := dl.ownHeaders[dl.ownHashes[coreBlock.Witness.Height]]
+		if h == nil {
+			return i, errors.New("unknown witness")
+		}
+
+		if h.Hash() != witnessBlockHash {
+			return i, errors.New("witness root mismatch")
 		}
 		dl.ownHashes = append(dl.ownHashes, header.Hash())
 		dl.ownHeaders[header.Hash()] = header.Header
@@ -807,6 +835,7 @@ func testInvalidHeaderRollback(t *testing.T, protocol int, mode SyncMode) {
 	missing := fsHeaderSafetyNet + MaxHeaderFetch + 1
 	fastAttackChain := chain.shorten(chain.len())
 	delete(fastAttackChain.headerm, fastAttackChain.chain[missing])
+
 	tester.newPeer("fast-attack", protocol, fastAttackChain)
 
 	if err := tester.sync("fast-attack", 0, mode); err == nil {
@@ -850,6 +879,43 @@ func testInvalidHeaderRollback(t *testing.T, protocol int, mode SyncMode) {
 	}
 	if err := tester.sync("withhold-attack", 0, mode); err == nil {
 		t.Fatalf("succeeded withholding attacker synchronisation")
+	}
+	if head := tester.CurrentHeader().Number.Int64(); int(head) > 2*fsHeaderSafetyNet+MaxHeaderFetch {
+		t.Errorf("rollback head mismatch: have %v, want at most %v", head, 2*fsHeaderSafetyNet+MaxHeaderFetch)
+	}
+	if mode == FastSync {
+		if head := tester.CurrentBlock().NumberU64(); head != 0 {
+			t.Errorf("fast sync pivot block #%d not rolled back", head)
+		}
+	}
+
+	// witness mismatch
+	realChain := chain.shorten(chain.len())
+	fakeChain := chain.shorten(chain.len())
+
+	for i := chain.len() - 100; i < chain.len(); i++ {
+		realHash := realChain.chain[i]
+		realHeader := realChain.headerm[realHash]
+		realBlock := realChain.blockm[realHash]
+		realReceipt := realChain.receiptm[realHash]
+		fakeHeader := types.CopyHeader(realHeader)
+		if i == chain.len()-100 {
+			fakeHeader.Root = common.Hash{}
+		} else {
+			fakeHeader.ParentHash = fakeChain.chain[i-1]
+		}
+
+		fakeBlock := types.NewBlock(fakeHeader, realBlock.Transactions(), realBlock.Uncles(), realReceipt)
+
+		fakeChain.chain[i] = fakeBlock.Hash()
+		fakeChain.blockm[fakeBlock.Hash()] = fakeBlock
+		fakeChain.headerm[fakeBlock.Hash()] = fakeBlock.Header()
+		fakeChain.receiptm[fakeBlock.Hash()] = realReceipt
+	}
+
+	tester.newPeer("mismatch-attack", protocol, fakeChain)
+	if err := tester.sync("mismatch-attack", 0, mode); err == nil {
+		t.Fatalf("succeeded block attacker synchronisation")
 	}
 	if head := tester.CurrentHeader().Number.Int64(); int(head) > 2*fsHeaderSafetyNet+MaxHeaderFetch {
 		t.Errorf("rollback head mismatch: have %v, want at most %v", head, 2*fsHeaderSafetyNet+MaxHeaderFetch)

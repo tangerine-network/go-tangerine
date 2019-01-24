@@ -23,6 +23,7 @@ import (
 	"github.com/dexon-foundation/dexon/consensus"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/params"
 )
 
@@ -103,14 +104,16 @@ func (v *BlockValidator) ValidateState(block, parent *types.Block, statedb *stat
 }
 
 func (v *BlockValidator) ValidateWitnessData(height uint64, blockHash common.Hash) error {
-	b := v.bc.GetBlockByNumber(height)
+	b := v.bc.GetHeaderByNumber(height)
 	if b == nil {
-		return fmt.Errorf("can not find block %v either pending or confirmed block", height)
+		log.Error("can not find block %v either pending or confirmed block", height)
+		return consensus.ErrWitnessMismatch
 	}
 
 	if b.Hash() != blockHash {
-		return fmt.Errorf("invalid witness block %s vs %s",
+		log.Error("invalid witness block %s vs %s",
 			b.Hash().String(), blockHash.String())
+		return consensus.ErrWitnessMismatch
 	}
 	return nil
 }

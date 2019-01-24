@@ -37,7 +37,6 @@ import (
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/params"
-	"github.com/dexon-foundation/dexon/rlp"
 )
 
 type DexconGovernance struct {
@@ -119,15 +118,12 @@ func (d *DexconGovernance) LenCRS() uint64 {
 
 // ProposeCRS send proposals of a new CRS
 func (d *DexconGovernance) ProposeCRS(round uint64, signedCRS []byte) {
-	method := vm.GovernanceContractName2Method["proposeCRS"]
-
-	res, err := method.Inputs.Pack(big.NewInt(int64(round)), signedCRS)
+	data, err := vm.PackProposeCRS(round, signedCRS)
 	if err != nil {
 		log.Error("failed to pack proposeCRS input", "err", err)
 		return
 	}
 
-	data := append(method.Id(), res...)
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
 		log.Error("failed to send proposeCRS tx", "err", err)
@@ -151,16 +147,12 @@ func (d *DexconGovernance) NodeSet(round uint64) []coreCrypto.PublicKey {
 
 // NotifyRoundHeight register the mapping between round and height.
 func (d *DexconGovernance) NotifyRoundHeight(targetRound, consensusHeight uint64) {
-	method := vm.GovernanceContractName2Method["snapshotRound"]
-
-	res, err := method.Inputs.Pack(
-		big.NewInt(int64(targetRound)), big.NewInt(int64(consensusHeight)))
+	data, err := vm.PackNotifyRoundHeight(targetRound, consensusHeight)
 	if err != nil {
 		log.Error("failed to pack snapshotRound input", "err", err)
 		return
 	}
 
-	data := append(method.Id(), res...)
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
 		log.Error("failed to send snapshotRound tx", "err", err)
@@ -169,21 +161,12 @@ func (d *DexconGovernance) NotifyRoundHeight(targetRound, consensusHeight uint64
 
 // AddDKGComplaint adds a DKGComplaint.
 func (d *DexconGovernance) AddDKGComplaint(round uint64, complaint *dkgTypes.Complaint) {
-	method := vm.GovernanceContractName2Method["addDKGComplaint"]
-
-	encoded, err := rlp.EncodeToBytes(complaint)
-	if err != nil {
-		log.Error("failed to RLP encode complaint to bytes", "err", err)
-		return
-	}
-
-	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	data, err := vm.PackAddDKGComplaint(round, complaint)
 	if err != nil {
 		log.Error("failed to pack addDKGComplaint input", "err", err)
 		return
 	}
 
-	data := append(method.Id(), res...)
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
 		log.Error("failed to send addDKGComplaint tx", "err", err)
@@ -192,21 +175,12 @@ func (d *DexconGovernance) AddDKGComplaint(round uint64, complaint *dkgTypes.Com
 
 // AddDKGMasterPublicKey adds a DKGMasterPublicKey.
 func (d *DexconGovernance) AddDKGMasterPublicKey(round uint64, masterPublicKey *dkgTypes.MasterPublicKey) {
-	method := vm.GovernanceContractName2Method["addDKGMasterPublicKey"]
-
-	encoded, err := rlp.EncodeToBytes(masterPublicKey)
-	if err != nil {
-		log.Error("failed to RLP encode mpk to bytes", "err", err)
-		return
-	}
-
-	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	data, err := vm.PackAddDKGMasterPublicKey(round, masterPublicKey)
 	if err != nil {
 		log.Error("failed to pack addDKGMasterPublicKey input", "err", err)
 		return
 	}
 
-	data := append(method.Id(), res...)
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
 		log.Error("failed to send addDKGMasterPublicKey tx", "err", err)
@@ -215,21 +189,12 @@ func (d *DexconGovernance) AddDKGMasterPublicKey(round uint64, masterPublicKey *
 
 // AddDKGMPKReady adds a DKG mpk ready message.
 func (d *DexconGovernance) AddDKGMPKReady(round uint64, ready *dkgTypes.MPKReady) {
-	method := vm.GovernanceContractName2Method["addDKGMPKReady"]
-
-	encoded, err := rlp.EncodeToBytes(ready)
-	if err != nil {
-		log.Error("failed to RLP encode mpk ready to bytes", "err", err)
-		return
-	}
-
-	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	data, err := vm.PackAddDKGMPKReady(round, ready)
 	if err != nil {
 		log.Error("failed to pack addDKGMPKReady input", "err", err)
 		return
 	}
 
-	data := append(method.Id(), res...)
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
 		log.Error("failed to send addDKGMPKReady tx", "err", err)
@@ -238,21 +203,12 @@ func (d *DexconGovernance) AddDKGMPKReady(round uint64, ready *dkgTypes.MPKReady
 
 // AddDKGFinalize adds a DKG finalize message.
 func (d *DexconGovernance) AddDKGFinalize(round uint64, final *dkgTypes.Finalize) {
-	method := vm.GovernanceContractName2Method["addDKGFinalize"]
-
-	encoded, err := rlp.EncodeToBytes(final)
-	if err != nil {
-		log.Error("failed to RLP encode finalize to bytes", "err", err)
-		return
-	}
-
-	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	data, err := vm.PackAddDKGFinalize(round, final)
 	if err != nil {
 		log.Error("failed to pack addDKGFinalize input", "err", err)
 		return
 	}
 
-	data := append(method.Id(), res...)
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
 		log.Error("failed to send addDKGFinalize tx", "err", err)
@@ -261,27 +217,12 @@ func (d *DexconGovernance) AddDKGFinalize(round uint64, final *dkgTypes.Finalize
 
 // ReportForkVote reports a node for forking votes.
 func (d *DexconGovernance) ReportForkVote(vote1, vote2 *coreTypes.Vote) {
-	method := vm.GovernanceContractName2Method["report"]
-
-	vote1Bytes, err := rlp.EncodeToBytes(vote1)
+	data, err := vm.PackReportForkVote(vote1, vote2)
 	if err != nil {
-		log.Error("failed to RLP encode vote1 to bytes", "err", err)
+		log.Error("failed to pack report fork vote input", "err", err)
 		return
 	}
 
-	vote2Bytes, err := rlp.EncodeToBytes(vote2)
-	if err != nil {
-		log.Error("failed to RLP encode vote2 to bytes", "err", err)
-		return
-	}
-
-	res, err := method.Inputs.Pack(big.NewInt(vm.ReportTypeForkVote), vote1Bytes, vote2Bytes)
-	if err != nil {
-		log.Error("failed to pack report input", "err", err)
-		return
-	}
-
-	data := append(method.Id(), res...)
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
 		log.Error("failed to send report fork vote tx", "err", err)
@@ -290,27 +231,12 @@ func (d *DexconGovernance) ReportForkVote(vote1, vote2 *coreTypes.Vote) {
 
 // ReportForkBlock reports a node for forking blocks.
 func (d *DexconGovernance) ReportForkBlock(block1, block2 *coreTypes.Block) {
-	method := vm.GovernanceContractName2Method["report"]
-
-	block1Bytes, err := rlp.EncodeToBytes(block1)
+	data, err := vm.PackReportForkBlock(block1, block2)
 	if err != nil {
-		log.Error("failed to RLP encode block1 to bytes", "err", err)
+		log.Error("failed to pack report fork block input", "err", err)
 		return
 	}
 
-	block2Bytes, err := rlp.EncodeToBytes(block2)
-	if err != nil {
-		log.Error("failed to RLP encode block2 to bytes", "err", err)
-		return
-	}
-
-	res, err := method.Inputs.Pack(big.NewInt(vm.ReportTypeForkBlock), block1Bytes, block2Bytes)
-	if err != nil {
-		log.Error("failed to pack report input", "err", err)
-		return
-	}
-
-	data := append(method.Id(), res...)
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
 		log.Error("failed to send report fork block tx", "err", err)

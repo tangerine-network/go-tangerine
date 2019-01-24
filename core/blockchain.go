@@ -38,6 +38,7 @@ import (
 	"github.com/dexon-foundation/dexon/common/mclock"
 	"github.com/dexon-foundation/dexon/common/prque"
 	"github.com/dexon-foundation/dexon/consensus"
+	"github.com/dexon-foundation/dexon/consensus/dexcon"
 	"github.com/dexon-foundation/dexon/core/rawdb"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
@@ -145,6 +146,7 @@ type BlockChain struct {
 
 	roundHeightMap sync.Map
 
+	gov           *Governance
 	verifierCache *dexCore.TSigVerifierCache
 
 	confirmedBlockInitMu sync.Mutex
@@ -222,8 +224,8 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		}
 	}
 
-	gov := NewGovernance(NewGovernanceStateDB(bc))
-	bc.verifierCache = dexCore.NewTSigVerifierCache(gov, 5)
+	bc.gov = NewGovernance(NewGovernanceStateDB(bc))
+	bc.verifierCache = dexCore.NewTSigVerifierCache(bc.gov, 5)
 
 	// Init round height map
 	curblock := bc.CurrentBlock()
@@ -236,7 +238,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		log.Debug("Init round height", "height", curblock.NumberU64(), "round", curblock.Round())
 		bc.storeRoundHeight(uint64(0), uint64(0))
 	} else {
-		prevh := gov.GetRoundHeight(r - 1)
+		prevh := bc.gov.GetRoundHeight(r - 1)
 		if prevh == uint64(0) && (r-1) != uint64(0) {
 			// Previous round height should be already snapshoted
 			// in governance state at this moment.
@@ -245,7 +247,7 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 		log.Debug("Init previous round height", "height", prevh, "round", r-1)
 		bc.storeRoundHeight(r-1, prevh)
 
-		curh := gov.GetRoundHeight(r)
+		curh := bc.gov.GetRoundHeight(r)
 
 		// Current round height is not snapshoted in governance state yet,
 		if curh == uint64(0) {
@@ -1658,7 +1660,8 @@ func (bc *BlockChain) insertDexonChain(chain types.Blocks) (int, []interface{}, 
 		// Wait for the block's verification to complete
 		bstart := time.Now()
 
-		err := bc.hc.verifyTSig(block.Header(), bc.verifierCache)
+		// VerifyDexonHeader will verify tsig, witness and ensure dexon header is correct.
+		err := bc.hc.VerifyDexonHeader(block.Header(), bc.gov, bc.verifierCache, bc.Validator())
 		if err == nil {
 			err = bc.Validator().ValidateBody(block)
 		}
@@ -1753,8 +1756,10 @@ func (bc *BlockChain) insertDexonChain(chain types.Blocks) (int, []interface{}, 
 		chainBlock := bc.GetBlockByNumber(block.NumberU64())
 		if chainBlock != nil {
 			if chainBlock.Hash() != block.Hash() {
-				return i, nil, nil, fmt.Errorf("block %v exist but hash is not equal: exist %v expect %v", block.NumberU64(),
-					chainBlock.Hash(), block.Hash())
+				err := fmt.Errorf("block at %d exists but hash is not equal: exist %v expect %v",
+					block.NumberU64(), chainBlock.NumberU64(), block.Hash())
+				bc.reportBlock(block, nil, fmt.Errorf("%v (new block)", err))
+				bc.reportBlock(chainBlock, nil, fmt.Errorf("%v (old block)", err))
 			}
 
 			continue
@@ -1807,7 +1812,7 @@ func (bc *BlockChain) insertDexonChain(chain types.Blocks) (int, []interface{}, 
 }
 
 func (bc *BlockChain) VerifyDexonHeader(header *types.Header) error {
-	return bc.hc.verifyTSig(header, bc.verifierCache)
+	return bc.hc.VerifyDexonHeader(header, bc.gov, bc.verifierCache, bc.Validator())
 }
 
 func (bc *BlockChain) ProcessBlock(block *types.Block, witness *coreTypes.Witness) (*common.Hash, error) {
@@ -1834,6 +1839,7 @@ func (bc *BlockChain) processBlock(
 	)
 
 	bstart := time.Now()
+
 	var witnessBlockHash common.Hash
 	if err := rlp.Decode(bytes.NewReader(witness.Data), &witnessBlockHash); err != nil {
 		log.Error("Witness rlp decode failed", "error", err)
@@ -1841,7 +1847,7 @@ func (bc *BlockChain) processBlock(
 	}
 
 	if err := bc.Validator().ValidateWitnessData(witness.Height, witnessBlockHash); err != nil {
-		return nil, nil, nil, fmt.Errorf("validate witness data error: %v", err)
+		return nil, nil, nil, err
 	}
 
 	var (
@@ -1891,10 +1897,12 @@ func (bc *BlockChain) processBlock(
 	chainBlock := bc.GetBlockByNumber(newBlock.NumberU64())
 	if chainBlock != nil {
 		if chainBlock.Hash() != newBlock.Hash() {
-			return nil, nil, nil, fmt.Errorf("block %v exist but hash is not equal: exist %v but get %v", newBlock.NumberU64(),
-				chainBlock.Hash(), newBlock.Hash())
+			err := fmt.Errorf("block at %d exists but hash is not equal: exist %v expect %v",
+				newBlock.NumberU64(), chainBlock.NumberU64(), newBlock.Hash())
+			bc.reportBlock(chainBlock, nil, fmt.Errorf("%v (remote inserted block)", err))
+			bc.reportBlock(newBlock, receipts, fmt.Errorf("%v (local delivered block)", err))
+			return nil, nil, nil, err
 		}
-
 		return &root, nil, nil, nil
 	}
 
@@ -1983,8 +1991,11 @@ func (bc *BlockChain) ProcessEmptyBlock(block *types.Block) (*common.Hash, error
 	chainBlock := bc.GetBlockByNumber(newBlock.NumberU64())
 	if chainBlock != nil {
 		if chainBlock.Hash() != newBlock.Hash() {
-			return nil, fmt.Errorf("block %v exist but hash is not equal: exist %v expect %v", newBlock.NumberU64(),
-				chainBlock.Hash(), newBlock.Hash())
+			err := fmt.Errorf("block at %d exists but hash is not equal: exist %v expect %v",
+				newBlock.NumberU64(), chainBlock.NumberU64(), newBlock.Hash())
+			bc.reportBlock(chainBlock, nil, fmt.Errorf("%v (remote inserted block)", err))
+			bc.reportBlock(newBlock, nil, fmt.Errorf("%v (local delivered block)", err))
+			return nil, err
 		}
 
 		return &root, nil
@@ -2297,9 +2308,10 @@ func (bc *BlockChain) InsertHeaderChain(chain []*types.Header, checkFreq int) (i
 	return bc.hc.InsertHeaderChain(chain, whFunc, start)
 }
 
-func (bc *BlockChain) InsertDexonHeaderChain(chain []*types.HeaderWithGovState, verifierCache *dexCore.TSigVerifierCache) (int, error) {
+func (bc *BlockChain) InsertDexonHeaderChain(chain []*types.HeaderWithGovState,
+	gov dexcon.GovernanceStateFetcher, verifierCache *dexCore.TSigVerifierCache) (int, error) {
 	start := time.Now()
-	if i, err := bc.hc.ValidateDexonHeaderChain(chain, verifierCache); err != nil {
+	if i, err := bc.hc.ValidateDexonHeaderChain(chain, gov, verifierCache, bc.Validator()); err != nil {
 		return i, err
 	}
 

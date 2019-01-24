@@ -1729,7 +1729,7 @@ func TestProcessBlock(t *testing.T) {
 		Height: processNum + 1,
 		Data:   witnessDataBytes,
 	})
-	if err == nil || !strings.Contains(err.Error(), "can not find block") {
+	if err != consensus.ErrWitnessMismatch {
 		t.Fatalf("not expected fail: %v", err)
 	}
 
@@ -1748,7 +1748,7 @@ func TestProcessBlock(t *testing.T) {
 		Height: processNum - 1,
 		Data:   witnessDataBytes,
 	})
-	if err == nil || !strings.Contains(err.Error(), "invalid witness block") {
+	if err != consensus.ErrWitnessMismatch {
 		t.Fatalf("not expected fail: %v", err)
 	}
 

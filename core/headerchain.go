@@ -23,6 +23,7 @@ import (
 	"math"
 	"math/big"
 	mrand "math/rand"
+	"reflect"
 	"sync/atomic"
 	"time"
 
@@ -32,6 +33,7 @@ import (
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/consensus"
+	"github.com/dexon-foundation/dexon/consensus/dexcon"
 	"github.com/dexon-foundation/dexon/core/rawdb"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/crypto"
@@ -394,7 +396,9 @@ func (hc *HeaderChain) WriteDexonHeader(header *types.HeaderWithGovState) (statu
 
 type Wh2Callback func(*types.HeaderWithGovState) error
 
-func (hc *HeaderChain) ValidateDexonHeaderChain(chain []*types.HeaderWithGovState, verifierCache *dexCore.TSigVerifierCache) (int, error) {
+func (hc *HeaderChain) ValidateDexonHeaderChain(chain []*types.HeaderWithGovState,
+	gov dexcon.GovernanceStateFetcher,
+	verifierCache *dexCore.TSigVerifierCache, validator Validator) (int, error) {
 	// Do a sanity check that the provided chain is actually ordered and linked
 	for i := 1; i < len(chain); i++ {
 		if chain[i].Number.Uint64() != chain[i-1].Number.Uint64()+1 || chain[i].ParentHash != chain[i-1].Hash() {
@@ -415,40 +419,156 @@ func (hc *HeaderChain) ValidateDexonHeaderChain(chain []*types.HeaderWithGovStat
 			return 0, errors.New("aborted")
 		}
 
-		if err := hc.verifyTSig(header.Header, verifierCache); err != nil {
+		if i == 0 {
+			log.Debug("validate header chain", "parent", header.ParentHash.String(), "number", header.Number.Uint64()-1)
+			if parent := hc.GetHeader(header.ParentHash, header.Number.Uint64()-1); parent == nil {
+				return 0, consensus.ErrUnknownAncestor
+			}
+		}
+
+		if err := hc.verifyDexonHeader(header.Header, gov, verifierCache); err != nil {
 			return i, err
+		}
+
+		// Verify witness
+		var coreBlock coreTypes.Block
+		if err := rlp.DecodeBytes(header.DexconMeta, &coreBlock); err != nil {
+			return i, err
+		}
+
+		if !coreBlock.IsEmpty() {
+			var witnessBlockHash common.Hash
+			if err := rlp.DecodeBytes(coreBlock.Witness.Data, &witnessBlockHash); err != nil {
+				log.Error("decode witness data fail", "err", err)
+				return i, err
+			}
+
+			index := int64(coreBlock.Witness.Height) - int64(chain[0].Number.Uint64())
+			if index < 0 {
+				if err := validator.ValidateWitnessData(
+					coreBlock.Witness.Height, witnessBlockHash); err != nil {
+					return i, err
+				}
+			} else {
+				if witnessBlockHash != chain[index].Hash() {
+					return i, consensus.ErrWitnessMismatch
+				}
+			}
 		}
 	}
 	return 0, nil
 }
 
-func (hc *HeaderChain) verifyTSig(header *types.Header, verifierCache *dexCore.TSigVerifierCache) error {
+func (hc *HeaderChain) VerifyDexonHeader(header *types.Header,
+	gov dexcon.GovernanceStateFetcher,
+	verifierCache *dexCore.TSigVerifierCache, validator Validator) error {
+
+	if parent := hc.GetHeader(header.ParentHash, header.Number.Uint64()-1); parent == nil {
+		return consensus.ErrUnknownAncestor
+	}
+
+	if err := hc.verifyDexonHeader(header, gov, verifierCache); err != nil {
+		return err
+	}
+
+	// Verify witness
+	var coreBlock coreTypes.Block
+	if err := rlp.DecodeBytes(header.DexconMeta, &coreBlock); err != nil {
+		return err
+	}
+
+	if !coreBlock.IsEmpty() {
+		var witnessBlockHash common.Hash
+		if err := rlp.DecodeBytes(coreBlock.Witness.Data, &witnessBlockHash); err != nil {
+			log.Error("decode witness data fail", "err", err)
+			return err
+		}
+
+		if err := validator.ValidateWitnessData(
+			coreBlock.Witness.Height, witnessBlockHash); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (hc *HeaderChain) verifyDexonHeader(header *types.Header,
+	gov dexcon.GovernanceStateFetcher,
+	verifierCache *dexCore.TSigVerifierCache) error {
+
 	// If the header is a banned one, straight out abort
 	if BadHashes[header.Hash()] {
 		return ErrBlacklistedHash
 	}
 
-	if header.Round == 0 {
+	// Difficulty should always be 1.
+	if header.Difficulty.Cmp(big.NewInt(1)) != 0 {
+		return fmt.Errorf("difficulty should be 1")
+	}
+
+	// Verify fields that should be same as dexcon meta.
+	var coreBlock coreTypes.Block
+	if err := rlp.DecodeBytes(header.DexconMeta, &coreBlock); err != nil {
+		return fmt.Errorf("decode dexcon meta fail, number=%d, err=%v",
+			header.Number.Uint64(), err)
+	}
+
+	if err := hc.verifyTSig(&coreBlock, verifierCache); err != nil {
+		log.Debug("verify header sig fail, number=%d, err=%v",
+			header.Number.Uint64(), err)
+	}
+
+	if header.Coinbase != common.BytesToAddress(coreBlock.ProposerID.Bytes()) {
+		return fmt.Errorf("coinbase mismatch")
+	}
+
+	if header.Time != uint64(coreBlock.Finalization.Timestamp.UnixNano()/1000000) {
+		return fmt.Errorf("timestamp mismatch")
+	}
+
+	if header.Number.Uint64() != coreBlock.Finalization.Height {
+		return fmt.Errorf("height mismatch")
+	}
+
+	if !reflect.DeepEqual(header.Randomness, coreBlock.Finalization.Randomness) {
+		return fmt.Errorf("randomness mismatch")
+	}
+
+	if header.Round != coreBlock.Position.Round {
+		return fmt.Errorf("round mismatch")
+	}
+
+	gs := gov.GetGovStateHelperAtRound(header.Round)
+	config := gs.Configuration()
+	if header.GasLimit != config.BlockGasLimit {
+		return fmt.Errorf("block gas limit mismatch")
+	}
+	return nil
+}
+
+func (hc *HeaderChain) verifyTSig(coreBlock *coreTypes.Block,
+	verifierCache *dexCore.TSigVerifierCache) error {
+
+	round := coreBlock.Position.Round
+	randomness := coreBlock.Finalization.Randomness
+
+	if round == 0 {
 		return nil
 	}
 
-	var dexconMeta coreTypes.Block
-	if err := rlp.DecodeBytes(header.DexconMeta, &dexconMeta); err != nil {
-		return err
-	}
-
-	v, ok, err := verifierCache.UpdateAndGet(header.Round)
+	// Verify threshold signature
+	v, ok, err := verifierCache.UpdateAndGet(round)
 	if err != nil {
 		panic(err)
 	}
 
 	if !ok {
-		panic(fmt.Errorf("DKG of round %d is not finished", header.Round))
+		panic(fmt.Errorf("DKG of round %d is not finished", round))
 	}
 
-	if !v.VerifySignature(dexconMeta.Hash, coreCrypto.Signature{
+	if !v.VerifySignature(coreBlock.Hash, coreCrypto.Signature{
 		Type:      "bls",
-		Signature: header.Randomness}) {
+		Signature: randomness}) {
 		return fmt.Errorf("signature invalid")
 	}
 	return nil

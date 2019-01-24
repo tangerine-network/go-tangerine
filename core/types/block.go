@@ -264,6 +264,17 @@ func CopyHeader(h *Header) *Header {
 		cpy.Extra = make([]byte, len(h.Extra))
 		copy(cpy.Extra, h.Extra)
 	}
+	if cpy.Reward = new(big.Int); h.Reward != nil {
+		cpy.Reward.Set(h.Reward)
+	}
+	if len(h.Randomness) > 0 {
+		cpy.Randomness = make([]byte, len(h.Randomness))
+		copy(cpy.Randomness, h.Randomness)
+	}
+	if len(h.DexconMeta) > 0 {
+		cpy.DexconMeta = make([]byte, len(h.DexconMeta))
+		copy(cpy.DexconMeta, h.DexconMeta)
+	}
 	return &cpy
 }
 
