@@ -417,14 +417,16 @@ func opRand(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory 
 	binaryNonce := make([]byte, binary.MaxVarintLen64)
 	binary.PutUvarint(binaryNonce, nonce)
 
-	binaryGas := make([]byte, binary.MaxVarintLen64)
-	binary.PutUvarint(binaryGas, contract.Gas)
+	binaryUsedIndex := make([]byte, binary.MaxVarintLen64)
+	binary.PutUvarint(binaryUsedIndex, evm.RandCallIndex)
+
+	evm.RandCallIndex += 1
 
 	hash := crypto.Keccak256(
 		evm.Randomness,
 		contract.Caller().Bytes(),
 		binaryNonce,
-		binaryGas)
+		binaryUsedIndex)
 
 	stack.push(interpreter.intPool.get().SetBytes(hash))
 	return nil, nil

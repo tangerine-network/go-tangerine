@@ -101,6 +101,8 @@ type Context struct {
 	Time        *big.Int       // Provides information for TIME
 	Randomness  []byte         // Provides information for RAND
 	Difficulty  *big.Int       // Provides information for DIFFICULTY
+
+	RandCallIndex uint64 // Number of times opRand is called
 }
 
 // EVM is the Ethereum Virtual Machine base object and provides
