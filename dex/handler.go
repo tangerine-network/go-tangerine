@@ -79,7 +79,8 @@ const (
 
 	recordChanSize = 10240
 
-	maxPullPeers = 3
+	maxPullPeers     = 3
+	maxPullVotePeers = 1
 
 	pullVoteRateLimit = 10 * time.Second
 )
@@ -1115,7 +1116,7 @@ func (pm *ProtocolManager) BroadcastPullVotes(
 		round:   pos.Round,
 	}
 	for idx, peer := range pm.peers.PeersWithLabel(label) {
-		if idx >= maxPullPeers {
+		if idx >= maxPullVotePeers {
 			break
 		}
 		peer.AsyncSendPullVotes(pos)
