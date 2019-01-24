@@ -80,6 +80,8 @@ const (
 	recordChanSize = 10240
 
 	maxPullPeers = 3
+
+	pullVoteRateLimit = 10 * time.Second
 )
 
 // errIncompatibleConfig is returned if the requested protocols and configs are
@@ -97,13 +99,14 @@ type ProtocolManager struct {
 	fastSync  uint32 // Flag whether fast sync is enabled (gets disabled if we already have blocks)
 	acceptTxs uint32 // Flag whether we're considered synchronised (enables transaction processing)
 
-	txpool      txPool
-	nodeTable   *nodeTable
-	gov         governance
-	blockchain  *core.BlockChain
-	chainconfig *params.ChainConfig
-	cache       *cache
-	maxPeers    int
+	txpool       txPool
+	nodeTable    *nodeTable
+	gov          governance
+	blockchain   *core.BlockChain
+	chainconfig  *params.ChainConfig
+	cache        *cache
+	nextPullVote *sync.Map
+	maxPeers     int
 
 	downloader *downloader.Downloader
 	fetcher    *fetcher.Fetcher
@@ -166,6 +169,7 @@ func NewProtocolManager(
 		gov:              gov,
 		blockchain:       blockchain,
 		cache:            newCache(5120, dexDB.NewDatabase(chaindb)),
+		nextPullVote:     &sync.Map{},
 		chainconfig:      config,
 		newPeerCh:        make(chan *peer),
 		noMorePeers:      make(chan struct{}),
@@ -249,6 +253,8 @@ func (pm *ProtocolManager) removePeer(id string) {
 		return
 	}
 	log.Debug("Removing Ethereum peer", "peer", id)
+
+	pm.nextPullVote.Delete(peer.ID())
 
 	// Unregister the peer from the downloader and Ethereum peer set
 	pm.downloader.UnregisterPeer(id)
@@ -863,6 +869,14 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if !pm.isBlockProposer {
 			break
 		}
+		next, ok := pm.nextPullVote.Load(p.ID())
+		if ok {
+			nextTime := next.(time.Time)
+			if nextTime.After(time.Now()) {
+				break
+			}
+		}
+		pm.nextPullVote.Store(p.ID(), time.Now().Add(pullVoteRateLimit))
 		var pos coreTypes.Position
 		if err := msg.Decode(&pos); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
