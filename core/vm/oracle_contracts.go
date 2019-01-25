@@ -22,7 +22,6 @@ import (
 	"errors"
 	"math/big"
 	"sort"
-	"strings"
 
 	"github.com/dexon-foundation/dexon/accounts/abi"
 	"github.com/dexon-foundation/dexon/common"
@@ -41,13 +40,6 @@ import (
 	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
 )
 
-var GovernanceContractAddress = common.HexToAddress("63751838d6485578b23e8b051d40861ecc416794")
-
-var abiObject abi.ABI
-var GovernanceContractName2Method map[string]abi.Method
-var sig2Method map[string]abi.Method
-var events map[string]abi.Event
-
 type Bytes32 [32]byte
 
 type ReportType uint64
@@ -57,464 +49,6 @@ const (
 	ReportTypeForkVote
 	ReportTypeForkBlock
 )
-
-func init() {
-	var err error
-
-	// Parse governance contract ABI.
-	abiObject, err = abi.JSON(strings.NewReader(GovernanceABIJSON))
-	if err != nil {
-		panic(err)
-	}
-
-	sig2Method = make(map[string]abi.Method)
-	GovernanceContractName2Method = make(map[string]abi.Method)
-
-	// Construct dispatch table.
-	for _, method := range abiObject.Methods {
-		sig2Method[string(method.Id())] = method
-		GovernanceContractName2Method[method.Name] = method
-	}
-
-	events = make(map[string]abi.Event)
-
-	// Event cache.
-	for _, event := range abiObject.Events {
-		events[event.Name] = event
-	}
-}
-
-// RunGovernanceContract executes governance contract.
-func RunGovernanceContract(evm *EVM, input []byte, contract *Contract) (ret []byte, err error) {
-	if len(input) < 4 {
-		return nil, nil
-	}
-
-	// Parse input.
-	method, exists := sig2Method[string(input[:4])]
-	if !exists {
-		return nil, errExecutionReverted
-	}
-
-	// Dispatch method call.
-	g := newGovernanceContract(evm, contract)
-	arguments := input[4:]
-
-	switch method.Name {
-	case "addDKGComplaint":
-		args := struct {
-			Round     *big.Int
-			Complaint []byte
-		}{}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.addDKGComplaint(args.Round, args.Complaint)
-	case "addDKGMasterPublicKey":
-		args := struct {
-			Round     *big.Int
-			PublicKey []byte
-		}{}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.addDKGMasterPublicKey(args.Round, args.PublicKey)
-	case "addDKGMPKReady":
-		args := struct {
-			Round    *big.Int
-			MPKReady []byte
-		}{}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.addDKGMPKReady(args.Round, args.MPKReady)
-	case "addDKGFinalize":
-		args := struct {
-			Round    *big.Int
-			Finalize []byte
-		}{}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.addDKGFinalize(args.Round, args.Finalize)
-	case "delegate":
-		address := common.Address{}
-		if err := method.Inputs.Unpack(&address, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.delegate(address)
-	case "delegatorsLength":
-		address := common.Address{}
-		if err := method.Inputs.Unpack(&address, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		res, err := method.Outputs.Pack(g.state.LenDelegators(address))
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "nodesLength":
-		res, err := method.Outputs.Pack(g.state.LenNodes())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "payFine":
-		address := common.Address{}
-		if err := method.Inputs.Unpack(&address, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.payFine(address)
-	case "proposeCRS":
-		args := struct {
-			Round     *big.Int
-			SignedCRS []byte
-		}{}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.proposeCRS(args.Round, args.SignedCRS)
-	case "report":
-		args := struct {
-			Type *big.Int
-			Arg1 []byte
-			Arg2 []byte
-		}{}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.report(args.Type, args.Arg1, args.Arg2)
-	case "stake":
-		args := struct {
-			PublicKey []byte
-			Name      string
-			Email     string
-			Location  string
-			Url       string
-		}{}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.stake(args.PublicKey, args.Name, args.Email, args.Location, args.Url)
-	case "transferOwnership":
-		var newOwner common.Address
-		if err := method.Inputs.Unpack(&newOwner, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.transferOwnership(newOwner)
-	case "undelegate":
-		address := common.Address{}
-		if err := method.Inputs.Unpack(&address, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.undelegate(address)
-	case "unstake":
-		return g.unstake()
-	case "updateConfiguration":
-		var cfg rawConfigStruct
-		if err := method.Inputs.Unpack(&cfg, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.updateConfiguration(&cfg)
-	case "withdraw":
-		address := common.Address{}
-		if err := method.Inputs.Unpack(&address, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.withdraw(address)
-
-	// --------------------------------
-	// Solidity auto generated methods.
-	// --------------------------------
-
-	case "blockGasLimit":
-		res, err := method.Outputs.Pack(g.state.BlockGasLimit())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "crs":
-		round := new(big.Int)
-		if err := method.Inputs.Unpack(&round, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		res, err := method.Outputs.Pack(g.state.CRS(round))
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "delegators":
-		nodeAddr, index := common.Address{}, new(big.Int)
-		args := []interface{}{&nodeAddr, &index}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		delegator := g.state.Delegator(nodeAddr, index)
-		res, err := method.Outputs.Pack(delegator.Owner, delegator.Value, delegator.UndelegatedAt)
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "delegatorsOffset":
-		nodeAddr, delegatorAddr := common.Address{}, common.Address{}
-		args := []interface{}{&nodeAddr, &delegatorAddr}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		res, err := method.Outputs.Pack(g.state.DelegatorsOffset(nodeAddr, delegatorAddr))
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "dkgComplaints":
-		round, index := new(big.Int), new(big.Int)
-		args := []interface{}{&round, &index}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		complaints := g.state.DKGComplaints(round)
-		if int(index.Uint64()) >= len(complaints) {
-			return nil, errExecutionReverted
-		}
-		complaint := complaints[index.Uint64()]
-		res, err := method.Outputs.Pack(complaint)
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "dkgReadys":
-		round, addr := new(big.Int), common.Address{}
-		args := []interface{}{&round, &addr}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		ready := g.state.DKGMPKReady(round, addr)
-		res, err := method.Outputs.Pack(ready)
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "dkgReadysCount":
-		round := new(big.Int)
-		if err := method.Inputs.Unpack(&round, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		count := g.state.DKGMPKReadysCount(round)
-		res, err := method.Outputs.Pack(count)
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-
-	case "dkgFinalizeds":
-		round, addr := new(big.Int), common.Address{}
-		args := []interface{}{&round, &addr}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		finalized := g.state.DKGFinalized(round, addr)
-		res, err := method.Outputs.Pack(finalized)
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "dkgFinalizedsCount":
-		round := new(big.Int)
-		if err := method.Inputs.Unpack(&round, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		count := g.state.DKGFinalizedsCount(round)
-		res, err := method.Outputs.Pack(count)
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "dkgMasterPublicKeys":
-		round, index := new(big.Int), new(big.Int)
-		args := []interface{}{&round, &index}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		mpks := g.state.DKGMasterPublicKeys(round)
-		if int(index.Uint64()) >= len(mpks) {
-			return nil, errExecutionReverted
-		}
-		mpk := mpks[index.Uint64()]
-		res, err := method.Outputs.Pack(mpk)
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "dkgSetSize":
-		res, err := method.Outputs.Pack(g.state.DKGSetSize())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "finedRecords":
-		record := Bytes32{}
-		if err := method.Inputs.Unpack(&record, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		value := g.state.FineRecords(record)
-		res, err := method.Outputs.Pack(value)
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "fineValues":
-		index := new(big.Int)
-		if err := method.Inputs.Unpack(&index, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		value := g.state.FineValue(index)
-		res, err := method.Outputs.Pack(value)
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "k":
-		res, err := method.Outputs.Pack(g.state.K())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "lambdaBA":
-		res, err := method.Outputs.Pack(g.state.LambdaBA())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "lambdaDKG":
-		res, err := method.Outputs.Pack(g.state.LambdaDKG())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "lastHalvedAmount":
-		res, err := method.Outputs.Pack(g.state.LastHalvedAmount())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "lockupPeriod":
-		res, err := method.Outputs.Pack(g.state.LockupPeriod())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "minBlockInterval":
-		res, err := method.Outputs.Pack(g.state.MinBlockInterval())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "miningVelocity":
-		res, err := method.Outputs.Pack(g.state.MiningVelocity())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "minStake":
-		res, err := method.Outputs.Pack(g.state.MinStake())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "nextHalvingSupply":
-		res, err := method.Outputs.Pack(g.state.NextHalvingSupply())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "numChains":
-		res, err := method.Outputs.Pack(g.state.NumChains())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "nodes":
-		index := new(big.Int)
-		if err := method.Inputs.Unpack(&index, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		info := g.state.Node(index)
-		res, err := method.Outputs.Pack(
-			info.Owner, info.PublicKey, info.Staked, info.Fined,
-			info.Name, info.Email, info.Location, info.Url)
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "nodesOffsetByAddress":
-		address := common.Address{}
-		if err := method.Inputs.Unpack(&address, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		res, err := method.Outputs.Pack(g.state.NodesOffsetByAddress(address))
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "nodesOffsetByID":
-		var id Bytes32
-		if err := method.Inputs.Unpack(&id, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		res, err := method.Outputs.Pack(g.state.NodesOffsetByID(id))
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "notarySetSize":
-		res, err := method.Outputs.Pack(g.state.NotarySetSize())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "owner":
-		res, err := method.Outputs.Pack(g.state.Owner())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "phiRatio":
-		res, err := method.Outputs.Pack(g.state.PhiRatio())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "roundHeight":
-		round := new(big.Int)
-		if err := method.Inputs.Unpack(&round, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		res, err := method.Outputs.Pack(g.state.RoundHeight(round))
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "roundInterval":
-		res, err := method.Outputs.Pack(g.state.RoundInterval())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "totalStaked":
-		res, err := method.Outputs.Pack(g.state.TotalStaked())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "totalSupply":
-		res, err := method.Outputs.Pack(g.state.TotalSupply())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	}
-	return nil, errExecutionReverted
-}
 
 // Storage position enums.
 const (
@@ -1401,7 +935,7 @@ func (s *GovernanceStateHelper) UpdateConfigurationRaw(cfg *rawConfigStruct) {
 func (s *GovernanceStateHelper) emitConfigurationChangedEvent() {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
-		Topics:  []common.Hash{events["ConfigurationChanged"].Id()},
+		Topics:  []common.Hash{GovernanceABI.Events["ConfigurationChanged"].Id()},
 		Data:    []byte{},
 	})
 }
@@ -1410,7 +944,7 @@ func (s *GovernanceStateHelper) emitConfigurationChangedEvent() {
 func (s *GovernanceStateHelper) emitCRSProposed(round *big.Int, crs common.Hash) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
-		Topics:  []common.Hash{events["CRSProposed"].Id(), common.BigToHash(round)},
+		Topics:  []common.Hash{GovernanceABI.Events["CRSProposed"].Id(), common.BigToHash(round)},
 		Data:    crs.Bytes(),
 	})
 }
@@ -1419,7 +953,7 @@ func (s *GovernanceStateHelper) emitCRSProposed(round *big.Int, crs common.Hash)
 func (s *GovernanceStateHelper) emitStaked(nodeAddr common.Address) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
-		Topics:  []common.Hash{events["Staked"].Id(), nodeAddr.Hash()},
+		Topics:  []common.Hash{GovernanceABI.Events["Staked"].Id(), nodeAddr.Hash()},
 		Data:    []byte{},
 	})
 }
@@ -1428,7 +962,7 @@ func (s *GovernanceStateHelper) emitStaked(nodeAddr common.Address) {
 func (s *GovernanceStateHelper) emitUnstaked(nodeAddr common.Address) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
-		Topics:  []common.Hash{events["Unstaked"].Id(), nodeAddr.Hash()},
+		Topics:  []common.Hash{GovernanceABI.Events["Unstaked"].Id(), nodeAddr.Hash()},
 		Data:    []byte{},
 	})
 }
@@ -1437,7 +971,7 @@ func (s *GovernanceStateHelper) emitUnstaked(nodeAddr common.Address) {
 func (s *GovernanceStateHelper) emitDelegated(nodeAddr, delegatorAddr common.Address, amount *big.Int) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
-		Topics:  []common.Hash{events["Delegated"].Id(), nodeAddr.Hash(), delegatorAddr.Hash()},
+		Topics:  []common.Hash{GovernanceABI.Events["Delegated"].Id(), nodeAddr.Hash(), delegatorAddr.Hash()},
 		Data:    common.BigToHash(amount).Bytes(),
 	})
 }
@@ -1446,7 +980,7 @@ func (s *GovernanceStateHelper) emitDelegated(nodeAddr, delegatorAddr common.Add
 func (s *GovernanceStateHelper) emitUndelegated(nodeAddr, delegatorAddr common.Address, amount *big.Int) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
-		Topics:  []common.Hash{events["Undelegated"].Id(), nodeAddr.Hash(), delegatorAddr.Hash()},
+		Topics:  []common.Hash{GovernanceABI.Events["Undelegated"].Id(), nodeAddr.Hash(), delegatorAddr.Hash()},
 		Data:    common.BigToHash(amount).Bytes(),
 	})
 }
@@ -1455,7 +989,7 @@ func (s *GovernanceStateHelper) emitUndelegated(nodeAddr, delegatorAddr common.A
 func (s *GovernanceStateHelper) emitWithdrawn(nodeAddr common.Address, amount *big.Int) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
-		Topics:  []common.Hash{events["Withdrawn"].Id(), nodeAddr.Hash()},
+		Topics:  []common.Hash{GovernanceABI.Events["Withdrawn"].Id(), nodeAddr.Hash()},
 		Data:    common.BigToHash(amount).Bytes(),
 	})
 }
@@ -1487,7 +1021,7 @@ func (s *GovernanceStateHelper) emitForkReported(nodeAddr common.Address, report
 	}
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
-		Topics:  []common.Hash{events["ForkReported"].Id(), nodeAddr.Hash()},
+		Topics:  []common.Hash{GovernanceABI.Events["ForkReported"].Id(), nodeAddr.Hash()},
 		Data:    data,
 	})
 }
@@ -1496,7 +1030,7 @@ func (s *GovernanceStateHelper) emitForkReported(nodeAddr common.Address, report
 func (s *GovernanceStateHelper) emitFined(nodeAddr common.Address, amount *big.Int) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
-		Topics:  []common.Hash{events["Fined"].Id(), nodeAddr.Hash()},
+		Topics:  []common.Hash{GovernanceABI.Events["Fined"].Id(), nodeAddr.Hash()},
 		Data:    common.BigToHash(amount).Bytes(),
 	})
 }
@@ -1505,7 +1039,7 @@ func (s *GovernanceStateHelper) emitFined(nodeAddr common.Address, amount *big.I
 func (s *GovernanceStateHelper) emitFinePaid(nodeAddr common.Address, amount *big.Int) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
-		Topics:  []common.Hash{events["FinePaid"].Id(), nodeAddr.Hash()},
+		Topics:  []common.Hash{GovernanceABI.Events["FinePaid"].Id(), nodeAddr.Hash()},
 		Data:    common.BigToHash(amount).Bytes(),
 	})
 }
@@ -1515,14 +1049,6 @@ type GovernanceContract struct {
 	evm      *EVM
 	state    GovernanceStateHelper
 	contract *Contract
-}
-
-func newGovernanceContract(evm *EVM, contract *Contract) *GovernanceContract {
-	return &GovernanceContract{
-		evm:      evm,
-		state:    GovernanceStateHelper{evm.StateDB},
-		contract: contract,
-	}
 }
 
 func (g *GovernanceContract) Address() common.Address {
@@ -2148,6 +1674,442 @@ func (g *GovernanceContract) report(reportType *big.Int, arg1, arg2 []byte) ([]b
 	return nil, nil
 }
 
+// Run executes governance contract.
+func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (ret []byte, err error) {
+	if len(input) < 4 {
+		return nil, errExecutionReverted
+	}
+
+	// Initialize contract state.
+	g.evm = evm
+	g.state = GovernanceStateHelper{evm.StateDB}
+	g.contract = contract
+
+	// Parse input.
+	method, exists := GovernanceABI.Sig2Method[string(input[:4])]
+	if !exists {
+		return nil, errExecutionReverted
+	}
+
+	arguments := input[4:]
+
+	// Dispatch method call.
+	switch method.Name {
+	case "addDKGComplaint":
+		args := struct {
+			Round     *big.Int
+			Complaint []byte
+		}{}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.addDKGComplaint(args.Round, args.Complaint)
+	case "addDKGMasterPublicKey":
+		args := struct {
+			Round     *big.Int
+			PublicKey []byte
+		}{}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.addDKGMasterPublicKey(args.Round, args.PublicKey)
+	case "addDKGMPKReady":
+		args := struct {
+			Round    *big.Int
+			MPKReady []byte
+		}{}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.addDKGMPKReady(args.Round, args.MPKReady)
+	case "addDKGFinalize":
+		args := struct {
+			Round    *big.Int
+			Finalize []byte
+		}{}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.addDKGFinalize(args.Round, args.Finalize)
+	case "delegate":
+		address := common.Address{}
+		if err := method.Inputs.Unpack(&address, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.delegate(address)
+	case "delegatorsLength":
+		address := common.Address{}
+		if err := method.Inputs.Unpack(&address, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		res, err := method.Outputs.Pack(g.state.LenDelegators(address))
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "nodesLength":
+		res, err := method.Outputs.Pack(g.state.LenNodes())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "payFine":
+		address := common.Address{}
+		if err := method.Inputs.Unpack(&address, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.payFine(address)
+	case "proposeCRS":
+		args := struct {
+			Round     *big.Int
+			SignedCRS []byte
+		}{}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.proposeCRS(args.Round, args.SignedCRS)
+	case "report":
+		args := struct {
+			Type *big.Int
+			Arg1 []byte
+			Arg2 []byte
+		}{}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.report(args.Type, args.Arg1, args.Arg2)
+	case "stake":
+		args := struct {
+			PublicKey []byte
+			Name      string
+			Email     string
+			Location  string
+			Url       string
+		}{}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.stake(args.PublicKey, args.Name, args.Email, args.Location, args.Url)
+	case "transferOwnership":
+		var newOwner common.Address
+		if err := method.Inputs.Unpack(&newOwner, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.transferOwnership(newOwner)
+	case "undelegate":
+		address := common.Address{}
+		if err := method.Inputs.Unpack(&address, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.undelegate(address)
+	case "unstake":
+		return g.unstake()
+	case "updateConfiguration":
+		var cfg rawConfigStruct
+		if err := method.Inputs.Unpack(&cfg, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.updateConfiguration(&cfg)
+	case "withdraw":
+		address := common.Address{}
+		if err := method.Inputs.Unpack(&address, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.withdraw(address)
+
+	// --------------------------------
+	// Solidity auto generated methods.
+	// --------------------------------
+
+	case "blockGasLimit":
+		res, err := method.Outputs.Pack(g.state.BlockGasLimit())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "crs":
+		round := new(big.Int)
+		if err := method.Inputs.Unpack(&round, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		res, err := method.Outputs.Pack(g.state.CRS(round))
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "delegators":
+		nodeAddr, index := common.Address{}, new(big.Int)
+		args := []interface{}{&nodeAddr, &index}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		delegator := g.state.Delegator(nodeAddr, index)
+		res, err := method.Outputs.Pack(delegator.Owner, delegator.Value, delegator.UndelegatedAt)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "delegatorsOffset":
+		nodeAddr, delegatorAddr := common.Address{}, common.Address{}
+		args := []interface{}{&nodeAddr, &delegatorAddr}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		res, err := method.Outputs.Pack(g.state.DelegatorsOffset(nodeAddr, delegatorAddr))
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgComplaints":
+		round, index := new(big.Int), new(big.Int)
+		args := []interface{}{&round, &index}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		complaints := g.state.DKGComplaints(round)
+		if int(index.Uint64()) >= len(complaints) {
+			return nil, errExecutionReverted
+		}
+		complaint := complaints[index.Uint64()]
+		res, err := method.Outputs.Pack(complaint)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgReadys":
+		round, addr := new(big.Int), common.Address{}
+		args := []interface{}{&round, &addr}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		ready := g.state.DKGMPKReady(round, addr)
+		res, err := method.Outputs.Pack(ready)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgReadysCount":
+		round := new(big.Int)
+		if err := method.Inputs.Unpack(&round, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		count := g.state.DKGMPKReadysCount(round)
+		res, err := method.Outputs.Pack(count)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+
+	case "dkgFinalizeds":
+		round, addr := new(big.Int), common.Address{}
+		args := []interface{}{&round, &addr}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		finalized := g.state.DKGFinalized(round, addr)
+		res, err := method.Outputs.Pack(finalized)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgFinalizedsCount":
+		round := new(big.Int)
+		if err := method.Inputs.Unpack(&round, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		count := g.state.DKGFinalizedsCount(round)
+		res, err := method.Outputs.Pack(count)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgMasterPublicKeys":
+		round, index := new(big.Int), new(big.Int)
+		args := []interface{}{&round, &index}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		mpks := g.state.DKGMasterPublicKeys(round)
+		if int(index.Uint64()) >= len(mpks) {
+			return nil, errExecutionReverted
+		}
+		mpk := mpks[index.Uint64()]
+		res, err := method.Outputs.Pack(mpk)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgSetSize":
+		res, err := method.Outputs.Pack(g.state.DKGSetSize())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "finedRecords":
+		record := Bytes32{}
+		if err := method.Inputs.Unpack(&record, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		value := g.state.FineRecords(record)
+		res, err := method.Outputs.Pack(value)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "fineValues":
+		index := new(big.Int)
+		if err := method.Inputs.Unpack(&index, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		value := g.state.FineValue(index)
+		res, err := method.Outputs.Pack(value)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "k":
+		res, err := method.Outputs.Pack(g.state.K())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "lambdaBA":
+		res, err := method.Outputs.Pack(g.state.LambdaBA())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "lambdaDKG":
+		res, err := method.Outputs.Pack(g.state.LambdaDKG())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "lastHalvedAmount":
+		res, err := method.Outputs.Pack(g.state.LastHalvedAmount())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "lockupPeriod":
+		res, err := method.Outputs.Pack(g.state.LockupPeriod())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "minBlockInterval":
+		res, err := method.Outputs.Pack(g.state.MinBlockInterval())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "miningVelocity":
+		res, err := method.Outputs.Pack(g.state.MiningVelocity())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "minStake":
+		res, err := method.Outputs.Pack(g.state.MinStake())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "nextHalvingSupply":
+		res, err := method.Outputs.Pack(g.state.NextHalvingSupply())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "numChains":
+		res, err := method.Outputs.Pack(g.state.NumChains())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "nodes":
+		index := new(big.Int)
+		if err := method.Inputs.Unpack(&index, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		info := g.state.Node(index)
+		res, err := method.Outputs.Pack(
+			info.Owner, info.PublicKey, info.Staked, info.Fined,
+			info.Name, info.Email, info.Location, info.Url)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "nodesOffsetByAddress":
+		address := common.Address{}
+		if err := method.Inputs.Unpack(&address, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		res, err := method.Outputs.Pack(g.state.NodesOffsetByAddress(address))
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "nodesOffsetByID":
+		var id Bytes32
+		if err := method.Inputs.Unpack(&id, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		res, err := method.Outputs.Pack(g.state.NodesOffsetByID(id))
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "notarySetSize":
+		res, err := method.Outputs.Pack(g.state.NotarySetSize())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "owner":
+		res, err := method.Outputs.Pack(g.state.Owner())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "phiRatio":
+		res, err := method.Outputs.Pack(g.state.PhiRatio())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "roundHeight":
+		round := new(big.Int)
+		if err := method.Inputs.Unpack(&round, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		res, err := method.Outputs.Pack(g.state.RoundHeight(round))
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "roundInterval":
+		res, err := method.Outputs.Pack(g.state.RoundInterval())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "totalStaked":
+		res, err := method.Outputs.Pack(g.state.TotalStaked())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "totalSupply":
+		res, err := method.Outputs.Pack(g.state.TotalSupply())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	}
+	return nil, errExecutionReverted
+}
+
 func (g *GovernanceContract) transferOwnership(newOwner common.Address) ([]byte, error) {
 	// Only owner can update configuration.
 	if g.contract.Caller() != g.state.Owner() {
@@ -2158,7 +2120,7 @@ func (g *GovernanceContract) transferOwnership(newOwner common.Address) ([]byte,
 }
 
 func PackProposeCRS(round uint64, signedCRS []byte) ([]byte, error) {
-	method := GovernanceContractName2Method["proposeCRS"]
+	method := GovernanceABI.Name2Method["proposeCRS"]
 	res, err := method.Inputs.Pack(big.NewInt(int64(round)), signedCRS)
 	if err != nil {
 		return nil, err
@@ -2168,7 +2130,7 @@ func PackProposeCRS(round uint64, signedCRS []byte) ([]byte, error) {
 }
 
 func PackAddDKGMasterPublicKey(round uint64, mpk *dkgTypes.MasterPublicKey) ([]byte, error) {
-	method := GovernanceContractName2Method["addDKGMasterPublicKey"]
+	method := GovernanceABI.Name2Method["addDKGMasterPublicKey"]
 	encoded, err := rlp.EncodeToBytes(mpk)
 	if err != nil {
 		return nil, err
@@ -2182,7 +2144,7 @@ func PackAddDKGMasterPublicKey(round uint64, mpk *dkgTypes.MasterPublicKey) ([]b
 }
 
 func PackAddDKGMPKReady(round uint64, ready *dkgTypes.MPKReady) ([]byte, error) {
-	method := GovernanceContractName2Method["addDKGMPKReady"]
+	method := GovernanceABI.Name2Method["addDKGMPKReady"]
 	encoded, err := rlp.EncodeToBytes(ready)
 	if err != nil {
 		return nil, err
@@ -2196,7 +2158,7 @@ func PackAddDKGMPKReady(round uint64, ready *dkgTypes.MPKReady) ([]byte, error) 
 }
 
 func PackAddDKGComplaint(round uint64, complaint *dkgTypes.Complaint) ([]byte, error) {
-	method := GovernanceContractName2Method["addDKGComplaint"]
+	method := GovernanceABI.Name2Method["addDKGComplaint"]
 	encoded, err := rlp.EncodeToBytes(complaint)
 	if err != nil {
 		return nil, err
@@ -2211,7 +2173,7 @@ func PackAddDKGComplaint(round uint64, complaint *dkgTypes.Complaint) ([]byte, e
 }
 
 func PackAddDKGFinalize(round uint64, final *dkgTypes.Finalize) ([]byte, error) {
-	method := GovernanceContractName2Method["addDKGFinalize"]
+	method := GovernanceABI.Name2Method["addDKGFinalize"]
 	encoded, err := rlp.EncodeToBytes(final)
 	if err != nil {
 		return nil, err
@@ -2226,7 +2188,7 @@ func PackAddDKGFinalize(round uint64, final *dkgTypes.Finalize) ([]byte, error) 
 }
 
 func PackReportForkVote(vote1, vote2 *coreTypes.Vote) ([]byte, error) {
-	method := GovernanceContractName2Method["report"]
+	method := GovernanceABI.Name2Method["report"]
 
 	vote1Bytes, err := rlp.EncodeToBytes(vote1)
 	if err != nil {
@@ -2248,7 +2210,7 @@ func PackReportForkVote(vote1, vote2 *coreTypes.Vote) ([]byte, error) {
 }
 
 func PackReportForkBlock(block1, block2 *coreTypes.Block) ([]byte, error) {
-	method := GovernanceContractName2Method["report"]
+	method := GovernanceABI.Name2Method["report"]
 
 	block1Bytes, err := rlp.EncodeToBytes(block1)
 	if err != nil {
@@ -2267,4 +2229,88 @@ func PackReportForkBlock(block1, block2 *coreTypes.Block) ([]byte, error) {
 
 	data := append(method.Id(), res...)
 	return data, nil
+}
+
+// NodeInfoOracleContract representing a oracle providing the node information.
+type NodeInfoOracleContract struct {
+}
+
+func (g *NodeInfoOracleContract) Run(evm *EVM, input []byte, contract *Contract) (ret []byte, err error) {
+	if len(input) < 4 {
+		return nil, errExecutionReverted
+	}
+
+	// Parse input.
+	method, exists := NodeInfoOracleABI.Sig2Method[string(input[:4])]
+	if !exists {
+		return nil, errExecutionReverted
+	}
+
+	arguments := input[4:]
+
+	getConfigState := func(round *big.Int) (*GovernanceStateHelper, error) {
+		configRound := big.NewInt(0)
+		if round.Uint64() >= core.ConfigRoundShift {
+			configRound = new(big.Int).Sub(round, big.NewInt(int64(core.ConfigRoundShift)))
+		}
+
+		gs := &GovernanceStateHelper{evm.StateDB}
+		height := gs.RoundHeight(configRound).Uint64()
+		if round.Uint64() > 0 && height == 0 {
+			return nil, errExecutionReverted
+		}
+		statedb, err := evm.StateAtNumber(height)
+		return &GovernanceStateHelper{statedb}, err
+	}
+
+	// Dispatch method call.
+	switch method.Name {
+	case "delegators":
+		round, nodeAddr, index := new(big.Int), common.Address{}, new(big.Int)
+		args := []interface{}{&round, &nodeAddr, &index}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		state, err := getConfigState(round)
+		if err != nil {
+			return nil, err
+		}
+		delegator := state.Delegator(nodeAddr, index)
+		res, err := method.Outputs.Pack(delegator.Owner, delegator.Value, delegator.UndelegatedAt)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "delegatorsLength":
+		round, address := new(big.Int), common.Address{}
+		args := []interface{}{&round, &address}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		state, err := getConfigState(round)
+		if err != nil {
+			return nil, err
+		}
+		res, err := method.Outputs.Pack(state.LenDelegators(address))
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "delegatorsOffset":
+		round, nodeAddr, delegatorAddr := new(big.Int), common.Address{}, common.Address{}
+		args := []interface{}{&round, &nodeAddr, &delegatorAddr}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		state, err := getConfigState(round)
+		if err != nil {
+			return nil, err
+		}
+		res, err := method.Outputs.Pack(state.DelegatorsOffset(nodeAddr, delegatorAddr))
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	}
+	return nil, errExecutionReverted
 }

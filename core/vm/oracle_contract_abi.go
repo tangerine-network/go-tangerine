@@ -1106,3 +1106,93 @@ const GovernanceABIJSON = `
   }
 ]
 `
+
+const NodeInfoOracleABIJSON = `
+[
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "Round",
+        "type": "uint256"
+      },
+      {
+        "name": "NodeAddress",
+        "type": "address"
+      },
+      {
+        "name": "Index",
+        "type": "uint256"
+      }
+    ],
+    "name": "delegators",
+    "outputs": [
+      {
+        "name": "owner",
+        "type": "address"
+      },
+      {
+        "name": "value",
+        "type": "uint256"
+      },
+      {
+        "name": "undelegated_at",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "Round",
+        "type": "uint256"
+      },
+      {
+        "name": "NodeAddress",
+        "type": "address"
+      }
+    ],
+    "name": "delegatorsLength",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "Round",
+        "type": "uint256"
+      },
+      {
+        "name": "NodeAddress",
+        "type": "address"
+      },
+      {
+        "name": "DelegatorAddress",
+        "type": "address"
+      }
+    ],
+    "name": "delegatorsOffset",
+    "outputs": [
+      {
+        "name": "",
+        "type": "int256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  }
+]
+`
