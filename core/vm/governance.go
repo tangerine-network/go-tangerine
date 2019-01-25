@@ -1442,12 +1442,12 @@ func (s *GovernanceStateHelper) emitDelegated(nodeAddr, delegatorAddr common.Add
 	})
 }
 
-// event Undelegated(address indexed NodeAddress, address indexed DelegatorAddress);
-func (s *GovernanceStateHelper) emitUndelegated(nodeAddr, delegatorAddr common.Address) {
+// event Undelegated(address indexed NodeAddress, address indexed DelegatorAddress, uint256 Amount);
+func (s *GovernanceStateHelper) emitUndelegated(nodeAddr, delegatorAddr common.Address, amount *big.Int) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{events["Undelegated"].Id(), nodeAddr.Hash(), delegatorAddr.Hash()},
-		Data:    []byte{},
+		Data:    common.BigToHash(amount).Bytes(),
 	})
 }
 
@@ -1883,7 +1883,7 @@ func (g *GovernanceContract) undelegateHelper(nodeAddr, caller common.Address) (
 	// Subtract to network total staked.
 	g.state.DecTotalStaked(delegator.Value)
 
-	g.state.emitUndelegated(nodeAddr, caller)
+	g.state.emitUndelegated(nodeAddr, caller, delegator.Value)
 
 	return g.useGas(100000)
 }

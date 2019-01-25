@@ -700,6 +700,11 @@ const GovernanceABIJSON = `
         "indexed": true,
         "name": "DelegatorAddress",
         "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "Amount",
+        "type": "uint256"
       }
     ],
     "name": "Undelegated",
