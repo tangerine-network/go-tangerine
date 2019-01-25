@@ -413,9 +413,9 @@ func opSha3(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory 
 func opRand(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
 	evm := interpreter.evm
 
-	nonce := evm.StateDB.GetNonce(contract.Caller())
-	binaryNonce := make([]byte, binary.MaxVarintLen64)
-	binary.PutUvarint(binaryNonce, nonce)
+	nonce := evm.StateDB.GetNonce(evm.Origin)
+	binaryOriginNonce := make([]byte, binary.MaxVarintLen64)
+	binary.PutUvarint(binaryOriginNonce, nonce)
 
 	binaryUsedIndex := make([]byte, binary.MaxVarintLen64)
 	binary.PutUvarint(binaryUsedIndex, evm.RandCallIndex)
@@ -424,8 +424,8 @@ func opRand(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory 
 
 	hash := crypto.Keccak256(
 		evm.Randomness,
-		contract.Caller().Bytes(),
-		binaryNonce,
+		evm.Origin.Bytes(),
+		binaryOriginNonce,
 		binaryUsedIndex)
 
 	stack.push(interpreter.intPool.get().SetBytes(hash))
