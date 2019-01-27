@@ -35,6 +35,8 @@ var (
 	ErrPreviousRoundIsNotFinished = errors.New("previous round is not finished")
 )
 
+const maxResultCache = 100
+
 // genValidLeader generate a validLeader function for agreement modules.
 func genValidLeader(
 	mgr *agreementMgr) func(*types.Block) (bool, error) {
@@ -80,25 +82,26 @@ type baRoundSetting struct {
 
 type agreementMgr struct {
 	// TODO(mission): unbound Consensus instance from this module.
-	con           *Consensus
-	ID            types.NodeID
-	app           Application
-	gov           Governance
-	network       Network
-	logger        common.Logger
-	cache         *utils.NodeSetCache
-	signer        *utils.Signer
-	lattice       *Lattice
-	ctx           context.Context
-	lastEndTime   time.Time
-	initRound     uint64
-	configs       []*agreementMgrConfig
-	baModules     []*agreement
-	voteFilters   []*utils.VoteFilter
-	waitGroup     sync.WaitGroup
-	pendingVotes  map[uint64][]*types.Vote
-	pendingBlocks map[uint64][]*types.Block
-	isRunning     bool
+	con               *Consensus
+	ID                types.NodeID
+	app               Application
+	gov               Governance
+	network           Network
+	logger            common.Logger
+	cache             *utils.NodeSetCache
+	signer            *utils.Signer
+	lattice           *Lattice
+	ctx               context.Context
+	lastEndTime       time.Time
+	initRound         uint64
+	configs           []*agreementMgrConfig
+	baModules         []*agreement
+	processedBAResult map[types.Position]struct{}
+	voteFilters       []*utils.VoteFilter
+	waitGroup         sync.WaitGroup
+	pendingVotes      map[uint64][]*types.Vote
+	pendingBlocks     map[uint64][]*types.Block
+	isRunning         bool
 
 	// This lock should be used when attempting to:
 	//  - add a new baModule.
@@ -114,18 +117,19 @@ type agreementMgr struct {
 func newAgreementMgr(con *Consensus, initRound uint64,
 	initRoundBeginTime time.Time) *agreementMgr {
 	return &agreementMgr{
-		con:         con,
-		ID:          con.ID,
-		app:         con.app,
-		gov:         con.gov,
-		network:     con.network,
-		logger:      con.logger,
-		cache:       con.nodeSetCache,
-		signer:      con.signer,
-		lattice:     con.lattice,
-		ctx:         con.ctx,
-		initRound:   initRound,
-		lastEndTime: initRoundBeginTime,
+		con:               con,
+		ID:                con.ID,
+		app:               con.app,
+		gov:               con.gov,
+		network:           con.network,
+		logger:            con.logger,
+		cache:             con.nodeSetCache,
+		signer:            con.signer,
+		lattice:           con.lattice,
+		ctx:               con.ctx,
+		initRound:         initRound,
+		lastEndTime:       initRoundBeginTime,
+		processedBAResult: make(map[types.Position]struct{}, maxResultCache),
 	}
 }
 
@@ -249,6 +253,29 @@ func (mgr *agreementMgr) processBlock(b *types.Block) error {
 		return utils.ErrInvalidChainID
 	}
 	return mgr.baModules[b.Position.ChainID].processBlock(b)
+}
+
+func (mgr *agreementMgr) touchAgreementResult(
+	result *types.AgreementResult) (first bool) {
+	// DO NOT LOCK THIS FUNCTION!!!!!!!! YOU WILL REGRET IT!!!!!
+	if _, exist := mgr.processedBAResult[result.Position]; !exist {
+		first = true
+		if len(mgr.processedBAResult) > maxResultCache {
+			for k := range mgr.processedBAResult {
+				// Randomly drop one element.
+				delete(mgr.processedBAResult, k)
+				break
+			}
+		}
+		mgr.processedBAResult[result.Position] = struct{}{}
+	}
+	return
+}
+
+func (mgr *agreementMgr) untouchAgreementResult(
+	result *types.AgreementResult) {
+	// DO NOT LOCK THIS FUNCTION!!!!!!!! YOU WILL REGRET IT!!!!!
+	delete(mgr.processedBAResult, result.Position)
 }
 
 func (mgr *agreementMgr) processAgreementResult(
