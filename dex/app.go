@@ -219,7 +219,7 @@ func (d *DexconApp) preparePayload(ctx context.Context, position coreTypes.Posit
 
 	chainID := new(big.Int).SetUint64(uint64(position.ChainID))
 	chainNums := new(big.Int).SetUint64(uint64(d.gov.GetNumChains(position.Round)))
-	blockGasLimit := new(big.Int).SetUint64(d.blockchain.CurrentBlock().GasLimit())
+	blockGasLimit := new(big.Int).SetUint64(d.gov.DexconConfiguration(position.Round).BlockGasLimit)
 	blockGasUsed := new(big.Int)
 	allTxs := make([]*types.Transaction, 0, 3000)
 
@@ -447,7 +447,7 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 	}
 
 	// Validate if balance is enough for TXs in this block.
-	blockGasLimit := new(big.Int).SetUint64(d.blockchain.CurrentBlock().GasLimit())
+	blockGasLimit := new(big.Int).SetUint64(d.gov.DexconConfiguration(block.Position.Round).BlockGasLimit)
 	blockGasUsed := new(big.Int)
 
 	for _, tx := range transactions {
