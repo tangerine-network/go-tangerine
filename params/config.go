@@ -27,7 +27,7 @@ import (
 // Genesis hashes to enforce below configs on.
 var (
 	MainnetGenesisHash = common.HexToHash("0xe972af2797b02f4dab95ffa229714c35d5c55685f20261b9498c8b8a3fe33856")
-	TestnetGenesisHash = common.HexToHash("0xaf79c06141610103c4728d4e7da2effcc7ee568af46a8cb5c13082315d597d73")
+	TestnetGenesisHash = common.HexToHash("0x9fab095bee4b3dc7dcde324beb6c791bc21025a33d50793ed995d8ef1739f35b")
 )
 
 // TrustedCheckpoints associates each known checkpoint with the genesis hash of
@@ -90,7 +90,7 @@ var (
 	// TestnetChainConfig contains the chain parameters to run a node on the Taiwan test network.
 	TestnetChainConfig = &ChainConfig{
 		ChainID:             big.NewInt(238),
-		DMoment:             1548504300,
+		DMoment:             1548570900,
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
@@ -111,7 +111,7 @@ var (
 			BlockGasLimit:     40000000,
 			NumChains:         4,
 			LambdaBA:          250,
-			LambdaDKG:         4000,
+			LambdaDKG:         10000,
 			K:                 0,
 			PhiRatio:          0.667,
 			NotarySetSize:     4,
