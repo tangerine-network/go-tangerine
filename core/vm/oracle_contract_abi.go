@@ -673,6 +673,18 @@ const GovernanceABIJSON = `
         "indexed": true,
         "name": "NodeAddress",
         "type": "address"
+      }
+    ],
+    "name": "NodeRemoved",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "NodeAddress",
+        "type": "address"
       },
       {
         "indexed": true,
@@ -716,6 +728,11 @@ const GovernanceABIJSON = `
       {
         "indexed": true,
         "name": "NodeAddress",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "name": "DelegatorAddress",
         "type": "address"
       },
       {
