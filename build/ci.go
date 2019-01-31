@@ -330,6 +330,15 @@ func doTest(cmdline []string) {
 	}
 	packages = build.ExpandPackagesNoVendor(packages)
 
+	packageForLegacyEvm := []string{}
+	for i := 0; i < len(packages); i++ {
+		if strings.HasSuffix(packages[i], "dexon/tests") {
+			packageForLegacyEvm = append(packageForLegacyEvm, packages[i])
+			packages = append(packages[:i], packages[i+1:]...)
+			i--
+		}
+	}
+
 	// Run the actual tests.
 	// Test a single package at a time. CI builders are slow
 	// and some tests run into timeouts under load.
@@ -341,6 +350,15 @@ func doTest(cmdline []string) {
 
 	gotest.Args = append(gotest.Args, packages...)
 	build.MustRun(gotest)
+
+	gotestForLegacyEvm := goTool("test", buildFlags(env)...)
+	gotestForLegacyEvm.Args = append(gotestForLegacyEvm.Args, "-p", "1", "-timeout", "5m")
+	if *coverage {
+		gotestForLegacyEvm.Args = append(gotestForLegacyEvm.Args, "-covermode=atomic", "-cover")
+	}
+	gotestForLegacyEvm.Args = append(gotestForLegacyEvm.Args, packageForLegacyEvm...)
+	gotestForLegacyEvm.Args = append(gotestForLegacyEvm.Args, "-legacy-evm=true")
+	build.MustRun(gotestForLegacyEvm)
 }
 
 // runs gometalinter on requested packages

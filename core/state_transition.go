@@ -18,6 +18,7 @@ package core
 
 import (
 	"errors"
+	"flag"
 	"math"
 	"math/big"
 
@@ -26,6 +27,8 @@ import (
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/params"
 )
+
+var legacyEvm = flag.Bool("legacy-evm", false, "make evm run origin logic")
 
 var (
 	errInsufficientBalanceForGas = errors.New("insufficient balance to pay for gas")
@@ -221,10 +224,31 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 			return nil, 0, false, vmerr
 		}
 	}
-	st.refundGas()
+
+	if *legacyEvm {
+		st.refundGas()
+	} else {
+		st.dexonRefundGas()
+	}
 	st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
 
 	return ret, st.gasUsed(), vmerr != nil, err
+}
+
+func (st *StateTransition) dexonRefundGas() {
+	// Apply refund counter, capped to half of the used gas.
+	refund := st.gasUsed() / 2
+	if refund > st.state.GetRefund() {
+		refund = st.state.GetRefund()
+	}
+
+	// Return ETH for remaining gas, exchanged at the original rate.
+	remaining := new(big.Int).Mul(new(big.Int).SetUint64(refund), st.gasPrice)
+	st.state.AddBalance(st.msg.From(), remaining)
+
+	// Also return remaining gas to the block gas counter so it is
+	// available for the next transaction.
+	st.gp.AddGas(refund)
 }
 
 func (st *StateTransition) refundGas() {
