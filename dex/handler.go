@@ -38,6 +38,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/rand"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -302,10 +303,6 @@ func (pm *ProtocolManager) Start(srvr p2pServer, maxPeers int) {
 	go pm.txsyncLoop()
 	go pm.recordsyncLoop()
 
-}
-
-func (pm *ProtocolManager) addSelfRecord() {
-	pm.nodeTable.AddRecords([]*enr.Record{pm.srvr.Self().Record()})
 }
 
 func (pm *ProtocolManager) Stop() {
@@ -1177,10 +1174,27 @@ func (pm *ProtocolManager) finalizedBlockBroadcastLoop() {
 }
 
 func (pm *ProtocolManager) recordBroadcastLoop() {
+	r := rand.New(rand.NewSource(time.Now().Unix()))
+	t := time.NewTimer(0)
+	defer t.Stop()
+
 	for {
 		select {
 		case event := <-pm.recordsCh:
 			pm.BroadcastRecords(event.Records)
+			pm.peers.Refresh()
+
+		case <-t.C:
+			record := pm.srvr.Self().Record()
+			log.Debug("refresh our node record", "seq", record.Seq())
+			pm.nodeTable.AddRecords([]*enr.Record{record})
+
+			// Log current peers connection status.
+			pm.peers.Status()
+
+			// Reset timer.
+			d := 1*time.Minute + time.Duration(r.Int63n(60))*time.Second
+			t.Reset(d)
 
 		// Err() channel will be closed when unsubscribing.
 		case <-pm.recordsSub.Err():

@@ -52,7 +52,9 @@ func (t *nodeTable) AddRecords(records []*enr.Record) {
 		log.Debug("Add new record to node table", "id", node.ID().String(),
 			"ip", node.IP().String(), "udp", node.UDP(), "tcp", node.TCP())
 	}
-	t.feed.Send(newRecordsEvent{newRecords})
+	if len(newRecords) > 0 {
+		go t.feed.Send(newRecordsEvent{newRecords})
+	}
 }
 
 func (t *nodeTable) Records() []*enr.Record {

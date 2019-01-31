@@ -169,10 +169,6 @@ type p2pServer interface {
 	AddDirectPeer(*enode.Node)
 
 	RemoveDirectPeer(*enode.Node)
-
-	AddGroup(string, []*enode.Node, uint64)
-
-	RemoveGroup(string)
 }
 
 // statusData is the network packet for the status message.

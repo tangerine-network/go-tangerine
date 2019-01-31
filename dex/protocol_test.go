@@ -18,7 +18,6 @@ package dex
 
 import (
 	"crypto/ecdsa"
-	"encoding/hex"
 	"fmt"
 	"reflect"
 	"sync"
@@ -36,6 +35,7 @@ import (
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/dex/downloader"
 	"github.com/dexon-foundation/dexon/p2p"
+	"github.com/dexon-foundation/dexon/p2p/enode"
 	"github.com/dexon-foundation/dexon/p2p/enr"
 	"github.com/dexon-foundation/dexon/rlp"
 )
@@ -553,11 +553,15 @@ func TestSendVote(t *testing.T) {
 		},
 	}
 
+	pm.peers.label2Nodes = make(map[peerLabel]map[string]*enode.Node)
 	for i, tt := range testPeers {
 		p, _ := newTestPeer(fmt.Sprintf("peer #%d", i), dex64, pm, true)
 		if tt.label != nil {
-			b := crypto.FromECDSAPub(p.Node().Pubkey())
-			pm.peers.addDirectPeer(hex.EncodeToString(b), *tt.label)
+			if pm.peers.label2Nodes[*tt.label] == nil {
+				pm.peers.label2Nodes[*tt.label] = make(map[string]*enode.Node)
+			}
+			pm.peers.label2Nodes[*tt.label][p.ID().String()] = p.Node()
+			pm.peers.addDirectPeer(p.ID().String(), *tt.label)
 		}
 		wg.Add(1)
 		go checkvote(p, tt.isReceiver)
