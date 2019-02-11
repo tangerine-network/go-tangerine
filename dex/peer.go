@@ -958,6 +958,9 @@ func (ps *peerSet) Close() {
 }
 
 func (ps *peerSet) BuildConnection(round uint64) {
+	ps.lock.Lock()
+	defer ps.lock.Unlock()
+
 	dkgLabel := peerLabel{set: dkgset, round: round}
 	if _, ok := ps.label2Nodes[dkgLabel]; !ok {
 		dkgPKs, err := ps.gov.DKGSet(round)

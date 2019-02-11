@@ -323,7 +323,7 @@ func (t *dialTask) Do(srv *Server) {
 	if err != nil {
 		log.Trace("Dial error", "task", t, "err", err)
 		// Try resolving the ID of static nodes if dialing failed.
-		if _, ok := err.(*dialError); ok && t.flags&staticDialedConn != 0 {
+		if _, ok := err.(*dialError); ok && t.flags&(staticDialedConn|directDialedConn) != 0 {
 			if t.resolve(srv) {
 				t.dial(srv, t.dest)
 			}
