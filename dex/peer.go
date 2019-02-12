@@ -563,19 +563,14 @@ func (p *peer) AsyncSendPullRandomness(hashes coreCommon.Hashes) {
 }
 
 // SendBlockHeaders sends a batch of block headers to the remote peer.
-func (p *peer) SendBlockHeaders(headers []*types.HeaderWithGovState) error {
-	return p2p.Send(p.rw, BlockHeadersMsg, headers)
-}
-
-// SendBlockBodies sends a batch of block contents to the remote peer.
-func (p *peer) SendBlockBodies(bodies []*blockBody) error {
-	return p2p.Send(p.rw, BlockBodiesMsg, blockBodiesData(bodies))
+func (p *peer) SendBlockHeaders(flag uint8, headers []*types.HeaderWithGovState) error {
+	return p2p.Send(p.rw, BlockHeadersMsg, headersData{Flag: flag, Headers: headers})
 }
 
 // SendBlockBodiesRLP sends a batch of block contents to the remote peer from
 // an already RLP encoded format.
-func (p *peer) SendBlockBodiesRLP(bodies []rlp.RawValue) error {
-	return p2p.Send(p.rw, BlockBodiesMsg, bodies)
+func (p *peer) SendBlockBodiesRLP(flag uint8, bodies []rlp.RawValue) error {
+	return p2p.Send(p.rw, BlockBodiesMsg, blockBodiesDataRLP{Flag: flag, Bodies: bodies})
 }
 
 // SendNodeDataRLP sends a batch of arbitrary internal data, corresponding to the
@@ -598,21 +593,21 @@ func (p *peer) SendGovState(govState *types.GovState) error {
 // single header. It is used solely by the fetcher.
 func (p *peer) RequestOneHeader(hash common.Hash) error {
 	p.Log().Debug("Fetching single header", "hash", hash)
-	return p2p.Send(p.rw, GetBlockHeadersMsg, &getBlockHeadersData{Origin: hashOrNumber{Hash: hash}, Amount: uint64(1), Skip: uint64(0), Reverse: false, WithGov: false})
+	return p2p.Send(p.rw, GetBlockHeadersMsg, &getBlockHeadersData{Origin: hashOrNumber{Hash: hash}, Amount: uint64(1), Skip: uint64(0), Reverse: false, WithGov: false, Flag: fetcherReq})
 }
 
 // RequestHeadersByHash fetches a batch of blocks' headers corresponding to the
 // specified header query, based on the hash of an origin block.
 func (p *peer) RequestHeadersByHash(origin common.Hash, amount int, skip int, reverse, withGov bool) error {
-	p.Log().Debug("Fetching batch of headers", "count", amount, "fromhash", origin, "skip", skip, "reverse", reverse, "withgov", withGov)
-	return p2p.Send(p.rw, GetBlockHeadersMsg, &getBlockHeadersData{Origin: hashOrNumber{Hash: origin}, Amount: uint64(amount), Skip: uint64(skip), Reverse: reverse, WithGov: withGov})
+	p.Log().Debug("Fetching batch of headers", "count", amount, "fromhash", origin, "skip", skip, "reverse", reverse, "withgov", withGov, "flag", downloaderReq)
+	return p2p.Send(p.rw, GetBlockHeadersMsg, &getBlockHeadersData{Origin: hashOrNumber{Hash: origin}, Amount: uint64(amount), Skip: uint64(skip), Reverse: reverse, WithGov: withGov, Flag: downloaderReq})
 }
 
 // RequestHeadersByNumber fetches a batch of blocks' headers corresponding to the
 // specified header query, based on the number of an origin block.
 func (p *peer) RequestHeadersByNumber(origin uint64, amount int, skip int, reverse, withGov bool) error {
-	p.Log().Debug("Fetching batch of headers", "count", amount, "fromnum", origin, "skip", skip, "reverse", reverse, "withgov", withGov)
-	return p2p.Send(p.rw, GetBlockHeadersMsg, &getBlockHeadersData{Origin: hashOrNumber{Number: origin}, Amount: uint64(amount), Skip: uint64(skip), Reverse: reverse, WithGov: withGov})
+	p.Log().Debug("Fetching batch of headers", "count", amount, "fromnum", origin, "skip", skip, "reverse", reverse, "withgov", withGov, "flag", downloaderReq)
+	return p2p.Send(p.rw, GetBlockHeadersMsg, &getBlockHeadersData{Origin: hashOrNumber{Number: origin}, Amount: uint64(amount), Skip: uint64(skip), Reverse: reverse, WithGov: withGov, Flag: downloaderReq})
 }
 
 func (p *peer) RequestGovStateByHash(hash common.Hash) error {
@@ -622,9 +617,17 @@ func (p *peer) RequestGovStateByHash(hash common.Hash) error {
 
 // RequestBodies fetches a batch of blocks' bodies corresponding to the hashes
 // specified.
-func (p *peer) RequestBodies(hashes []common.Hash) error {
-	p.Log().Debug("Fetching batch of block bodies", "count", len(hashes))
-	return p2p.Send(p.rw, GetBlockBodiesMsg, hashes)
+func (p *peer) RequestBodies(flag uint8, hashes []common.Hash) error {
+	p.Log().Debug("Fetching batch of block bodies", "count", len(hashes), "flag", flag)
+	return p2p.Send(p.rw, GetBlockBodiesMsg, []interface{}{flag, hashes})
+}
+
+func (p *peer) FetchBodies(hashes []common.Hash) error {
+	return p.RequestBodies(fetcherReq, hashes)
+}
+
+func (p *peer) DownloadBodies(hashes []common.Hash) error {
+	return p.RequestBodies(downloaderReq, hashes)
 }
 
 // RequestNodeData fetches a batch of arbitrary data from a node's known state

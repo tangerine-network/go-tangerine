@@ -376,10 +376,10 @@ func (dlp *downloadTesterPeer) RequestGovStateByHash(hash common.Hash) error {
 	return nil
 }
 
-// RequestBodies constructs a getBlockBodies method associated with a particular
+// DownloadBodies constructs a getBlockBodies method associated with a particular
 // peer in the download tester. The returned function can be used to retrieve
 // batches of block bodies from the particularly requested peer.
-func (dlp *downloadTesterPeer) RequestBodies(hashes []common.Hash) error {
+func (dlp *downloadTesterPeer) DownloadBodies(hashes []common.Hash) error {
 	txs, uncles := dlp.chain.bodies(hashes)
 	go dlp.dl.downloader.DeliverBodies(dlp.id, txs, uncles)
 	return nil
@@ -1322,8 +1322,8 @@ func (ftp *floodingTestPeer) RequestHeadersByHash(hash common.Hash, count int, s
 func (ftp *floodingTestPeer) RequestGovStateByHash(hash common.Hash) error {
 	return ftp.peer.RequestGovStateByHash(hash)
 }
-func (ftp *floodingTestPeer) RequestBodies(hashes []common.Hash) error {
-	return ftp.peer.RequestBodies(hashes)
+func (ftp *floodingTestPeer) DownloadBodies(hashes []common.Hash) error {
+	return ftp.peer.DownloadBodies(hashes)
 }
 func (ftp *floodingTestPeer) RequestReceipts(hashes []common.Hash) error {
 	return ftp.peer.RequestReceipts(hashes)

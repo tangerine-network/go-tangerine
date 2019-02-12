@@ -132,9 +132,9 @@ func (p *FakePeer) RequestHeadersByNumber(number uint64, amount int, skip int, r
 	return nil
 }
 
-// RequestBodies implements downloader.Peer, returning a batch of block bodies
+// DownloadBodies implements downloader.Peer, returning a batch of block bodies
 // corresponding to the specified block hashes.
-func (p *FakePeer) RequestBodies(hashes []common.Hash) error {
+func (p *FakePeer) DownloadBodies(hashes []common.Hash) error {
 	var (
 		txs    [][]*types.Transaction
 		uncles [][]*types.Header

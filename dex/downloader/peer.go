@@ -85,7 +85,7 @@ type LightPeer interface {
 // Peer encapsulates the methods required to synchronise with a remote full peer.
 type Peer interface {
 	LightPeer
-	RequestBodies([]common.Hash) error
+	DownloadBodies([]common.Hash) error
 	RequestReceipts([]common.Hash) error
 	RequestNodeData([]common.Hash) error
 }
@@ -106,8 +106,8 @@ func (w *lightPeerWrapper) RequestGovStateByHash(common.Hash) error {
 	// TODO(sonic): support this
 	panic("RequestGovStateByHash not supported in light client mode sync")
 }
-func (w *lightPeerWrapper) RequestBodies([]common.Hash) error {
-	panic("RequestBodies not supported in light client mode sync")
+func (w *lightPeerWrapper) DownloadBodies([]common.Hash) error {
+	panic("DownloadBodies not supported in light client mode sync")
 }
 func (w *lightPeerWrapper) RequestReceipts([]common.Hash) error {
 	panic("RequestReceipts not supported in light client mode sync")
@@ -182,7 +182,7 @@ func (p *peerConnection) FetchBodies(request *fetchRequest) error {
 	for _, header := range request.Headers {
 		hashes = append(hashes, header.Hash())
 	}
-	go p.peer.RequestBodies(hashes)
+	go p.peer.DownloadBodies(hashes)
 
 	return nil
 }

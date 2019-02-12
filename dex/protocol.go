@@ -113,6 +113,11 @@ const (
 	ErrSuspendedPeer
 )
 
+const (
+	fetcherReq = uint8(iota)
+	downloaderReq
+)
+
 func (e errCode) String() string {
 	return errorToString[int(e)]
 }
@@ -195,6 +200,7 @@ type getBlockHeadersData struct {
 	Reverse bool         // Query direction (false = rising towards latest, true = falling towards genesis)
 
 	WithGov bool
+	Flag    uint8
 }
 
 // hashOrNumber is a combined field for specifying an origin block.
@@ -233,9 +239,25 @@ func (hn *hashOrNumber) DecodeRLP(s *rlp.Stream) error {
 	return err
 }
 
+// headersData is the network packet for header content distribution.
+type headersData struct {
+	Flag    uint8
+	Headers []*types.HeaderWithGovState
+}
+
 // newBlockData is the network packet for the block propagation message.
 type newBlockData struct {
 	Block *types.Block
+}
+
+type getBlockBodiesData struct {
+	Flag   uint8
+	Hashes rlp.RawValue
+}
+
+type blockBodiesDataRLP struct {
+	Flag   uint8
+	Bodies []rlp.RawValue
 }
 
 // blockBody represents the data content of a single block.
@@ -245,7 +267,10 @@ type blockBody struct {
 }
 
 // blockBodiesData is the network packet for block content distribution.
-type blockBodiesData []*blockBody
+type blockBodiesData struct {
+	Flag   uint8
+	Bodies []*blockBody
+}
 
 func rlpHash(x interface{}) (h common.Hash) {
 	hw := sha3.NewLegacyKeccak256()
