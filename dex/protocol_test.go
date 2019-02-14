@@ -316,7 +316,7 @@ func TestSendNodeRecords(t *testing.T) {
 	wg.Wait()
 }
 
-func TestRecvLatticeBlock(t *testing.T) {
+func TestRecvLatticeBlocks(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
 	p, _ := newTestPeer("peer", dex64, pm, true)
 	defer pm.Stop()
@@ -355,7 +355,7 @@ func TestRecvLatticeBlock(t *testing.T) {
 		},
 	}
 
-	if err := p2p.Send(p.app, LatticeBlockMsg, &block); err != nil {
+	if err := p2p.Send(p.app, LatticeBlockMsg, []*coreTypes.Block{&block}); err != nil {
 		t.Fatalf("send error: %v", err)
 	}
 
@@ -371,7 +371,7 @@ func TestRecvLatticeBlock(t *testing.T) {
 	}
 }
 
-func TestSendLatticeBlock(t *testing.T) {
+func TestSendLatticeBlocks(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
 	p, _ := newTestPeer("peer", dex64, pm, true)
 	defer pm.Stop()
@@ -419,17 +419,17 @@ func TestSendLatticeBlock(t *testing.T) {
 		t.Errorf("%v: got code %d, want %d", p.Peer, msg.Code, LatticeBlockMsg)
 	}
 
-	var b coreTypes.Block
-	if err := msg.Decode(&b); err != nil {
+	var bs []*coreTypes.Block
+	if err := msg.Decode(&bs); err != nil {
 		t.Errorf("%v: %v", p.Peer, err)
 	}
 
-	if !reflect.DeepEqual(b, block) {
+	if !reflect.DeepEqual(bs, []*coreTypes.Block{&block}) {
 		t.Errorf("block mismatch")
 	}
 }
 
-func TestRecvVote(t *testing.T) {
+func TestRecvVotes(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
 	p, _ := newTestPeer("peer", dex64, pm, true)
 	defer pm.Stop()
@@ -451,7 +451,7 @@ func TestRecvVote(t *testing.T) {
 		},
 	}
 
-	if err := p2p.Send(p.app, VoteMsg, vote); err != nil {
+	if err := p2p.Send(p.app, VoteMsg, []*coreTypes.Vote{&vote}); err != nil {
 		t.Fatalf("send error: %v", err)
 	}
 
@@ -468,7 +468,7 @@ func TestRecvVote(t *testing.T) {
 	}
 }
 
-func TestSendVote(t *testing.T) {
+func TestSendVotes(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
 	defer pm.Stop()
 
@@ -509,16 +509,16 @@ func TestSendVote(t *testing.T) {
 			return
 		}
 
-		var v coreTypes.Vote
+		var vs []*coreTypes.Vote
 		if err != nil {
 			t.Errorf("%v: read error: %v", p.Peer, err)
 		} else if msg.Code != VoteMsg {
 			t.Errorf("%v: got code %d, want %d", p.Peer, msg.Code, VoteMsg)
 		}
-		if err := msg.Decode(&v); err != nil {
+		if err := msg.Decode(&vs); err != nil {
 			t.Errorf("%v: %v", p.Peer, err)
 		}
-		if !reflect.DeepEqual(v, vote) {
+		if !reflect.DeepEqual(vs, []*coreTypes.Vote{&vote}) {
 			t.Errorf("vote mismatch")
 		}
 	}
@@ -759,7 +759,7 @@ func TestSendAgreement(t *testing.T) {
 	}
 }
 
-func TestRecvRandomness(t *testing.T) {
+func TestRecvRandomnesses(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
 	p, _ := newTestPeer("peer", dex64, pm, true)
 	defer pm.Stop()
@@ -776,7 +776,7 @@ func TestRecvRandomness(t *testing.T) {
 		Randomness: []byte{7, 7, 7, 7},
 	}
 
-	if err := p2p.Send(p.app, RandomnessMsg, &randomness); err != nil {
+	if err := p2p.Send(p.app, RandomnessMsg, []*coreTypes.BlockRandomnessResult{&randomness}); err != nil {
 		t.Fatalf("send error: %v", err)
 	}
 
@@ -792,7 +792,7 @@ func TestRecvRandomness(t *testing.T) {
 	}
 }
 
-func TestSendRandomness(t *testing.T) {
+func TestSendRandomnesses(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
 	p, _ := newTestPeer("peer", dex64, pm, true)
 	defer pm.Stop()
@@ -818,13 +818,13 @@ func TestSendRandomness(t *testing.T) {
 		t.Errorf("%v: got code %d, want %d", p.Peer, msg.Code, RandomnessMsg)
 	}
 
-	var r coreTypes.BlockRandomnessResult
-	if err := msg.Decode(&r); err != nil {
+	var rs []*coreTypes.BlockRandomnessResult
+	if err := msg.Decode(&rs); err != nil {
 		t.Errorf("%v: %v", p.Peer, err)
 	}
 
-	if !reflect.DeepEqual(r, randomness) {
-		t.Errorf("agreement mismatch")
+	if !reflect.DeepEqual(rs, []*coreTypes.BlockRandomnessResult{&randomness}) {
+		t.Errorf("randomness mismatch")
 	}
 }
 
