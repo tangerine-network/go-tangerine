@@ -46,7 +46,10 @@ func init() {
 }
 
 func randomBytes(minLength, maxLength int32) []byte {
-	length := rand.Int31()%(maxLength-minLength) + minLength
+	length := minLength
+	if maxLength != minLength {
+		length += rand.Int31() % (maxLength - minLength)
+	}
 	b := make([]byte, length)
 	for i := range b {
 		b[i] = byte(65 + rand.Int31()%60)
@@ -69,7 +72,7 @@ func (g *GovernanceStateHelperTestSuite) SetupTest() {
 	g.s = &GovernanceStateHelper{statedb}
 }
 
-func (g *GovernanceStateHelperTestSuite) TestReadWriteBytes() {
+func (g *GovernanceStateHelperTestSuite) TestReadWriteEraseBytes() {
 	for i := 0; i < 100; i++ {
 		// Short bytes.
 		loc := big.NewInt(rand.Int63())
@@ -77,6 +80,9 @@ func (g *GovernanceStateHelperTestSuite) TestReadWriteBytes() {
 		g.s.writeBytes(loc, data)
 		read := g.s.readBytes(loc)
 		g.Require().Equal(0, bytes.Compare(data, read))
+		g.s.eraseBytes(loc)
+		read = g.s.readBytes(loc)
+		g.Require().Len(read, 0)
 
 		// long bytes.
 		loc = big.NewInt(rand.Int63())
@@ -84,6 +90,31 @@ func (g *GovernanceStateHelperTestSuite) TestReadWriteBytes() {
 		g.s.writeBytes(loc, data)
 		read = g.s.readBytes(loc)
 		g.Require().Equal(0, bytes.Compare(data, read))
+		g.s.eraseBytes(loc)
+		read = g.s.readBytes(loc)
+		g.Require().Len(read, 0)
+	}
+}
+
+func (g *GovernanceStateHelperTestSuite) TestReadWriteErase2DArray() {
+	for i := 0; i < 50; i++ {
+		loc := big.NewInt(rand.Int63())
+		for j := 0; j < 50; j++ {
+			idx := big.NewInt(int64(j))
+			data := make([][]byte, 30)
+			for key := range data {
+				data[key] = randomBytes(3, 32)
+				g.s.appendTo2DByteArray(loc, idx, data[key])
+			}
+			read := g.s.read2DByteArray(loc, idx)
+			g.Require().Len(read, len(data))
+			for key := range data {
+				g.Require().Equal(0, bytes.Compare(data[key], read[key]))
+			}
+			g.s.erase2DByteArray(loc, idx)
+			read = g.s.read2DByteArray(loc, idx)
+			g.Require().Len(read, 0)
+		}
 	}
 }
 
@@ -94,6 +125,7 @@ func TestGovernanceStateHelper(t *testing.T) {
 type OracleContractsTestSuite struct {
 	suite.Suite
 
+	context Context
 	config  *params.DexconConfig
 	memDB   *ethdb.MemDatabase
 	stateDB *state.StateDB
@@ -115,6 +147,7 @@ func (g *OracleContractsTestSuite) SetupTest() {
 	config.NextHalvingSupply = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2.5e9))
 	config.LastHalvedAmount = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.5e9))
 	config.MiningVelocity = 0.1875
+	config.DKGSetSize = 7
 
 	g.config = config
 
@@ -135,23 +168,8 @@ func (g *OracleContractsTestSuite) SetupTest() {
 	g.s.UpdateConfiguration(config)
 
 	g.stateDB.Commit(true)
-}
 
-func (g *OracleContractsTestSuite) newPrefundAccount() (*ecdsa.PrivateKey, common.Address) {
-	privKey, err := crypto.GenerateKey()
-	if err != nil {
-		panic(err)
-	}
-	address := crypto.PubkeyToAddress(privKey.PublicKey)
-
-	g.stateDB.AddBalance(address, new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e6)))
-	return privKey, address
-}
-
-func (g *OracleContractsTestSuite) call(
-	contractAddr common.Address, caller common.Address, input []byte, value *big.Int) ([]byte, error) {
-
-	context := Context{
+	g.context = Context{
 		CanTransfer: func(db StateDB, addr common.Address, amount *big.Int) bool {
 			return db.GetBalance(addr).Cmp(amount) >= 0
 		},
@@ -173,11 +191,32 @@ func (g *OracleContractsTestSuite) call(
 		StateAtNumber: func(n uint64) (*state.StateDB, error) {
 			return g.stateDB, nil
 		},
-		Time:        big.NewInt(time.Now().UnixNano() / 1000000),
 		BlockNumber: big.NewInt(0),
 	}
 
-	evm := NewEVM(context, g.stateDB, params.TestChainConfig, Config{IsBlockProposer: true})
+}
+
+func (g *OracleContractsTestSuite) TearDownTest() {
+	OracleContracts[GovernanceContractAddress].(*GovernanceContract).coreDKGUtils = &defaultCoreDKGUtils{}
+}
+
+func (g *OracleContractsTestSuite) newPrefundAccount() (*ecdsa.PrivateKey, common.Address) {
+	privKey, err := crypto.GenerateKey()
+	if err != nil {
+		panic(err)
+	}
+	address := crypto.PubkeyToAddress(privKey.PublicKey)
+
+	g.stateDB.AddBalance(address, new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e6)))
+	return privKey, address
+}
+
+func (g *OracleContractsTestSuite) call(
+	contractAddr common.Address, caller common.Address, input []byte, value *big.Int) ([]byte, error) {
+
+	g.context.Time = big.NewInt(time.Now().UnixNano() / 1000000)
+
+	evm := NewEVM(g.context, g.stateDB, params.TestChainConfig, Config{IsBlockProposer: true})
 	ret, _, err := evm.Call(AccountRef(caller), contractAddr, input, 10000000, value)
 	return ret, err
 }
@@ -1056,6 +1095,161 @@ func (g *OracleContractsTestSuite) TestNodeInfoOracleContract() {
 	err = NodeInfoOracleABI.ABI.Unpack(&value, "delegatorsOffset", res)
 	g.Require().NoError(err)
 	g.Require().Equal(0, int(value.Uint64()))
+}
+
+type testCoreMock struct {
+	newDKGGPKError error
+	tsigReturn     bool
+}
+
+func (m *testCoreMock) SetState(GovernanceStateHelper) {}
+
+func (m *testCoreMock) NewGroupPublicKey(*big.Int, int) (tsigVerifierIntf, error) {
+	if m.newDKGGPKError != nil {
+		return nil, m.newDKGGPKError
+	}
+	return &testTSigVerifierMock{m.tsigReturn}, nil
+}
+
+type testTSigVerifierMock struct {
+	ret bool
+}
+
+func (v *testTSigVerifierMock) VerifySignature(coreCommon.Hash, coreCrypto.Signature) bool {
+	return v.ret
+}
+
+func (g *OracleContractsTestSuite) TestResetDKG() {
+	for i := uint32(0); i < g.config.DKGSetSize; i++ {
+		privKey, addr := g.newPrefundAccount()
+		pk := crypto.FromECDSAPub(&privKey.PublicKey)
+
+		// Stake.
+		amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6))
+		input, err := GovernanceABI.ABI.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
+		g.Require().NoError(err)
+		_, err = g.call(GovernanceContractAddress, addr, input, amount)
+		g.Require().NoError(err)
+	}
+	g.Require().Len(g.s.QualifiedNodes(), int(g.config.DKGSetSize))
+
+	addrs := make(map[int][]common.Address)
+	addDKG := func(round int, final bool) {
+		addrs[round] = []common.Address{}
+		r := big.NewInt(int64(round))
+		target := coreTypes.NewDKGSetTarget(coreCommon.Hash(g.s.CRS(r)))
+		ns := coreTypes.NewNodeSet()
+
+		for _, x := range g.s.QualifiedNodes() {
+			mpk, err := coreEcdsa.NewPublicKeyFromByteSlice(x.PublicKey)
+			if err != nil {
+				panic(err)
+			}
+			ns.Add(coreTypes.NewNodeID(mpk))
+		}
+		dkgSet := ns.GetSubSet(int(g.s.DKGSetSize().Uint64()), target)
+		g.Require().Len(dkgSet, int(g.config.DKGSetSize))
+
+		for id := range dkgSet {
+			offset := g.s.NodesOffsetByID(Bytes32(id.Hash))
+			if offset.Cmp(big.NewInt(0)) < 0 {
+				panic("DKG node does not exist")
+			}
+			node := g.s.Node(offset)
+			// Prepare MPK.
+			g.s.PushDKGMasterPublicKey(r, randomBytes(32, 64))
+			// Prepare Complaint.
+			g.s.PushDKGComplaint(r, randomBytes(32, 64))
+			addr := node.Owner
+			addrs[round] = append(addrs[round], addr)
+			// Prepare MPK Ready.
+			g.s.PutDKGMPKReady(r, addr, true)
+			g.s.IncDKGMPKReadysCount(r)
+			if final {
+				// Prepare Finalized.
+				g.s.PutDKGFinalized(r, addr, true)
+				g.s.IncDKGFinalizedsCount(r)
+			}
+		}
+		dkgSetSize := len(dkgSet)
+		g.Require().Len(g.s.DKGMasterPublicKeys(r), dkgSetSize)
+		g.Require().Len(g.s.DKGComplaints(r), dkgSetSize)
+		g.Require().Equal(0, g.s.DKGMPKReadysCount(r).Cmp(big.NewInt(int64(dkgSetSize))))
+		for _, addr := range addrs[round] {
+			g.Require().True(g.s.DKGMPKReady(r, addr))
+		}
+		if final {
+			g.Require().Equal(0, g.s.DKGFinalizedsCount(r).Cmp(big.NewInt(int64(dkgSetSize))))
+			for _, addr := range addrs[round] {
+				g.Require().True(g.s.DKGFinalized(r, addr))
+			}
+		}
+	}
+
+	// Fill data for previous rounds.
+	roundHeight := int64(g.config.RoundInterval / g.config.MinBlockInterval)
+	round := 3
+	for i := 0; i <= round; i++ {
+		// Prepare CRS.
+		crs := common.BytesToHash(randomBytes(common.HashLength, common.HashLength))
+		g.s.PushCRS(crs)
+		// Prepare Round Height
+		if i != 0 {
+			g.s.PushRoundHeight(big.NewInt(int64(i) * roundHeight))
+		}
+		g.Require().Equal(0, g.s.LenCRS().Cmp(big.NewInt(int64(i+2))))
+		g.Require().Equal(crs, g.s.CurrentCRS())
+	}
+	for i := 0; i <= round; i++ {
+		addDKG(i, true)
+	}
+
+	mock := &testCoreMock{
+		tsigReturn: true,
+	}
+	OracleContracts[GovernanceContractAddress].(*GovernanceContract).coreDKGUtils = mock
+	repeat := 3
+	for r := 0; r < repeat; r++ {
+		addDKG(round+1, false)
+		// Add one finalized for test.
+		roundPlusOne := big.NewInt(int64(round + 1))
+		g.s.PutDKGFinalized(roundPlusOne, addrs[round+1][0], true)
+		g.s.IncDKGFinalizedsCount(roundPlusOne)
+
+		g.context.BlockNumber = big.NewInt(roundHeight*int64(round) + roundHeight*int64(r) + roundHeight*80/100)
+		_, addr := g.newPrefundAccount()
+		newCRS := randomBytes(common.HashLength, common.HashLength)
+		input, err := GovernanceABI.ABI.Pack("resetDKG", newCRS)
+		g.Require().NoError(err)
+		_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
+		g.Require().NoError(err)
+
+		// Test if CRS is reset.
+		newCRSHash := crypto.Keccak256Hash(newCRS)
+		g.Require().Equal(0, g.s.LenCRS().Cmp(big.NewInt(int64(round+2))))
+		g.Require().Equal(newCRSHash, g.s.CurrentCRS())
+		g.Require().Equal(newCRSHash, g.s.CRS(big.NewInt(int64(round+1))))
+
+		// Test if MPK is purged.
+		g.Require().Len(g.s.DKGMasterPublicKeys(big.NewInt(int64(round+1))), 0)
+		// Test if MPKReady is purged.
+		g.Require().Equal(0,
+			g.s.DKGMPKReadysCount(big.NewInt(int64(round+1))).Cmp(big.NewInt(0)))
+		for _, addr := range addrs[round+1] {
+			g.Require().False(g.s.DKGMPKReady(big.NewInt(int64(round+1)), addr))
+		}
+		// Test if Complaint is purged.
+		g.Require().Len(g.s.DKGComplaints(big.NewInt(int64(round+1))), 0)
+		// Test if Finalized is purged.
+		g.Require().Equal(0,
+			g.s.DKGFinalizedsCount(big.NewInt(int64(round+1))).Cmp(big.NewInt(0)))
+		for _, addr := range addrs[round+1] {
+			g.Require().False(g.s.DKGFinalized(big.NewInt(int64(round+1)), addr))
+		}
+
+		g.Require().Equal(0,
+			g.s.DKGResetCount(roundPlusOne).Cmp(big.NewInt(int64(r+1))))
+	}
 }
 
 func TestGovernanceContract(t *testing.T) {

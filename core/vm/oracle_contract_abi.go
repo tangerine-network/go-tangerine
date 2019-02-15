@@ -98,6 +98,25 @@ const GovernanceABIJSON = `
   },
   {
     "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "DKGResetCount",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
     "inputs": [],
     "name": "totalSupply",
     "outputs": [
@@ -806,6 +825,23 @@ const GovernanceABIJSON = `
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "Round",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
+        "name": "BlockHeight",
+        "type": "uint256"
+      }
+    ],
+    "name": "DKGReset",
+    "type": "event"
+  },
+  {
     "constant": false,
     "inputs": [
       {
@@ -1116,6 +1152,20 @@ const GovernanceABIJSON = `
       }
     ],
     "name": "report",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "NewSignedCRS",
+        "type": "bytes"
+      }
+    ],
+    "name": "resetDKG",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",

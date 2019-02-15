@@ -42,8 +42,10 @@ type OracleContract interface {
 
 // A map representing available system oracle contracts.
 var OracleContracts = map[common.Address]OracleContract{
-	GovernanceContractAddress: &GovernanceContract{},
-	NodeInfoOracleAddress:     &NodeInfoOracleContract{},
+	GovernanceContractAddress: &GovernanceContract{
+		coreDKGUtils: &defaultCoreDKGUtils{},
+	},
+	NodeInfoOracleAddress: &NodeInfoOracleContract{},
 }
 
 // Run oracle contract.
