@@ -1158,17 +1158,16 @@ func (s *GovernanceStateHelper) emitDKGReset(round *big.Int, blockHeight *big.In
 
 func getConfigState(evm *EVM, round *big.Int) (*GovernanceStateHelper, error) {
 	configRound := big.NewInt(0)
-	if round.Uint64() >= core.ConfigRoundShift {
-		configRound = new(big.Int).Sub(round, big.NewInt(int64(core.ConfigRoundShift-1)))
+	if round.Uint64() > core.ConfigRoundShift {
+		configRound = new(big.Int).Sub(round, big.NewInt(int64(core.ConfigRoundShift)))
 	}
 
 	gs := &GovernanceStateHelper{evm.StateDB}
 	height := gs.RoundHeight(configRound).Uint64()
-	if round.Uint64() >= core.ConfigRoundShift {
+	if round.Uint64() > core.ConfigRoundShift {
 		if height == 0 {
 			return nil, errExecutionReverted
 		}
-		height--
 	}
 	statedb, err := evm.StateAtNumber(height)
 	return &GovernanceStateHelper{statedb}, err
