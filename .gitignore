@@ -54,3 +54,4 @@ profile.cov
 # test
 test/Dexon.*
 test/*.log
+dex/transactions.rlp
