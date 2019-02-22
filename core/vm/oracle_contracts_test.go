@@ -648,14 +648,11 @@ func (g *OracleContractsTestSuite) TestUpdateConfiguration() {
 		new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 		big.NewInt(1000),
 		big.NewInt(8000000),
-		big.NewInt(6),
 		big.NewInt(250),
 		big.NewInt(2500),
-		big.NewInt(0),
-		big.NewInt(667000),
 		big.NewInt(4),
 		big.NewInt(4),
-		big.NewInt(600000),
+		big.NewInt(600),
 		big.NewInt(900),
 		[]*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)})
 	g.Require().NoError(err)
@@ -720,15 +717,6 @@ func (g *OracleContractsTestSuite) TestConfigurationReading() {
 	g.Require().NoError(err)
 	g.Require().Equal(g.config.BlockGasLimit, value.Uint64())
 
-	// NumChains.
-	input, err = GovernanceABI.ABI.Pack("numChains")
-	g.Require().NoError(err)
-	res, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
-	g.Require().NoError(err)
-	err = GovernanceABI.ABI.Unpack(&value, "numChains", res)
-	g.Require().NoError(err)
-	g.Require().Equal(g.config.NumChains, uint32(value.Uint64()))
-
 	// LambdaBA.
 	input, err = GovernanceABI.ABI.Pack("lambdaBA")
 	g.Require().NoError(err)
@@ -746,24 +734,6 @@ func (g *OracleContractsTestSuite) TestConfigurationReading() {
 	err = GovernanceABI.ABI.Unpack(&value, "lambdaDKG", res)
 	g.Require().NoError(err)
 	g.Require().Equal(g.config.LambdaDKG, value.Uint64())
-
-	// K.
-	input, err = GovernanceABI.ABI.Pack("k")
-	g.Require().NoError(err)
-	res, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
-	g.Require().NoError(err)
-	err = GovernanceABI.ABI.Unpack(&value, "k", res)
-	g.Require().NoError(err)
-	g.Require().Equal(g.config.K, uint32(value.Uint64()))
-
-	// PhiRatio.
-	input, err = GovernanceABI.ABI.Pack("phiRatio")
-	g.Require().NoError(err)
-	res, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
-	g.Require().NoError(err)
-	err = GovernanceABI.ABI.Unpack(&value, "phiRatio", res)
-	g.Require().NoError(err)
-	g.Require().Equal(g.config.PhiRatio, float32(value.Uint64())/decimalMultiplier)
 
 	// NotarySetSize.
 	input, err = GovernanceABI.ABI.Pack("notarySetSize")
@@ -783,14 +753,14 @@ func (g *OracleContractsTestSuite) TestConfigurationReading() {
 	g.Require().NoError(err)
 	g.Require().Equal(g.config.DKGSetSize, uint32(value.Uint64()))
 
-	// RoundInterval.
-	input, err = GovernanceABI.ABI.Pack("roundInterval")
+	// RoundLength.
+	input, err = GovernanceABI.ABI.Pack("roundLength")
 	g.Require().NoError(err)
 	res, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
 	g.Require().NoError(err)
-	err = GovernanceABI.ABI.Unpack(&value, "roundInterval", res)
+	err = GovernanceABI.ABI.Unpack(&value, "roundLength", res)
 	g.Require().NoError(err)
-	g.Require().Equal(g.config.RoundInterval, value.Uint64())
+	g.Require().Equal(g.config.RoundLength, value.Uint64())
 
 	// MinBlockInterval.
 	input, err = GovernanceABI.ABI.Pack("minBlockInterval")
@@ -1187,7 +1157,7 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 	}
 
 	// Fill data for previous rounds.
-	roundHeight := int64(g.config.RoundInterval / g.config.MinBlockInterval)
+	roundHeight := int64(g.config.RoundLength)
 	round := 3
 	for i := 0; i <= round; i++ {
 		// Prepare CRS.

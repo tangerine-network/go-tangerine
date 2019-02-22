@@ -26,8 +26,8 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0xe972af2797b02f4dab95ffa229714c35d5c55685f20261b9498c8b8a3fe33856")
-	TestnetGenesisHash = common.HexToHash("0x9fab095bee4b3dc7dcde324beb6c791bc21025a33d50793ed995d8ef1739f35b")
+	MainnetGenesisHash = common.HexToHash("0x09fd8e9d8db083831e0793a41643721d5becc0f9742b5344021a06b20b5a7fed")
+	TestnetGenesisHash = common.HexToHash("0x713fca1f1a31ad516f05945ae9bc1455c39d442db57c9f3c85ee593cc40ea239")
 )
 
 // TrustedCheckpoints associates each known checkpoint with the genesis hash of
@@ -61,14 +61,11 @@ var (
 			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2.5e9)),
 			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.5e9)),
 			BlockGasLimit:     40000000,
-			NumChains:         6,
 			LambdaBA:          250,
 			LambdaDKG:         2500,
-			K:                 0,
-			PhiRatio:          0.667,
 			NotarySetSize:     4,
 			DKGSetSize:        4,
-			RoundInterval:     600000,
+			RoundLength:       600,
 			MinBlockInterval:  1000,
 			FineValues: []*big.Int{
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
@@ -109,14 +106,11 @@ var (
 			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e7)),
 			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(4e6)),
 			BlockGasLimit:     40000000,
-			NumChains:         4,
 			LambdaBA:          250,
 			LambdaDKG:         10000,
-			K:                 0,
-			PhiRatio:          0.667,
 			NotarySetSize:     4,
 			DKGSetSize:        4,
-			RoundInterval:     1200000,
+			RoundLength:       1200,
 			MinBlockInterval:  1000,
 			FineValues: []*big.Int{
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
@@ -148,14 +142,11 @@ var (
 			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e7)),
 			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(4e6)),
 			BlockGasLimit:     40000000,
-			NumChains:         4,
 			LambdaBA:          250,
 			LambdaDKG:         10000,
-			K:                 0,
-			PhiRatio:          0.667,
 			NotarySetSize:     4,
 			DKGSetSize:        4,
-			RoundInterval:     1200000,
+			RoundLength:       1200000,
 			MinBlockInterval:  1000,
 			FineValues: []*big.Int{
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
@@ -301,14 +292,11 @@ type DexconConfig struct {
 	NextHalvingSupply *big.Int       `json:"nextHalvingSupply"`
 	LastHalvedAmount  *big.Int       `json:"lastHalvedAmount"`
 	BlockGasLimit     uint64         `json:"blockGasLimit"`
-	NumChains         uint32         `json:"numChains"`
 	LambdaBA          uint64         `json:"lambdaBA"`
 	LambdaDKG         uint64         `json:"lambdaDKG"`
-	K                 uint32         `json:"k"`
-	PhiRatio          float32        `json:"phiRatio"`
 	NotarySetSize     uint32         `json:"notarySetSize"`
 	DKGSetSize        uint32         `json:"dkgSetSize"`
-	RoundInterval     uint64         `json:"roundInterval"`
+	RoundLength       uint64         `json:"roundLength"`
 	MinBlockInterval  uint64         `json:"minBlockInterval"`
 	FineValues        []*big.Int     `json:"fineValues"`
 }
@@ -322,7 +310,7 @@ type dexconConfigSpecMarshaling struct {
 
 // String implements the stringer interface, returning the consensus engine details.
 func (d *DexconConfig) String() string {
-	return fmt.Sprintf("{GenesisCRSText: %v Owner: %v MinStake: %v LockupPeriod: %v MiningVelocity: %v NextHalvingSupply: %v LastHalvedAmount: %v BlockGasLimit: %v NumChains: %v LambdaBA: %v LambdaDKG: %v K: %v PhiRatio: %v NotarySetSize: %v DKGSetSize: %v RoundInterval: %v MinBlockInterval: %v FineValues: %v}",
+	return fmt.Sprintf("{GenesisCRSText: %v Owner: %v MinStake: %v LockupPeriod: %v MiningVelocity: %v NextHalvingSupply: %v LastHalvedAmount: %v BlockGasLimit: %v LambdaBA: %v LambdaDKG: %v NotarySetSize: %v DKGSetSize: %v RoundLength: %v MinBlockInterval: %v FineValues: %v}",
 		d.GenesisCRSText,
 		d.Owner,
 		d.MinStake,
@@ -331,14 +319,11 @@ func (d *DexconConfig) String() string {
 		d.NextHalvingSupply,
 		d.LastHalvedAmount,
 		d.BlockGasLimit,
-		d.NumChains,
 		d.LambdaBA,
 		d.LambdaDKG,
-		d.K,
-		d.PhiRatio,
 		d.NotarySetSize,
 		d.DKGSetSize,
-		d.RoundInterval,
+		d.RoundLength,
 		d.MinBlockInterval,
 		d.FineValues,
 	)

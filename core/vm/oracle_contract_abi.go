@@ -239,20 +239,6 @@ const GovernanceABIJSON = `
   },
   {
     "constant": true,
-    "inputs": [],
-    "name": "phiRatio",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
     "inputs": [
       {
         "name": "",
@@ -373,20 +359,6 @@ const GovernanceABIJSON = `
   },
   {
     "constant": true,
-    "inputs": [],
-    "name": "roundInterval",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
     "inputs": [
       {
         "name": "",
@@ -398,6 +370,20 @@ const GovernanceABIJSON = `
       {
         "name": "",
         "type": "int256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "roundLength",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -533,20 +519,6 @@ const GovernanceABIJSON = `
   },
   {
     "constant": true,
-    "inputs": [],
-    "name": "k",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
     "inputs": [
       {
         "name": "",
@@ -585,20 +557,6 @@ const GovernanceABIJSON = `
       {
         "name": "",
         "type": "bool"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "numChains",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
       }
     ],
     "payable": false,
@@ -871,23 +829,11 @@ const GovernanceABIJSON = `
         "type": "uint256"
       },
       {
-        "name": "NumChains",
-        "type": "uint256"
-      },
-      {
         "name": "LambdaBA",
         "type": "uint256"
       },
       {
         "name": "LambdaDKG",
-        "type": "uint256"
-      },
-      {
-        "name": "K",
-        "type": "uint256"
-      },
-      {
-        "name": "PhiRatio",
         "type": "uint256"
       },
       {
@@ -899,7 +845,7 @@ const GovernanceABIJSON = `
         "type": "uint256"
       },
       {
-        "name": "RoundInterval",
+        "name": "RoundLength",
         "type": "uint256"
       },
       {

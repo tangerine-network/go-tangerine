@@ -23,14 +23,11 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 		NextHalvingSupply *math.HexOrDecimal256   `json:"nextHalvingSupply"`
 		LastHalvedAmount  *math.HexOrDecimal256   `json:"lastHalvedAmount"`
 		BlockGasLimit     uint64                  `json:"blockGasLimit"`
-		NumChains         uint32                  `json:"numChains"`
 		LambdaBA          uint64                  `json:"lambdaBA"`
 		LambdaDKG         uint64                  `json:"lambdaDKG"`
-		K                 uint32                  `json:"k"`
-		PhiRatio          float32                 `json:"phiRatio"`
 		NotarySetSize     uint32                  `json:"notarySetSize"`
 		DKGSetSize        uint32                  `json:"dkgSetSize"`
-		RoundInterval     uint64                  `json:"roundInterval"`
+		RoundLength       uint64                  `json:"roundLength"`
 		MinBlockInterval  uint64                  `json:"minBlockInterval"`
 		FineValues        []*math.HexOrDecimal256 `json:"fineValues"`
 	}
@@ -43,14 +40,11 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 	enc.NextHalvingSupply = (*math.HexOrDecimal256)(d.NextHalvingSupply)
 	enc.LastHalvedAmount = (*math.HexOrDecimal256)(d.LastHalvedAmount)
 	enc.BlockGasLimit = d.BlockGasLimit
-	enc.NumChains = d.NumChains
 	enc.LambdaBA = d.LambdaBA
 	enc.LambdaDKG = d.LambdaDKG
-	enc.K = d.K
-	enc.PhiRatio = d.PhiRatio
 	enc.NotarySetSize = d.NotarySetSize
 	enc.DKGSetSize = d.DKGSetSize
-	enc.RoundInterval = d.RoundInterval
+	enc.RoundLength = d.RoundLength
 	enc.MinBlockInterval = d.MinBlockInterval
 	if d.FineValues != nil {
 		enc.FineValues = make([]*math.HexOrDecimal256, len(d.FineValues))
@@ -72,14 +66,11 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 		NextHalvingSupply *math.HexOrDecimal256   `json:"nextHalvingSupply"`
 		LastHalvedAmount  *math.HexOrDecimal256   `json:"lastHalvedAmount"`
 		BlockGasLimit     *uint64                 `json:"blockGasLimit"`
-		NumChains         *uint32                 `json:"numChains"`
 		LambdaBA          *uint64                 `json:"lambdaBA"`
 		LambdaDKG         *uint64                 `json:"lambdaDKG"`
-		K                 *uint32                 `json:"k"`
-		PhiRatio          *float32                `json:"phiRatio"`
 		NotarySetSize     *uint32                 `json:"notarySetSize"`
 		DKGSetSize        *uint32                 `json:"dkgSetSize"`
-		RoundInterval     *uint64                 `json:"roundInterval"`
+		RoundLength       *uint64                 `json:"roundLength"`
 		MinBlockInterval  *uint64                 `json:"minBlockInterval"`
 		FineValues        []*math.HexOrDecimal256 `json:"fineValues"`
 	}
@@ -111,20 +102,11 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 	if dec.BlockGasLimit != nil {
 		d.BlockGasLimit = *dec.BlockGasLimit
 	}
-	if dec.NumChains != nil {
-		d.NumChains = *dec.NumChains
-	}
 	if dec.LambdaBA != nil {
 		d.LambdaBA = *dec.LambdaBA
 	}
 	if dec.LambdaDKG != nil {
 		d.LambdaDKG = *dec.LambdaDKG
-	}
-	if dec.K != nil {
-		d.K = *dec.K
-	}
-	if dec.PhiRatio != nil {
-		d.PhiRatio = *dec.PhiRatio
 	}
 	if dec.NotarySetSize != nil {
 		d.NotarySetSize = *dec.NotarySetSize
@@ -132,8 +114,8 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 	if dec.DKGSetSize != nil {
 		d.DKGSetSize = *dec.DKGSetSize
 	}
-	if dec.RoundInterval != nil {
-		d.RoundInterval = *dec.RoundInterval
+	if dec.RoundLength != nil {
+		d.RoundLength = *dec.RoundLength
 	}
 	if dec.MinBlockInterval != nil {
 		d.MinBlockInterval = *dec.MinBlockInterval

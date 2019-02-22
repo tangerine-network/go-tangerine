@@ -4,14 +4,12 @@ import (
 	"crypto/ecdsa"
 	"fmt"
 	"math/big"
-	"strings"
 	"testing"
 	"time"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
 	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 
-	"github.com/dexon-foundation/dexon/accounts/abi"
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/consensus/dexcon"
 	"github.com/dexon-foundation/dexon/core"
@@ -51,48 +49,41 @@ func TestPreparePayload(t *testing.T) {
 		t.Fatalf("add tx error: %v", err)
 	}
 
-	chainID := new(big.Int).Mod(crypto.PubkeyToAddress(key.PublicKey).Big(),
-		big.NewInt(int64(dex.chainConfig.Dexcon.NumChains)))
-	var chainNum uint32
-	for chainNum = 0; chainNum < dex.chainConfig.Dexcon.NumChains; chainNum++ {
+	chainNum := uint32(0)
+	root := dex.blockchain.CurrentBlock().Root()
+	dex.app.chainRoot.Store(chainNum, &root)
+	payload, err := dex.app.PreparePayload(coreTypes.Position{ChainID: chainNum})
+	if err != nil {
+		t.Fatalf("prepare payload error: %v", err)
+	}
 
-		root := dex.blockchain.CurrentBlock().Root()
-		dex.app.chainRoot.Store(chainNum, &root)
-		payload, err := dex.app.PreparePayload(coreTypes.Position{ChainID: chainNum})
-		if err != nil {
-			t.Fatalf("prepare payload error: %v", err)
+	var transactions types.Transactions
+	err = rlp.DecodeBytes(payload, &transactions)
+	if err != nil {
+		t.Fatalf("rlp decode error: %v", err)
+	}
+
+	// Only one chain id allow prepare transactions.
+	if len(transactions) != 5 {
+		t.Fatalf("incorrect transaction num expect %v but %v", 5, len(transactions))
+	}
+
+	for i, tx := range transactions {
+		if expectTx[i].Gas() != tx.Gas() {
+			t.Fatalf("unexpected gas expect %v but %v", expectTx[i].Gas(), tx.Gas())
 		}
 
-		var transactions types.Transactions
-		err = rlp.DecodeBytes(payload, &transactions)
-		if err != nil {
-			t.Fatalf("rlp decode error: %v", err)
+		if expectTx[i].Hash() != tx.Hash() {
+			t.Fatalf("unexpected hash expect %v but %v", expectTx[i].Hash(), tx.Hash())
 		}
 
-		// Only one chain id allow prepare transactions.
-		if chainID.Uint64() == uint64(chainNum) && len(transactions) != 5 {
-			t.Fatalf("incorrect transaction num expect %v but %v", 5, len(transactions))
-		} else if chainID.Uint64() != uint64(chainNum) && len(transactions) != 0 {
-			t.Fatalf("expect empty slice but %v", len(transactions))
+		if expectTx[i].Nonce() != tx.Nonce() {
+			t.Fatalf("unexpected nonce expect %v but %v", expectTx[i].Nonce(), tx.Nonce())
 		}
 
-		for i, tx := range transactions {
-			if expectTx[i].Gas() != tx.Gas() {
-				t.Fatalf("unexpected gas expect %v but %v", expectTx[i].Gas(), tx.Gas())
-			}
-
-			if expectTx[i].Hash() != tx.Hash() {
-				t.Fatalf("unexpected hash expect %v but %v", expectTx[i].Hash(), tx.Hash())
-			}
-
-			if expectTx[i].Nonce() != tx.Nonce() {
-				t.Fatalf("unexpected nonce expect %v but %v", expectTx[i].Nonce(), tx.Nonce())
-			}
-
-			if expectTx[i].GasPrice().Uint64() != tx.GasPrice().Uint64() {
-				t.Fatalf("unexpected gas price expect %v but %v",
-					expectTx[i].GasPrice().Uint64(), tx.GasPrice().Uint64())
-			}
+		if expectTx[i].GasPrice().Uint64() != tx.GasPrice().Uint64() {
+			t.Fatalf("unexpected gas price expect %v but %v",
+				expectTx[i].GasPrice().Uint64(), tx.GasPrice().Uint64())
 		}
 	}
 }
@@ -147,8 +138,7 @@ func TestVerifyBlock(t *testing.T) {
 		t.Fatalf("new test dexon error: %v", err)
 	}
 
-	chainID := new(big.Int).Mod(crypto.PubkeyToAddress(key.PublicKey).Big(),
-		big.NewInt(int64(dex.chainConfig.Dexcon.NumChains)))
+	chainID := big.NewInt(0)
 
 	root := dex.blockchain.CurrentBlock().Root()
 	dex.app.chainRoot.Store(uint32(chainID.Uint64()), &root)
@@ -357,8 +347,7 @@ func TestBlockConfirmed(t *testing.T) {
 		t.Fatalf("new test dexon error: %v", err)
 	}
 
-	chainID := new(big.Int).Mod(crypto.PubkeyToAddress(key.PublicKey).Big(),
-		big.NewInt(int64(dex.chainConfig.Dexcon.NumChains)))
+	chainID := big.NewInt(0)
 
 	root := dex.blockchain.CurrentBlock().Root()
 	dex.app.chainRoot.Store(uint32(chainID.Uint64()), &root)
@@ -418,8 +407,7 @@ func TestBlockDelivered(t *testing.T) {
 		t.Fatalf("new test dexon error: %v", err)
 	}
 
-	chainID := new(big.Int).Mod(crypto.PubkeyToAddress(key.PublicKey).Big(),
-		big.NewInt(int64(dex.chainConfig.Dexcon.NumChains)))
+	chainID := big.NewInt(0)
 
 	root := dex.blockchain.CurrentBlock().Root()
 	dex.app.chainRoot.Store(uint32(chainID.Uint64()), &root)
@@ -454,136 +442,6 @@ func TestBlockDelivered(t *testing.T) {
 	if new(big.Int).Add(balance, &firstBlocksInfo[0].Cost).Cmp(big.NewInt(50000000000000000)) != 0 {
 		t.Fatalf("unexpected pending state balance %v", balance)
 	}
-}
-
-func TestNumChainsChange(t *testing.T) {
-	key, err := crypto.GenerateKey()
-	if err != nil {
-		t.Fatalf("hex to ecdsa error: %v", err)
-	}
-
-	params.TestnetChainConfig.Dexcon.Owner = crypto.PubkeyToAddress(key.PublicKey)
-
-	dex, err := newTestDexonWithGenesis(key)
-	if err != nil {
-		t.Fatalf("new test dexon error: %v", err)
-	}
-
-	chainID := new(big.Int).Mod(crypto.PubkeyToAddress(key.PublicKey).Big(),
-		big.NewInt(int64(dex.chainConfig.Dexcon.NumChains)))
-
-	root := dex.blockchain.CurrentBlock().Root()
-	dex.app.chainRoot.Store(uint32(chainID.Uint64()), &root)
-
-	abiObject, err := abi.JSON(strings.NewReader(vm.GovernanceABIJSON))
-	if err != nil {
-		t.Fatalf("get abi object fail: %v", err)
-	}
-
-	// Update config in round 1 and height 1.
-	// Config will affect in round 3.
-	input, err := abiObject.Pack("updateConfiguration",
-		new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
-		big.NewInt(2000),
-		big.NewInt(0.1875*1e8),
-		big.NewInt(1e18),
-		big.NewInt(1e18),
-		big.NewInt(9000000),
-		big.NewInt(3),
-		big.NewInt(500),
-		big.NewInt(5000),
-		big.NewInt(1),
-		big.NewInt(700000),
-		big.NewInt(5),
-		big.NewInt(5),
-		big.NewInt(700000),
-		big.NewInt(1000),
-		[]*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)})
-	if err != nil {
-		t.Fatalf("updateConfiguration abiObject pack error: %v", err)
-	}
-
-	block, err := prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{input}, 1)
-	if err != nil {
-		t.Fatalf("prepare block error: %v", err)
-	}
-	dex.app.BlockDelivered(block.Hash, block.Position,
-		coreTypes.FinalizationResult{
-			Timestamp: time.Now(),
-			Height:    1,
-		})
-
-	block, err = prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{input}, 1)
-	if err != nil {
-		t.Fatalf("prepare block error: %v", err)
-	}
-	dex.app.BlockDelivered(block.Hash, block.Position,
-		coreTypes.FinalizationResult{
-			Timestamp: time.Now(),
-			Height:    2,
-		})
-
-	// Make round 1 height 2 block write into chain.
-	block, err = prepareConfirmedBlockWithTxAndData(dex, key, nil, 1)
-	if err != nil {
-		t.Fatalf("prepare block error: %v", err)
-	}
-	dex.app.BlockDelivered(block.Hash, block.Position,
-		coreTypes.FinalizationResult{
-			Timestamp: time.Now(),
-			Height:    3,
-		})
-
-	// Round 2 will keep prepare tx as usual.
-	block, err = prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{{1}}, 2)
-	if err != nil {
-		t.Fatalf("prepare block error: %v", err)
-	}
-	if block.Payload == nil {
-		t.Fatalf("payload should not be nil")
-	}
-	dex.app.BlockDelivered(block.Hash, block.Position,
-		coreTypes.FinalizationResult{
-			Timestamp: time.Now(),
-			Height:    4,
-		})
-
-	// It will prepare empty payload until witness any block in round 3.
-	block, err = prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{{1}}, 3)
-	if err != nil {
-		t.Fatalf("prepare block error: %v", err)
-	}
-	if block.Payload != nil {
-		t.Fatalf("payload should be nil but %v", block.Payload)
-	}
-
-	// Test non-empty payload.
-	block.Payload = []byte{1}
-	if status := dex.app.VerifyBlock(block); status != coreTypes.VerifyInvalidBlock {
-		t.Fatalf("unexpected verify status %v", status)
-	}
-	block.Payload = nil
-
-	dex.app.BlockDelivered(block.Hash, block.Position,
-		coreTypes.FinalizationResult{
-			Timestamp: time.Now(),
-			Height:    5,
-		})
-
-	// Empty block in round 3 has been delivered.
-	// Now can prepare payload as usual.
-	block, err = prepareConfirmedBlockWithTxAndData(dex, key, [][]byte{{1}}, 3)
-	if err != nil {
-		t.Fatalf("prepare block error: %v", err)
-	}
-	if block.Payload == nil {
-		t.Fatalf("payload should not be nil")
-	}
-	dex.app.BlockDelivered(block.Hash, block.Position,
-		coreTypes.FinalizationResult{
-			Timestamp: time.Now(),
-			Height:    6,
-		})
 }
 
 func BenchmarkBlockDeliveredFlow(b *testing.B) {
@@ -690,8 +548,7 @@ func addTx(dex *Dexon, nonce int, signer types.Signer, key *ecdsa.PrivateKey) (
 func prepareData(dex *Dexon, key *ecdsa.PrivateKey, startNonce, txNum int) (
 	payload []byte, witness coreTypes.Witness, cost big.Int, nonce uint64, err error) {
 	signer := types.NewEIP155Signer(dex.chainConfig.ChainID)
-	chainID := new(big.Int).Mod(crypto.PubkeyToAddress(key.PublicKey).Big(),
-		big.NewInt(int64(dex.chainConfig.Dexcon.NumChains)))
+	chainID := big.NewInt(0)
 
 	for n := startNonce; n < startNonce+txNum; n++ {
 		var tx *types.Transaction
@@ -720,8 +577,6 @@ func prepareData(dex *Dexon, key *ecdsa.PrivateKey, startNonce, txNum int) (
 func prepareConfirmedBlockWithTxAndData(dex *Dexon, key *ecdsa.PrivateKey, data [][]byte, round uint64) (
 	Block *coreTypes.Block, err error) {
 	address := crypto.PubkeyToAddress(key.PublicKey)
-	numChains := dex.governance.GetGovStateHelperAtRound(round).Configuration().NumChains
-	chainID := new(big.Int).Mod(address.Big(), big.NewInt(int64(numChains)))
 
 	for _, d := range data {
 		// Prepare one block for pending.
@@ -744,7 +599,7 @@ func prepareConfirmedBlockWithTxAndData(dex *Dexon, key *ecdsa.PrivateKey, data 
 		witness coreTypes.Witness
 	)
 
-	payload, err = dex.app.PreparePayload(coreTypes.Position{Round: round, ChainID: uint32(chainID.Uint64())})
+	payload, err = dex.app.PreparePayload(coreTypes.Position{Round: round, ChainID: uint32(0)})
 	if err != nil {
 		return
 	}
@@ -758,7 +613,7 @@ func prepareConfirmedBlockWithTxAndData(dex *Dexon, key *ecdsa.PrivateKey, data 
 	block.Hash = coreCommon.NewRandomHash()
 	block.Witness = witness
 	block.Payload = payload
-	block.Position.ChainID = uint32(chainID.Uint64())
+	block.Position.ChainID = uint32(0)
 	block.Position.Round = round
 	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 
@@ -812,8 +667,7 @@ func prepareConfirmedBlocks(dex *Dexon, keys []*ecdsa.PrivateKey, txNum int) (bl
 }, err error) {
 	for _, key := range keys {
 		address := crypto.PubkeyToAddress(key.PublicKey)
-		chainID := new(big.Int).Mod(address.Big(),
-			big.NewInt(int64(dex.chainConfig.Dexcon.NumChains)))
+		chainID := big.NewInt(0)
 
 		// Prepare one block for pending.
 		var (

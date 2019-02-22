@@ -74,14 +74,11 @@ const (
 	nextHalvingSupplyLoc
 	lastHalvedAmountLoc
 	blockGasLimitLoc
-	numChainsLoc
 	lambdaBALoc
 	lambdaDKGLoc
-	kLoc
-	phiRatioLoc
 	notarySetSizeLoc
 	dkgSetSizeLoc
-	roundIntervalLoc
+	roundLengthLoc
 	minBlockIntervalLoc
 	fineValuesLoc
 	finedRecordsLoc
@@ -820,11 +817,6 @@ func (s *GovernanceStateHelper) SetBlockGasLimit(reward *big.Int) {
 	s.setStateBigInt(big.NewInt(blockGasLimitLoc), reward)
 }
 
-// uint256 public numChains;
-func (s *GovernanceStateHelper) NumChains() *big.Int {
-	return s.getStateBigInt(big.NewInt(numChainsLoc))
-}
-
 // uint256 public lambdaBA;
 func (s *GovernanceStateHelper) LambdaBA() *big.Int {
 	return s.getStateBigInt(big.NewInt(lambdaBALoc))
@@ -833,16 +825,6 @@ func (s *GovernanceStateHelper) LambdaBA() *big.Int {
 // uint256 public lambdaDKG;
 func (s *GovernanceStateHelper) LambdaDKG() *big.Int {
 	return s.getStateBigInt(big.NewInt(lambdaDKGLoc))
-}
-
-// uint256 public k;
-func (s *GovernanceStateHelper) K() *big.Int {
-	return s.getStateBigInt(big.NewInt(kLoc))
-}
-
-// uint256 public phiRatio;  // stored as PhiRatio * 10^6
-func (s *GovernanceStateHelper) PhiRatio() *big.Int {
-	return s.getStateBigInt(big.NewInt(phiRatioLoc))
 }
 
 // uint256 public notarySetSize;
@@ -855,9 +837,9 @@ func (s *GovernanceStateHelper) DKGSetSize() *big.Int {
 	return s.getStateBigInt(big.NewInt(dkgSetSizeLoc))
 }
 
-// uint256 public roundInterval;
-func (s *GovernanceStateHelper) RoundInterval() *big.Int {
-	return s.getStateBigInt(big.NewInt(roundIntervalLoc))
+// uint256 public roundLength;
+func (s *GovernanceStateHelper) RoundLength() *big.Int {
+	return s.getStateBigInt(big.NewInt(roundLengthLoc))
 }
 
 // uint256 public minBlockInterval;
@@ -959,14 +941,11 @@ func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
 		NextHalvingSupply: s.getStateBigInt(big.NewInt(nextHalvingSupplyLoc)),
 		LastHalvedAmount:  s.getStateBigInt(big.NewInt(lastHalvedAmountLoc)),
 		BlockGasLimit:     s.getStateBigInt(big.NewInt(blockGasLimitLoc)).Uint64(),
-		NumChains:         uint32(s.getStateBigInt(big.NewInt(numChainsLoc)).Uint64()),
 		LambdaBA:          s.getStateBigInt(big.NewInt(lambdaBALoc)).Uint64(),
 		LambdaDKG:         s.getStateBigInt(big.NewInt(lambdaDKGLoc)).Uint64(),
-		K:                 uint32(s.getStateBigInt(big.NewInt(kLoc)).Uint64()),
-		PhiRatio:          float32(s.getStateBigInt(big.NewInt(phiRatioLoc)).Uint64()) / decimalMultiplier,
 		NotarySetSize:     uint32(s.getStateBigInt(big.NewInt(notarySetSizeLoc)).Uint64()),
 		DKGSetSize:        uint32(s.getStateBigInt(big.NewInt(dkgSetSizeLoc)).Uint64()),
-		RoundInterval:     s.getStateBigInt(big.NewInt(roundIntervalLoc)).Uint64(),
+		RoundLength:       s.getStateBigInt(big.NewInt(roundLengthLoc)).Uint64(),
 		MinBlockInterval:  s.getStateBigInt(big.NewInt(minBlockIntervalLoc)).Uint64(),
 		FineValues:        s.FineValues(),
 	}
@@ -980,14 +959,11 @@ func (s *GovernanceStateHelper) UpdateConfiguration(cfg *params.DexconConfig) {
 	s.setStateBigInt(big.NewInt(nextHalvingSupplyLoc), cfg.NextHalvingSupply)
 	s.setStateBigInt(big.NewInt(lastHalvedAmountLoc), cfg.LastHalvedAmount)
 	s.setStateBigInt(big.NewInt(blockGasLimitLoc), big.NewInt(int64(cfg.BlockGasLimit)))
-	s.setStateBigInt(big.NewInt(numChainsLoc), big.NewInt(int64(cfg.NumChains)))
 	s.setStateBigInt(big.NewInt(lambdaBALoc), big.NewInt(int64(cfg.LambdaBA)))
 	s.setStateBigInt(big.NewInt(lambdaDKGLoc), big.NewInt(int64(cfg.LambdaDKG)))
-	s.setStateBigInt(big.NewInt(kLoc), big.NewInt(int64(cfg.K)))
-	s.setStateBigInt(big.NewInt(phiRatioLoc), big.NewInt(int64(cfg.PhiRatio*decimalMultiplier)))
 	s.setStateBigInt(big.NewInt(notarySetSizeLoc), big.NewInt(int64(cfg.NotarySetSize)))
 	s.setStateBigInt(big.NewInt(dkgSetSizeLoc), big.NewInt(int64(cfg.DKGSetSize)))
-	s.setStateBigInt(big.NewInt(roundIntervalLoc), big.NewInt(int64(cfg.RoundInterval)))
+	s.setStateBigInt(big.NewInt(roundLengthLoc), big.NewInt(int64(cfg.RoundLength)))
 	s.setStateBigInt(big.NewInt(minBlockIntervalLoc), big.NewInt(int64(cfg.MinBlockInterval)))
 	s.SetFineValues(cfg.FineValues)
 }
@@ -996,14 +972,11 @@ type rawConfigStruct struct {
 	MinStake         *big.Int
 	LockupPeriod     *big.Int
 	BlockGasLimit    *big.Int
-	NumChains        *big.Int
 	LambdaBA         *big.Int
 	LambdaDKG        *big.Int
-	K                *big.Int
-	PhiRatio         *big.Int
 	NotarySetSize    *big.Int
 	DKGSetSize       *big.Int
-	RoundInterval    *big.Int
+	RoundLength      *big.Int
 	MinBlockInterval *big.Int
 	FineValues       []*big.Int
 }
@@ -1013,14 +986,11 @@ func (s *GovernanceStateHelper) UpdateConfigurationRaw(cfg *rawConfigStruct) {
 	s.setStateBigInt(big.NewInt(minStakeLoc), cfg.MinStake)
 	s.setStateBigInt(big.NewInt(lockupPeriodLoc), cfg.LockupPeriod)
 	s.setStateBigInt(big.NewInt(blockGasLimitLoc), cfg.BlockGasLimit)
-	s.setStateBigInt(big.NewInt(numChainsLoc), cfg.NumChains)
 	s.setStateBigInt(big.NewInt(lambdaBALoc), cfg.LambdaBA)
 	s.setStateBigInt(big.NewInt(lambdaDKGLoc), cfg.LambdaDKG)
-	s.setStateBigInt(big.NewInt(kLoc), cfg.K)
-	s.setStateBigInt(big.NewInt(phiRatioLoc), cfg.PhiRatio)
 	s.setStateBigInt(big.NewInt(notarySetSizeLoc), cfg.NotarySetSize)
 	s.setStateBigInt(big.NewInt(dkgSetSizeLoc), cfg.DKGSetSize)
-	s.setStateBigInt(big.NewInt(roundIntervalLoc), cfg.RoundInterval)
+	s.setStateBigInt(big.NewInt(roundLengthLoc), cfg.RoundLength)
 	s.setStateBigInt(big.NewInt(minBlockIntervalLoc), cfg.MinBlockInterval)
 	s.SetFineValues(cfg.FineValues)
 }
@@ -1853,7 +1823,7 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 	}
 	config := gs.Configuration()
 
-	targetBlockNum := new(big.Int).SetUint64(config.RoundInterval / config.MinBlockInterval)
+	targetBlockNum := new(big.Int).SetUint64(config.RoundLength)
 	targetBlockNum.Mul(targetBlockNum, target)
 	targetBlockNum.Quo(targetBlockNum, big.NewInt(100))
 	targetBlockNum.Add(targetBlockNum, roundHeight)
@@ -2227,12 +2197,6 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return res, nil
-	case "k":
-		res, err := method.Outputs.Pack(g.state.K())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
 	case "lambdaBA":
 		res, err := method.Outputs.Pack(g.state.LambdaBA())
 		if err != nil {
@@ -2277,12 +2241,6 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		return res, nil
 	case "nextHalvingSupply":
 		res, err := method.Outputs.Pack(g.state.NextHalvingSupply())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "numChains":
-		res, err := method.Outputs.Pack(g.state.NumChains())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -2332,12 +2290,6 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return res, nil
-	case "phiRatio":
-		res, err := method.Outputs.Pack(g.state.PhiRatio())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
 	case "roundHeight":
 		round := new(big.Int)
 		if err := method.Inputs.Unpack(&round, arguments); err != nil {
@@ -2348,8 +2300,8 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return res, nil
-	case "roundInterval":
-		res, err := method.Outputs.Pack(g.state.RoundInterval())
+	case "roundLength":
+		res, err := method.Outputs.Pack(g.state.RoundLength())
 		if err != nil {
 			return nil, errExecutionReverted
 		}

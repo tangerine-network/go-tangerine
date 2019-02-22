@@ -111,26 +111,17 @@ func (d *Dexcon) calculateBlockReward(round int64, state *state.StateDB) *big.In
 	gs := d.govStateFetcer.GetGovStateHelperAtRound(uint64(round))
 	config := gs.Configuration()
 
-	gsCurrent := vm.GovernanceStateHelper{state}
-	configCurrent := gsCurrent.Configuration()
-	heightCurrent := gsCurrent.RoundHeight(big.NewInt(round)).Uint64()
+	blocksPerRound := config.RoundLength
+	roundInterval := new(big.Float).Mul(
+		big.NewFloat(float64(blocksPerRound)),
+		big.NewFloat(float64(config.MinBlockInterval)))
 
-	blocksPerRound := uint64(0)
-
-	// The initial round, calculate an approximate number of round base on config.
-	if round == 0 || heightCurrent == 0 {
-		blocksPerRound = uint64(config.NumChains) * config.RoundInterval / config.MinBlockInterval
-	} else {
-		heightPrev := gsCurrent.RoundHeight(big.NewInt(round - 1)).Uint64()
-		blocksPerRound = heightCurrent - heightPrev
-	}
-
-	// blockReard = miningVelocity * totalStaked * roundInterval / aYear / numBlocksInPrevRound
+	// blockReard = miningVelocity * totalStaked * roundInterval / aYear / numBlocksInCurRound
 	numerator, _ := new(big.Float).Mul(
 		new(big.Float).Mul(
-			big.NewFloat(float64(configCurrent.MiningVelocity)),
+			big.NewFloat(float64(config.MiningVelocity)),
 			new(big.Float).SetInt(gs.TotalStaked())),
-		new(big.Float).SetInt(gs.RoundInterval())).Int(nil)
+		roundInterval).Int(nil)
 
 	reward := new(big.Int).Div(numerator,
 		new(big.Int).Mul(

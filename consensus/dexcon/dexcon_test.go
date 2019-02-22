@@ -63,8 +63,7 @@ func (d *DexconTestSuite) SetupTest() {
 	config.NextHalvingSupply = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2.5e9))
 	config.LastHalvedAmount = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.5e9))
 	config.MiningVelocity = 0.1875
-	config.RoundInterval = 3600000
-	config.NumChains = 6
+	config.RoundLength = 3600
 	config.MinBlockInterval = 1000
 
 	d.config = config
@@ -91,15 +90,9 @@ func (d *DexconTestSuite) TestBlockRewardCalculation() {
 
 	d.s.IncTotalStaked(big.NewInt(1e18))
 
-	// blockReard = miningVelocity * totalStaked * roundInterval / aYear / numBlocksInPrevRound
-	// 0.1875 * 1e18 * 3600 * 1000 / (86400 * 1000 * 365 * 6 * 3600) = 990930999.4926434
-	d.Require().Equal(big.NewInt(990930999), consensus.calculateBlockReward(0, d.stateDB))
-
-	// Round 1
-	d.s.PushRoundHeight(big.NewInt(4000 * 6))
-
-	// 0.1875 * 1e18 * 3600 * 1000 / (86400 * 1000 * 365 * 6 * 4000) = 891837899
-	d.Require().Equal(big.NewInt(891837899), consensus.calculateBlockReward(1, d.stateDB))
+	// blockReard = miningVelocity * totalStaked * roundInterval / aYear / numBlocksInCurRound
+	// 0.1875 * 1e18 * 3600 * 1000 / (86400 * 1000 * 365 * 3600) = 5945585996.96
+	d.Require().Equal(big.NewInt(5945585996), consensus.calculateBlockReward(0, d.stateDB))
 }
 
 func TestDexcon(t *testing.T) {

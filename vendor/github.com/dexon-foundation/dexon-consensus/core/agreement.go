@@ -162,7 +162,7 @@ func (a *agreement) restart(
 		defer a.lock.Unlock()
 		if !isStop(aID) {
 			oldAID := a.agreementID()
-			if !isStop(oldAID) && !aID.Newer(&oldAID) {
+			if !isStop(oldAID) && !aID.Newer(oldAID) {
 				return false
 			}
 		}
@@ -209,7 +209,7 @@ func (a *agreement) restart(
 		defer a.lock.Unlock()
 		newPendingBlock := make([]pendingBlock, 0)
 		for _, pending := range a.pendingBlock {
-			if aID.Newer(&pending.block.Position) {
+			if aID.Newer(pending.block.Position) {
 				continue
 			} else if pending.block.Position == aID {
 				replayBlock = append(replayBlock, pending.block)
@@ -226,7 +226,7 @@ func (a *agreement) restart(
 		defer a.lock.Unlock()
 		newPendingVote := make([]pendingVote, 0)
 		for _, pending := range a.pendingVote {
-			if aID.Newer(&pending.vote.Position) {
+			if aID.Newer(pending.vote.Position) {
 				continue
 			} else if pending.vote.Position == aID {
 				replayVote = append(replayVote, pending.vote)
@@ -267,6 +267,9 @@ func (a *agreement) clocks() int {
 	a.data.lock.RLock()
 	defer a.data.lock.RUnlock()
 	scale := int(a.data.period) - 1
+	if a.state.state() == stateForward {
+		scale = 1
+	}
 	if scale < 1 {
 		// just in case.
 		scale = 1
@@ -387,7 +390,7 @@ func (a *agreement) processVote(vote *types.Vote) error {
 		return nil
 	}
 	if vote.Position != aID {
-		if aID.Newer(&vote.Position) {
+		if aID.Newer(vote.Position) {
 			return nil
 		}
 		a.pendingVote = append(a.pendingVote, pendingVote{
@@ -431,8 +434,10 @@ func (a *agreement) processVote(vote *types.Vote) error {
 				a.hasOutput = true
 				a.data.recv.ConfirmBlock(hash,
 					a.data.votes[vote.Period][vote.Type])
-				close(a.doneChan)
-				a.doneChan = nil
+				if a.doneChan != nil {
+					close(a.doneChan)
+					a.doneChan = nil
+				}
 			}
 			return nil
 		}
@@ -465,6 +470,10 @@ func (a *agreement) processVote(vote *types.Vote) error {
 					a.data.lockIter = vote.Period
 				}
 				a.fastForward <- vote.Period
+				if a.doneChan != nil {
+					close(a.doneChan)
+					a.doneChan = nil
+				}
 				return nil
 			}
 		}
@@ -490,6 +499,10 @@ func (a *agreement) processVote(vote *types.Vote) error {
 			a.data.recv.PullBlocks(hashes)
 		}
 		a.fastForward <- vote.Period + 1
+		if a.doneChan != nil {
+			close(a.doneChan)
+			a.doneChan = nil
+		}
 		return nil
 	}
 	return nil
@@ -498,22 +511,21 @@ func (a *agreement) processVote(vote *types.Vote) error {
 func (a *agreement) done() <-chan struct{} {
 	a.lock.Lock()
 	defer a.lock.Unlock()
-	if a.doneChan == nil {
-		return closedchan
-	}
-	a.data.lock.Lock()
-	defer a.data.lock.Unlock()
 	select {
 	case period := <-a.fastForward:
+		a.data.lock.Lock()
+		defer a.data.lock.Unlock()
 		if period <= a.data.period {
 			break
 		}
 		a.data.setPeriod(period)
 		a.state = newPreCommitState(a.data)
-		close(a.doneChan)
 		a.doneChan = make(chan struct{})
 		return closedchan
 	default:
+	}
+	if a.doneChan == nil {
+		return closedchan
 	}
 	return a.doneChan
 }
@@ -535,7 +547,7 @@ func (a *agreement) processBlock(block *types.Block) error {
 	if block.Position != aID {
 		// Agreement module has stopped.
 		if !isStop(aID) {
-			if aID.Newer(&block.Position) {
+			if aID.Newer(block.Position) {
 				return nil
 			}
 		}
@@ -562,17 +574,22 @@ func (a *agreement) processBlock(block *types.Block) error {
 		block.ProposerID == a.leader() {
 		go func() {
 			for func() bool {
+				if aID != a.agreementID() {
+					return false
+				}
 				a.lock.RLock()
 				defer a.lock.RUnlock()
 				if a.state.state() != stateFast && a.state.state() != stateFastVote {
 					return false
 				}
+				a.data.lock.RLock()
+				defer a.data.lock.RUnlock()
+				a.data.blocksLock.Lock()
+				defer a.data.blocksLock.Unlock()
 				block, exist := a.data.blocks[a.leader()]
 				if !exist {
 					return true
 				}
-				a.data.lock.RLock()
-				defer a.data.lock.RUnlock()
 				ok, err := a.data.leader.validLeader(block)
 				if err != nil {
 					fmt.Println("Error checking validLeader for Fast BA",

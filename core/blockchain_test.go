@@ -1611,17 +1611,15 @@ type dexconTest struct {
 	dexcon.Dexcon
 
 	blockReward *big.Int
-	numChains   uint32
 }
 
 // Finalize for skip governance access.
 func (d *dexconTest) Finalize(chain consensus.ChainReader, header *types.Header,
 	state *state.StateDB, txs []*types.Transaction, uncles []*types.Header,
 	receipts []*types.Receipt) (*types.Block, error) {
-	reward := new(big.Int).Div(d.blockReward, big.NewInt(int64(d.numChains)))
-	state.AddBalance(header.Coinbase, reward)
+	state.AddBalance(header.Coinbase, d.blockReward)
 
-	header.Reward = reward
+	header.Reward = d.blockReward
 	header.Root = state.IntermediateRoot(true)
 	return types.NewBlock(header, txs, uncles, receipts), nil
 }
@@ -1651,7 +1649,6 @@ func TestProcessBlock(t *testing.T) {
 
 	engine := &dexconTest{
 		blockReward: big.NewInt(1e18),
-		numChains:   chainConfig.Dexcon.NumChains,
 	}
 	chain, err := NewBlockChain(db, nil, chainConfig, engine, vm.Config{}, nil)
 	if err != nil {

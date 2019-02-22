@@ -64,7 +64,7 @@ func NewDexconApp(txPool *core.TxPool, blockchain *core.BlockChain, gov *DexconG
 }
 
 func (d *DexconApp) addrBelongsToChain(address common.Address, chainSize, chainID *big.Int) bool {
-	return new(big.Int).Mod(address.Big(), chainSize).Cmp(chainID) == 0
+	return true
 }
 
 func (d *DexconApp) chainLock(chainID uint32) {
