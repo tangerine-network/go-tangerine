@@ -233,7 +233,7 @@ func (m *Monkey) Distribute() {
 	for i, key := range m.keys {
 		address := crypto.PubkeyToAddress(key.PublicKey)
 		amount := new(big.Int)
-		amount.SetString("100000000000000000000", 10)
+		amount.SetString("1000000000000000000", 10)
 		ctxs[i] = &transferContext{
 			Key:       m.source,
 			ToAddress: address,
@@ -256,7 +256,7 @@ loop:
 		for i, key := range m.keys {
 			to := crypto.PubkeyToAddress(m.keys[rand.Int()%len(m.keys)].PublicKey)
 			amount := new(big.Int)
-			amount.SetString(fmt.Sprintf("%d000000000000000", rand.Intn(10)+1), 10)
+			amount.SetString(fmt.Sprintf("%d0000000000000", rand.Intn(10)+1), 10)
 			ctx := &transferContext{
 				Key:       key,
 				ToAddress: to,
