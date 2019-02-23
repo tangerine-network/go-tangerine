@@ -242,6 +242,8 @@ func (st *StateTransition) dexonRefundGas() {
 		refund = st.state.GetRefund()
 	}
 
+	st.gas = refund
+
 	// Return ETH for remaining gas, exchanged at the original rate.
 	remaining := new(big.Int).Mul(new(big.Int).SetUint64(refund), st.gasPrice)
 	st.state.AddBalance(st.msg.From(), remaining)
