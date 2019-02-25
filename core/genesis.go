@@ -329,6 +329,11 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		govStateHelper.IncTotalSupply(totalSupply)
 	}
 
+	// Set oracle contract.
+	for address := range vm.OracleContracts {
+		statedb.SetCode(address, []byte{0xed})
+	}
+
 	root := statedb.IntermediateRoot(false)
 	head := &types.Header{
 		Number:     new(big.Int).SetUint64(g.Number),
