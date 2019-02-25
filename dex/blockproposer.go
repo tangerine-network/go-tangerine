@@ -54,7 +54,6 @@ func (b *blockProposer) Start() error {
 
 		var err error
 		var c *dexCore.Consensus
-
 		if b.dMoment.After(time.Now()) {
 			c = b.initConsensus()
 		} else {

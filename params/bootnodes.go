@@ -28,10 +28,16 @@ var TestnetBootnodes = []string{
 	"enode://0478aa13c91aa0db8e93b668313b7eb0532fbdb24f64772375373b14dbe326c238ad09ab4469f6442c9a9753f1275aeec2e531912c14a958ed1feb4ae7e227ef@35.234.27.122:30301",
 }
 
-// TestnetBootnodes are the enode URLs of the P2P bootstrap nodes running on the
+// TaipeiBootnodes are the enode URLs of the P2P bootstrap nodes running on the
 // Taipei test network.
 var TaipeiBootnodes = []string{
 	"enode://0478aa13c91aa0db8e93b668313b7eb0532fbdb24f64772375373b14dbe326c238ad09ab4469f6442c9a9753f1275aeec2e531912c14a958ed1feb4ae7e227ef@34.80.219.23:30301",
+}
+
+// YilanBootnodes are the enode URLs of the P2P bootstrap nodes running on the
+// Yilan test network.
+var YilanBootnodes = []string{
+	"enode://0478aa13c91aa0db8e93b668313b7eb0532fbdb24f64772375373b14dbe326c238ad09ab4469f6442c9a9753f1275aeec2e531912c14a958ed1feb4ae7e227ef@34.80.4.56:30301",
 }
 
 // DiscoveryV5Bootnodes are the enode URLs of the P2P bootstrap nodes for the

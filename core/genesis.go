@@ -237,6 +237,8 @@ func (g *Genesis) configOrDefault(ghash common.Hash) *params.ChainConfig {
 		return params.MainnetChainConfig
 	case ghash == params.TestnetGenesisHash:
 		return params.TestnetChainConfig
+	case ghash == params.YilanGenesisHash:
+		return params.YilanChainConfig
 	default:
 		return params.AllEthashProtocolChanges
 	}
@@ -432,6 +434,18 @@ func DefaultTaipeiGenesisBlock() *Genesis {
 		GasLimit:   40000000,
 		Difficulty: big.NewInt(1),
 		Alloc:      decodePrealloc(taipeiAllocData),
+	}
+}
+
+// DefaultYilanGenesisBlock returns the Yilan network genesis block.
+func DefaultYilanGenesisBlock() *Genesis {
+	return &Genesis{
+		Config:     params.YilanChainConfig,
+		Nonce:      0x42,
+		ExtraData:  hexutil.MustDecode("0x3535353535353535353535353535353535353535353535353535353535353535"),
+		GasLimit:   40000000,
+		Difficulty: big.NewInt(1),
+		Alloc:      decodePrealloc(yilanAllocData),
 	}
 }
 
