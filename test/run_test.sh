@@ -2,10 +2,17 @@
 
 NETWORK="--bootnodes enode://0478aa13c91aa0db8e93b668313b7eb0532fbdb24f64772375373b14dbe326c238ad09ab4469f6442c9a9753f1275aeec2e531912c14a958ed1feb4ae7e227ef@127.0.0.1:30301"
 GENESIS="genesis.json"
-# Start bootnode.
-../build/bin/bootnode -nodekey keystore/bootnode.key --verbosity=9 > bootnode.log 2>&1 &
 
-GDEX=../build/bin/gdex
+GDEX="../build/bin/gdex"
+BOOTNODE="../build/bin/bootnode"
+
+if [ ! -e "$BOOTNODE" ]; then
+  echo "Building bootnode for the first time ..."
+  go build -o $BOOTNODE ../cmd/bootnode
+fi
+
+# Start bootnode.
+$BOOTNODE -nodekey keystore/bootnode.key --verbosity=9 > bootnode.log 2>&1 &
 
 # Kill all previous instances.
 pkill -9 -f gdex
