@@ -6,6 +6,7 @@ import (
 	"time"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
+	dexCore "github.com/dexon-foundation/dexon-consensus/core"
 	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
 	coreDKG "github.com/dexon-foundation/dexon-consensus/core/crypto/dkg"
 	coreEcdsa "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
@@ -250,7 +251,12 @@ func (n *NodeSet) Randomness(round uint64, hash common.Hash) []byte {
 }
 
 func (n *NodeSet) SignCRS(round uint64) {
-	signedCRS := n.TSig(round, n.crs[round])
+	var signedCRS []byte
+	if round < dexCore.DKGDelayRound {
+		signedCRS = crypto.Keccak256(n.signedCRS[round])
+	} else {
+		signedCRS = n.TSig(round, n.crs[round])
+	}
 	n.signedCRS[round+1] = signedCRS
 	n.crs[round+1] = crypto.Keccak256Hash(signedCRS)
 }

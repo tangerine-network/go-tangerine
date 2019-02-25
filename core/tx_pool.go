@@ -397,7 +397,7 @@ func (pool *TxPool) reset(oldHead, newHead *types.Header) {
 		} else {
 			round -= dexCore.ConfigRoundShift
 		}
-		state := &vm.GovernanceStateHelper{StateDB: statedb}
+		state := &vm.GovernanceState{StateDB: statedb}
 		height := state.RoundHeight(new(big.Int).SetUint64((round))).Uint64()
 		block := pool.chain.GetBlockByNumber(height)
 		if block == nil {
@@ -409,7 +409,7 @@ func (pool *TxPool) reset(oldHead, newHead *types.Header) {
 			log.Error("Failed to get txpool state for min gas price", "err", err)
 			panic("cannot get state for new round's min gas price")
 		}
-		govState := &vm.GovernanceStateHelper{StateDB: configState}
+		govState := &vm.GovernanceState{StateDB: configState}
 		pool.setGovPrice(govState.MinGasPrice())
 	}
 

@@ -20,6 +20,7 @@ package vm
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"math/big"
 	"sort"
 
@@ -31,7 +32,7 @@ import (
 	"github.com/dexon-foundation/dexon/rlp"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
-	"github.com/dexon-foundation/dexon-consensus/core"
+	dexCore "github.com/dexon-foundation/dexon-consensus/core"
 	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
 	coreUtils "github.com/dexon-foundation/dexon-consensus/core/utils"
 
@@ -60,7 +61,9 @@ const (
 	nodesOffsetByIDLoc
 	delegatorsLoc
 	delegatorsOffsetLoc
+	crsRoundLoc
 	crsLoc
+	dkgRoundLoc
 	dkgMasterPublicKeysLoc
 	dkgComplaintsLoc
 	dkgReadyLoc
@@ -96,36 +99,36 @@ func publicKeyToNodeID(pkBytes []byte) (Bytes32, error) {
 }
 
 // State manipulation helper fro the governance contract.
-type GovernanceStateHelper struct {
+type GovernanceState struct {
 	StateDB StateDB
 }
 
-func (s *GovernanceStateHelper) getState(loc common.Hash) common.Hash {
+func (s *GovernanceState) getState(loc common.Hash) common.Hash {
 	return s.StateDB.GetState(GovernanceContractAddress, loc)
 }
 
-func (s *GovernanceStateHelper) setState(loc common.Hash, val common.Hash) {
+func (s *GovernanceState) setState(loc common.Hash, val common.Hash) {
 	s.StateDB.SetState(GovernanceContractAddress, loc, val)
 }
 
-func (s *GovernanceStateHelper) getStateBigInt(loc *big.Int) *big.Int {
+func (s *GovernanceState) getStateBigInt(loc *big.Int) *big.Int {
 	res := s.StateDB.GetState(GovernanceContractAddress, common.BigToHash(loc))
 	return new(big.Int).SetBytes(res.Bytes())
 }
 
-func (s *GovernanceStateHelper) setStateBigInt(loc *big.Int, val *big.Int) {
+func (s *GovernanceState) setStateBigInt(loc *big.Int, val *big.Int) {
 	s.setState(common.BigToHash(loc), common.BigToHash(val))
 }
 
-func (s *GovernanceStateHelper) getSlotLoc(loc *big.Int) *big.Int {
+func (s *GovernanceState) getSlotLoc(loc *big.Int) *big.Int {
 	return new(big.Int).SetBytes(crypto.Keccak256(common.BigToHash(loc).Bytes()))
 }
 
-func (s *GovernanceStateHelper) getMapLoc(pos *big.Int, key []byte) *big.Int {
+func (s *GovernanceState) getMapLoc(pos *big.Int, key []byte) *big.Int {
 	return new(big.Int).SetBytes(crypto.Keccak256(key, common.BigToHash(pos).Bytes()))
 }
 
-func (s *GovernanceStateHelper) readBytes(loc *big.Int) []byte {
+func (s *GovernanceState) readBytes(loc *big.Int) []byte {
 	// Length of the dynamic array (bytes).
 	rawLength := s.getStateBigInt(loc)
 	lengthByte := new(big.Int).Mod(rawLength, big.NewInt(256))
@@ -158,7 +161,7 @@ func (s *GovernanceStateHelper) readBytes(loc *big.Int) []byte {
 	return data
 }
 
-func (s *GovernanceStateHelper) writeBytes(loc *big.Int, data []byte) {
+func (s *GovernanceState) writeBytes(loc *big.Int, data []byte) {
 	length := int64(len(data))
 
 	if length == 0 {
@@ -204,7 +207,7 @@ func (s *GovernanceStateHelper) writeBytes(loc *big.Int, data []byte) {
 	}
 }
 
-func (s *GovernanceStateHelper) eraseBytes(loc *big.Int) {
+func (s *GovernanceState) eraseBytes(loc *big.Int) {
 	// Length of the dynamic array (bytes).
 	rawLength := s.getStateBigInt(loc)
 	lengthByte := new(big.Int).Mod(rawLength, big.NewInt(256))
@@ -227,10 +230,7 @@ func (s *GovernanceStateHelper) eraseBytes(loc *big.Int) {
 	s.setStateBigInt(loc, big.NewInt(0))
 }
 
-func (s *GovernanceStateHelper) read2DByteArray(pos, index *big.Int) [][]byte {
-	baseLoc := s.getSlotLoc(pos)
-	loc := new(big.Int).Add(baseLoc, index)
-
+func (s *GovernanceState) read1DByteArray(loc *big.Int) [][]byte {
 	arrayLength := s.getStateBigInt(loc)
 	dataLoc := s.getSlotLoc(loc)
 
@@ -243,11 +243,7 @@ func (s *GovernanceStateHelper) read2DByteArray(pos, index *big.Int) [][]byte {
 	return data
 }
 
-func (s *GovernanceStateHelper) appendTo2DByteArray(pos, index *big.Int, data []byte) {
-	// Find the loc of the last element.
-	baseLoc := s.getSlotLoc(pos)
-	loc := new(big.Int).Add(baseLoc, index)
-
+func (s *GovernanceState) appendTo1DByteArray(loc *big.Int, data []byte) {
 	// Increase length by 1.
 	arrayLength := s.getStateBigInt(loc)
 	s.setStateBigInt(loc, new(big.Int).Add(arrayLength, big.NewInt(1)))
@@ -258,10 +254,7 @@ func (s *GovernanceStateHelper) appendTo2DByteArray(pos, index *big.Int, data []
 	s.writeBytes(elementLoc, data)
 }
 
-func (s *GovernanceStateHelper) erase2DByteArray(pos, index *big.Int) {
-	baseLoc := s.getSlotLoc(pos)
-	loc := new(big.Int).Add(baseLoc, index)
-
+func (s *GovernanceState) erase1DByteArray(loc *big.Int) {
 	arrayLength := s.getStateBigInt(loc)
 	dataLoc := s.getSlotLoc(loc)
 
@@ -273,12 +266,12 @@ func (s *GovernanceStateHelper) erase2DByteArray(pos, index *big.Int) {
 }
 
 // uint256[] public roundHeight;
-func (s *GovernanceStateHelper) RoundHeight(round *big.Int) *big.Int {
+func (s *GovernanceState) RoundHeight(round *big.Int) *big.Int {
 	baseLoc := s.getSlotLoc(big.NewInt(roundHeightLoc))
 	loc := new(big.Int).Add(baseLoc, round)
 	return s.getStateBigInt(loc)
 }
-func (s *GovernanceStateHelper) PushRoundHeight(height *big.Int) {
+func (s *GovernanceState) PushRoundHeight(height *big.Int) {
 	// Increase length by 1.
 	length := s.getStateBigInt(big.NewInt(roundHeightLoc))
 	s.setStateBigInt(big.NewInt(roundHeightLoc), new(big.Int).Add(length, big.NewInt(1)))
@@ -290,24 +283,24 @@ func (s *GovernanceStateHelper) PushRoundHeight(height *big.Int) {
 }
 
 // uint256 public totalSupply;
-func (s *GovernanceStateHelper) TotalSupply() *big.Int {
+func (s *GovernanceState) TotalSupply() *big.Int {
 	return s.getStateBigInt(big.NewInt(totalSupplyLoc))
 }
-func (s *GovernanceStateHelper) IncTotalSupply(amount *big.Int) {
+func (s *GovernanceState) IncTotalSupply(amount *big.Int) {
 	s.setStateBigInt(big.NewInt(totalSupplyLoc), new(big.Int).Add(s.TotalSupply(), amount))
 }
-func (s *GovernanceStateHelper) DecTotalSupply(amount *big.Int) {
+func (s *GovernanceState) DecTotalSupply(amount *big.Int) {
 	s.setStateBigInt(big.NewInt(totalSupplyLoc), new(big.Int).Sub(s.TotalSupply(), amount))
 }
 
 // uint256 public totalStaked;
-func (s *GovernanceStateHelper) TotalStaked() *big.Int {
+func (s *GovernanceState) TotalStaked() *big.Int {
 	return s.getStateBigInt(big.NewInt(totalStakedLoc))
 }
-func (s *GovernanceStateHelper) IncTotalStaked(amount *big.Int) {
+func (s *GovernanceState) IncTotalStaked(amount *big.Int) {
 	s.setStateBigInt(big.NewInt(totalStakedLoc), new(big.Int).Add(s.TotalStaked(), amount))
 }
-func (s *GovernanceStateHelper) DecTotalStaked(amount *big.Int) {
+func (s *GovernanceState) DecTotalStaked(amount *big.Int) {
 	s.setStateBigInt(big.NewInt(totalStakedLoc), new(big.Int).Sub(s.TotalStaked(), amount))
 }
 
@@ -337,10 +330,10 @@ type nodeInfo struct {
 
 const nodeStructSize = 8
 
-func (s *GovernanceStateHelper) LenNodes() *big.Int {
+func (s *GovernanceState) LenNodes() *big.Int {
 	return s.getStateBigInt(big.NewInt(nodesLoc))
 }
-func (s *GovernanceStateHelper) Node(index *big.Int) *nodeInfo {
+func (s *GovernanceState) Node(index *big.Int) *nodeInfo {
 	node := new(nodeInfo)
 
 	arrayBaseLoc := s.getSlotLoc(big.NewInt(nodesLoc))
@@ -381,14 +374,14 @@ func (s *GovernanceStateHelper) Node(index *big.Int) *nodeInfo {
 
 	return node
 }
-func (s *GovernanceStateHelper) PushNode(n *nodeInfo) {
+func (s *GovernanceState) PushNode(n *nodeInfo) {
 	// Increase length by 1.
 	arrayLength := s.LenNodes()
 	s.setStateBigInt(big.NewInt(nodesLoc), new(big.Int).Add(arrayLength, big.NewInt(1)))
 
 	s.UpdateNode(arrayLength, n)
 }
-func (s *GovernanceStateHelper) UpdateNode(index *big.Int, n *nodeInfo) {
+func (s *GovernanceState) UpdateNode(index *big.Int, n *nodeInfo) {
 	arrayBaseLoc := s.getSlotLoc(big.NewInt(nodesLoc))
 	elementBaseLoc := new(big.Int).Add(arrayBaseLoc,
 		new(big.Int).Mul(index, big.NewInt(nodeStructSize)))
@@ -425,7 +418,7 @@ func (s *GovernanceStateHelper) UpdateNode(index *big.Int, n *nodeInfo) {
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(7))
 	s.writeBytes(loc, []byte(n.Url))
 }
-func (s *GovernanceStateHelper) PopLastNode() {
+func (s *GovernanceState) PopLastNode() {
 	// Decrease length by 1.
 	arrayLength := s.LenNodes()
 	newArrayLength := new(big.Int).Sub(arrayLength, big.NewInt(1))
@@ -436,14 +429,14 @@ func (s *GovernanceStateHelper) PopLastNode() {
 		Fined:  big.NewInt(0),
 	})
 }
-func (s *GovernanceStateHelper) Nodes() []*nodeInfo {
+func (s *GovernanceState) Nodes() []*nodeInfo {
 	var nodes []*nodeInfo
 	for i := int64(0); i < int64(s.LenNodes().Uint64()); i++ {
 		nodes = append(nodes, s.Node(big.NewInt(i)))
 	}
 	return nodes
 }
-func (s *GovernanceStateHelper) QualifiedNodes() []*nodeInfo {
+func (s *GovernanceState) QualifiedNodes() []*nodeInfo {
 	var nodes []*nodeInfo
 	for i := int64(0); i < int64(s.LenNodes().Uint64()); i++ {
 		node := s.Node(big.NewInt(i))
@@ -455,34 +448,34 @@ func (s *GovernanceStateHelper) QualifiedNodes() []*nodeInfo {
 }
 
 // mapping(address => uint256) public nodeOffsetByAddress;
-func (s *GovernanceStateHelper) NodesOffsetByAddress(addr common.Address) *big.Int {
+func (s *GovernanceState) NodesOffsetByAddress(addr common.Address) *big.Int {
 	loc := s.getMapLoc(big.NewInt(nodesOffsetByAddressLoc), addr.Bytes())
 	return new(big.Int).Sub(s.getStateBigInt(loc), big.NewInt(1))
 }
-func (s *GovernanceStateHelper) PutNodesOffsetByAddress(addr common.Address, offset *big.Int) {
+func (s *GovernanceState) PutNodesOffsetByAddress(addr common.Address, offset *big.Int) {
 	loc := s.getMapLoc(big.NewInt(nodesOffsetByAddressLoc), addr.Bytes())
 	s.setStateBigInt(loc, new(big.Int).Add(offset, big.NewInt(1)))
 }
-func (s *GovernanceStateHelper) DeleteNodesOffsetByAddress(addr common.Address) {
+func (s *GovernanceState) DeleteNodesOffsetByAddress(addr common.Address) {
 	loc := s.getMapLoc(big.NewInt(nodesOffsetByAddressLoc), addr.Bytes())
 	s.setStateBigInt(loc, big.NewInt(0))
 }
 
 // mapping(address => uint256) public nodeOffsetByID;
-func (s *GovernanceStateHelper) NodesOffsetByID(id Bytes32) *big.Int {
+func (s *GovernanceState) NodesOffsetByID(id Bytes32) *big.Int {
 	loc := s.getMapLoc(big.NewInt(nodesOffsetByIDLoc), id[:])
 	return new(big.Int).Sub(s.getStateBigInt(loc), big.NewInt(1))
 }
-func (s *GovernanceStateHelper) PutNodesOffsetByID(id Bytes32, offset *big.Int) {
+func (s *GovernanceState) PutNodesOffsetByID(id Bytes32, offset *big.Int) {
 	loc := s.getMapLoc(big.NewInt(nodesOffsetByIDLoc), id[:])
 	s.setStateBigInt(loc, new(big.Int).Add(offset, big.NewInt(1)))
 }
-func (s *GovernanceStateHelper) DeleteNodesOffsetByID(id Bytes32) {
+func (s *GovernanceState) DeleteNodesOffsetByID(id Bytes32) {
 	loc := s.getMapLoc(big.NewInt(nodesOffsetByIDLoc), id[:])
 	s.setStateBigInt(loc, big.NewInt(0))
 }
 
-func (s *GovernanceStateHelper) PutNodeOffsets(n *nodeInfo, offset *big.Int) error {
+func (s *GovernanceState) PutNodeOffsets(n *nodeInfo, offset *big.Int) error {
 	id, err := publicKeyToNodeID(n.PublicKey)
 	if err != nil {
 		return err
@@ -508,11 +501,11 @@ type delegatorInfo struct {
 const delegatorStructSize = 3
 
 // mapping(address => Delegator[]) public delegators;
-func (s *GovernanceStateHelper) LenDelegators(nodeAddr common.Address) *big.Int {
+func (s *GovernanceState) LenDelegators(nodeAddr common.Address) *big.Int {
 	loc := s.getMapLoc(big.NewInt(delegatorsLoc), nodeAddr.Bytes())
 	return s.getStateBigInt(loc)
 }
-func (s *GovernanceStateHelper) Delegator(nodeAddr common.Address, offset *big.Int) *delegatorInfo {
+func (s *GovernanceState) Delegator(nodeAddr common.Address, offset *big.Int) *delegatorInfo {
 	delegator := new(delegatorInfo)
 
 	loc := s.getMapLoc(big.NewInt(delegatorsLoc), nodeAddr.Bytes())
@@ -533,7 +526,7 @@ func (s *GovernanceStateHelper) Delegator(nodeAddr common.Address, offset *big.I
 
 	return delegator
 }
-func (s *GovernanceStateHelper) PushDelegator(nodeAddr common.Address, delegator *delegatorInfo) {
+func (s *GovernanceState) PushDelegator(nodeAddr common.Address, delegator *delegatorInfo) {
 	// Increase length by 1.
 	arrayLength := s.LenDelegators(nodeAddr)
 	loc := s.getMapLoc(big.NewInt(delegatorsLoc), nodeAddr.Bytes())
@@ -541,7 +534,7 @@ func (s *GovernanceStateHelper) PushDelegator(nodeAddr common.Address, delegator
 
 	s.UpdateDelegator(nodeAddr, arrayLength, delegator)
 }
-func (s *GovernanceStateHelper) UpdateDelegator(nodeAddr common.Address, offset *big.Int, delegator *delegatorInfo) {
+func (s *GovernanceState) UpdateDelegator(nodeAddr common.Address, offset *big.Int, delegator *delegatorInfo) {
 	loc := s.getMapLoc(big.NewInt(delegatorsLoc), nodeAddr.Bytes())
 	arrayBaseLoc := s.getSlotLoc(loc)
 	elementBaseLoc := new(big.Int).Add(arrayBaseLoc, new(big.Int).Mul(big.NewInt(delegatorStructSize), offset))
@@ -558,7 +551,7 @@ func (s *GovernanceStateHelper) UpdateDelegator(nodeAddr common.Address, offset 
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(2))
 	s.setStateBigInt(loc, delegator.UndelegatedAt)
 }
-func (s *GovernanceStateHelper) PopLastDelegator(nodeAddr common.Address) {
+func (s *GovernanceState) PopLastDelegator(nodeAddr common.Address) {
 	// Decrease length by 1.
 	arrayLength := s.LenDelegators(nodeAddr)
 	newArrayLength := new(big.Int).Sub(arrayLength, big.NewInt(1))
@@ -572,67 +565,55 @@ func (s *GovernanceStateHelper) PopLastDelegator(nodeAddr common.Address) {
 }
 
 // mapping(address => mapping(address => uint256)) delegatorsOffset;
-func (s *GovernanceStateHelper) DelegatorsOffset(nodeAddr, delegatorAddr common.Address) *big.Int {
+func (s *GovernanceState) DelegatorsOffset(nodeAddr, delegatorAddr common.Address) *big.Int {
 	loc := s.getMapLoc(s.getMapLoc(big.NewInt(delegatorsOffsetLoc), nodeAddr.Bytes()), delegatorAddr.Bytes())
 	return new(big.Int).Sub(s.getStateBigInt(loc), big.NewInt(1))
 }
-func (s *GovernanceStateHelper) PutDelegatorOffset(nodeAddr, delegatorAddr common.Address, offset *big.Int) {
+func (s *GovernanceState) PutDelegatorOffset(nodeAddr, delegatorAddr common.Address, offset *big.Int) {
 	loc := s.getMapLoc(s.getMapLoc(big.NewInt(delegatorsOffsetLoc), nodeAddr.Bytes()), delegatorAddr.Bytes())
 	s.setStateBigInt(loc, new(big.Int).Add(offset, big.NewInt(1)))
 }
-func (s *GovernanceStateHelper) DeleteDelegatorsOffset(nodeAddr, delegatorAddr common.Address) {
+func (s *GovernanceState) DeleteDelegatorsOffset(nodeAddr, delegatorAddr common.Address) {
 	loc := s.getMapLoc(s.getMapLoc(big.NewInt(delegatorsOffsetLoc), nodeAddr.Bytes()), delegatorAddr.Bytes())
 	s.setStateBigInt(loc, big.NewInt(0))
 }
 
-// bytes32[] public crs;
-func (s *GovernanceStateHelper) LenCRS() *big.Int {
-	return s.getStateBigInt(big.NewInt(crsLoc))
+// uint256 public crsRound;
+func (s *GovernanceState) CRSRound() *big.Int {
+	return s.getStateBigInt(big.NewInt(crsRoundLoc))
 }
-func (s *GovernanceStateHelper) CRS(index *big.Int) common.Hash {
-	baseLoc := s.getSlotLoc(big.NewInt(crsLoc))
-	loc := new(big.Int).Add(baseLoc, index)
-	return s.getState(common.BigToHash(loc))
-}
-func (s *GovernanceStateHelper) CurrentCRS() common.Hash {
-	return s.CRS(new(big.Int).Sub(s.LenCRS(), big.NewInt(1)))
-}
-func (s *GovernanceStateHelper) PushCRS(crs common.Hash) {
-	// increase length by 1.
-	length := s.getStateBigInt(big.NewInt(crsLoc))
-	s.setStateBigInt(big.NewInt(crsLoc), new(big.Int).Add(length, big.NewInt(1)))
-
-	baseLoc := s.getSlotLoc(big.NewInt(crsLoc))
-	loc := new(big.Int).Add(baseLoc, length)
-
-	s.setState(common.BigToHash(loc), crs)
-}
-func (s *GovernanceStateHelper) PopCRS() {
-	// decrease length by 1.
-	length := s.getStateBigInt(big.NewInt(crsLoc))
-	s.setStateBigInt(big.NewInt(crsLoc), new(big.Int).Sub(length, big.NewInt(1)))
-
-	baseLoc := s.getSlotLoc(big.NewInt(crsLoc))
-	loc := new(big.Int).Add(baseLoc, length)
-
-	s.setState(common.BigToHash(loc), common.Hash{})
-}
-func (s *GovernanceStateHelper) Round() *big.Int {
-	return new(big.Int).Sub(s.getStateBigInt(big.NewInt(crsLoc)), big.NewInt(1))
+func (s *GovernanceState) SetCRSRound(round *big.Int) {
+	s.setStateBigInt(big.NewInt(crsRoundLoc), round)
 }
 
-// bytes[][] public dkgMasterPublicKeys;
-func (s *GovernanceStateHelper) DKGMasterPublicKeys(round *big.Int) [][]byte {
-	return s.read2DByteArray(big.NewInt(dkgMasterPublicKeysLoc), round)
+// bytes32 public crs;
+func (s *GovernanceState) CRS() common.Hash {
+	return s.getState(common.BigToHash(big.NewInt(crsLoc)))
 }
-func (s *GovernanceStateHelper) PushDKGMasterPublicKey(round *big.Int, mpk []byte) {
-	s.appendTo2DByteArray(big.NewInt(dkgMasterPublicKeysLoc), round, mpk)
+func (s *GovernanceState) SetCRS(crs common.Hash) {
+	s.setState(common.BigToHash(big.NewInt(crsLoc)), crs)
 }
-func (s *GovernanceStateHelper) UniqueDKGMasterPublicKeys(round *big.Int) []*dkgTypes.MasterPublicKey {
+
+// uint256 public dkgRound;
+func (s *GovernanceState) DKGRound() *big.Int {
+	return s.getStateBigInt(big.NewInt(dkgRoundLoc))
+}
+func (s *GovernanceState) SetDKGRound(round *big.Int) {
+	s.setStateBigInt(big.NewInt(dkgRoundLoc), round)
+}
+
+// bytes[] public dkgMasterPublicKeys;
+func (s *GovernanceState) DKGMasterPublicKeys() [][]byte {
+	return s.read1DByteArray(big.NewInt(dkgMasterPublicKeysLoc))
+}
+func (s *GovernanceState) PushDKGMasterPublicKey(mpk []byte) {
+	s.appendTo1DByteArray(big.NewInt(dkgMasterPublicKeysLoc), mpk)
+}
+func (s *GovernanceState) UniqueDKGMasterPublicKeys() []*dkgTypes.MasterPublicKey {
 	// Prepare DKGMasterPublicKeys.
 	var dkgMasterPKs []*dkgTypes.MasterPublicKey
 	existence := make(map[coreTypes.NodeID]struct{})
-	for _, mpk := range s.DKGMasterPublicKeys(round) {
+	for _, mpk := range s.DKGMasterPublicKeys() {
 		x := new(dkgTypes.MasterPublicKey)
 		if err := rlp.DecodeBytes(mpk, x); err != nil {
 			panic(err)
@@ -647,10 +628,10 @@ func (s *GovernanceStateHelper) UniqueDKGMasterPublicKeys(round *big.Int) []*dkg
 	}
 	return dkgMasterPKs
 }
-func (s *GovernanceStateHelper) GetDKGMasterPublicKeyByProposerID(
-	round *big.Int, proposerID coreTypes.NodeID) (*dkgTypes.MasterPublicKey, error) {
+func (s *GovernanceState) GetDKGMasterPublicKeyByProposerID(
+	proposerID coreTypes.NodeID) (*dkgTypes.MasterPublicKey, error) {
 
-	for _, mpk := range s.DKGMasterPublicKeys(round) {
+	for _, mpk := range s.DKGMasterPublicKeys() {
 		x := new(dkgTypes.MasterPublicKey)
 		if err := rlp.DecodeBytes(mpk, x); err != nil {
 			panic(err)
@@ -661,199 +642,189 @@ func (s *GovernanceStateHelper) GetDKGMasterPublicKeyByProposerID(
 	}
 	return nil, errors.New("not found")
 }
-func (s *GovernanceStateHelper) ClearDKGMasterPublicKeys(round *big.Int) {
-	s.erase2DByteArray(big.NewInt(dkgMasterPublicKeysLoc), round)
+func (s *GovernanceState) ClearDKGMasterPublicKeys() {
+	s.erase1DByteArray(big.NewInt(dkgMasterPublicKeysLoc))
 }
 
-// bytes[][] public dkgComplaints;
-func (s *GovernanceStateHelper) DKGComplaints(round *big.Int) [][]byte {
-	return s.read2DByteArray(big.NewInt(dkgComplaintsLoc), round)
+// bytes[] public dkgComplaints;
+func (s *GovernanceState) DKGComplaints() [][]byte {
+	return s.read1DByteArray(big.NewInt(dkgComplaintsLoc))
 }
-func (s *GovernanceStateHelper) PushDKGComplaint(round *big.Int, complaint []byte) {
-	s.appendTo2DByteArray(big.NewInt(dkgComplaintsLoc), round, complaint)
+func (s *GovernanceState) PushDKGComplaint(complaint []byte) {
+	s.appendTo1DByteArray(big.NewInt(dkgComplaintsLoc), complaint)
 }
-func (s *GovernanceStateHelper) ClearDKGComplaints(round *big.Int) {
-	s.erase2DByteArray(big.NewInt(dkgComplaintsLoc), round)
+func (s *GovernanceState) ClearDKGComplaints() {
+	s.erase1DByteArray(big.NewInt(dkgComplaintsLoc))
 }
 
-// mapping(address => bool)[] public dkgReady;
-func (s *GovernanceStateHelper) DKGMPKReady(round *big.Int, addr common.Address) bool {
-	baseLoc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgReadyLoc)), round)
-	mapLoc := s.getMapLoc(baseLoc, addr.Bytes())
+// mapping(address => bool) public dkgReady;
+func (s *GovernanceState) DKGMPKReady(addr common.Address) bool {
+	mapLoc := s.getMapLoc(big.NewInt(dkgReadyLoc), addr.Bytes())
 	return s.getStateBigInt(mapLoc).Cmp(big.NewInt(0)) != 0
 }
-func (s *GovernanceStateHelper) PutDKGMPKReady(round *big.Int, addr common.Address, ready bool) {
-	baseLoc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgReadyLoc)), round)
-	mapLoc := s.getMapLoc(baseLoc, addr.Bytes())
+func (s *GovernanceState) PutDKGMPKReady(addr common.Address, ready bool) {
+	mapLoc := s.getMapLoc(big.NewInt(dkgReadyLoc), addr.Bytes())
 	res := big.NewInt(0)
 	if ready {
 		res = big.NewInt(1)
 	}
 	s.setStateBigInt(mapLoc, res)
 }
-func (s *GovernanceStateHelper) ClearDKGMPKReady(round *big.Int, dkgSet map[coreTypes.NodeID]struct{}) {
+func (s *GovernanceState) ClearDKGMPKReady(dkgSet map[coreTypes.NodeID]struct{}) {
 	for id := range dkgSet {
 		offset := s.NodesOffsetByID(Bytes32(id.Hash))
 		if offset.Cmp(big.NewInt(0)) < 0 {
 			panic(errors.New("DKG node does not exist"))
 		}
 		node := s.Node(offset)
-		s.PutDKGMPKReady(round, node.Owner, false)
+		s.PutDKGMPKReady(node.Owner, false)
 	}
 }
 
-// uint256[] public dkgReadysCount;
-func (s *GovernanceStateHelper) DKGMPKReadysCount(round *big.Int) *big.Int {
-	loc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgReadysCountLoc)), round)
-	return s.getStateBigInt(loc)
+// uint256 public dkgReadysCount;
+func (s *GovernanceState) DKGMPKReadysCount() *big.Int {
+	return s.getStateBigInt(big.NewInt(dkgReadysCountLoc))
 }
-func (s *GovernanceStateHelper) IncDKGMPKReadysCount(round *big.Int) {
-	loc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgReadysCountLoc)), round)
-	count := s.getStateBigInt(loc)
-	s.setStateBigInt(loc, new(big.Int).Add(count, big.NewInt(1)))
+func (s *GovernanceState) IncDKGMPKReadysCount() {
+	s.setStateBigInt(big.NewInt(dkgReadysCountLoc),
+		new(big.Int).Add(s.getStateBigInt(big.NewInt(dkgReadysCountLoc)), big.NewInt(1)))
 }
-func (s *GovernanceStateHelper) ResetDKGMPKReadysCount(round *big.Int) {
-	loc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgReadysCountLoc)), round)
-	s.setStateBigInt(loc, big.NewInt(0))
+func (s *GovernanceState) ResetDKGMPKReadysCount() {
+	s.setStateBigInt(big.NewInt(dkgReadysCountLoc), big.NewInt(0))
 }
 
-// mapping(address => bool)[] public dkgFinalized;
-func (s *GovernanceStateHelper) DKGFinalized(round *big.Int, addr common.Address) bool {
-	baseLoc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinalizedLoc)), round)
-	mapLoc := s.getMapLoc(baseLoc, addr.Bytes())
+// mapping(address => bool) public dkgFinalized;
+func (s *GovernanceState) DKGFinalized(addr common.Address) bool {
+	mapLoc := s.getMapLoc(big.NewInt(dkgFinalizedLoc), addr.Bytes())
 	return s.getStateBigInt(mapLoc).Cmp(big.NewInt(0)) != 0
 }
-func (s *GovernanceStateHelper) PutDKGFinalized(round *big.Int, addr common.Address, finalized bool) {
-	baseLoc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinalizedLoc)), round)
-	mapLoc := s.getMapLoc(baseLoc, addr.Bytes())
+func (s *GovernanceState) PutDKGFinalized(addr common.Address, finalized bool) {
+	mapLoc := s.getMapLoc(big.NewInt(dkgFinalizedLoc), addr.Bytes())
 	res := big.NewInt(0)
 	if finalized {
 		res = big.NewInt(1)
 	}
 	s.setStateBigInt(mapLoc, res)
 }
-func (s *GovernanceStateHelper) ClearDKGFinalized(round *big.Int, dkgSet map[coreTypes.NodeID]struct{}) {
+func (s *GovernanceState) ClearDKGFinalized(dkgSet map[coreTypes.NodeID]struct{}) {
 	for id := range dkgSet {
 		offset := s.NodesOffsetByID(Bytes32(id.Hash))
 		if offset.Cmp(big.NewInt(0)) < 0 {
 			panic(errors.New("DKG node does not exist"))
 		}
 		node := s.Node(offset)
-		s.PutDKGFinalized(round, node.Owner, false)
+		s.PutDKGFinalized(node.Owner, false)
 	}
 }
 
-// uint256[] public dkgFinalizedsCount;
-func (s *GovernanceStateHelper) DKGFinalizedsCount(round *big.Int) *big.Int {
-	loc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinalizedsCountLoc)), round)
-	return s.getStateBigInt(loc)
+// uint256 public dkgFinalizedsCount;
+func (s *GovernanceState) DKGFinalizedsCount() *big.Int {
+	return s.getStateBigInt(big.NewInt(dkgFinalizedsCountLoc))
 }
-func (s *GovernanceStateHelper) IncDKGFinalizedsCount(round *big.Int) {
-	loc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinalizedsCountLoc)), round)
-	count := s.getStateBigInt(loc)
-	s.setStateBigInt(loc, new(big.Int).Add(count, big.NewInt(1)))
+func (s *GovernanceState) IncDKGFinalizedsCount() {
+	s.setStateBigInt(big.NewInt(dkgFinalizedsCountLoc),
+		new(big.Int).Add(s.getStateBigInt(big.NewInt(dkgFinalizedsCountLoc)), big.NewInt(1)))
 }
-func (s *GovernanceStateHelper) ResetDKGFinalizedsCount(round *big.Int) {
-	loc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgFinalizedsCountLoc)), round)
-	s.setStateBigInt(loc, big.NewInt(0))
+func (s *GovernanceState) ResetDKGFinalizedsCount() {
+	s.setStateBigInt(big.NewInt(dkgFinalizedsCountLoc), big.NewInt(0))
 }
 
 // address public owner;
-func (s *GovernanceStateHelper) Owner() common.Address {
+func (s *GovernanceState) Owner() common.Address {
 	val := s.getState(common.BigToHash(big.NewInt(ownerLoc)))
 	return common.BytesToAddress(val.Bytes())
 }
-func (s *GovernanceStateHelper) SetOwner(newOwner common.Address) {
+func (s *GovernanceState) SetOwner(newOwner common.Address) {
 	s.setState(common.BigToHash(big.NewInt(ownerLoc)), newOwner.Hash())
 }
 
 // uint256 public minStake;
-func (s *GovernanceStateHelper) MinStake() *big.Int {
+func (s *GovernanceState) MinStake() *big.Int {
 	return s.getStateBigInt(big.NewInt(minStakeLoc))
 }
 
 // uint256 public lockupPeriod;
-func (s *GovernanceStateHelper) LockupPeriod() *big.Int {
+func (s *GovernanceState) LockupPeriod() *big.Int {
 	return s.getStateBigInt(big.NewInt(lockupPeriodLoc))
 }
 
 // uint256 public miningVelocity;
-func (s *GovernanceStateHelper) MiningVelocity() *big.Int {
+func (s *GovernanceState) MiningVelocity() *big.Int {
 	return s.getStateBigInt(big.NewInt(miningVelocityLoc))
 }
-func (s *GovernanceStateHelper) HalfMiningVelocity() {
+func (s *GovernanceState) HalfMiningVelocity() {
 	s.setStateBigInt(big.NewInt(miningVelocityLoc),
 		new(big.Int).Div(s.MiningVelocity(), big.NewInt(2)))
 }
 
 // uint256 public nextHalvingSupply;
-func (s *GovernanceStateHelper) NextHalvingSupply() *big.Int {
+func (s *GovernanceState) NextHalvingSupply() *big.Int {
 	return s.getStateBigInt(big.NewInt(nextHalvingSupplyLoc))
 }
-func (s *GovernanceStateHelper) IncNextHalvingSupply(amount *big.Int) {
+func (s *GovernanceState) IncNextHalvingSupply(amount *big.Int) {
 	s.setStateBigInt(big.NewInt(nextHalvingSupplyLoc),
 		new(big.Int).Add(s.NextHalvingSupply(), amount))
 }
 
 // uint256 public lastHalvedAmount;
-func (s *GovernanceStateHelper) LastHalvedAmount() *big.Int {
+func (s *GovernanceState) LastHalvedAmount() *big.Int {
 	return s.getStateBigInt(big.NewInt(lastHalvedAmountLoc))
 }
-func (s *GovernanceStateHelper) HalfLastHalvedAmount() {
+func (s *GovernanceState) HalfLastHalvedAmount() {
 	s.setStateBigInt(big.NewInt(lastHalvedAmountLoc),
 		new(big.Int).Div(s.LastHalvedAmount(), big.NewInt(2)))
 }
 
-func (s *GovernanceStateHelper) MiningHalved() {
+func (s *GovernanceState) MiningHalved() {
 	s.HalfMiningVelocity()
 	s.HalfLastHalvedAmount()
 	s.IncNextHalvingSupply(s.LastHalvedAmount())
 }
 
 // uint256 public blockGasLimit;
-func (s *GovernanceStateHelper) BlockGasLimit() *big.Int {
+func (s *GovernanceState) BlockGasLimit() *big.Int {
 	return s.getStateBigInt(big.NewInt(blockGasLimitLoc))
 }
-func (s *GovernanceStateHelper) SetBlockGasLimit(reward *big.Int) {
+func (s *GovernanceState) SetBlockGasLimit(reward *big.Int) {
 	s.setStateBigInt(big.NewInt(blockGasLimitLoc), reward)
 }
 
 // uint256 public lambdaBA;
-func (s *GovernanceStateHelper) LambdaBA() *big.Int {
+func (s *GovernanceState) LambdaBA() *big.Int {
 	return s.getStateBigInt(big.NewInt(lambdaBALoc))
 }
 
 // uint256 public lambdaDKG;
-func (s *GovernanceStateHelper) LambdaDKG() *big.Int {
+func (s *GovernanceState) LambdaDKG() *big.Int {
 	return s.getStateBigInt(big.NewInt(lambdaDKGLoc))
 }
 
 // uint256 public notarySetSize;
-func (s *GovernanceStateHelper) NotarySetSize() *big.Int {
+func (s *GovernanceState) NotarySetSize() *big.Int {
 	return s.getStateBigInt(big.NewInt(notarySetSizeLoc))
 }
 
 // uint256 public dkgSetSize;
-func (s *GovernanceStateHelper) DKGSetSize() *big.Int {
+func (s *GovernanceState) DKGSetSize() *big.Int {
 	return s.getStateBigInt(big.NewInt(dkgSetSizeLoc))
 }
 
 // uint256 public roundLength;
-func (s *GovernanceStateHelper) RoundLength() *big.Int {
+func (s *GovernanceState) RoundLength() *big.Int {
 	return s.getStateBigInt(big.NewInt(roundLengthLoc))
 }
 
 // uint256 public minBlockInterval;
-func (s *GovernanceStateHelper) MinBlockInterval() *big.Int {
+func (s *GovernanceState) MinBlockInterval() *big.Int {
 	return s.getStateBigInt(big.NewInt(minBlockIntervalLoc))
 }
 
 // uint256[] public fineValues;
-func (s *GovernanceStateHelper) FineValue(index *big.Int) *big.Int {
+func (s *GovernanceState) FineValue(index *big.Int) *big.Int {
 	arrayBaseLoc := s.getSlotLoc(big.NewInt(fineValuesLoc))
 	return s.getStateBigInt(new(big.Int).Add(arrayBaseLoc, index))
 }
-func (s *GovernanceStateHelper) FineValues() []*big.Int {
+func (s *GovernanceState) FineValues() []*big.Int {
 	len := s.getStateBigInt(big.NewInt(fineValuesLoc))
 	result := make([]*big.Int, len.Uint64())
 	for i := 0; i < int(len.Uint64()); i++ {
@@ -861,7 +832,7 @@ func (s *GovernanceStateHelper) FineValues() []*big.Int {
 	}
 	return result
 }
-func (s *GovernanceStateHelper) SetFineValues(values []*big.Int) {
+func (s *GovernanceState) SetFineValues(values []*big.Int) {
 	s.setStateBigInt(big.NewInt(fineValuesLoc), big.NewInt(int64(len(values))))
 
 	arrayBaseLoc := s.getSlotLoc(big.NewInt(fineValuesLoc))
@@ -871,11 +842,11 @@ func (s *GovernanceStateHelper) SetFineValues(values []*big.Int) {
 }
 
 // mapping(bytes32 => bool) public fineRdecords;
-func (s *GovernanceStateHelper) FineRecords(recordHash Bytes32) bool {
+func (s *GovernanceState) FineRecords(recordHash Bytes32) bool {
 	loc := s.getMapLoc(big.NewInt(finedRecordsLoc), recordHash[:])
 	return s.getStateBigInt(loc).Cmp(big.NewInt(0)) > 0
 }
-func (s *GovernanceStateHelper) SetFineRecords(recordHash Bytes32, status bool) {
+func (s *GovernanceState) SetFineRecords(recordHash Bytes32, status bool) {
 	loc := s.getMapLoc(big.NewInt(finedRecordsLoc), recordHash[:])
 	value := int64(0)
 	if status {
@@ -885,23 +856,50 @@ func (s *GovernanceStateHelper) SetFineRecords(recordHash Bytes32, status bool) 
 }
 
 // uint256[] public DKGResetCount;
-func (s *GovernanceStateHelper) DKGResetCount(round *big.Int) *big.Int {
+func (s *GovernanceState) DKGResetCount(round *big.Int) *big.Int {
 	arrayBaseLoc := s.getSlotLoc(big.NewInt(dkgResetCountLoc))
 	return s.getStateBigInt(new(big.Int).Add(arrayBaseLoc, round))
 }
-func (s *GovernanceStateHelper) IncDKGResetCount(round *big.Int) {
+func (s *GovernanceState) IncDKGResetCount(round *big.Int) {
 	loc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgResetCountLoc)), round)
 	count := s.getStateBigInt(loc)
 	s.setStateBigInt(loc, new(big.Int).Add(count, big.NewInt(1)))
 }
 
 // uint256 public minGasPrice;
-func (s *GovernanceStateHelper) MinGasPrice() *big.Int {
+func (s *GovernanceState) MinGasPrice() *big.Int {
 	return s.getStateBigInt(big.NewInt(minGasPriceLoc))
 }
 
+// Initialize initializes governance contract state.
+func (s *GovernanceState) Initialize(config *params.DexconConfig, totalSupply *big.Int) {
+	if config.NextHalvingSupply.Cmp(totalSupply) <= 0 {
+		panic(fmt.Sprintf("invalid genesis found, totalSupply: %s, nextHavlingSupply: %s",
+			totalSupply, config.NextHalvingSupply))
+	}
+
+	// Genesis CRS.
+	crs := crypto.Keccak256Hash([]byte(config.GenesisCRSText))
+	s.SetCRS(crs)
+
+	// Round 0 height.
+	s.PushRoundHeight(big.NewInt(0))
+
+	// Owner.
+	s.SetOwner(config.Owner)
+
+	// Governance configuration.
+	s.UpdateConfiguration(config)
+
+	// Set totalSupply.
+	s.IncTotalSupply(totalSupply)
+
+	// Set DKGRound.
+	s.SetDKGRound(big.NewInt(int64(dexCore.DKGDelayRound)))
+}
+
 // Stake is a helper function for creating genesis state.
-func (s *GovernanceStateHelper) Stake(
+func (s *GovernanceState) Stake(
 	addr common.Address, publicKey []byte, staked *big.Int,
 	name, email, location, url string) {
 	offset := s.LenNodes()
@@ -939,7 +937,7 @@ func (s *GovernanceStateHelper) Stake(
 const decimalMultiplier = 100000000.0
 
 // Configuration returns the current configuration.
-func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
+func (s *GovernanceState) Configuration() *params.DexconConfig {
 	return &params.DexconConfig{
 		MinStake:          s.getStateBigInt(big.NewInt(minStakeLoc)),
 		LockupPeriod:      s.getStateBigInt(big.NewInt(lockupPeriodLoc)).Uint64(),
@@ -959,7 +957,7 @@ func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
 }
 
 // UpdateConfiguration updates system configuration.
-func (s *GovernanceStateHelper) UpdateConfiguration(cfg *params.DexconConfig) {
+func (s *GovernanceState) UpdateConfiguration(cfg *params.DexconConfig) {
 	s.setStateBigInt(big.NewInt(minStakeLoc), cfg.MinStake)
 	s.setStateBigInt(big.NewInt(lockupPeriodLoc), big.NewInt(int64(cfg.LockupPeriod)))
 	s.setStateBigInt(big.NewInt(miningVelocityLoc), big.NewInt(int64(cfg.MiningVelocity*decimalMultiplier)))
@@ -991,7 +989,7 @@ type rawConfigStruct struct {
 }
 
 // UpdateConfigurationRaw updates system configuration.
-func (s *GovernanceStateHelper) UpdateConfigurationRaw(cfg *rawConfigStruct) {
+func (s *GovernanceState) UpdateConfigurationRaw(cfg *rawConfigStruct) {
 	s.setStateBigInt(big.NewInt(minStakeLoc), cfg.MinStake)
 	s.setStateBigInt(big.NewInt(lockupPeriodLoc), cfg.LockupPeriod)
 	s.setStateBigInt(big.NewInt(blockGasLimitLoc), cfg.BlockGasLimit)
@@ -1006,7 +1004,7 @@ func (s *GovernanceStateHelper) UpdateConfigurationRaw(cfg *rawConfigStruct) {
 }
 
 // event ConfigurationChanged();
-func (s *GovernanceStateHelper) emitConfigurationChangedEvent() {
+func (s *GovernanceState) emitConfigurationChangedEvent() {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{GovernanceABI.Events["ConfigurationChanged"].Id()},
@@ -1015,7 +1013,7 @@ func (s *GovernanceStateHelper) emitConfigurationChangedEvent() {
 }
 
 // event CRSProposed(uint256 round, bytes32 crs);
-func (s *GovernanceStateHelper) emitCRSProposed(round *big.Int, crs common.Hash) {
+func (s *GovernanceState) emitCRSProposed(round *big.Int, crs common.Hash) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{GovernanceABI.Events["CRSProposed"].Id(), common.BigToHash(round)},
@@ -1024,7 +1022,7 @@ func (s *GovernanceStateHelper) emitCRSProposed(round *big.Int, crs common.Hash)
 }
 
 // event Staked(address indexed NodeAddress, uint256 Amount);
-func (s *GovernanceStateHelper) emitStaked(nodeAddr common.Address) {
+func (s *GovernanceState) emitStaked(nodeAddr common.Address) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{GovernanceABI.Events["Staked"].Id(), nodeAddr.Hash()},
@@ -1033,7 +1031,7 @@ func (s *GovernanceStateHelper) emitStaked(nodeAddr common.Address) {
 }
 
 // event Unstaked(address indexed NodeAddress);
-func (s *GovernanceStateHelper) emitUnstaked(nodeAddr common.Address) {
+func (s *GovernanceState) emitUnstaked(nodeAddr common.Address) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{GovernanceABI.Events["Unstaked"].Id(), nodeAddr.Hash()},
@@ -1042,7 +1040,7 @@ func (s *GovernanceStateHelper) emitUnstaked(nodeAddr common.Address) {
 }
 
 // event NodeRemoved(address indexed NodeAddress);
-func (s *GovernanceStateHelper) emitNodeRemoved(nodeAddr common.Address) {
+func (s *GovernanceState) emitNodeRemoved(nodeAddr common.Address) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{GovernanceABI.Events["NodeRemoved"].Id(), nodeAddr.Hash()},
@@ -1051,7 +1049,7 @@ func (s *GovernanceStateHelper) emitNodeRemoved(nodeAddr common.Address) {
 }
 
 // event Delegated(address indexed NodeAddress, address indexed DelegatorAddress, uint256 Amount);
-func (s *GovernanceStateHelper) emitDelegated(nodeAddr, delegatorAddr common.Address, amount *big.Int) {
+func (s *GovernanceState) emitDelegated(nodeAddr, delegatorAddr common.Address, amount *big.Int) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{GovernanceABI.Events["Delegated"].Id(), nodeAddr.Hash(), delegatorAddr.Hash()},
@@ -1060,7 +1058,7 @@ func (s *GovernanceStateHelper) emitDelegated(nodeAddr, delegatorAddr common.Add
 }
 
 // event Undelegated(address indexed NodeAddress, address indexed DelegatorAddress, uint256 Amount);
-func (s *GovernanceStateHelper) emitUndelegated(nodeAddr, delegatorAddr common.Address, amount *big.Int) {
+func (s *GovernanceState) emitUndelegated(nodeAddr, delegatorAddr common.Address, amount *big.Int) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{GovernanceABI.Events["Undelegated"].Id(), nodeAddr.Hash(), delegatorAddr.Hash()},
@@ -1069,7 +1067,7 @@ func (s *GovernanceStateHelper) emitUndelegated(nodeAddr, delegatorAddr common.A
 }
 
 // event Withdrawn(address indexed NodeAddress, address indexed DelegatorAddress, uint256 Amount);
-func (s *GovernanceStateHelper) emitWithdrawn(nodeAddr common.Address, delegatorAddr common.Address, amount *big.Int) {
+func (s *GovernanceState) emitWithdrawn(nodeAddr common.Address, delegatorAddr common.Address, amount *big.Int) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{GovernanceABI.Events["Withdrawn"].Id(), nodeAddr.Hash(), delegatorAddr.Hash()},
@@ -1078,7 +1076,7 @@ func (s *GovernanceStateHelper) emitWithdrawn(nodeAddr common.Address, delegator
 }
 
 // event ForkReported(address indexed NodeAddress, address indexed Type, bytes Arg1, bytes Arg2);
-func (s *GovernanceStateHelper) emitForkReported(nodeAddr common.Address, reportType *big.Int, arg1, arg2 []byte) {
+func (s *GovernanceState) emitForkReported(nodeAddr common.Address, reportType *big.Int, arg1, arg2 []byte) {
 
 	t, err := abi.NewType("bytes", nil)
 	if err != nil {
@@ -1110,7 +1108,7 @@ func (s *GovernanceStateHelper) emitForkReported(nodeAddr common.Address, report
 }
 
 // event Fined(address indexed NodeAddress, uint256 Amount);
-func (s *GovernanceStateHelper) emitFined(nodeAddr common.Address, amount *big.Int) {
+func (s *GovernanceState) emitFined(nodeAddr common.Address, amount *big.Int) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{GovernanceABI.Events["Fined"].Id(), nodeAddr.Hash()},
@@ -1119,7 +1117,7 @@ func (s *GovernanceStateHelper) emitFined(nodeAddr common.Address, amount *big.I
 }
 
 // event FinePaid(address indexed NodeAddress, uint256 Amount);
-func (s *GovernanceStateHelper) emitFinePaid(nodeAddr common.Address, amount *big.Int) {
+func (s *GovernanceState) emitFinePaid(nodeAddr common.Address, amount *big.Int) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{GovernanceABI.Events["FinePaid"].Id(), nodeAddr.Hash()},
@@ -1128,7 +1126,7 @@ func (s *GovernanceStateHelper) emitFinePaid(nodeAddr common.Address, amount *bi
 }
 
 // event DKGReset(uint256 indexed Round, uint256 BlockHeight);
-func (s *GovernanceStateHelper) emitDKGReset(round *big.Int, blockHeight *big.Int) {
+func (s *GovernanceState) emitDKGReset(round *big.Int, blockHeight *big.Int) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{GovernanceABI.Events["DKGReset"].Id(), common.BigToHash(round)},
@@ -1136,25 +1134,28 @@ func (s *GovernanceStateHelper) emitDKGReset(round *big.Int, blockHeight *big.In
 	})
 }
 
-func getConfigState(evm *EVM, round *big.Int) (*GovernanceStateHelper, error) {
-	configRound := big.NewInt(0)
-	if round.Uint64() > core.ConfigRoundShift {
-		configRound = new(big.Int).Sub(round, big.NewInt(int64(core.ConfigRoundShift)))
-	}
-
-	gs := &GovernanceStateHelper{evm.StateDB}
-	height := gs.RoundHeight(configRound).Uint64()
-	if round.Uint64() > core.ConfigRoundShift {
+func getRoundState(evm *EVM, round *big.Int) (*GovernanceState, error) {
+	gs := &GovernanceState{evm.StateDB}
+	height := gs.RoundHeight(round).Uint64()
+	if round.Uint64() > dexCore.ConfigRoundShift {
 		if height == 0 {
 			return nil, errExecutionReverted
 		}
 	}
 	statedb, err := evm.StateAtNumber(height)
-	return &GovernanceStateHelper{statedb}, err
+	return &GovernanceState{statedb}, err
+}
+
+func getConfigState(evm *EVM, round *big.Int) (*GovernanceState, error) {
+	configRound := big.NewInt(0)
+	if round.Uint64() > dexCore.ConfigRoundShift {
+		configRound = new(big.Int).Sub(round, big.NewInt(int64(dexCore.ConfigRoundShift)))
+	}
+	return getRoundState(evm, configRound)
 }
 
 type coreDKGUtils interface {
-	SetState(GovernanceStateHelper)
+	SetState(GovernanceState)
 	NewGroupPublicKey(*big.Int, int) (tsigVerifierIntf, error)
 }
 type tsigVerifierIntf interface {
@@ -1164,28 +1165,27 @@ type tsigVerifierIntf interface {
 // GovernanceContract represents the governance contract of DEXCON.
 type GovernanceContract struct {
 	evm          *EVM
-	state        GovernanceStateHelper
+	state        GovernanceState
 	contract     *Contract
 	coreDKGUtils coreDKGUtils
 }
 
 // defaultCoreDKGUtils implements coreDKGUtils.
 type defaultCoreDKGUtils struct {
-	state GovernanceStateHelper
+	state GovernanceState
 }
 
-func (c *defaultCoreDKGUtils) SetState(state GovernanceStateHelper) {
+func (c *defaultCoreDKGUtils) SetState(state GovernanceState) {
 	c.state = state
 }
 
-func (c *defaultCoreDKGUtils) NewGroupPublicKey(round *big.Int,
-	threshold int) (tsigVerifierIntf, error) {
+func (c *defaultCoreDKGUtils) NewGroupPublicKey(round *big.Int, threshold int) (tsigVerifierIntf, error) {
 	// Prepare DKGMasterPublicKeys.
-	mpks := c.state.UniqueDKGMasterPublicKeys(round)
+	mpks := c.state.UniqueDKGMasterPublicKeys()
 
 	// Prepare DKGComplaints.
 	var complaints []*dkgTypes.Complaint
-	for _, comp := range c.state.DKGComplaints(round) {
+	for _, comp := range c.state.DKGComplaints() {
 		x := new(dkgTypes.Complaint)
 		if err := rlp.DecodeBytes(comp, x); err != nil {
 			panic(err)
@@ -1193,7 +1193,7 @@ func (c *defaultCoreDKGUtils) NewGroupPublicKey(round *big.Int,
 		complaints = append(complaints, x)
 	}
 
-	return core.NewDKGGroupPublicKey(round.Uint64(), mpks, complaints, threshold)
+	return dexCore.NewDKGGroupPublicKey(round.Uint64(), mpks, complaints, threshold)
 }
 
 func (g *GovernanceContract) Address() common.Address {
@@ -1229,7 +1229,7 @@ func (g *GovernanceContract) configDKGSetSize(round *big.Int) *big.Int {
 	return s.DKGSetSize()
 }
 func (g *GovernanceContract) getDKGSet(round *big.Int) map[coreTypes.NodeID]struct{} {
-	target := coreTypes.NewDKGSetTarget(coreCommon.Hash(g.state.CRS(round)))
+	target := coreTypes.NewDKGSetTarget(coreCommon.Hash(g.state.CRS()))
 	ns := coreTypes.NewNodeSet()
 
 	state, err := getConfigState(g.evm, round)
@@ -1252,15 +1252,21 @@ func (g *GovernanceContract) inDKGSet(round *big.Int, nodeID coreTypes.NodeID) b
 	return ok
 }
 
-func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byte, error) {
-	if round.Cmp(g.state.Round()) != 0 {
-		return g.penalize()
-	}
+func (g *GovernanceContract) clearDKG() {
+	dkgSet := g.getDKGSet(g.evm.Round)
+	g.state.ClearDKGMasterPublicKeys()
+	g.state.ClearDKGComplaints()
+	g.state.ClearDKGMPKReady(dkgSet)
+	g.state.ResetDKGMPKReadysCount()
+	g.state.ClearDKGFinalized(dkgSet)
+	g.state.ResetDKGFinalizedsCount()
+}
 
+func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byte, error) {
 	caller := g.contract.Caller()
 
 	// Finalized caller is not allowed to propose complaint.
-	if g.state.DKGFinalized(round, caller) {
+	if g.state.DKGFinalized(caller) {
 		return g.penalize()
 	}
 
@@ -1270,7 +1276,7 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 		new(big.Int).Div(g.state.DKGSetSize(), big.NewInt(3)))
 
 	// If 2f + 1 of DKG set is finalized, one can not propose complaint anymore.
-	if g.state.DKGFinalizedsCount(round).Cmp(threshold) > 0 {
+	if g.state.DKGFinalizedsCount().Cmp(threshold) > 0 {
 		return nil, errExecutionReverted
 	}
 
@@ -1289,8 +1295,7 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 		return g.penalize()
 	}
 
-	mpk, err := g.state.GetDKGMasterPublicKeyByProposerID(
-		round, dkgComplaint.PrivateShare.ProposerID)
+	mpk, err := g.state.GetDKGMasterPublicKeyByProposerID(dkgComplaint.PrivateShare.ProposerID)
 	if err != nil {
 		return g.penalize()
 	}
@@ -1315,20 +1320,27 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 		}
 	}
 
-	g.state.PushDKGComplaint(round, comp)
+	g.state.PushDKGComplaint(comp)
 
 	// Set this to relatively high to prevent spamming
 	return g.useGas(5000000)
 }
 
 func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) ([]byte, error) {
-	// Can only add DKG master public key of current and next round.
-	if round.Cmp(new(big.Int).Add(g.state.Round(), big.NewInt(1))) > 0 {
-		return g.penalize()
-	}
-
 	caller := g.contract.Caller()
 	offset := g.state.NodesOffsetByAddress(caller)
+
+	if g.evm.Round.Uint64() > 0 {
+		if round.Uint64() != g.evm.Round.Uint64()+1 {
+			return nil, errExecutionReverted
+		}
+
+		if g.state.DKGRound().Cmp(g.evm.Round) == 0 {
+			// Clear DKG states for next round.
+			g.clearDKG()
+			g.state.SetDKGRound(round)
+		}
+	}
 
 	// Can not add dkg mpk if not staked.
 	if offset.Cmp(big.NewInt(0)) < 0 {
@@ -1336,7 +1348,7 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 	}
 
 	// MPKReady caller is not allowed to propose mpk.
-	if g.state.DKGMPKReady(round, caller) {
+	if g.state.DKGMPKReady(caller) {
 		return g.penalize()
 	}
 
@@ -1346,7 +1358,7 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 		new(big.Int).Div(g.state.DKGSetSize(), big.NewInt(3)))
 
 	// If 2f + 1 of DKG set is mpk ready, one can not propose mpk anymore.
-	if g.state.DKGMPKReadysCount(round).Cmp(threshold) > 0 {
+	if g.state.DKGMPKReadysCount().Cmp(threshold) > 0 {
 		return nil, errExecutionReverted
 	}
 
@@ -1365,16 +1377,12 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 		return g.penalize()
 	}
 
-	g.state.PushDKGMasterPublicKey(round, mpk)
+	g.state.PushDKGMasterPublicKey(mpk)
 
 	return g.useGas(100000)
 }
 
 func (g *GovernanceContract) addDKGMPKReady(round *big.Int, ready []byte) ([]byte, error) {
-	if round.Cmp(g.state.Round()) != 0 {
-		return g.penalize()
-	}
-
 	caller := g.contract.Caller()
 
 	var dkgReady dkgTypes.MPKReady
@@ -1392,18 +1400,14 @@ func (g *GovernanceContract) addDKGMPKReady(round *big.Int, ready []byte) ([]byt
 		return g.penalize()
 	}
 
-	if !g.state.DKGMPKReady(round, caller) {
-		g.state.PutDKGMPKReady(round, caller, true)
-		g.state.IncDKGMPKReadysCount(round)
+	if !g.state.DKGMPKReady(caller) {
+		g.state.PutDKGMPKReady(caller, true)
+		g.state.IncDKGMPKReadysCount()
 	}
 
 	return g.useGas(100000)
 }
 func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]byte, error) {
-	if round.Cmp(g.state.Round()) != 0 {
-		return g.penalize()
-	}
-
 	caller := g.contract.Caller()
 
 	var dkgFinalize dkgTypes.Finalize
@@ -1421,9 +1425,9 @@ func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]
 		return g.penalize()
 	}
 
-	if !g.state.DKGFinalized(round, caller) {
-		g.state.PutDKGFinalized(round, caller, true)
-		g.state.IncDKGFinalizedsCount(round)
+	if !g.state.DKGFinalized(caller) {
+		g.state.PutDKGFinalized(caller, true)
+		g.state.IncDKGFinalizedsCount()
 	}
 
 	return g.useGas(100000)
@@ -1688,18 +1692,22 @@ func (g *GovernanceContract) payFine(nodeAddr common.Address) ([]byte, error) {
 }
 
 func (g *GovernanceContract) proposeCRS(nextRound *big.Int, signedCRS []byte) ([]byte, error) {
-	round := g.state.Round()
-
-	if nextRound.Cmp(round) <= 0 {
+	if nextRound.Uint64() != g.evm.Round.Uint64()+1 ||
+		g.state.CRSRound().Uint64() == nextRound.Uint64() {
 		return nil, errExecutionReverted
 	}
 
-	prevCRS := g.state.CRS(round)
+	prevCRS := g.state.CRS()
+
+	// CRS(n) = hash(CRS(n-1)) if n <= core.DKGRoundDelay
+	if g.evm.Round.Uint64() == dexCore.DKGDelayRound {
+		for i := uint64(0); i < dexCore.DKGDelayRound; i++ {
+			prevCRS = crypto.Keccak256Hash(prevCRS[:])
+		}
+	}
 
 	threshold := int(g.state.DKGSetSize().Uint64()/3 + 1)
-
-	dkgGPK, err := g.coreDKGUtils.NewGroupPublicKey(
-		round, threshold)
+	dkgGPK, err := g.coreDKGUtils.NewGroupPublicKey(nextRound, threshold)
 	if err != nil {
 		return nil, errExecutionReverted
 	}
@@ -1712,10 +1720,10 @@ func (g *GovernanceContract) proposeCRS(nextRound *big.Int, signedCRS []byte) ([
 	}
 
 	// Save new CRS into state and increase round.
-	newCRS := crypto.Keccak256(signedCRS)
-	crs := common.BytesToHash(newCRS)
+	crs := crypto.Keccak256Hash(signedCRS)
 
-	g.state.PushCRS(crs)
+	g.state.SetCRS(crs)
+	g.state.SetCRSRound(nextRound)
 	g.state.emitCRSProposed(nextRound, crs)
 
 	// To encourage DKG set to propose the correct value, correctly submitting
@@ -1811,23 +1819,24 @@ func (g *GovernanceContract) report(reportType *big.Int, arg1, arg2 []byte) ([]b
 }
 
 func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
-	// Check if current block over 80% of current round.
-	round := g.state.Round()
+	round := g.evm.Round
+	nextRound := new(big.Int).Add(round, big.NewInt(1))
+
 	resetCount := g.state.DKGResetCount(round)
+
 	// Just restart DEXON if failed at round 0.
 	if round.Cmp(big.NewInt(0)) == 0 {
 		return nil, errExecutionReverted
 	}
 
-	// target = 80 + 100 * DKGResetCount
+	// Extend the the current round.
+	// target = (80 + 100 * DKGResetCount)%
 	target := new(big.Int).Add(
 		big.NewInt(80),
 		new(big.Int).Mul(big.NewInt(100), resetCount))
 
-	// Round() is increased if CRS is signed. But we want to extend round r-1 now.
-	curRound := new(big.Int).Sub(round, big.NewInt(1))
-	roundHeight := g.state.RoundHeight(curRound)
-	gs, err := getConfigState(g.evm, curRound)
+	roundHeight := g.state.RoundHeight(round)
+	gs, err := getConfigState(g.evm, round)
 	if err != nil {
 		return nil, err
 	}
@@ -1838,6 +1847,7 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 	targetBlockNum.Quo(targetBlockNum, big.NewInt(100))
 	targetBlockNum.Add(targetBlockNum, roundHeight)
 
+	// Check if current block over 80% of current round.
 	blockHeight := g.evm.Context.BlockNumber
 	if blockHeight.Cmp(targetBlockNum) < 0 {
 		return nil, errExecutionReverted
@@ -1850,35 +1860,30 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 		new(big.Int).Div(g.state.DKGSetSize(), big.NewInt(3)))
 
 	// If 2f + 1 of DKG set is finalized, check if DKG succeeded.
-	if g.state.DKGFinalizedsCount(round).Cmp(threshold) > 0 {
-		_, err := g.coreDKGUtils.NewGroupPublicKey(
-			round, int(threshold.Int64()))
+	if g.state.DKGFinalizedsCount().Cmp(threshold) > 0 {
+		_, err := g.coreDKGUtils.NewGroupPublicKey(nextRound, int(threshold.Int64()))
 		// DKG success.
 		if err == nil {
 			return nil, errExecutionReverted
 		}
 		switch err {
-		case core.ErrNotReachThreshold, core.ErrInvalidThreshold:
+		case dexCore.ErrNotReachThreshold, dexCore.ErrInvalidThreshold:
 		default:
 			return nil, errExecutionReverted
 		}
 	}
-	// Clear dkg states for next round.
-	dkgSet := g.getDKGSet(round)
-	g.state.ClearDKGMasterPublicKeys(round)
-	g.state.ClearDKGComplaints(round)
-	g.state.ClearDKGMPKReady(round, dkgSet)
-	g.state.ResetDKGMPKReadysCount(round)
-	g.state.ClearDKGFinalized(round, dkgSet)
-	g.state.ResetDKGFinalizedsCount(round)
+
 	// Update CRS.
-	prevCRS := g.state.CRS(curRound)
+	headState, err := getRoundState(g.evm, round)
+	if err != nil {
+		return nil, errExecutionReverted
+	}
+	prevCRS := headState.CRS()
 	for i := uint64(0); i < resetCount.Uint64()+1; i++ {
 		prevCRS = crypto.Keccak256Hash(prevCRS[:])
 	}
 
-	dkgGPK, err := g.coreDKGUtils.NewGroupPublicKey(
-		curRound, int(config.DKGSetSize/3+1))
+	dkgGPK, err := g.coreDKGUtils.NewGroupPublicKey(round, int(config.DKGSetSize/3+1))
 	if err != nil {
 		return nil, errExecutionReverted
 	}
@@ -1890,16 +1895,22 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 		return g.penalize()
 	}
 
+	newRound := new(big.Int).Add(g.evm.Round, big.NewInt(1))
+
+	// Clear DKG states for next round.
+	g.clearDKG()
+	g.state.SetDKGRound(newRound)
+
 	// Save new CRS into state and increase round.
 	newCRS := crypto.Keccak256(newSignedCRS)
 	crs := common.BytesToHash(newCRS)
 
-	g.state.PopCRS()
-	g.state.PushCRS(crs)
-	g.state.emitCRSProposed(round, crs)
+	g.state.SetCRS(crs)
+	g.state.SetCRSRound(newRound)
+	g.state.emitCRSProposed(newRound, crs)
 
 	// Increase reset count.
-	g.state.IncDKGResetCount(round)
+	g.state.IncDKGResetCount(new(big.Int).Add(round, big.NewInt(1)))
 
 	g.state.emitDKGReset(round, blockHeight)
 	return nil, nil
@@ -1913,7 +1924,7 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 
 	// Initialize contract state.
 	g.evm = evm
-	g.state = GovernanceStateHelper{evm.StateDB}
+	g.state = GovernanceState{evm.StateDB}
 	g.contract = contract
 	g.coreDKGUtils.SetState(g.state)
 
@@ -2068,11 +2079,7 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		}
 		return res, nil
 	case "crs":
-		round := new(big.Int)
-		if err := method.Inputs.Unpack(&round, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		res, err := method.Outputs.Pack(g.state.CRS(round))
+		res, err := method.Outputs.Pack(g.state.CRS())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -2101,12 +2108,11 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		}
 		return res, nil
 	case "dkgComplaints":
-		round, index := new(big.Int), new(big.Int)
-		args := []interface{}{&round, &index}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+		index := new(big.Int)
+		if err := method.Inputs.Unpack(&index, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		complaints := g.state.DKGComplaints(round)
+		complaints := g.state.DKGComplaints()
 		if int(index.Uint64()) >= len(complaints) {
 			return nil, errExecutionReverted
 		}
@@ -2117,23 +2123,18 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		}
 		return res, nil
 	case "dkgReadys":
-		round, addr := new(big.Int), common.Address{}
-		args := []interface{}{&round, &addr}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+		addr := common.Address{}
+		if err := method.Inputs.Unpack(&addr, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		ready := g.state.DKGMPKReady(round, addr)
+		ready := g.state.DKGMPKReady(addr)
 		res, err := method.Outputs.Pack(ready)
 		if err != nil {
 			return nil, errExecutionReverted
 		}
 		return res, nil
 	case "dkgReadysCount":
-		round := new(big.Int)
-		if err := method.Inputs.Unpack(&round, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		count := g.state.DKGMPKReadysCount(round)
+		count := g.state.DKGMPKReadysCount()
 		res, err := method.Outputs.Pack(count)
 		if err != nil {
 			return nil, errExecutionReverted
@@ -2141,35 +2142,29 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		return res, nil
 
 	case "dkgFinalizeds":
-		round, addr := new(big.Int), common.Address{}
-		args := []interface{}{&round, &addr}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+		addr := common.Address{}
+		if err := method.Inputs.Unpack(&addr, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		finalized := g.state.DKGFinalized(round, addr)
+		finalized := g.state.DKGFinalized(addr)
 		res, err := method.Outputs.Pack(finalized)
 		if err != nil {
 			return nil, errExecutionReverted
 		}
 		return res, nil
 	case "dkgFinalizedsCount":
-		round := new(big.Int)
-		if err := method.Inputs.Unpack(&round, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		count := g.state.DKGFinalizedsCount(round)
+		count := g.state.DKGFinalizedsCount()
 		res, err := method.Outputs.Pack(count)
 		if err != nil {
 			return nil, errExecutionReverted
 		}
 		return res, nil
 	case "dkgMasterPublicKeys":
-		round, index := new(big.Int), new(big.Int)
-		args := []interface{}{&round, &index}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+		index := new(big.Int)
+		if err := method.Inputs.Unpack(&index, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		mpks := g.state.DKGMasterPublicKeys(round)
+		mpks := g.state.DKGMasterPublicKeys()
 		if int(index.Uint64()) >= len(mpks) {
 			return nil, errExecutionReverted
 		}
@@ -2442,7 +2437,6 @@ func PackReportForkVote(vote1, vote2 *coreTypes.Vote) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	data := append(method.Id(), res...)
 	return data, nil
 }
@@ -2464,7 +2458,6 @@ func PackReportForkBlock(block1, block2 *coreTypes.Block) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	data := append(method.Id(), res...)
 	return data, nil
 }

@@ -35,8 +35,8 @@ type GovStateFetcher struct {
 	statedb *state.StateDB
 }
 
-func (g *GovStateFetcher) GetGovStateHelperAtRound(_ uint64) *vm.GovernanceStateHelper {
-	return &vm.GovernanceStateHelper{g.statedb}
+func (g *GovStateFetcher) GetStateForConfigAtRound(_ uint64) *vm.GovernanceState {
+	return &vm.GovernanceState{g.statedb}
 }
 
 type DexconTestSuite struct {
@@ -45,7 +45,7 @@ type DexconTestSuite struct {
 	config  *params.DexconConfig
 	memDB   *ethdb.MemDatabase
 	stateDB *state.StateDB
-	s       *vm.GovernanceStateHelper
+	s       *vm.GovernanceState
 }
 
 func (d *DexconTestSuite) SetupTest() {
@@ -56,7 +56,7 @@ func (d *DexconTestSuite) SetupTest() {
 	}
 	d.memDB = memDB
 	d.stateDB = stateDB
-	d.s = &vm.GovernanceStateHelper{stateDB}
+	d.s = &vm.GovernanceState{stateDB}
 
 	config := params.TestnetChainConfig.Dexcon
 	config.LockupPeriod = 1000
@@ -73,7 +73,7 @@ func (d *DexconTestSuite) SetupTest() {
 
 	// Genesis CRS.
 	crs := crypto.Keccak256Hash([]byte(config.GenesisCRSText))
-	d.s.PushCRS(crs)
+	d.s.SetCRS(crs)
 
 	// Round 0 height.
 	d.s.PushRoundHeight(big.NewInt(0))

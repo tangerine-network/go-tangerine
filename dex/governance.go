@@ -67,7 +67,7 @@ func NewDexconGovernance(backend *DexAPIBackend, chainConfig *params.ChainConfig
 
 // DexconConfiguration return raw config in state.
 func (d *DexconGovernance) DexconConfiguration(round uint64) *params.DexconConfig {
-	return d.GetGovStateHelperAtRound(round).Configuration()
+	return d.GetStateForConfigAtRound(round).Configuration()
 }
 
 func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
@@ -107,13 +107,32 @@ func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
 
 // CRS returns the CRS for a given round.
 func (d *DexconGovernance) CRS(round uint64) coreCommon.Hash {
-	s := d.GetHeadHelper()
-	return coreCommon.Hash(s.CRS(big.NewInt(int64(round))))
+	if round <= dexCore.DKGDelayRound {
+		s := d.GetStateAtRound(0)
+		crs := s.CRS()
+		for i := uint64(0); i < round; i++ {
+			crs = crypto.Keccak256Hash(crs[:])
+		}
+		return coreCommon.Hash(crs)
+	}
+	if round > d.CRSRound() {
+		return coreCommon.Hash{}
+	}
+	var s *vm.GovernanceState
+	if round == d.CRSRound() {
+		s = d.GetHeadState()
+	} else {
+		s = d.GetStateAtRound(round)
+	}
+	return coreCommon.Hash(s.CRS())
 }
 
-func (d *DexconGovernance) LenCRS() uint64 {
-	s := d.GetHeadHelper()
-	return s.LenCRS().Uint64()
+func (d *DexconGovernance) Round() uint64 {
+	return d.b.CurrentBlock().Round()
+}
+
+func (d *DexconGovernance) CRSRound() uint64 {
+	return d.GetHeadState().CRSRound().Uint64()
 }
 
 // ProposeCRS send proposals of a new CRS
@@ -132,7 +151,7 @@ func (d *DexconGovernance) ProposeCRS(round uint64, signedCRS []byte) {
 
 // NodeSet returns the current node set.
 func (d *DexconGovernance) NodeSet(round uint64) []coreCrypto.PublicKey {
-	s := d.GetGovStateHelperAtRound(round)
+	s := d.GetStateForConfigAtRound(round)
 	var pks []coreCrypto.PublicKey
 
 	for _, n := range s.QualifiedNodes() {

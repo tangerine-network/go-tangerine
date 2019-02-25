@@ -496,17 +496,6 @@ func (d *Downloader) syncWithPeer(p *peerConnection, hash common.Hash, number ui
 		}
 
 		d.verifierCache = dexCore.NewTSigVerifierCache(d.gov, 5)
-
-		// warm up verifierCache
-		if originHeader.Round > 0 {
-			ok, err := d.verifierCache.Update(originHeader.Round - 1)
-			if err != nil {
-				return err
-			}
-			if !ok {
-				return fmt.Errorf("can not update verifier cache")
-			}
-		}
 	}
 
 	// Initiate the sync using a concurrent header and content retrieval algorithm

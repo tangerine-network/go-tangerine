@@ -538,7 +538,7 @@ func (hc *HeaderChain) verifyDexonHeader(header *types.Header,
 		return fmt.Errorf("round mismatch")
 	}
 
-	gs := gov.GetGovStateHelperAtRound(header.Round)
+	gs := gov.GetStateForConfigAtRound(header.Round)
 	config := gs.Configuration()
 	if header.GasLimit != config.BlockGasLimit {
 		return fmt.Errorf("block gas limit mismatch")

@@ -28,7 +28,7 @@ import (
 )
 
 type GovernanceStateFetcher interface {
-	GetGovStateHelperAtRound(round uint64) *vm.GovernanceStateHelper
+	GetStateForConfigAtRound(round uint64) *vm.GovernanceState
 }
 
 // Dexcon is a delegated proof-of-stake consensus engine.
@@ -108,7 +108,7 @@ func (d *Dexcon) Prepare(chain consensus.ChainReader, header *types.Header) erro
 }
 
 func (d *Dexcon) calculateBlockReward(round int64, state *state.StateDB) *big.Int {
-	gs := d.govStateFetcer.GetGovStateHelperAtRound(uint64(round))
+	gs := d.govStateFetcer.GetStateForConfigAtRound(uint64(round))
 	config := gs.Configuration()
 
 	blocksPerRound := config.RoundLength
@@ -134,7 +134,7 @@ func (d *Dexcon) calculateBlockReward(round int64, state *state.StateDB) *big.In
 // Finalize implements consensus.Engine, ensuring no uncles are set, nor block
 // rewards given, and returns the final block.
 func (d *Dexcon) Finalize(chain consensus.ChainReader, header *types.Header, state *state.StateDB, txs []*types.Transaction, uncles []*types.Header, receipts []*types.Receipt) (*types.Block, error) {
-	gs := vm.GovernanceStateHelper{state}
+	gs := vm.GovernanceState{state}
 
 	height := gs.RoundHeight(new(big.Int).SetUint64(header.Round))
 	if header.Round > 0 && height.Uint64() == 0 {

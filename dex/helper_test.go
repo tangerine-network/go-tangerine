@@ -215,7 +215,11 @@ type testGovernance struct {
 	dkgSetFunc    func(uint64) (map[string]struct{}, error)
 }
 
-func (g *testGovernance) LenCRS() uint64 {
+func (g *testGovernance) Round() uint64 {
+	return g.lenCRSFunc()
+}
+
+func (g *testGovernance) CRSRound() uint64 {
 	return g.lenCRSFunc()
 }
 

@@ -183,6 +183,7 @@ func GenerateDexonChain(config *params.ChainConfig, parent *types.Block, engine 
 		}
 
 		b.header.DexconMeta = makeDexconMeta(b, parent)
+		b.header.Round = b.position.Round
 
 		// sign tsig to create dexcon, prepare witness
 		b.engine.Prepare(chain, b.header)

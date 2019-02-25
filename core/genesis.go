@@ -33,7 +33,6 @@ import (
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/params"
@@ -265,7 +264,7 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		db = ethdb.NewMemDatabase()
 	}
 	statedb, _ := state.New(common.Hash{}, state.NewDatabase(db))
-	govStateHelper := vm.GovernanceStateHelper{StateDB: statedb}
+	govStateHelper := vm.GovernanceState{StateDB: statedb}
 
 	totalSupply := big.NewInt(0)
 	totalStaked := big.NewInt(0)
@@ -309,26 +308,8 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 			}
 		}
 
-		if g.Config.Dexcon.NextHalvingSupply.Cmp(totalSupply) <= 0 {
-			panic(fmt.Sprintf("invalid genesis found, totalSupply: %s, nextHavlingSupply: %s",
-				totalSupply, g.Config.Dexcon.NextHalvingSupply))
-		}
-
-		// Genesis CRS.
-		crs := crypto.Keccak256Hash([]byte(g.Config.Dexcon.GenesisCRSText))
-		govStateHelper.PushCRS(crs)
-
-		// Round 0 height.
-		govStateHelper.PushRoundHeight(big.NewInt(0))
-
-		// Owner.
-		govStateHelper.SetOwner(g.Config.Dexcon.Owner)
-
-		// Governance configuration.
-		govStateHelper.UpdateConfiguration(g.Config.Dexcon)
-
-		// Set totalSupply.
-		govStateHelper.IncTotalSupply(totalSupply)
+		// Initialize governance.
+		govStateHelper.Initialize(g.Config.Dexcon, totalSupply)
 	}
 
 	// Set oracle contract.

@@ -152,7 +152,9 @@ type txPool interface {
 type governance interface {
 	GetRoundHeight(uint64) uint64
 
-	LenCRS() uint64
+	Round() uint64
+
+	CRSRound() uint64
 
 	NotarySet(uint64) (map[string]struct{}, error)
 

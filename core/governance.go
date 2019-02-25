@@ -48,16 +48,16 @@ func NewGovernance(db GovernanceStateDB) *Governance {
 	return &Governance{db: db}
 }
 
-func (g *Governance) GetHeadHelper() *vm.GovernanceStateHelper {
+func (g *Governance) GetHeadState() *vm.GovernanceState {
 	headState, err := g.db.State()
 	if err != nil {
 		log.Error("Governance head state not ready", "err", err)
 		panic(err)
 	}
-	return &vm.GovernanceStateHelper{StateDB: headState}
+	return &vm.GovernanceState{StateDB: headState}
 }
 
-func (g *Governance) getHelperAtRound(round uint64) *vm.GovernanceStateHelper {
+func (g *Governance) getHelperAtRound(round uint64) *vm.GovernanceState {
 	height := g.GetRoundHeight(round)
 
 	// Sanity check
@@ -71,10 +71,10 @@ func (g *Governance) getHelperAtRound(round uint64) *vm.GovernanceStateHelper {
 		log.Error("Governance state not ready", "round", round, "height", height, "err", err)
 		panic(err)
 	}
-	return &vm.GovernanceStateHelper{StateDB: s}
+	return &vm.GovernanceState{StateDB: s}
 }
 
-func (g *Governance) GetGovStateHelperAtRound(round uint64) *vm.GovernanceStateHelper {
+func (g *Governance) GetStateForConfigAtRound(round uint64) *vm.GovernanceState {
 	if round < dexCore.ConfigRoundShift {
 		round = 0
 	} else {
@@ -83,12 +83,22 @@ func (g *Governance) GetGovStateHelperAtRound(round uint64) *vm.GovernanceStateH
 	return g.getHelperAtRound(round)
 }
 
+func (g *Governance) GetStateAtRound(round uint64) *vm.GovernanceState {
+	height := g.GetRoundHeight(round)
+	s, err := g.db.StateAt(height)
+	if err != nil {
+		log.Error("Governance state not ready", "round", round, "height", height, "err", err)
+		panic(err)
+	}
+	return &vm.GovernanceState{StateDB: s}
+}
+
 func (g *Governance) GetRoundHeight(round uint64) uint64 {
-	return g.GetHeadHelper().RoundHeight(big.NewInt(int64(round))).Uint64()
+	return g.GetHeadState().RoundHeight(big.NewInt(int64(round))).Uint64()
 }
 
 func (g *Governance) Configuration(round uint64) *coreTypes.Config {
-	configHelper := g.GetGovStateHelperAtRound(round)
+	configHelper := g.GetStateForConfigAtRound(round)
 	c := configHelper.Configuration()
 	return &coreTypes.Config{
 		LambdaBA:         time.Duration(c.LambdaBA) * time.Millisecond,
@@ -100,10 +110,25 @@ func (g *Governance) Configuration(round uint64) *coreTypes.Config {
 	}
 }
 
+func (g *Governance) GetStateForDKGAtRound(round uint64) *vm.GovernanceState {
+	dkgRound := g.GetHeadState().DKGRound().Uint64()
+	if round > dkgRound {
+		return nil
+	}
+	if round == dkgRound {
+		return g.GetHeadState()
+	}
+	return g.GetStateAtRound(round)
+}
+
 func (g *Governance) DKGComplaints(round uint64) []*dkgTypes.Complaint {
-	headHelper := g.GetHeadHelper()
+	s := g.GetStateForDKGAtRound(round)
+	if s == nil {
+		return nil
+	}
+
 	var dkgComplaints []*dkgTypes.Complaint
-	for _, pk := range headHelper.DKGComplaints(big.NewInt(int64(round))) {
+	for _, pk := range s.DKGComplaints() {
 		x := new(dkgTypes.Complaint)
 		if err := rlp.DecodeBytes(pk, x); err != nil {
 			panic(err)
@@ -114,30 +139,39 @@ func (g *Governance) DKGComplaints(round uint64) []*dkgTypes.Complaint {
 }
 
 func (g *Governance) DKGMasterPublicKeys(round uint64) []*dkgTypes.MasterPublicKey {
-	headHelper := g.GetHeadHelper()
-	return headHelper.UniqueDKGMasterPublicKeys(big.NewInt(int64(round)))
+	s := g.GetStateForDKGAtRound(round)
+	if s == nil {
+		return nil
+	}
+	return s.UniqueDKGMasterPublicKeys()
 }
 
 func (g *Governance) IsDKGMPKReady(round uint64) bool {
-	headHelper := g.GetHeadHelper()
+	s := g.GetStateForDKGAtRound(round)
+	if s == nil {
+		return false
+	}
 	config := g.Configuration(round)
 	threshold := 2*uint64(config.DKGSetSize)/3 + 1
-	count := headHelper.DKGMPKReadysCount(big.NewInt(int64(round))).Uint64()
+	count := s.DKGMPKReadysCount().Uint64()
 	return count >= threshold
 }
 
 func (g *Governance) IsDKGFinal(round uint64) bool {
-	headHelper := g.GetHeadHelper()
+	s := g.GetStateForDKGAtRound(round)
+	if s == nil {
+		return false
+	}
 	config := g.Configuration(round)
 	threshold := 2*uint64(config.DKGSetSize)/3 + 1
-	count := headHelper.DKGFinalizedsCount(big.NewInt(int64(round))).Uint64()
+	count := s.DKGFinalizedsCount().Uint64()
 	return count >= threshold
 }
 
 func (g *Governance) MinGasPrice(round uint64) *big.Int {
-	return g.GetGovStateHelperAtRound(round).MinGasPrice()
+	return g.GetStateForConfigAtRound(round).MinGasPrice()
 }
 
 func (g *Governance) DKGResetCount(round uint64) uint64 {
-	return g.GetHeadHelper().DKGResetCount(big.NewInt(int64(round))).Uint64()
+	return g.GetHeadState().DKGResetCount(big.NewInt(int64(round))).Uint64()
 }

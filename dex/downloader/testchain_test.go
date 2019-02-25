@@ -21,6 +21,9 @@ import (
 	"fmt"
 	"math/big"
 
+	dexCore "github.com/dexon-foundation/dexon-consensus/core"
+	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/consensus/dexcon"
 	"github.com/dexon-foundation/dexon/core"
@@ -66,23 +69,23 @@ func genesisBlockForTesting(db ethdb.Database,
 				Staked:  new(big.Int),
 			},
 			nodeaddr1: {
-				Balance:   new(big.Int).Mul(big.NewInt(1000), ether),
-				Staked:    new(big.Int).Mul(big.NewInt(500), ether),
+				Balance:   new(big.Int).Mul(big.NewInt(2e6), ether),
+				Staked:    new(big.Int).Mul(big.NewInt(1e6), ether),
 				PublicKey: crypto.FromECDSAPub(&nodekey1.PublicKey),
 			},
 			nodeaddr2: {
-				Balance:   new(big.Int).Mul(big.NewInt(1000), ether),
-				Staked:    new(big.Int).Mul(big.NewInt(500), ether),
+				Balance:   new(big.Int).Mul(big.NewInt(2e6), ether),
+				Staked:    new(big.Int).Mul(big.NewInt(1e6), ether),
 				PublicKey: crypto.FromECDSAPub(&nodekey2.PublicKey),
 			},
 			nodeaddr3: {
-				Balance:   new(big.Int).Mul(big.NewInt(1000), ether),
-				Staked:    new(big.Int).Mul(big.NewInt(500), ether),
+				Balance:   new(big.Int).Mul(big.NewInt(2e6), ether),
+				Staked:    new(big.Int).Mul(big.NewInt(1e6), ether),
 				PublicKey: crypto.FromECDSAPub(&nodekey3.PublicKey),
 			},
 			nodeaddr4: {
-				Balance:   new(big.Int).Mul(big.NewInt(1000), ether),
-				Staked:    new(big.Int).Mul(big.NewInt(500), ether),
+				Balance:   new(big.Int).Mul(big.NewInt(2e6), ether),
+				Staked:    new(big.Int).Mul(big.NewInt(1e6), ether),
 				PublicKey: crypto.FromECDSAPub(&nodekey4.PublicKey),
 			},
 		},
@@ -166,50 +169,23 @@ func (tc *testChain) generate(n int, seed byte, parent *types.Block, nodes *dexc
 
 	blocks, receipts := core.GenerateDexonChain(params.TestnetChainConfig, parent, engine, testDB, n, func(i int, block *core.DexonBlockGen) {
 		block.SetCoinbase(common.Address{seed})
-		if round == 0 {
-			switch i {
-			case 1:
-				testNodes.RunDKG(round, 2)
-				// Add DKG MasterPublicKeys
-				for _, node := range testNodes.Nodes(round) {
-					data, err := vm.PackAddDKGMasterPublicKey(round, node.MasterPublicKey(round))
-					if err != nil {
-						panic(err)
-					}
-					addTx(block, node, data)
-				}
-			case 2:
-				// Add DKG MPKReady
-				for _, node := range testNodes.Nodes(round) {
-					data, err := vm.PackAddDKGMPKReady(round, node.DKGMPKReady(round))
-					if err != nil {
-						panic(err)
-					}
-					addTx(block, node, data)
-				}
-			case 3:
-				// Add DKG Finalize
-				for _, node := range testNodes.Nodes(round) {
-					data, err := vm.PackAddDKGFinalize(round, node.DKGFinalize(round))
-					if err != nil {
-						panic(err)
-					}
-					addTx(block, node, data)
-				}
-			}
-		}
-
+		block.SetPosition(coreTypes.Position{
+			Round:  round,
+			Height: uint64(i),
+		})
 		half := roundInterval / 2
 		switch i % roundInterval {
 		case half:
-			// Sign current CRS to geneate the next round CRS and propose it.
-			testNodes.SignCRS(round)
-			node := testNodes.Nodes(round)[0]
-			data, err := vm.PackProposeCRS(round, testNodes.SignedCRS(round+1))
-			if err != nil {
-				panic(err)
+			if round >= dexCore.DKGDelayRound {
+				// Sign current CRS to geneate the next round CRS and propose it.
+				testNodes.SignCRS(round)
+				node := testNodes.Nodes(round)[0]
+				data, err := vm.PackProposeCRS(round, testNodes.SignedCRS(round+1))
+				if err != nil {
+					panic(err)
+				}
+				addTx(block, node, data)
 			}
-			addTx(block, node, data)
 		case half + 1:
 			// Run the DKG for next round.
 			testNodes.RunDKG(round+1, 2)
@@ -356,13 +332,13 @@ func (g *govStateFetcher) SnapshotRound(round uint64, root common.Hash) {
 	g.rootByRound[round] = root
 }
 
-func (g *govStateFetcher) GetGovStateHelperAtRound(round uint64) *vm.GovernanceStateHelper {
+func (g *govStateFetcher) GetStateForConfigAtRound(round uint64) *vm.GovernanceState {
 	if root, ok := g.rootByRound[round]; ok {
 		s, err := state.New(root, g.db)
 		if err != nil {
 			panic(err)
 		}
-		return &vm.GovernanceStateHelper{s}
+		return &vm.GovernanceState{s}
 	}
 	return nil
 }

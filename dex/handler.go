@@ -45,6 +45,7 @@ import (
 	"time"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
+	dexCore "github.com/dexon-foundation/dexon-consensus/core"
 	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
 	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
@@ -1199,13 +1200,18 @@ func (pm *ProtocolManager) recordBroadcastLoop() {
 // a loop keep building and maintaining peers in notary set.
 // TODO: finish this
 func (pm *ProtocolManager) peerSetLoop() {
-	log.Debug("start peer set loop")
-	round := pm.gov.LenCRS() - 1
-	log.Trace("first len crs", "len", round+1, "round", round)
-	if round >= 1 {
-		pm.peers.BuildConnection(round - 1)
+	log.Debug("ProtocolManager: started peer set loop")
+
+	round := pm.gov.Round()
+	log.Trace("ProtocolManager: startup round", "round", round)
+
+	if round < dexCore.DKGDelayRound {
+		for i := round; i <= dexCore.DKGDelayRound; i++ {
+			pm.peers.BuildConnection(i)
+		}
+	} else {
+		pm.peers.BuildConnection(round)
 	}
-	pm.peers.BuildConnection(round)
 
 	for {
 		select {
@@ -1216,11 +1222,16 @@ func (pm *ProtocolManager) peerSetLoop() {
 				break
 			}
 
-			newRound := pm.gov.LenCRS() - 1
-			log.Trace("new round", "round", newRound)
+			newRound := pm.gov.CRSRound()
+			if newRound == 0 {
+				break
+			}
+
+			log.Debug("ProtocolManager: new round", "round", newRound)
 			if newRound == round {
 				break
 			}
+
 			if newRound == round+1 {
 				pm.peers.BuildConnection(newRound)
 				if round >= 1 {

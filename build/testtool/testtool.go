@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+	dexCore "github.com/dexon-foundation/dexon-consensus/core"
+
 	"github.com/dexon-foundation/dexon"
 	"github.com/dexon-foundation/dexon/accounts/abi"
 	"github.com/dexon-foundation/dexon/cmd/zoo/monkey"
@@ -37,14 +39,42 @@ func main() {
 	}
 }
 
+func getBlockNumber(client *ethclient.Client, round int) *big.Int {
+	if round == 0 {
+		return big.NewInt(0)
+	}
+	abiObject, err := abi.JSON(strings.NewReader(vm.GovernanceABIJSON))
+	if err != nil {
+		log.Fatalf("read abi fail: %v", err)
+	}
+
+	input, err := abiObject.Pack("roundHeight", big.NewInt(int64(round)))
+	if err != nil {
+		log.Fatalf("pack input fail: %v", err)
+	}
+
+	result, err := client.CallContract(context.Background(), ethereum.CallMsg{
+		To:   &vm.GovernanceContractAddress,
+		Data: input,
+	}, nil)
+	if err != nil {
+		log.Fatalf("call contract fail: %v", err)
+	}
+
+	if bytes.Equal(make([]byte, 32), result) {
+		log.Fatalf("round %d height not found", round)
+	}
+
+	roundHeight := new(big.Int)
+	if err := abiObject.Unpack(&roundHeight, "roundHeight", result); err != nil {
+		log.Fatalf("unpack output fail: %v", err)
+	}
+	return roundHeight
+}
+
 func doVerifyGovCRS(args []string) {
 	if len(args) < 2 {
 		log.Fatal("arg length is not enough")
-	}
-
-	client, err := ethclient.Dial(args[0])
-	if err != nil {
-		log.Fatalf("new ethclient fail: %v", err)
 	}
 
 	abiObject, err := abi.JSON(strings.NewReader(vm.GovernanceABIJSON))
@@ -57,7 +87,14 @@ func doVerifyGovCRS(args []string) {
 		log.Fatalf("pasre round from arg 2 fail: %v", err)
 	}
 
-	input, err := abiObject.Pack("crs", big.NewInt(int64(round)))
+	client, err := ethclient.Dial(args[0])
+	if err != nil {
+		log.Fatalf("new ethclient fail: %v", err)
+	}
+
+	blockNumber := getBlockNumber(client, round)
+
+	input, err := abiObject.Pack("crs")
 	if err != nil {
 		log.Fatalf("pack input fail: %v", err)
 	}
@@ -65,7 +102,7 @@ func doVerifyGovCRS(args []string) {
 	result, err := client.CallContract(context.Background(), ethereum.CallMsg{
 		To:   &vm.GovernanceContractAddress,
 		Data: input,
-	}, nil)
+	}, blockNumber)
 	if err != nil {
 		log.Fatalf("call contract fail: %v", err)
 	}
@@ -81,12 +118,6 @@ func doVerifyGovMPK(args []string) {
 	if len(args) < 3 {
 		log.Fatal("arg length is not enough")
 	}
-
-	client, err := ethclient.Dial(args[0])
-	if err != nil {
-		log.Fatalf("new ethclient fail: %v", err)
-	}
-
 	abiObject, err := abi.JSON(strings.NewReader(vm.GovernanceABIJSON))
 	if err != nil {
 		log.Fatalf("read abi fail: %v", err)
@@ -97,12 +128,23 @@ func doVerifyGovMPK(args []string) {
 		log.Fatalf("pasre round from arg 2 fail: %v", err)
 	}
 
-	index, err := strconv.Atoi(args[2])
-	if err != nil {
-		log.Fatalf("pasre round from arg 2 fail: %v", err)
+	if uint64(round) < dexCore.DKGDelayRound {
+		return
 	}
 
-	input, err := abiObject.Pack("dkgMasterPublicKeys", big.NewInt(int64(round)), big.NewInt(int64(index)))
+	client, err := ethclient.Dial(args[0])
+	if err != nil {
+		log.Fatalf("new ethclient fail: %v", err)
+	}
+
+	blockNumber := getBlockNumber(client, round)
+
+	index, err := strconv.Atoi(args[2])
+	if err != nil {
+		log.Fatalf("pasre index from arg 2 fail: %v", err)
+	}
+
+	input, err := abiObject.Pack("dkgMasterPublicKeys", big.NewInt(int64(index)))
 	if err != nil {
 		log.Fatalf("pack input fail: %v", err)
 	}
@@ -110,13 +152,13 @@ func doVerifyGovMPK(args []string) {
 	result, err := client.CallContract(context.Background(), ethereum.CallMsg{
 		To:   &vm.GovernanceContractAddress,
 		Data: input,
-	}, nil)
+	}, blockNumber)
 	if err != nil {
 		log.Fatalf("call contract fail: %v", err)
 	}
 
 	if bytes.Equal(make([]byte, 0), result) {
-		log.Fatalf("round %s index %s crs not found", args[1], args[2])
+		log.Fatalf("round %s index %s mpk not found", args[1], args[2])
 	}
 
 	log.Printf("get round %s index %s master public key %x", args[1], args[2], result)
