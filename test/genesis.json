@@ -30,7 +30,8 @@
         "0x21e19e0c9bab2400000",
         "0x21e19e0c9bab2400000",
         "0x152d02c7e14af6800000"
-      ]
+      ],
+      "minGasPrice": "0x3b9aca00"
     }
   },
   "nonce": "0x42",

@@ -234,7 +234,7 @@ func TestVerifyBlock(t *testing.T) {
 		common.BytesToAddress([]byte{9}),
 		big.NewInt(50000000000000001),
 		params.TxGas,
-		big.NewInt(1),
+		big.NewInt(10),
 		nil)
 	tx, err = types.SignTx(tx, signer, key)
 	if err != nil {
@@ -269,7 +269,7 @@ func TestVerifyBlock(t *testing.T) {
 		common.BytesToAddress([]byte{9}),
 		big.NewInt(1),
 		params.TxGas,
-		big.NewInt(1),
+		big.NewInt(10),
 		make([]byte, 1))
 	tx, err = types.SignTx(tx, signer, key)
 	if err != nil {
@@ -304,7 +304,7 @@ func TestVerifyBlock(t *testing.T) {
 		common.BytesToAddress([]byte{9}),
 		big.NewInt(1),
 		params.TxGas,
-		big.NewInt(1),
+		big.NewInt(10),
 		make([]byte, 1))
 	tx1, err = types.SignTx(tx, signer, key)
 	if err != nil {
@@ -317,7 +317,7 @@ func TestVerifyBlock(t *testing.T) {
 		common.BytesToAddress([]byte{9}),
 		big.NewInt(1),
 		params.TxGas,
-		big.NewInt(1),
+		big.NewInt(10),
 		make([]byte, 1))
 	tx2, err = types.SignTx(tx, signer, key)
 	if err != nil {
@@ -334,6 +334,30 @@ func TestVerifyBlock(t *testing.T) {
 	if status != coreTypes.VerifyInvalidBlock {
 		t.Fatalf("verify fail expect invalid block but get %v", status)
 	}
+
+	// Invalid gas price.
+	tx = types.NewTransaction(
+		0,
+		common.BytesToAddress([]byte{9}),
+		big.NewInt(1),
+		params.TxGas,
+		big.NewInt(5),
+		make([]byte, 1))
+	tx, err = types.SignTx(tx, signer, key)
+	if err != nil {
+		return
+	}
+	block.Payload, err = rlp.EncodeToBytes(types.Transactions{tx})
+	if err != nil {
+		return
+	}
+
+	// Expect invalid block.
+	status = dex.app.VerifyBlock(block)
+	if status != coreTypes.VerifyInvalidBlock {
+		t.Fatalf("verify fail expect invalid block but get %v", status)
+	}
+
 }
 
 func TestBlockConfirmed(t *testing.T) {
@@ -489,6 +513,7 @@ func newTestDexonWithGenesis(allocKey *ecdsa.PrivateKey) (*Dexon, error) {
 			PublicKey: crypto.FromECDSAPub(&key.PublicKey),
 		},
 	}
+	genesis.Config.Dexcon.MinGasPrice = big.NewInt(10)
 	chainConfig, _, err := core.SetupGenesisBlock(db, genesis)
 	if err != nil {
 		return nil, err
@@ -530,7 +555,7 @@ func addTx(dex *Dexon, nonce int, signer types.Signer, key *ecdsa.PrivateKey) (
 		common.BytesToAddress([]byte{9}),
 		big.NewInt(int64(nonce*1)),
 		params.TxGas,
-		big.NewInt(1),
+		big.NewInt(10),
 		nil)
 	tx, err := types.SignTx(tx, signer, key)
 	if err != nil {
@@ -638,7 +663,7 @@ func prepareDataWithoutTxPool(dex *Dexon, key *ecdsa.PrivateKey, startNonce, txN
 			common.BytesToAddress([]byte{9}),
 			big.NewInt(int64(n*1)),
 			params.TxGas,
-			big.NewInt(1),
+			big.NewInt(10),
 			nil)
 		tx, err = types.SignTx(tx, signer, key)
 		if err != nil {

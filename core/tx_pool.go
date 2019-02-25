@@ -24,10 +24,13 @@ import (
 	"sync"
 	"time"
 
+	dexCore "github.com/dexon-foundation/dexon-consensus/core"
+
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/common/prque"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/dexon-foundation/dexon/core/vm"
 	"github.com/dexon-foundation/dexon/event"
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/metrics"
@@ -115,6 +118,7 @@ const (
 type blockChain interface {
 	CurrentBlock() *types.Block
 	GetBlock(hash common.Hash, number uint64) *types.Block
+	GetBlockByNumber(number uint64) *types.Block
 	StateAt(root common.Hash) (*state.StateDB, error)
 
 	SubscribeChainHeadEvent(ch chan<- ChainHeadEvent) event.Subscription
@@ -206,6 +210,7 @@ type TxPool struct {
 	chainconfig  *params.ChainConfig
 	chain        blockChain
 	gasPrice     *big.Int
+	govGasPrice  *big.Int
 	txFeed       event.Feed
 	scope        event.SubscriptionScope
 	chainHeadCh  chan ChainHeadEvent
@@ -385,6 +390,28 @@ func (pool *TxPool) reset(oldHead, newHead *types.Header) {
 	pool.currentState = statedb
 	pool.pendingState = state.ManageState(statedb)
 	pool.currentMaxGas = newHead.GasLimit
+	if oldHead == nil || oldHead.Round != newHead.Round {
+		round := newHead.Round
+		if round < dexCore.ConfigRoundShift {
+			round = 0
+		} else {
+			round -= dexCore.ConfigRoundShift
+		}
+		state := &vm.GovernanceStateHelper{StateDB: statedb}
+		height := state.RoundHeight(new(big.Int).SetUint64((round))).Uint64()
+		block := pool.chain.GetBlockByNumber(height)
+		if block == nil {
+			log.Error("Failed to get block", "round", round, "height", height)
+			panic("cannot get config for new round's min gas price")
+		}
+		configState, err := pool.chain.StateAt(block.Header().Root)
+		if err != nil {
+			log.Error("Failed to get txpool state for min gas price", "err", err)
+			panic("cannot get state for new round's min gas price")
+		}
+		govState := &vm.GovernanceStateHelper{StateDB: configState}
+		pool.setGovPrice(govState.MinGasPrice())
+	}
 
 	// validate the pool of pending transactions, this will remove
 	// any transactions that have been included in the block or
@@ -438,10 +465,21 @@ func (pool *TxPool) SetGasPrice(price *big.Int) {
 	defer pool.mu.Unlock()
 
 	pool.gasPrice = price
+	pool.removeUnderpricedTx(price)
+	log.Info("Transaction pool price threshold updated", "price", price)
+}
+
+// setGovPrice updates the minimum price required by the transaction pool for a
+// new transaction, and drops all transactions below this threshold.
+func (pool *TxPool) setGovPrice(price *big.Int) {
+	pool.govGasPrice = price
+	pool.removeUnderpricedTx(price)
+}
+
+func (pool *TxPool) removeUnderpricedTx(price *big.Int) {
 	for _, tx := range pool.priced.Cap(price, pool.locals) {
 		pool.removeTx(tx.Hash(), false)
 	}
-	log.Info("Transaction pool price threshold updated", "price", price)
 }
 
 // State returns the virtual managed state of the transaction pool.
@@ -550,6 +588,10 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	from, err := types.Sender(pool.signer, tx)
 	if err != nil {
 		return ErrInvalidSender
+	}
+	// Drop all transactions under governance minimum gas price.
+	if pool.govGasPrice.Cmp(tx.GasPrice()) > 0 {
+		return ErrUnderpriced
 	}
 	// Drop non-local transactions under our own minimal accepted gas price
 	local = local || pool.locals.contains(from) // account may be local even if the transaction arrived from the network

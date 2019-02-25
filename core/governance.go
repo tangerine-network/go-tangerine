@@ -134,3 +134,7 @@ func (g *Governance) IsDKGFinal(round uint64) bool {
 	count := headHelper.DKGFinalizedsCount(big.NewInt(int64(round))).Uint64()
 	return count >= threshold
 }
+
+func (g *Governance) MinGasPrice(round uint64) *big.Int {
+	return g.GetGovStateHelperAtRound(round).MinGasPrice()
+}

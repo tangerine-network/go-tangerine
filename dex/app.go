@@ -124,6 +124,18 @@ func (d *DexconApp) validateNonce(txs types.Transactions) (map[common.Address]ui
 	return addressFirstNonce, nil
 }
 
+// validateGasPrice checks if no gas price is lower than minGasPrice defined in
+// governance contract.
+func (d *DexconApp) validateGasPrice(txs types.Transactions, round uint64) bool {
+	minGasPrice := d.gov.MinGasPrice(round)
+	for _, tx := range txs {
+		if minGasPrice.Cmp(tx.GasPrice()) > 0 {
+			return false
+		}
+	}
+	return true
+}
+
 // PreparePayload is called when consensus core is preparing payload for block.
 func (d *DexconApp) PreparePayload(position coreTypes.Position) (payload []byte, err error) {
 	// softLimit limits the runtime of inner call to preparePayload.
@@ -408,6 +420,10 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 	addressNonce, err := d.validateNonce(transactions)
 	if err != nil {
 		log.Error("Validate nonce failed", "error", err)
+		return coreTypes.VerifyInvalidBlock
+	}
+	if !d.validateGasPrice(transactions, block.Position.Round) {
+		log.Error("Validate gas price failed")
 		return coreTypes.VerifyInvalidBlock
 	}
 

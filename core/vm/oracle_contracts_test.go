@@ -654,7 +654,8 @@ func (g *OracleContractsTestSuite) TestUpdateConfiguration() {
 		big.NewInt(4),
 		big.NewInt(600),
 		big.NewInt(900),
-		[]*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)})
+		[]*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)},
+		big.NewInt(2e9))
 	g.Require().NoError(err)
 
 	// Call with non-owner.
@@ -770,6 +771,15 @@ func (g *OracleContractsTestSuite) TestConfigurationReading() {
 	err = GovernanceABI.ABI.Unpack(&value, "minBlockInterval", res)
 	g.Require().NoError(err)
 	g.Require().Equal(g.config.MinBlockInterval, value.Uint64())
+
+	// MinGasPrice.
+	input, err = GovernanceABI.ABI.Pack("minGasPrice")
+	g.Require().NoError(err)
+	res, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+	err = GovernanceABI.ABI.Unpack(&value, "minGasPrice", res)
+	g.Require().NoError(err)
+	g.Require().Equal(g.config.MinGasPrice, value)
 }
 
 func (g *OracleContractsTestSuite) TestReportForkVote() {

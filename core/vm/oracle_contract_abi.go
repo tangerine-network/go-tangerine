@@ -566,6 +566,20 @@ const GovernanceABIJSON = `
   {
     "constant": true,
     "inputs": [],
+    "name": "minGasPrice",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
     "name": "lockupPeriod",
     "outputs": [
       {
@@ -855,6 +869,10 @@ const GovernanceABIJSON = `
       {
         "name": "FineValues",
         "type": "uint256[]"
+      },
+      {
+        "name": "MinGasPrice",
+        "type": "uint256"
       }
     ],
     "name": "updateConfiguration",

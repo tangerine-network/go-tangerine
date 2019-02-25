@@ -83,6 +83,7 @@ const (
 	fineValuesLoc
 	finedRecordsLoc
 	dkgResetCountLoc
+	minGasPriceLoc
 )
 
 func publicKeyToNodeID(pkBytes []byte) (Bytes32, error) {
@@ -894,6 +895,11 @@ func (s *GovernanceStateHelper) IncDKGResetCount(round *big.Int) {
 	s.setStateBigInt(loc, new(big.Int).Add(count, big.NewInt(1)))
 }
 
+// uint256 public minGasPrice;
+func (s *GovernanceStateHelper) MinGasPrice() *big.Int {
+	return s.getStateBigInt(big.NewInt(minGasPriceLoc))
+}
+
 // Stake is a helper function for creating genesis state.
 func (s *GovernanceStateHelper) Stake(
 	addr common.Address, publicKey []byte, staked *big.Int,
@@ -948,6 +954,7 @@ func (s *GovernanceStateHelper) Configuration() *params.DexconConfig {
 		RoundLength:       s.getStateBigInt(big.NewInt(roundLengthLoc)).Uint64(),
 		MinBlockInterval:  s.getStateBigInt(big.NewInt(minBlockIntervalLoc)).Uint64(),
 		FineValues:        s.FineValues(),
+		MinGasPrice:       s.getStateBigInt(big.NewInt(minGasPriceLoc)),
 	}
 }
 
@@ -966,6 +973,7 @@ func (s *GovernanceStateHelper) UpdateConfiguration(cfg *params.DexconConfig) {
 	s.setStateBigInt(big.NewInt(roundLengthLoc), big.NewInt(int64(cfg.RoundLength)))
 	s.setStateBigInt(big.NewInt(minBlockIntervalLoc), big.NewInt(int64(cfg.MinBlockInterval)))
 	s.SetFineValues(cfg.FineValues)
+	s.setStateBigInt(big.NewInt(minGasPriceLoc), cfg.MinGasPrice)
 }
 
 type rawConfigStruct struct {
@@ -979,6 +987,7 @@ type rawConfigStruct struct {
 	RoundLength      *big.Int
 	MinBlockInterval *big.Int
 	FineValues       []*big.Int
+	MinGasPrice      *big.Int
 }
 
 // UpdateConfigurationRaw updates system configuration.
@@ -993,6 +1002,7 @@ func (s *GovernanceStateHelper) UpdateConfigurationRaw(cfg *rawConfigStruct) {
 	s.setStateBigInt(big.NewInt(roundLengthLoc), cfg.RoundLength)
 	s.setStateBigInt(big.NewInt(minBlockIntervalLoc), cfg.MinBlockInterval)
 	s.SetFineValues(cfg.FineValues)
+	s.setStateBigInt(big.NewInt(minGasPriceLoc), cfg.MinGasPrice)
 }
 
 // event ConfigurationChanged();
@@ -2223,6 +2233,12 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		return res, nil
 	case "minBlockInterval":
 		res, err := method.Outputs.Pack(g.state.MinBlockInterval())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "minGasPrice":
+		res, err := method.Outputs.Pack(g.state.MinGasPrice())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
