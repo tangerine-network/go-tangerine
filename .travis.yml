@@ -10,20 +10,7 @@ matrix:
     - os: linux
       dist: xenial
       sudo: required
-      go: 1.10.x
-      script:
-        - sudo modprobe fuse
-        - sudo chmod 666 /dev/fuse
-        - sudo chown root:$USER /etc/fuse.conf
-        - make libbls
-        - go run build/ci.go install
-        - travis_retry go run build/ci.go test -coverage $TEST_PACKAGES
-
-    # These are the latest Go versions.
-    - os: linux
-      dist: xenial
-      sudo: required
-      go: 1.11.x
+      go: 1.12.x
       script:
         - sudo modprobe fuse
         - sudo chmod 666 /dev/fuse
@@ -33,7 +20,7 @@ matrix:
         - travis_retry go run build/ci.go test -coverage $TEST_PACKAGES
 
     - os: osx
-      go: 1.11.x
+      go: 1.12.x
       script:
         - echo "Increase the maximum number of open file descriptors on macOS"
         - NOFILE=20480
@@ -56,7 +43,7 @@ matrix:
     # This builder only tests code linters on latest version of Go
     - os: linux
       dist: xenial
-      go: 1.11.x
+      go: 1.12.x
       env:
         - lint
       git:
@@ -64,14 +51,15 @@ matrix:
       script:
         - go run build/ci.go lint
 
-    - os: osx
-      go: 1.11.x
+    - os: linux
+      dist: xenial
+      go: 1.12.x
       env:
         - smoke-test
       git:
         submodules: false
       script:
-        - PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig make all
+        - make gdex
         - cd test
         - ./run_test.sh --ignore-log
         - cd ..
@@ -81,16 +69,12 @@ matrix:
         - ./run_test.sh --continue --ignore-log
         - cd ..
         - ./build/recovery-test.sh
-      addons:
-        homebrew:
-          packages:
-            - ethereum
 
     # This builder does the Ubuntu PPA upload
     #- if: type = push
     #  os: linux
-    #  dist: trusty
-    #  go: 1.11.x
+    #  dist: xenial
+    #  go: 1.12.x
     #  env:
     #    - ubuntu-ppa
     #  git:
@@ -110,7 +94,7 @@ matrix:
       os: linux
       dist: xenial
       sudo: required
-      go: 1.11.x
+      go: 1.12.x
       env:
         - gcp-linux
       git:
@@ -146,10 +130,10 @@ matrix:
     #    -upload dexon-builds
     #- if: type = push
     #  os: linux
-    #  dist: trusty
+    #  dist: xenial
     #  services:
     #  - docker
-    #  go: 1.11.x
+    #  go: 1.12.x
     #  env:
     #  - gcp-linux-mips
     #  git:
@@ -182,7 +166,7 @@ matrix:
     #    -upload dexon-builds
     #- if: type = push
     #  os: linux
-    #  dist: trusty
+    #  dist: xenial
     #  addons:
     #    apt:
     #      packages:
@@ -220,7 +204,7 @@ matrix:
     #    -upload dexon-builds
     - if: type = push
       os: osx
-      go: 1.11.x
+      go: 1.12.x
       env:
         - gcp-osx
         - gcp-ios
@@ -249,8 +233,8 @@ matrix:
     #  - go run build/ci.go xcode -signer IOS_SIGNING_KEY -deploy trunk -upload dexon-builds
     - if: type = cron
       os: linux
-      dist: trusty
-      go: 1.11.x
+      dist: xenial
+      go: 1.12.x
       env:
         - gcp-purge
       git:
