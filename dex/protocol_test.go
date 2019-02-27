@@ -327,15 +327,11 @@ func TestRecvLatticeBlocks(t *testing.T) {
 		ParentHash: coreCommon.Hash{1, 1, 1, 1, 1},
 		Hash:       coreCommon.Hash{2, 2, 2, 2, 2},
 		Position: coreTypes.Position{
-			ChainID: 11,
-			Round:   12,
-			Height:  13,
+			Round:  12,
+			Height: 13,
 		},
 		Timestamp: time.Now().UTC(),
-		Acks: coreCommon.NewSortedHashes(coreCommon.Hashes([]coreCommon.Hash{
-			{101}, {100}, {102},
-		})),
-		Payload: []byte{3, 3, 3, 3, 3},
+		Payload:   []byte{3, 3, 3, 3, 3},
 		Witness: coreTypes.Witness{
 			Height: 13,
 			Data:   []byte{4, 4, 4, 4, 4},
@@ -382,15 +378,11 @@ func TestSendLatticeBlocks(t *testing.T) {
 		ParentHash: coreCommon.Hash{1, 1, 1, 1, 1},
 		Hash:       coreCommon.Hash{2, 2, 2, 2, 2},
 		Position: coreTypes.Position{
-			ChainID: 11,
-			Round:   12,
-			Height:  13,
+			Round:  12,
+			Height: 13,
 		},
 		Timestamp: time.Now().UTC(),
-		Acks: coreCommon.NewSortedHashes(coreCommon.Hashes([]coreCommon.Hash{
-			{101}, {100}, {102},
-		})),
-		Payload: []byte{3, 3, 3, 3, 3},
+		Payload:   []byte{3, 3, 3, 3, 3},
 		Witness: coreTypes.Witness{
 			Height: 13,
 			Data:   []byte{4, 4, 4, 4, 4},
@@ -440,9 +432,8 @@ func TestRecvVotes(t *testing.T) {
 			ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
 			Period:     10,
 			Position: coreTypes.Position{
-				ChainID: 11,
-				Round:   12,
-				Height:  13,
+				Round:  12,
+				Height: 13,
 			},
 		},
 		Signature: coreCrypto.Signature{
@@ -477,9 +468,8 @@ func TestSendVotes(t *testing.T) {
 			ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
 			Period:     10,
 			Position: coreTypes.Position{
-				ChainID: 1,
-				Round:   10,
-				Height:  13,
+				Round:  10,
+				Height: 13,
 			},
 		},
 		Signature: coreCrypto.Signature{
@@ -528,11 +518,7 @@ func TestSendVotes(t *testing.T) {
 		isReceiver bool
 	}{
 		{
-			label:      &peerLabel{set: notaryset, chainID: 1, round: 10},
-			isReceiver: true,
-		},
-		{
-			label:      &peerLabel{set: notaryset, chainID: 1, round: 10},
+			label:      &peerLabel{set: notaryset, round: 10},
 			isReceiver: true,
 		},
 		{
@@ -540,15 +526,11 @@ func TestSendVotes(t *testing.T) {
 			isReceiver: false,
 		},
 		{
-			label:      &peerLabel{set: notaryset, chainID: 1, round: 11},
+			label:      &peerLabel{set: notaryset, round: 11},
 			isReceiver: false,
 		},
 		{
-			label:      &peerLabel{set: notaryset, chainID: 2, round: 10},
-			isReceiver: false,
-		},
-		{
-			label:      &peerLabel{set: dkgset, chainID: 1, round: 10},
+			label:      &peerLabel{set: dkgset, round: 10},
 			isReceiver: false,
 		},
 	}
@@ -678,9 +660,8 @@ func TestRecvAgreement(t *testing.T) {
 			ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
 			Period:     10,
 			Position: coreTypes.Position{
-				ChainID: 1,
-				Round:   10,
-				Height:  13,
+				Round:  10,
+				Height: 13,
 			},
 		},
 		Signature: coreCrypto.Signature{
@@ -723,9 +704,8 @@ func TestSendAgreement(t *testing.T) {
 			ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
 			Period:     10,
 			Position: coreTypes.Position{
-				ChainID: 1,
-				Round:   10,
-				Height:  13,
+				Round:  10,
+				Height: 13,
 			},
 		},
 		Signature: coreCrypto.Signature{
@@ -769,9 +749,8 @@ func TestRecvRandomnesses(t *testing.T) {
 	randomness := coreTypes.BlockRandomnessResult{
 		BlockHash: coreCommon.Hash{8, 8, 8},
 		Position: coreTypes.Position{
-			ChainID: 1,
-			Round:   10,
-			Height:  13,
+			Round:  10,
+			Height: 13,
 		},
 		Randomness: []byte{7, 7, 7, 7},
 	}
@@ -802,9 +781,8 @@ func TestSendRandomnesses(t *testing.T) {
 	randomness := coreTypes.BlockRandomnessResult{
 		BlockHash: coreCommon.Hash{8, 8, 8},
 		Position: coreTypes.Position{
-			ChainID: 1,
-			Round:   10,
-			Height:  13,
+			Round:  10,
+			Height: 13,
 		},
 		Randomness: []byte{7, 7, 7, 7},
 	}

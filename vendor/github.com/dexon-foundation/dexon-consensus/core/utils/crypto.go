@@ -37,12 +37,6 @@ func hashWitness(witness *types.Witness) (common.Hash, error) {
 // HashBlock generates hash of a types.Block.
 func HashBlock(block *types.Block) (common.Hash, error) {
 	hashPosition := hashPosition(block.Position)
-	// Handling Block.Acks.
-	binaryAcks := make([][]byte, len(block.Acks))
-	for idx, ack := range block.Acks {
-		binaryAcks[idx] = ack[:]
-	}
-	hashAcks := crypto.Keccak256Hash(binaryAcks...)
 	binaryTimestamp, err := block.Timestamp.UTC().MarshalBinary()
 	if err != nil {
 		return common.Hash{}, err
@@ -56,7 +50,6 @@ func HashBlock(block *types.Block) (common.Hash, error) {
 		block.ProposerID.Hash[:],
 		block.ParentHash[:],
 		hashPosition[:],
-		hashAcks[:],
 		binaryTimestamp[:],
 		block.PayloadHash[:],
 		binaryWitness[:])
@@ -140,9 +133,6 @@ func VerifyCRSSignature(block *types.Block, crs common.Hash) (
 }
 
 func hashPosition(position types.Position) common.Hash {
-	binaryChainID := make([]byte, 4)
-	binary.LittleEndian.PutUint32(binaryChainID, position.ChainID)
-
 	binaryRound := make([]byte, 8)
 	binary.LittleEndian.PutUint64(binaryRound, position.Round)
 
@@ -150,7 +140,6 @@ func hashPosition(position types.Position) common.Hash {
 	binary.LittleEndian.PutUint64(binaryHeight, position.Height)
 
 	return crypto.Keccak256Hash(
-		binaryChainID,
 		binaryRound,
 		binaryHeight,
 	)

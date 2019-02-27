@@ -293,7 +293,7 @@ type blockInfo struct {
 }
 
 func (bc *BlockChain) AddConfirmedBlock(block *coreTypes.Block) error {
-	chainID := block.Position.ChainID
+	chainID := uint32(0)
 	bc.confirmedBlockInitMu.Lock()
 	_, exist := bc.confirmedBlocks[chainID]
 	if !exist {

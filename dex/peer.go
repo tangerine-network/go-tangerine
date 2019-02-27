@@ -119,9 +119,8 @@ const (
 )
 
 type peerLabel struct {
-	set     setType
-	chainID uint32
-	round   uint64
+	set   setType
+	round uint64
 }
 
 func (p peerLabel) String() string {
@@ -130,7 +129,7 @@ func (p peerLabel) String() string {
 	case dkgset:
 		t = fmt.Sprintf("DKGSet round: %d", p.round)
 	case notaryset:
-		t = fmt.Sprintf("NotarySet round: %d chain: %d", p.round, p.chainID)
+		t = fmt.Sprintf("NotarySet round: %d", p.round)
 	}
 	return t
 }
@@ -962,24 +961,22 @@ func (ps *peerSet) BuildConnection(round uint64) {
 		}
 	}
 
-	for chainID := uint32(0); chainID < ps.gov.GetNumChains(round); chainID++ {
-		notaryLabel := peerLabel{set: notaryset, chainID: chainID, round: round}
-		if _, ok := ps.label2Nodes[notaryLabel]; !ok {
-			notaryPKs, err := ps.gov.NotarySet(round, chainID)
-			if err != nil {
-				log.Error("get notary set fail",
-					"round", round, "chainID", chainID, "err", err)
-				continue
-			}
+	notaryLabel := peerLabel{set: notaryset, round: round}
+	if _, ok := ps.label2Nodes[notaryLabel]; !ok {
+		notaryPKs, err := ps.gov.NotarySet(round)
+		if err != nil {
+			log.Error("get notary set fail",
+				"round", round, "err", err)
+			return
+		}
 
-			nodes := ps.pksToNodes(notaryPKs)
-			ps.label2Nodes[notaryLabel] = nodes
+		nodes := ps.pksToNodes(notaryPKs)
+		ps.label2Nodes[notaryLabel] = nodes
 
-			if _, exists := nodes[ps.srvr.Self().ID().String()]; exists {
-				ps.buildDirectConn(notaryLabel)
-			} else {
-				ps.buildGroupConn(notaryLabel)
-			}
+		if _, exists := nodes[ps.srvr.Self().ID().String()]; exists {
+			ps.buildDirectConn(notaryLabel)
+		} else {
+			ps.buildGroupConn(notaryLabel)
 		}
 	}
 }

@@ -19,41 +19,25 @@ func TestPeerSetBuildAndForgetConn(t *testing.T) {
 	self := server.Self()
 	table := newNodeTable()
 
-	gov := &testGovernance{
-		numChainsFunc: func(uint64) uint32 {
-			return 3
-		},
-	}
+	gov := &testGovernance{}
 
 	var nodes []*enode.Node
 	for i := 0; i < 9; i++ {
 		nodes = append(nodes, randomV4CompactNode())
 	}
 
-	round10 := [][]*enode.Node{
-		{self, nodes[1], nodes[2]},
-		{nodes[1], nodes[3]},
-		{nodes[2], nodes[4]},
-	}
-	round11 := [][]*enode.Node{
-		{self, nodes[1], nodes[5]},
-		{nodes[5], nodes[6]},
-		{self, nodes[2], nodes[4]},
-	}
-	round12 := [][]*enode.Node{
-		{self, nodes[3], nodes[5]},
-		{self, nodes[7], nodes[8]},
-		{self, nodes[2], nodes[6]},
-	}
+	round10 := []*enode.Node{self, nodes[1], nodes[2]}
+	round11 := []*enode.Node{self, nodes[1], nodes[5]}
+	round12 := []*enode.Node{self, nodes[3], nodes[5]}
 
 	gov.notarySetFunc = func(
-		round uint64, cid uint32) (map[string]struct{}, error) {
-		m := map[uint64][][]*enode.Node{
+		round uint64) (map[string]struct{}, error) {
+		m := map[uint64][]*enode.Node{
 			10: round10,
 			11: round11,
 			12: round12,
 		}
-		return newTestNodeSet(m[round][cid]), nil
+		return newTestNodeSet(m[round]), nil
 	}
 
 	gov.dkgSetFunc = func(round uint64) (map[string]struct{}, error) {
@@ -73,57 +57,30 @@ func TestPeerSetBuildAndForgetConn(t *testing.T) {
 	ps.BuildConnection(12)
 
 	expectedlabel2Nodes := map[peerLabel]map[string]*enode.Node{
-		{set: notaryset, round: 10, chainID: 0}: {
+		{set: notaryset, round: 10}: {
 			self.ID().String():     self,
 			nodes[1].ID().String(): nodes[1],
 			nodes[2].ID().String(): nodes[2],
-		},
-		{set: notaryset, round: 10, chainID: 1}: {
-			nodes[1].ID().String(): nodes[1],
-			nodes[3].ID().String(): nodes[3],
-		},
-		{set: notaryset, round: 10, chainID: 2}: {
-			nodes[2].ID().String(): nodes[2],
-			nodes[4].ID().String(): nodes[4],
 		},
 		{set: dkgset, round: 10}: {
 			self.ID().String():     self,
 			nodes[1].ID().String(): nodes[1],
 			nodes[3].ID().String(): nodes[3],
 		},
-		{set: notaryset, round: 11, chainID: 0}: {
+		{set: notaryset, round: 11}: {
 			self.ID().String():     self,
 			nodes[1].ID().String(): nodes[1],
 			nodes[5].ID().String(): nodes[5],
-		},
-		{set: notaryset, round: 11, chainID: 1}: {
-			nodes[5].ID().String(): nodes[5],
-			nodes[6].ID().String(): nodes[6],
-		},
-		{set: notaryset, round: 11, chainID: 2}: {
-			self.ID().String():     self,
-			nodes[2].ID().String(): nodes[2],
-			nodes[4].ID().String(): nodes[4],
 		},
 		{set: dkgset, round: 11}: {
 			nodes[1].ID().String(): nodes[1],
 			nodes[2].ID().String(): nodes[2],
 			nodes[5].ID().String(): nodes[5],
 		},
-		{set: notaryset, round: 12, chainID: 0}: {
+		{set: notaryset, round: 12}: {
 			self.ID().String():     self,
 			nodes[3].ID().String(): nodes[3],
 			nodes[5].ID().String(): nodes[5],
-		},
-		{set: notaryset, round: 12, chainID: 1}: {
-			self.ID().String():     self,
-			nodes[7].ID().String(): nodes[7],
-			nodes[8].ID().String(): nodes[8],
-		},
-		{set: notaryset, round: 12, chainID: 2}: {
-			self.ID().String():     self,
-			nodes[2].ID().String(): nodes[2],
-			nodes[6].ID().String(): nodes[6],
 		},
 		{set: dkgset, round: 12}: {
 			self.ID().String():     self,
@@ -137,14 +94,11 @@ func TestPeerSetBuildAndForgetConn(t *testing.T) {
 	}
 
 	expectedDirectConn := map[peerLabel]struct{}{
-		{set: notaryset, round: 10, chainID: 0}: {},
-		{set: notaryset, round: 11, chainID: 0}: {},
-		{set: notaryset, round: 11, chainID: 2}: {},
-		{set: notaryset, round: 12, chainID: 0}: {},
-		{set: notaryset, round: 12, chainID: 1}: {},
-		{set: notaryset, round: 12, chainID: 2}: {},
-		{set: dkgset, round: 10}:                {},
-		{set: dkgset, round: 12}:                {},
+		{set: notaryset, round: 10}: {},
+		{set: notaryset, round: 11}: {},
+		{set: notaryset, round: 12}: {},
+		{set: dkgset, round: 10}:    {},
+		{set: dkgset, round: 12}:    {},
 	}
 
 	if !reflect.DeepEqual(ps.directConn, expectedDirectConn) {
@@ -152,9 +106,6 @@ func TestPeerSetBuildAndForgetConn(t *testing.T) {
 	}
 
 	expectedGroupConn := []peerLabel{
-		{set: notaryset, round: 10, chainID: 1},
-		{set: notaryset, round: 10, chainID: 2},
-		{set: notaryset, round: 11, chainID: 1},
 		{set: dkgset, round: 11},
 	}
 
@@ -196,20 +147,10 @@ func TestPeerSetBuildAndForgetConn(t *testing.T) {
 	ps.ForgetConnection(11)
 
 	expectedlabel2Nodes = map[peerLabel]map[string]*enode.Node{
-		{set: notaryset, round: 12, chainID: 0}: {
+		{set: notaryset, round: 12}: {
 			self.ID().String():     self,
 			nodes[3].ID().String(): nodes[3],
 			nodes[5].ID().String(): nodes[5],
-		},
-		{set: notaryset, round: 12, chainID: 1}: {
-			self.ID().String():     self,
-			nodes[7].ID().String(): nodes[7],
-			nodes[8].ID().String(): nodes[8],
-		},
-		{set: notaryset, round: 12, chainID: 2}: {
-			self.ID().String():     self,
-			nodes[2].ID().String(): nodes[2],
-			nodes[6].ID().String(): nodes[6],
 		},
 		{set: dkgset, round: 12}: {
 			self.ID().String():     self,
@@ -223,10 +164,8 @@ func TestPeerSetBuildAndForgetConn(t *testing.T) {
 	}
 
 	expectedDirectConn = map[peerLabel]struct{}{
-		{set: notaryset, round: 12, chainID: 0}: {},
-		{set: notaryset, round: 12, chainID: 1}: {},
-		{set: notaryset, round: 12, chainID: 2}: {},
-		{set: dkgset, round: 12}:                {},
+		{set: notaryset, round: 12}: {},
+		{set: dkgset, round: 12}:    {},
 	}
 
 	if !reflect.DeepEqual(ps.directConn, expectedDirectConn) {

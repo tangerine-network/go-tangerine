@@ -52,7 +52,7 @@ func TestPreparePayload(t *testing.T) {
 	chainNum := uint32(0)
 	root := dex.blockchain.CurrentBlock().Root()
 	dex.app.chainRoot.Store(chainNum, &root)
-	payload, err := dex.app.PreparePayload(coreTypes.Position{ChainID: chainNum})
+	payload, err := dex.app.PreparePayload(coreTypes.Position{})
 	if err != nil {
 		t.Fatalf("prepare payload error: %v", err)
 	}
@@ -152,7 +152,6 @@ func TestVerifyBlock(t *testing.T) {
 	// Prepare normal block.
 	block := &coreTypes.Block{}
 	block.Hash = coreCommon.NewRandomHash()
-	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
 	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	block.Payload, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 100)
@@ -169,7 +168,6 @@ func TestVerifyBlock(t *testing.T) {
 	// Prepare invalid nonce tx.
 	block = &coreTypes.Block{}
 	block.Hash = coreCommon.NewRandomHash()
-	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
 	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	block.Payload, block.Witness, err = prepareDataWithoutTxPool(dex, key, 1, 100)
@@ -186,7 +184,6 @@ func TestVerifyBlock(t *testing.T) {
 	// Prepare invalid block height.
 	block = &coreTypes.Block{}
 	block.Hash = coreCommon.NewRandomHash()
-	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 2
 	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	block.Payload, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 100)
@@ -203,7 +200,6 @@ func TestVerifyBlock(t *testing.T) {
 	// Prepare reach block limit.
 	block = &coreTypes.Block{}
 	block.Hash = coreCommon.NewRandomHash()
-	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
 	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	block.Payload, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 10000)
@@ -220,7 +216,6 @@ func TestVerifyBlock(t *testing.T) {
 	// Prepare insufficient funds.
 	block = &coreTypes.Block{}
 	block.Hash = coreCommon.NewRandomHash()
-	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
 	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	_, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 0)
@@ -255,7 +250,6 @@ func TestVerifyBlock(t *testing.T) {
 	// Prepare invalid intrinsic gas.
 	block = &coreTypes.Block{}
 	block.Hash = coreCommon.NewRandomHash()
-	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
 	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	_, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 0)
@@ -290,7 +284,6 @@ func TestVerifyBlock(t *testing.T) {
 	// Prepare invalid transactions with nonce.
 	block = &coreTypes.Block{}
 	block.Hash = coreCommon.NewRandomHash()
-	block.Position.ChainID = uint32(chainID.Uint64())
 	block.Position.Height = 1
 	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 	_, block.Witness, err = prepareDataWithoutTxPool(dex, key, 0, 0)
@@ -398,7 +391,6 @@ func TestBlockConfirmed(t *testing.T) {
 		block.Witness = witness
 		block.Payload = payload
 		block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
-		block.Position.ChainID = uint32(chainID.Uint64())
 
 		dex.app.BlockConfirmed(*block)
 		expectCounter++
@@ -573,7 +565,6 @@ func addTx(dex *Dexon, nonce int, signer types.Signer, key *ecdsa.PrivateKey) (
 func prepareData(dex *Dexon, key *ecdsa.PrivateKey, startNonce, txNum int) (
 	payload []byte, witness coreTypes.Witness, cost big.Int, nonce uint64, err error) {
 	signer := types.NewEIP155Signer(dex.chainConfig.ChainID)
-	chainID := big.NewInt(0)
 
 	for n := startNonce; n < startNonce+txNum; n++ {
 		var tx *types.Transaction
@@ -586,7 +577,7 @@ func prepareData(dex *Dexon, key *ecdsa.PrivateKey, startNonce, txNum int) (
 		nonce = uint64(n)
 	}
 
-	payload, err = dex.app.PreparePayload(coreTypes.Position{ChainID: uint32(chainID.Uint64())})
+	payload, err = dex.app.PreparePayload(coreTypes.Position{})
 	if err != nil {
 		return
 	}
@@ -624,7 +615,7 @@ func prepareConfirmedBlockWithTxAndData(dex *Dexon, key *ecdsa.PrivateKey, data 
 		witness coreTypes.Witness
 	)
 
-	payload, err = dex.app.PreparePayload(coreTypes.Position{Round: round, ChainID: uint32(0)})
+	payload, err = dex.app.PreparePayload(coreTypes.Position{Round: round})
 	if err != nil {
 		return
 	}
@@ -638,7 +629,6 @@ func prepareConfirmedBlockWithTxAndData(dex *Dexon, key *ecdsa.PrivateKey, data 
 	block.Hash = coreCommon.NewRandomHash()
 	block.Witness = witness
 	block.Payload = payload
-	block.Position.ChainID = uint32(0)
 	block.Position.Round = round
 	block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 
@@ -692,7 +682,6 @@ func prepareConfirmedBlocks(dex *Dexon, keys []*ecdsa.PrivateKey, txNum int) (bl
 }, err error) {
 	for _, key := range keys {
 		address := crypto.PubkeyToAddress(key.PublicKey)
-		chainID := big.NewInt(0)
 
 		// Prepare one block for pending.
 		var (
@@ -712,7 +701,6 @@ func prepareConfirmedBlocks(dex *Dexon, keys []*ecdsa.PrivateKey, txNum int) (bl
 		block.Hash = coreCommon.NewRandomHash()
 		block.Witness = witness
 		block.Payload = payload
-		block.Position.ChainID = uint32(chainID.Uint64())
 		block.ProposerID = coreTypes.NodeID{coreCommon.Hash{1, 2, 3}}
 
 		status := dex.app.VerifyBlock(block)

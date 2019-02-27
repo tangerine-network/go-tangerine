@@ -130,10 +130,9 @@ func newTestProtocolManager(mode downloader.SyncMode, blocks int, generator func
 	}
 
 	tgov := &testGovernance{
-		numChainsFunc: func(uint64) uint32 { return 3 },
 		lenCRSFunc:    func() uint64 { return 1 },
 		dkgSetFunc:    func(uint64) (map[string]struct{}, error) { return nil, nil },
-		notarySetFunc: func(uint64, uint32) (map[string]struct{}, error) { return nil, nil },
+		notarySetFunc: func(uint64) (map[string]struct{}, error) { return nil, nil },
 	}
 
 	pm, err := NewProtocolManager(gspec.Config, mode, DefaultConfig.NetworkId, dMoment, evmux, &testTxPool{added: newtx}, engine, blockchain, db, true, tgov, &testApp{})
@@ -211,14 +210,9 @@ func newTestTransaction(from *ecdsa.PrivateKey, nonce uint64, datasize int) *typ
 
 // testGovernance is a fake, helper governance for testing purposes
 type testGovernance struct {
-	numChainsFunc func(uint64) uint32
 	lenCRSFunc    func() uint64
-	notarySetFunc func(uint64, uint32) (map[string]struct{}, error)
+	notarySetFunc func(uint64) (map[string]struct{}, error)
 	dkgSetFunc    func(uint64) (map[string]struct{}, error)
-}
-
-func (g *testGovernance) GetNumChains(round uint64) uint32 {
-	return g.numChainsFunc(round)
 }
 
 func (g *testGovernance) LenCRS() uint64 {
@@ -226,8 +220,8 @@ func (g *testGovernance) LenCRS() uint64 {
 }
 
 func (g *testGovernance) NotarySet(
-	round uint64, chainID uint32) (map[string]struct{}, error) {
-	return g.notarySetFunc(round, chainID)
+	round uint64) (map[string]struct{}, error) {
+	return g.notarySetFunc(round)
 }
 
 func (g *testGovernance) DKGSet(round uint64) (map[string]struct{}, error) {

@@ -67,12 +67,13 @@ type Consensus struct {
 	blocks            types.BlocksByPosition
 	agreementModule   *agreement
 	configs           []*types.Config
-	roundBeginTimes   []time.Time
+	roundBeginHeights []uint64
 	agreementRoundCut uint64
 
 	// lock for accessing all fields.
 	lock               sync.RWMutex
 	duringBuffering    bool
+	latestCRSRound     uint64
 	moduleWaitGroup    sync.WaitGroup
 	agreementWaitGroup sync.WaitGroup
 	pullChan           chan common.Hash
@@ -109,7 +110,7 @@ func NewConsensus(
 		configs: []*types.Config{
 			utils.GetConfigWithPanic(gov, 0, logger),
 		},
-		roundBeginTimes:   []time.Time{dMoment},
+		roundBeginHeights: []uint64{0},
 		receiveChan:       make(chan *types.Block, 1000),
 		pullChan:          make(chan common.Hash, 1000),
 		randomnessResults: make(map[common.Hash]*types.BlockRandomnessResult),
@@ -280,7 +281,8 @@ func (con *Consensus) GetSyncedConsensus() (*core.Consensus, error) {
 	var err error
 	con.syncedConsensus, err = core.NewConsensusFromSyncer(
 		con.syncedLastBlock,
-		con.roundBeginTimes[con.syncedLastBlock.Position.Round],
+		con.roundBeginHeights[con.syncedLastBlock.Position.Round],
+		con.dMoment,
 		con.app,
 		con.gov,
 		con.db,
@@ -336,7 +338,6 @@ func (con *Consensus) buildEmptyBlock(b *types.Block, parent *types.Block) {
 	b.Witness.Height = parent.Witness.Height
 	b.Witness.Data = make([]byte, len(parent.Witness.Data))
 	copy(b.Witness.Data, parent.Witness.Data)
-	b.Acks = common.NewSortedHashes(common.Hashes{parent.Hash})
 }
 
 // setupConfigs is called by SyncBlocks with blocks from compaction chain. In
@@ -368,9 +369,9 @@ func (con *Consensus) setupConfigsUntilRound(round uint64) {
 	for r := uint64(len(con.configs)); r <= round; r++ {
 		cfg := utils.GetConfigWithPanic(con.gov, r, con.logger)
 		con.configs = append(con.configs, cfg)
-		con.roundBeginTimes = append(
-			con.roundBeginTimes,
-			con.roundBeginTimes[r-1].Add(con.configs[r-1].RoundInterval))
+		con.roundBeginHeights = append(
+			con.roundBeginHeights,
+			con.roundBeginHeights[r-1]+con.configs[r-1].RoundLength)
 	}
 }
 
@@ -416,6 +417,11 @@ func (con *Consensus) cacheRandomnessResult(r *types.BlockRandomnessResult) {
 		if len(con.blocks) > 0 && r.Position.Older(con.blocks[0].Position) {
 			return true
 		}
+		if r.Position.Round > con.latestCRSRound {
+			// We can't process randomness from rounds that its CRS is still
+			// unknown.
+			return true
+		}
 		_, exists := con.randomnessResults[r.BlockHash]
 		return exists
 	}() {
@@ -453,41 +459,22 @@ func (con *Consensus) startNetwork() {
 	con.moduleWaitGroup.Add(1)
 	go func() {
 		defer con.moduleWaitGroup.Done()
-	Loop:
+	loop:
 		for {
 			select {
 			case val := <-con.network.ReceiveChan():
-				var pos types.Position
 				switch v := val.(type) {
 				case *types.Block:
-					pos = v.Position
 				case *types.AgreementResult:
-					pos = v.Position
 				case *types.BlockRandomnessResult:
 					con.cacheRandomnessResult(v)
-					continue Loop
+					continue loop
 				default:
-					continue Loop
+					continue loop
 				}
-				if func() bool {
-					con.lock.RLock()
-					defer con.lock.RUnlock()
-					if pos.ChainID > 0 {
-						// This error might be easily encountered when the
-						// "latest" parameter of SyncBlocks is turned on too
-						// early.
-						con.logger.Error(
-							"Unknown chainID message received (syncer)",
-							"position", pos,
-						)
-						return false
-					}
-					return true
-				}() {
-					con.agreementModule.inputChan <- val
-				}
+				con.agreementModule.inputChan <- val
 			case <-con.ctx.Done():
-				return
+				break loop
 			}
 		}
 	}()
@@ -505,6 +492,11 @@ func (con *Consensus) startCRSMonitor() {
 		}
 		con.logger.Debug("CRS is ready", "round", round)
 		lastNotifiedRound = round
+		func() {
+			con.lock.Lock()
+			defer con.lock.Unlock()
+			con.latestCRSRound = round
+		}()
 		for func() bool {
 			con.lock.RLock()
 			defer con.lock.RUnlock()

@@ -1005,9 +1005,8 @@ func (pm *ProtocolManager) BroadcastVote(vote *coreTypes.Vote) {
 		pm.cache.addVote(vote)
 	}
 	label := peerLabel{
-		set:     notaryset,
-		chainID: vote.Position.ChainID,
-		round:   vote.Position.Round,
+		set:   notaryset,
+		round: vote.Position.Round,
 	}
 	for _, peer := range pm.peers.PeersWithLabel(label) {
 		peer.AsyncSendVotes([]*coreTypes.Vote{vote})
@@ -1038,9 +1037,8 @@ func (pm *ProtocolManager) BroadcastRandomnessResult(
 	pm.cache.addRandomness(randomness)
 	// send to notary nodes first (direct)
 	label := peerLabel{
-		set:     notaryset,
-		chainID: randomness.Position.ChainID,
-		round:   randomness.Position.Round,
+		set:   notaryset,
+		round: randomness.Position.Round,
 	}
 	randomnesses := []*coreTypes.BlockRandomnessResult{randomness}
 	for _, peer := range pm.peers.PeersWithLabel(label) {
@@ -1104,9 +1102,8 @@ func (pm *ProtocolManager) BroadcastPullBlocks(
 func (pm *ProtocolManager) BroadcastPullVotes(
 	pos coreTypes.Position) {
 	label := peerLabel{
-		set:     notaryset,
-		chainID: pos.ChainID,
-		round:   pos.Round,
+		set:   notaryset,
+		round: pos.Round,
 	}
 	for idx, peer := range pm.peers.PeersWithLabel(label) {
 		if idx >= maxPullVotePeers {

@@ -2469,6 +2469,16 @@ func PackReportForkBlock(block1, block2 *coreTypes.Block) ([]byte, error) {
 	return data, nil
 }
 
+func PackResetDKG(newSignedCRS []byte) ([]byte, error) {
+	method := GovernanceABI.Name2Method["resetDKG"]
+	res, err := method.Inputs.Pack(newSignedCRS)
+	if err != nil {
+		return nil, err
+	}
+	data := append(method.Id(), res...)
+	return data, nil
+}
+
 // NodeInfoOracleContract representing a oracle providing the node information.
 type NodeInfoOracleContract struct {
 }

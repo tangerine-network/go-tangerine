@@ -229,12 +229,8 @@ func (d *DexconGovernance) ReportForkBlock(block1, block2 *coreTypes.Block) {
 	}
 }
 
-func (d *DexconGovernance) GetNumChains(round uint64) uint32 {
-	return 1
-}
-
-func (d *DexconGovernance) NotarySet(round uint64, chainID uint32) (map[string]struct{}, error) {
-	notarySet, err := d.nodeSetCache.GetNotarySet(round, chainID)
+func (d *DexconGovernance) NotarySet(round uint64) (map[string]struct{}, error) {
+	notarySet, err := d.nodeSetCache.GetNotarySet(round)
 	if err != nil {
 		return nil, err
 	}
@@ -261,4 +257,17 @@ func (d *DexconGovernance) DKGSet(round uint64) (map[string]struct{}, error) {
 		}
 	}
 	return r, nil
+}
+
+func (d *DexconGovernance) ResetDKG(newSignedCRS []byte) {
+	data, err := vm.PackResetDKG(newSignedCRS)
+	if err != nil {
+		log.Error("failed to pack resetDKG input", "err", err)
+		return
+	}
+
+	err = d.sendGovTx(context.Background(), data)
+	if err != nil {
+		log.Error("failed to send resetDKG tx", "err", err)
+	}
 }

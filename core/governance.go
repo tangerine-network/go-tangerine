@@ -91,12 +91,11 @@ func (g *Governance) Configuration(round uint64) *coreTypes.Config {
 	configHelper := g.GetGovStateHelperAtRound(round)
 	c := configHelper.Configuration()
 	return &coreTypes.Config{
-		LambdaBA:      time.Duration(c.LambdaBA) * time.Millisecond,
-		LambdaDKG:     time.Duration(c.LambdaDKG) * time.Millisecond,
-		NotarySetSize: c.NotarySetSize,
-		DKGSetSize:    c.DKGSetSize,
-		// TODO(jimmyhu): remove MinBlockInterval after coreTypes.Config update.
-		RoundInterval:    time.Duration(c.RoundLength) * time.Duration(c.MinBlockInterval) * time.Millisecond,
+		LambdaBA:         time.Duration(c.LambdaBA) * time.Millisecond,
+		LambdaDKG:        time.Duration(c.LambdaDKG) * time.Millisecond,
+		NotarySetSize:    c.NotarySetSize,
+		DKGSetSize:       c.DKGSetSize,
+		RoundLength:      c.RoundLength,
 		MinBlockInterval: time.Duration(c.MinBlockInterval) * time.Millisecond,
 	}
 }
@@ -137,4 +136,8 @@ func (g *Governance) IsDKGFinal(round uint64) bool {
 
 func (g *Governance) MinGasPrice(round uint64) *big.Int {
 	return g.GetGovStateHelperAtRound(round).MinGasPrice()
+}
+
+func (g *Governance) DKGResetCount(round uint64) uint64 {
+	return g.GetHeadHelper().DKGResetCount(big.NewInt(int64(round))).Uint64()
 }

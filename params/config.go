@@ -149,7 +149,7 @@ var (
 			LambdaDKG:         10000,
 			NotarySetSize:     4,
 			DKGSetSize:        4,
-			RoundLength:       1200000,
+			RoundLength:       1200,
 			MinBlockInterval:  1000,
 			FineValues: []*big.Int{
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
