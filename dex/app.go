@@ -488,10 +488,19 @@ func (d *DexconApp) BlockDelivered(
 		panic(err)
 	}
 
+	var owner common.Address
+	if !block.IsEmpty() {
+		gs := d.gov.GetStateForConfigAtRound(block.Position.Round)
+		owner, err = gs.GetNodeOwnerByID(block.ProposerID)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	newBlock := types.NewBlock(&types.Header{
 		Number:     new(big.Int).SetUint64(result.Height),
 		Time:       big.NewInt(result.Timestamp.UnixNano() / 1000000),
-		Coinbase:   common.BytesToAddress(block.ProposerID.Bytes()),
+		Coinbase:   owner,
 		GasLimit:   d.gov.DexconConfiguration(block.Position.Round).BlockGasLimit,
 		Difficulty: big.NewInt(1),
 		Round:      block.Position.Round,

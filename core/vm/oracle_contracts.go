@@ -488,6 +488,15 @@ func (s *GovernanceState) PutNodeOffsets(n *nodeInfo, offset *big.Int) error {
 	return nil
 }
 
+func (s *GovernanceState) GetNodeOwnerByID(id coreTypes.NodeID) (common.Address, error) {
+	offset := s.NodesOffsetByNodeKeyAddress(idToAddress(id))
+	if offset.Cmp(big.NewInt(0)) < 0 {
+		return common.Address{}, errors.New("node not found")
+	}
+	node := s.Node(offset)
+	return node.Owner, nil
+}
+
 // struct Delegator {
 //     address node;
 //     address owner;
