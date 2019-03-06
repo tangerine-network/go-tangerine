@@ -28,7 +28,7 @@ import (
 var (
 	MainnetGenesisHash = common.HexToHash("0x1c7166166a0d5030bce584ecfb153d874be4afb0bfda7c844ff339c85fee5e4a")
 	TestnetGenesisHash = common.HexToHash("0x8eeae9be1662831bf98627e7fdd8185c808aa177bdf4e1eed5631d065bf14973")
-	YilanGenesisHash   = common.HexToHash("0xa1011afd7391b4d7929c1ebbeab490cc2be45e699b75e3bea8948d525b52b465")
+	YilanGenesisHash   = common.HexToHash("0x2c70b276af6c65e18863105f51562571c8c7b710400e31f9c96892d4c0b9699f")
 )
 
 // TrustedCheckpoints associates each known checkpoint with the genesis hash of
@@ -142,15 +142,15 @@ var (
 			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			LockupPeriod:      86400 * 3 * 1000,
 			MiningVelocity:    0.1875,
-			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e7)),
-			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(4e6)),
-			BlockGasLimit:     40000000,
+			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.4e8)),
+			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.6e7)),
+			BlockGasLimit:     21000 * 5000,
 			LambdaBA:          250,
 			LambdaDKG:         10000,
-			NotarySetSize:     4,
-			DKGSetSize:        4,
+			NotarySetSize:     18,
+			DKGSetSize:        14,
 			RoundLength:       1200,
-			MinBlockInterval:  1000,
+			MinBlockInterval:  500,
 			FineValues: []*big.Int{
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
@@ -189,13 +189,13 @@ var (
 			MiningVelocity:    0.1875,
 			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e7)),
 			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(4e6)),
-			BlockGasLimit:     40000000,
+			BlockGasLimit:     21000 * 5000,
 			LambdaBA:          250,
 			LambdaDKG:         10000,
 			NotarySetSize:     4,
 			DKGSetSize:        4,
 			RoundLength:       1200,
-			MinBlockInterval:  1000,
+			MinBlockInterval:  500,
 			FineValues: []*big.Int{
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
