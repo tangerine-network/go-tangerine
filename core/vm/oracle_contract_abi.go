@@ -261,25 +261,6 @@ const GovernanceABIJSON = `
   },
   {
     "constant": true,
-    "inputs": [
-      {
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "name": "nodesOffsetByID",
-    "outputs": [
-      {
-        "name": "",
-        "type": "int256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
     "inputs": [],
     "name": "totalStaked",
     "outputs": [
@@ -559,6 +540,25 @@ const GovernanceABIJSON = `
       {
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "nodesOffsetByNodeKeyAddress",
+    "outputs": [
+      {
+        "name": "",
+        "type": "int256"
       }
     ],
     "payable": false,

@@ -981,13 +981,13 @@ func (g *OracleContractsTestSuite) TestMiscVariableReading() {
 	g.Require().NoError(err)
 	g.Require().Equal(0, int(value.Uint64()))
 
-	id, err := publicKeyToNodeID(pk)
+	addr, err = publicKeyToNodeKeyAddress(pk)
 	g.Require().NoError(err)
-	input, err = GovernanceABI.ABI.Pack("nodesOffsetByID", id)
+	input, err = GovernanceABI.ABI.Pack("nodesOffsetByNodeKeyAddress", addr)
 	g.Require().NoError(err)
 	res, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
 	g.Require().NoError(err)
-	err = GovernanceABI.ABI.Unpack(&value, "nodesOffsetByID", res)
+	err = GovernanceABI.ABI.Unpack(&value, "nodesOffsetByNodeKeyAddress", res)
 	g.Require().NoError(err)
 	g.Require().Equal(0, int(value.Uint64()))
 
@@ -1150,7 +1150,7 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 		dkgSets[round] = dkgSet
 
 		for id := range dkgSet {
-			offset := g.s.NodesOffsetByID(Bytes32(id.Hash))
+			offset := g.s.NodesOffsetByNodeKeyAddress(idToAddress(id))
 			if offset.Cmp(big.NewInt(0)) < 0 {
 				panic("DKG node does not exist")
 			}
