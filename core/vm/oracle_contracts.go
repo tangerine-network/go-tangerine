@@ -1226,17 +1226,42 @@ func (g *GovernanceContract) penalize() ([]byte, error) {
 func (g *GovernanceContract) configDKGSetSize(round *big.Int) *big.Int {
 	s, err := getConfigState(g.evm, round)
 	if err != nil {
-		panic(err)
+		return big.NewInt(0)
 	}
 	return s.DKGSetSize()
 }
+
 func (g *GovernanceContract) getDKGSet(round *big.Int) map[coreTypes.NodeID]struct{} {
-	target := coreTypes.NewDKGSetTarget(coreCommon.Hash(g.state.CRS()))
+	crsRound := g.state.CRSRound()
+	var crs common.Hash
+	cmp := round.Cmp(crsRound)
+	if round.Cmp(big.NewInt(int64(dexCore.DKGDelayRound))) <= 0 {
+		state, err := getRoundState(g.evm, big.NewInt(0))
+		if err != nil {
+			return map[coreTypes.NodeID]struct{}{}
+		}
+		crs = state.CRS()
+		for i := uint64(0); i < round.Uint64(); i++ {
+			crs = crypto.Keccak256Hash(crs[:])
+		}
+	} else if cmp > 0 {
+		return map[coreTypes.NodeID]struct{}{}
+	} else if cmp == 0 {
+		crs = g.state.CRS()
+	} else {
+		state, err := getRoundState(g.evm, round)
+		if err != nil {
+			return map[coreTypes.NodeID]struct{}{}
+		}
+		crs = state.CRS()
+	}
+
+	target := coreTypes.NewDKGSetTarget(coreCommon.Hash(crs))
 	ns := coreTypes.NewNodeSet()
 
 	state, err := getConfigState(g.evm, round)
 	if err != nil {
-		panic(err)
+		return map[coreTypes.NodeID]struct{}{}
 	}
 	for _, x := range state.QualifiedNodes() {
 		mpk, err := ecdsa.NewPublicKeyFromByteSlice(x.PublicKey)
@@ -1265,6 +1290,10 @@ func (g *GovernanceContract) clearDKG() {
 }
 
 func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byte, error) {
+	if round.Uint64() != g.evm.Round.Uint64()+1 {
+		return nil, errExecutionReverted
+	}
+
 	caller := g.contract.Caller()
 	offset := g.state.NodesOffsetByNodeKeyAddress(caller)
 
@@ -1335,16 +1364,14 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 }
 
 func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) ([]byte, error) {
-	if g.evm.Round.Uint64() > 0 {
-		if round.Uint64() != g.evm.Round.Uint64()+1 {
-			return nil, errExecutionReverted
-		}
+	if round.Uint64() != g.evm.Round.Uint64()+1 {
+		return nil, errExecutionReverted
+	}
 
-		if g.state.DKGRound().Cmp(g.evm.Round) == 0 {
-			// Clear DKG states for next round.
-			g.clearDKG()
-			g.state.SetDKGRound(round)
-		}
+	if g.state.DKGRound().Cmp(g.evm.Round) == 0 {
+		// Clear DKG states for next round.
+		g.clearDKG()
+		g.state.SetDKGRound(round)
 	}
 
 	caller := g.contract.Caller()
@@ -1390,6 +1417,10 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 }
 
 func (g *GovernanceContract) addDKGMPKReady(round *big.Int, ready []byte) ([]byte, error) {
+	if round.Uint64() != g.evm.Round.Uint64()+1 {
+		return nil, errExecutionReverted
+	}
+
 	caller := g.contract.Caller()
 
 	var dkgReady dkgTypes.MPKReady
@@ -1416,6 +1447,10 @@ func (g *GovernanceContract) addDKGMPKReady(round *big.Int, ready []byte) ([]byt
 }
 
 func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]byte, error) {
+	if round.Uint64() != g.evm.Round.Uint64()+1 {
+		return nil, errExecutionReverted
+	}
+
 	caller := g.contract.Caller()
 
 	var dkgFinalize dkgTypes.Finalize
