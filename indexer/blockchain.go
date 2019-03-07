@@ -3,9 +3,6 @@ package indexer
 import (
 	"math/big"
 
-	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
-
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/consensus"
 	"github.com/dexon-foundation/dexon/core"
@@ -29,12 +26,6 @@ type ReadOnlyBlockChain interface {
 	GasLimit() uint64
 	Genesis() *types.Block
 	GetAncestor(common.Hash, uint64, uint64, *uint64) (common.Hash, uint64)
-	GetAddressInfo(uint32, common.Address) (
-		info struct {
-			Nonce   uint64
-			Cost    *big.Int
-			Counter uint64
-		})
 	GetBlock(common.Hash, uint64) *types.Block
 	GetBlockByHash(common.Hash) *types.Block
 	GetBlockByNumber(uint64) *types.Block
@@ -42,15 +33,11 @@ type ReadOnlyBlockChain interface {
 	GetBlocksFromHash(common.Hash, int) (blocks []*types.Block)
 	GetBody(common.Hash) *types.Body
 	GetBodyRLP(common.Hash) rlp.RawValue
-	GetChainLastConfirmedHeight(uint32) (uint64, bool)
-	GetConfirmedBlockByHash(uint32, coreCommon.Hash) (*coreTypes.Block, types.Transactions)
-	GetCostInConfirmedBlocks(uint32, common.Address) (*big.Int, bool)
 	GetGovStateByHash(common.Hash) (*types.GovState, error)
 	GetGovStateByNumber(uint64) (*types.GovState, error)
 	GetHeader(common.Hash, uint64) *types.Header
 	GetHeaderByHash(common.Hash) *types.Header
 	GetHeaderByNumber(number uint64) *types.Header
-	GetLastNonceInConfirmedBlocks(uint32, common.Address) (uint64, bool)
 	GetReceiptsByHash(common.Hash) types.Receipts
 	GetRoundHeight(uint64) (uint64, bool)
 	GetTd(common.Hash, uint64) *big.Int

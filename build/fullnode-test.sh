@@ -12,7 +12,7 @@ tarAndUpload()
 
 endpoint=http://127.0.0.1:8545
 
-for round in 0 1 2
+for round in 0 1 2 3 4
 do
 
 echo "Start verify round $round"
@@ -39,7 +39,7 @@ if [ $code == 1 ]; then
   exit 1
 fi
 
-if [ $round -lt 2 ]; then
+if [ $round -lt 4 ]; then
   cmd="PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig go run build/testtool/testtool.go monkeyTest $endpoint"
   eval $cmd
   code=$?

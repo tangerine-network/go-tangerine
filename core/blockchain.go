@@ -28,7 +28,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
 	dexCore "github.com/dexon-foundation/dexon-consensus/core"
 	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 	"github.com/hashicorp/golang-lru"
@@ -148,13 +147,6 @@ type BlockChain struct {
 
 	gov           *Governance
 	verifierCache *dexCore.TSigVerifierCache
-
-	confirmedBlockInitMu sync.Mutex
-	confirmedBlocks      map[uint32]map[coreCommon.Hash]*blockInfo
-	addressNonce         map[uint32]map[common.Address]uint64
-	addressCost          map[uint32]map[common.Address]*big.Int
-	addressCounter       map[uint32]map[common.Address]uint64
-	chainLastHeight      sync.Map
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -176,24 +168,20 @@ func NewBlockChain(db ethdb.Database, cacheConfig *CacheConfig, chainConfig *par
 	badBlocks, _ := lru.New(badBlockLimit)
 
 	bc := &BlockChain{
-		chainConfig:     chainConfig,
-		cacheConfig:     cacheConfig,
-		db:              db,
-		triegc:          prque.New(nil),
-		stateCache:      state.NewDatabaseWithCache(db, cacheConfig.TrieCleanLimit),
-		quit:            make(chan struct{}),
-		bodyCache:       bodyCache,
-		bodyRLPCache:    bodyRLPCache,
-		receiptsCache:   receiptsCache,
-		blockCache:      blockCache,
-		futureBlocks:    futureBlocks,
-		engine:          engine,
-		vmConfig:        vmConfig,
-		badBlocks:       badBlocks,
-		confirmedBlocks: make(map[uint32]map[coreCommon.Hash]*blockInfo),
-		addressNonce:    make(map[uint32]map[common.Address]uint64),
-		addressCost:     make(map[uint32]map[common.Address]*big.Int),
-		addressCounter:  make(map[uint32]map[common.Address]uint64),
+		chainConfig:   chainConfig,
+		cacheConfig:   cacheConfig,
+		db:            db,
+		triegc:        prque.New(nil),
+		stateCache:    state.NewDatabaseWithCache(db, cacheConfig.TrieCleanLimit),
+		quit:          make(chan struct{}),
+		bodyCache:     bodyCache,
+		bodyRLPCache:  bodyRLPCache,
+		receiptsCache: receiptsCache,
+		blockCache:    blockCache,
+		futureBlocks:  futureBlocks,
+		engine:        engine,
+		vmConfig:      vmConfig,
+		badBlocks:     badBlocks,
 	}
 	bc.SetValidator(NewBlockValidator(chainConfig, bc, engine))
 	bc.SetProcessor(NewStateProcessor(chainConfig, bc, engine))
@@ -284,126 +272,6 @@ func (bc *BlockChain) getProcInterrupt() bool {
 // GetVMConfig returns the block chain VM config.
 func (bc *BlockChain) GetVMConfig() *vm.Config {
 	return &bc.vmConfig
-}
-
-type blockInfo struct {
-	addresses map[common.Address]struct{}
-	block     *coreTypes.Block
-	txs       types.Transactions
-}
-
-func (bc *BlockChain) AddConfirmedBlock(block *coreTypes.Block) error {
-	chainID := uint32(0)
-	bc.confirmedBlockInitMu.Lock()
-	_, exist := bc.confirmedBlocks[chainID]
-	if !exist {
-		bc.confirmedBlocks[chainID] = make(map[coreCommon.Hash]*blockInfo)
-		bc.addressNonce[chainID] = make(map[common.Address]uint64)
-		bc.addressCost[chainID] = make(map[common.Address]*big.Int)
-		bc.addressCounter[chainID] = make(map[common.Address]uint64)
-	}
-	bc.confirmedBlockInitMu.Unlock()
-
-	var transactions types.Transactions
-	if len(block.Payload) != 0 {
-		err := rlp.Decode(bytes.NewReader(block.Payload), &transactions)
-		if err != nil {
-			return err
-		}
-		_, err = types.GlobalSigCache.Add(types.NewEIP155Signer(bc.Config().ChainID), transactions)
-		if err != nil {
-			return err
-		}
-	}
-
-	addressMap := map[common.Address]struct{}{}
-	for _, tx := range transactions {
-		msg, err := tx.AsMessage(types.MakeSigner(bc.Config(), new(big.Int)))
-		if err != nil {
-			return err
-		}
-		addressMap[msg.From()] = struct{}{}
-
-		// get latest nonce in block
-		bc.addressNonce[chainID][msg.From()] = msg.Nonce()
-
-		// calculate max cost in confirmed blocks
-		if bc.addressCost[chainID][msg.From()] == nil {
-			bc.addressCost[chainID][msg.From()] = big.NewInt(0)
-		}
-		bc.addressCost[chainID][msg.From()] = new(big.Int).Add(bc.addressCost[chainID][msg.From()], tx.Cost())
-	}
-
-	for addr := range addressMap {
-		bc.addressCounter[chainID][addr]++
-	}
-
-	bc.confirmedBlocks[chainID][block.Hash] = &blockInfo{
-		addresses: addressMap,
-		block:     block,
-		txs:       transactions,
-	}
-	bc.chainLastHeight.Store(chainID, block.Position.Height)
-	return nil
-}
-
-func (bc *BlockChain) RemoveConfirmedBlock(chainID uint32, hash coreCommon.Hash) {
-	blockInfo := bc.confirmedBlocks[chainID][hash]
-	for addr := range blockInfo.addresses {
-		bc.addressCounter[chainID][addr]--
-		if bc.addressCounter[chainID][addr] == 0 {
-			delete(bc.addressCounter[chainID], addr)
-			delete(bc.addressCost[chainID], addr)
-			delete(bc.addressNonce[chainID], addr)
-		}
-	}
-
-	delete(bc.confirmedBlocks[chainID], hash)
-}
-
-func (bc *BlockChain) GetConfirmedBlockByHash(chainID uint32, hash coreCommon.Hash) (*coreTypes.Block, types.Transactions) {
-	return bc.confirmedBlocks[chainID][hash].block, bc.confirmedBlocks[chainID][hash].txs
-}
-
-func (bc *BlockChain) GetLastNonceInConfirmedBlocks(chainID uint32, address common.Address) (uint64, bool) {
-	addressNonce, exist := bc.addressNonce[chainID]
-	if !exist {
-		return 0, exist
-	}
-
-	nonce, exist := addressNonce[address]
-	return nonce, exist
-}
-
-func (bc *BlockChain) GetCostInConfirmedBlocks(chainID uint32, address common.Address) (*big.Int, bool) {
-	addressCost, exist := bc.addressCost[chainID]
-	if !exist {
-		return nil, exist
-	}
-
-	cost, exist := addressCost[address]
-	return cost, exist
-}
-
-func (bc *BlockChain) GetChainLastConfirmedHeight(chainID uint32) (uint64, bool) {
-	val := uint64(0)
-	v, ok := bc.chainLastHeight.Load(chainID)
-	if ok {
-		val = v.(uint64)
-	}
-	return val, ok
-}
-
-func (bc *BlockChain) GetAddressInfo(chainID uint32, address common.Address) (
-	info struct {
-		Nonce   uint64
-		Cost    *big.Int
-		Counter uint64
-	}) {
-	info.Nonce = bc.addressNonce[chainID][address]
-	info.Cost = bc.addressCost[chainID][address]
-	info.Counter = bc.addressCounter[chainID][address]
-	return
 }
 
 // loadLastState loads the last known chain state from the database. This method
