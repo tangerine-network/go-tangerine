@@ -50,8 +50,8 @@ func main() {
 
 		address := crypto.PubkeyToAddress(privKey.PublicKey)
 		genesis.Alloc[address] = core.GenesisAccount{
-			Balance:   new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
-			Staked:    new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5)),
+			Balance:   new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e6)),
+			Staked:    new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			PublicKey: crypto.FromECDSAPub(&privKey.PublicKey),
 			NodeInfo: core.NodeInfo{
 				Name:     fmt.Sprintf("DEXON Test Node %d", i),

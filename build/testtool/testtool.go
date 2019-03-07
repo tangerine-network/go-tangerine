@@ -189,7 +189,7 @@ func doMonkeyTest(args []string) {
 		Endpoint: args[0],
 		N:        30,
 		Sleep:    3000,
-		Timeout:  60,
+		Timeout:  30,
 	})
 	m, nonce := monkey.Exec()
 

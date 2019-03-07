@@ -56,8 +56,10 @@ $GDEX \
   --wsorigins='*' --rpcvhosts='*' --rpccorsdomain="*" \
   > $logsdir/gdex.rpc.log 2>&1 &
 
+NUM_NODES=$(cat ${GENESIS} | grep 'DEXON Test Node' | wc -l)
+
 # Nodes
-for i in $(seq 0 3); do
+for i in $(seq 0 $(($NUM_NODES - 1))); do
   datadir=$PWD/Dexon.$i
   rm -rf $datadir
   $GDEX --datadir=$datadir init ${GENESIS}

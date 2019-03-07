@@ -1,6 +1,6 @@
 #!/bin/bash
 
-sleep 20
+sleep 10
 
 tarAndUpload()
 {
@@ -49,7 +49,7 @@ if [ $round -lt 2 ]; then
     exit 1
   fi
 
-  echo "Sleep 30 sec wait for next round"
-  sleep 30
+  echo "Sleep 15 sec wait for next round"
+  sleep 15
 fi
 done
