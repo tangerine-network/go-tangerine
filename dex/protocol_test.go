@@ -569,7 +569,6 @@ func TestRecvDKGPrivateShare(t *testing.T) {
 	defer pm.Stop()
 	defer p.close()
 
-	// TODO(sonic): polish this
 	privkey := dkg.NewPrivateKey()
 	privateShare := dkgTypes.PrivateShare{
 		ProposerID:   coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
@@ -606,7 +605,6 @@ func TestSendDKGPrivateShare(t *testing.T) {
 	defer pm.Stop()
 	defer p1.close()
 
-	// TODO(sonic): polish this
 	privkey := dkg.NewPrivateKey()
 	privateShare := dkgTypes.PrivateShare{
 		ProposerID:   coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
@@ -654,7 +652,6 @@ func TestRecvAgreement(t *testing.T) {
 	defer pm.Stop()
 	defer p.close()
 
-	// TODO(sonic): polish this
 	vote := coreTypes.Vote{
 		VoteHeader: coreTypes.VoteHeader{
 			ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
@@ -698,7 +695,6 @@ func TestSendAgreement(t *testing.T) {
 	defer pm.Stop()
 	defer p.close()
 
-	// TODO(sonic): polish this
 	vote := coreTypes.Vote{
 		VoteHeader: coreTypes.VoteHeader{
 			ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
@@ -745,7 +741,6 @@ func TestRecvRandomnesses(t *testing.T) {
 	defer pm.Stop()
 	defer p.close()
 
-	// TODO(sonic): polish this
 	randomness := coreTypes.BlockRandomnessResult{
 		BlockHash: coreCommon.Hash{8, 8, 8},
 		Position: coreTypes.Position{
@@ -777,7 +772,6 @@ func TestSendRandomnesses(t *testing.T) {
 	defer pm.Stop()
 	defer p.close()
 
-	// TODO(sonic): polish this
 	randomness := coreTypes.BlockRandomnessResult{
 		BlockHash: coreCommon.Hash{8, 8, 8},
 		Position: coreTypes.Position{

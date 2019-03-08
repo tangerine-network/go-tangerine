@@ -909,7 +909,6 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		govState, err := pm.blockchain.GetGovStateByHash(hash)
 		if err != nil {
-			// TODO(sonic): handle this error
 			panic(err)
 		}
 		return p.SendGovState(govState)
@@ -1027,7 +1026,6 @@ func (pm *ProtocolManager) BroadcastAgreementResult(
 		}
 	}
 
-	// TODO(sonic): send to some of other nodes (gossip)
 	for _, peer := range pm.peers.PeersWithoutAgreement(rlpHash(agreement)) {
 		peer.AsyncSendAgreement(agreement)
 	}
@@ -1048,7 +1046,6 @@ func (pm *ProtocolManager) BroadcastRandomnessResult(
 		}
 	}
 
-	// TODO(sonic): send to some of other nodes (gossip)
 	for _, peer := range pm.peers.PeersWithoutRandomness(rlpHash(randomness)) {
 		peer.AsyncSendRandomnesses(randomnesses)
 	}

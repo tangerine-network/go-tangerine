@@ -1403,7 +1403,6 @@ func (d *Downloader) processHeaders(origin uint64, pivot uint64, number uint64) 
 
 				// In case of header only syncing, validate the chunk immediately
 				if d.mode == FastSync || d.mode == LightSync {
-					// TODO(sonic) update the gov state to make TSigVerify correct
 					// Collect the yet unknown headers to mark them as uncertain
 					unknown := make([]*types.Header, 0, len(headersWithGovState))
 					for _, header := range chunk {

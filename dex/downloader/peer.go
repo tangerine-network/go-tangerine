@@ -103,7 +103,6 @@ func (w *lightPeerWrapper) RequestHeadersByNumber(i uint64, amount int, skip int
 	return w.peer.RequestHeadersByNumber(i, amount, skip, reverse, withGov)
 }
 func (w *lightPeerWrapper) RequestGovStateByHash(common.Hash) error {
-	// TODO(sonic): support this
 	panic("RequestGovStateByHash not supported in light client mode sync")
 }
 func (w *lightPeerWrapper) DownloadBodies([]common.Hash) error {

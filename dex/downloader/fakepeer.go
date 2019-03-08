@@ -89,7 +89,6 @@ func (p *FakePeer) RequestHeadersByHash(hash common.Hash, amount int, skip int, 
 		}
 	}
 
-	// TODO(sonic): fix this
 	var headersWithGovState []*types.HeaderWithGovState
 	for _, h := range headers {
 		headersWithGovState = append(headersWithGovState,
@@ -122,7 +121,7 @@ func (p *FakePeer) RequestHeadersByNumber(number uint64, amount int, skip int, r
 		}
 		headers = append(headers, origin)
 	}
-	// TODO(sonic): fix this
+
 	var headersWithGovState []*types.HeaderWithGovState
 	for _, h := range headers {
 		headersWithGovState = append(headersWithGovState,
