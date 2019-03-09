@@ -352,7 +352,7 @@ func doTest(cmdline []string) {
 	build.MustRun(gotest)
 
 	gotestForLegacyEvm := goTool("test", buildFlags(env)...)
-	gotestForLegacyEvm.Args = append(gotestForLegacyEvm.Args, "-p", "1", "-timeout", "5m")
+	gotestForLegacyEvm.Args = append(gotestForLegacyEvm.Args, "-p", "1", "-timeout", "10m")
 	if *coverage {
 		gotestForLegacyEvm.Args = append(gotestForLegacyEvm.Args, "-covermode=atomic", "-cover")
 	}
