@@ -676,7 +676,14 @@ func (g *OracleContractsTestSuite) TestConfigurationReading() {
 	var crs0 [32]byte
 	err = GovernanceABI.ABI.Unpack(&crs0, "crs", res)
 	g.Require().NoError(err)
-	g.Require().Equal(crypto.Keccak256Hash([]byte(g.config.GenesisCRSText)), common.BytesToHash(crs0[:]))
+	g.Require().Equal(crypto.Keccak256Hash([]byte(g.config.GenesisCRSText)),
+		common.BytesToHash(crs0[:]))
+
+	// CRSRound.
+	input, err = GovernanceABI.ABI.Pack("crsRound")
+	g.Require().NoError(err)
+	res, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
+	g.Require().NoError(err)
 
 	// Owner.
 	input, err = GovernanceABI.ABI.Pack("owner")
@@ -742,6 +749,18 @@ func (g *OracleContractsTestSuite) TestConfigurationReading() {
 	err = GovernanceABI.ABI.Unpack(&value, "notarySetSize", res)
 	g.Require().NoError(err)
 	g.Require().Equal(g.config.NotarySetSize, uint32(value.Uint64()))
+
+	// DKGRound.
+	input, err = GovernanceABI.ABI.Pack("dkgRound")
+	g.Require().NoError(err)
+	res, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+
+	// DKGResetCount.
+	input, err = GovernanceABI.ABI.Pack("dkgResetCount", big.NewInt(3))
+	g.Require().NoError(err)
+	res, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
+	g.Require().NoError(err)
 
 	// DKGSetSize.
 	input, err = GovernanceABI.ABI.Pack("dkgSetSize")

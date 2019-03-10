@@ -64,6 +64,7 @@ const (
 	crsRoundLoc
 	crsLoc
 	dkgRoundLoc
+	dkgResetCountLoc
 	dkgMasterPublicKeysLoc
 	dkgComplaintsLoc
 	dkgReadyLoc
@@ -85,7 +86,6 @@ const (
 	minBlockIntervalLoc
 	fineValuesLoc
 	finedRecordsLoc
-	dkgResetCountLoc
 	minGasPriceLoc
 )
 
@@ -614,6 +614,17 @@ func (s *GovernanceState) SetDKGRound(round *big.Int) {
 	s.setStateBigInt(big.NewInt(dkgRoundLoc), round)
 }
 
+// uint256[] public dkgResetCount;
+func (s *GovernanceState) DKGResetCount(round *big.Int) *big.Int {
+	arrayBaseLoc := s.getSlotLoc(big.NewInt(dkgResetCountLoc))
+	return s.getStateBigInt(new(big.Int).Add(arrayBaseLoc, round))
+}
+func (s *GovernanceState) IncDKGResetCount(round *big.Int) {
+	loc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgResetCountLoc)), round)
+	count := s.getStateBigInt(loc)
+	s.setStateBigInt(loc, new(big.Int).Add(count, big.NewInt(1)))
+}
+
 // bytes[] public dkgMasterPublicKeys;
 func (s *GovernanceState) DKGMasterPublicKeys() [][]byte {
 	return s.read1DByteArray(big.NewInt(dkgMasterPublicKeysLoc))
@@ -855,17 +866,6 @@ func (s *GovernanceState) SetFineRecords(recordHash Bytes32, status bool) {
 		value = int64(1)
 	}
 	s.setStateBigInt(loc, big.NewInt(value))
-}
-
-// uint256[] public DKGResetCount;
-func (s *GovernanceState) DKGResetCount(round *big.Int) *big.Int {
-	arrayBaseLoc := s.getSlotLoc(big.NewInt(dkgResetCountLoc))
-	return s.getStateBigInt(new(big.Int).Add(arrayBaseLoc, round))
-}
-func (s *GovernanceState) IncDKGResetCount(round *big.Int) {
-	loc := new(big.Int).Add(s.getSlotLoc(big.NewInt(dkgResetCountLoc)), round)
-	count := s.getStateBigInt(loc)
-	s.setStateBigInt(loc, new(big.Int).Add(count, big.NewInt(1)))
 }
 
 // uint256 public minGasPrice;
@@ -2127,6 +2127,12 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return res, nil
+	case "crsRound":
+		res, err := method.Outputs.Pack(g.state.CRSRound())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	case "delegators":
 		nodeAddr, index := common.Address{}, new(big.Int)
 		args := []interface{}{&nodeAddr, &index}
@@ -2165,25 +2171,6 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return res, nil
-	case "dkgReadys":
-		addr := common.Address{}
-		if err := method.Inputs.Unpack(&addr, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		ready := g.state.DKGMPKReady(addr)
-		res, err := method.Outputs.Pack(ready)
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "dkgReadysCount":
-		count := g.state.DKGMPKReadysCount()
-		res, err := method.Outputs.Pack(count)
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-
 	case "dkgFinalizeds":
 		addr := common.Address{}
 		if err := method.Inputs.Unpack(&addr, arguments); err != nil {
@@ -2213,6 +2200,40 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		}
 		mpk := mpks[index.Uint64()]
 		res, err := method.Outputs.Pack(mpk)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgReadys":
+		addr := common.Address{}
+		if err := method.Inputs.Unpack(&addr, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		ready := g.state.DKGMPKReady(addr)
+		res, err := method.Outputs.Pack(ready)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgReadysCount":
+		count := g.state.DKGMPKReadysCount()
+		res, err := method.Outputs.Pack(count)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgResetCount":
+		round := new(big.Int)
+		if err := method.Inputs.Unpack(&round, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		res, err := method.Outputs.Pack(g.state.DKGResetCount(round))
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgRound":
+		res, err := method.Outputs.Pack(g.state.DKGRound())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -2368,16 +2389,6 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		return res, nil
 	case "totalSupply":
 		res, err := method.Outputs.Pack(g.state.TotalSupply())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "DKGResetCount":
-		round := new(big.Int)
-		if err := method.Inputs.Unpack(&round, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		res, err := method.Outputs.Pack(g.state.DKGResetCount(round))
 		if err != nil {
 			return nil, errExecutionReverted
 		}

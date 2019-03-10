@@ -75,25 +75,6 @@ const GovernanceABIJSON = `
   },
   {
     "constant": true,
-    "inputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "DKGResetCount",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
     "inputs": [],
     "name": "totalSupply",
     "outputs": [
@@ -197,6 +178,20 @@ const GovernanceABIJSON = `
   },
   {
     "constant": true,
+    "inputs": [],
+    "name": "crsRound",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
     "inputs": [
       {
         "name": "",
@@ -249,6 +244,20 @@ const GovernanceABIJSON = `
     "constant": true,
     "inputs": [],
     "name": "blockGasLimit",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "dkgRound",
     "outputs": [
       {
         "name": "",
@@ -569,6 +578,25 @@ const GovernanceABIJSON = `
     "constant": true,
     "inputs": [],
     "name": "lockupPeriod",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "dkgResetCount",
     "outputs": [
       {
         "name": "",
