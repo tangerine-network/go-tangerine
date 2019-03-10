@@ -127,7 +127,15 @@ func (recv *consensusBAReceiver) ConfirmBlock(
 			return
 		}
 		if block == nil {
-			panic(fmt.Errorf("empty block should be proposed directly: %s", aID))
+			// The empty block's parent is not found locally, thus we can't
+			// propose it at this moment.
+			//
+			// We can only rely on block pulling upon receiving
+			// types.AgreementResult from the next position.
+			recv.consensus.logger.Warn(
+				"An empty block is confirmed without its parent",
+				"position", aID)
+			return
 		}
 	} else {
 		var exist bool
@@ -1075,6 +1083,14 @@ func (con *Consensus) ProcessBlockRandomnessResult(
 
 // preProcessBlock performs Byzantine Agreement on the block.
 func (con *Consensus) preProcessBlock(b *types.Block) (err error) {
+	var exist bool
+	exist, err = con.nodeSetCache.Exists(b.Position.Round, b.ProposerID)
+	if err != nil {
+		return
+	}
+	if !exist {
+		return ErrProposerNotInNodeSet
+	}
 	err = con.baMgr.processBlock(b)
 	if err == nil && con.debugApp != nil {
 		con.debugApp.BlockReceived(b.Hash)
