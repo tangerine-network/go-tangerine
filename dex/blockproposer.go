@@ -92,7 +92,7 @@ func (b *blockProposer) Stop() {
 	}
 }
 
-func (b *blockProposer) IsLatticeSyncing() bool {
+func (b *blockProposer) IsCoreSyncing() bool {
 	return atomic.LoadInt32(&b.syncing) == 1
 }
 

@@ -139,8 +139,8 @@ func (api *PrivateAdminAPI) StopProposing() {
 	api.dex.StopProposing()
 }
 
-func (api *PrivateAdminAPI) IsLatticeSyncing() bool {
-	return api.dex.IsLatticeSyncing()
+func (api *PrivateAdminAPI) IsCoreSyncing() bool {
+	return api.dex.IsCoreSyncing()
 }
 
 func (api *PrivateAdminAPI) IsProposing() bool {

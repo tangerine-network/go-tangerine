@@ -265,8 +265,8 @@ func (s *Dexon) StopProposing() {
 	s.bp.Stop()
 }
 
-func (s *Dexon) IsLatticeSyncing() bool {
-	return s.bp.IsLatticeSyncing()
+func (s *Dexon) IsCoreSyncing() bool {
+	return s.bp.IsCoreSyncing()
 }
 
 func (s *Dexon) IsProposing() bool {
