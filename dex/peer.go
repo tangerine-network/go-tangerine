@@ -944,6 +944,8 @@ func (ps *peerSet) BuildConnection(round uint64) {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
 
+	log.Info("Build connection", "round", round)
+
 	dkgLabel := peerLabel{set: dkgset, round: round}
 	if _, ok := ps.label2Nodes[dkgLabel]; !ok {
 		dkgPKs, err := ps.gov.DKGSet(round)
@@ -965,8 +967,7 @@ func (ps *peerSet) BuildConnection(round uint64) {
 	if _, ok := ps.label2Nodes[notaryLabel]; !ok {
 		notaryPKs, err := ps.gov.NotarySet(round)
 		if err != nil {
-			log.Error("get notary set fail",
-				"round", round, "err", err)
+			log.Error("get notary set fail", "round", round, "err", err)
 			return
 		}
 

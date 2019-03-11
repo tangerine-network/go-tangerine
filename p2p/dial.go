@@ -223,6 +223,7 @@ func (s *dialstate) newTasks(nRunning int, peers map[enode.ID]*Peer, now time.Ti
 			log.Warn("Removing direct dial candidate", "id", t.dest.ID(), "addr", &net.TCPAddr{IP: t.dest.IP(), Port: t.dest.TCP()}, "err", err)
 			delete(s.direct, t.dest.ID())
 		case nil:
+			log.Debug("Direct peer connected", "id", id)
 			s.dialing[id] = t.flags
 			newtasks = append(newtasks, t)
 		}
