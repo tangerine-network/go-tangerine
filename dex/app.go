@@ -516,7 +516,11 @@ func (d *DexconApp) addConfirmedBlock(block *coreTypes.Block) error {
 		}
 
 		// get latest nonce in block
-		d.addressNonce[msg.From()] = msg.Nonce()
+		if nonce, exist := d.addressNonce[msg.From()]; !exist || nonce < msg.Nonce() {
+			d.addressNonce[msg.From()] = msg.Nonce()
+		} else {
+			return fmt.Errorf("address %v nonce incorrect cached(%d) >= tx(%d)", msg.From(), nonce, msg.Nonce())
+		}
 
 		// calculate max cost in confirmed blocks
 		if d.addressCost[msg.From()] == nil {

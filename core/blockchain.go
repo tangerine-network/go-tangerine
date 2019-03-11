@@ -931,13 +931,6 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 			bytes += batch.ValueSize()
 			batch.Reset()
 		}
-
-		if i == len(blockChain)-1 {
-			err := bc.updateLastRoundNumber(block.Round())
-			if err != nil {
-				return 0, err
-			}
-		}
 	}
 	if batch.ValueSize() > 0 {
 		bytes += batch.ValueSize()
@@ -1664,13 +1657,6 @@ func (bc *BlockChain) insertDexonChain(chain types.Blocks) (int, []interface{}, 
 
 		cache, _ := bc.stateCache.TrieDB().Size()
 		stats.report(chain, i, cache)
-
-		if i == len(chain)-1 {
-			err = bc.updateLastRoundNumber(block.Round())
-			if err != nil {
-				return 0, nil, nil, err
-			}
-		}
 	}
 	// Append a single chain head event if we've progressed the chain
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {
@@ -1807,11 +1793,6 @@ func (bc *BlockChain) processBlock(
 	cache, _ := bc.stateCache.TrieDB().Size()
 	stats.report([]*types.Block{newBlock}, 0, cache)
 
-	err = bc.updateLastRoundNumber(newBlock.Round())
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
 	return &root, events, coalescedLogs, nil
 }
 
@@ -1893,11 +1874,6 @@ func (bc *BlockChain) ProcessEmptyBlock(block *types.Block) (*common.Hash, error
 
 	cache, _ := bc.stateCache.TrieDB().Size()
 	stats.report([]*types.Block{newBlock}, 0, cache)
-
-	err = bc.updateLastRoundNumber(newBlock.Round())
-	if err != nil {
-		return nil, err
-	}
 
 	bc.PostChainEvents([]interface{}{ChainEvent{newBlock, newBlock.Hash(), nil},
 		ChainHeadEvent{newBlock}}, nil)
@@ -2326,20 +2302,4 @@ func (bc *BlockChain) GetRoundHeight(round uint64) (uint64, bool) {
 
 func (bc *BlockChain) storeRoundHeight(round uint64, height uint64) {
 	bc.roundHeightMap.Store(round, height)
-}
-
-func (bc *BlockChain) updateLastRoundNumber(round uint64) error {
-	currentLastRound, err := rawdb.ReadLastRoundNumber(bc.db)
-	if err != nil {
-		return err
-	}
-
-	if round > currentLastRound {
-		err = rawdb.WriteLastRoundNumber(bc.db, round)
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }

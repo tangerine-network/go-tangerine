@@ -429,6 +429,14 @@ func (pool *TxPool) reset(oldHead, newHead *types.Header) {
 	pool.promoteExecutables(nil)
 }
 
+// Reset only for testing.
+func (pool *TxPool) Reset(newHead *types.Header) {
+	pool.mu.Lock()
+	defer pool.mu.Unlock()
+
+	pool.reset(nil, newHead)
+}
+
 // Stop terminates the transaction pool.
 func (pool *TxPool) Stop() {
 	// Unsubscribe all subscriptions registered from txpool
