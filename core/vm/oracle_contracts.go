@@ -59,8 +59,6 @@ const (
 	nodesLoc
 	nodesOffsetByAddressLoc
 	nodesOffsetByNodeKeyAddressLoc
-	delegatorsLoc
-	delegatorsOffsetLoc
 	crsRoundLoc
 	crsLoc
 	dkgRoundLoc
@@ -316,22 +314,26 @@ func (s *GovernanceState) DecTotalStaked(amount *big.Int) {
 //     string email;
 //     string location;
 //     string url;
+//     uint256 unstaked;
+//     uint256 unstaked_at;
 // }
 //
 // Node[] nodes;
 
 type nodeInfo struct {
-	Owner     common.Address
-	PublicKey []byte
-	Staked    *big.Int
-	Fined     *big.Int
-	Name      string
-	Email     string
-	Location  string
-	Url       string
+	Owner      common.Address
+	PublicKey  []byte
+	Staked     *big.Int
+	Fined      *big.Int
+	Name       string
+	Email      string
+	Location   string
+	Url        string
+	Unstaked   *big.Int
+	UnstakedAt *big.Int
 }
 
-const nodeStructSize = 8
+const nodeStructSize = 10
 
 func (s *GovernanceState) LenNodes() *big.Int {
 	return s.getStateBigInt(big.NewInt(nodesLoc))
@@ -374,6 +376,14 @@ func (s *GovernanceState) Node(index *big.Int) *nodeInfo {
 	// Url.
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(7))
 	node.Url = string(s.readBytes(loc))
+
+	// Unstaked.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(8))
+	node.Unstaked = s.getStateBigInt(loc)
+
+	// UnstakedAt.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(9))
+	node.UnstakedAt = s.getStateBigInt(loc)
 
 	return node
 }
@@ -420,6 +430,14 @@ func (s *GovernanceState) UpdateNode(index *big.Int, n *nodeInfo) {
 	// Url.
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(7))
 	s.writeBytes(loc, []byte(n.Url))
+
+	// Unstaked.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(8))
+	s.setStateBigInt(loc, n.Unstaked)
+
+	// UnstakedAt.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(9))
+	s.setStateBigInt(loc, n.UnstakedAt)
 }
 func (s *GovernanceState) PopLastNode() {
 	// Decrease length by 1.
@@ -428,8 +446,10 @@ func (s *GovernanceState) PopLastNode() {
 	s.setStateBigInt(big.NewInt(nodesLoc), newArrayLength)
 
 	s.UpdateNode(newArrayLength, &nodeInfo{
-		Staked: big.NewInt(0),
-		Fined:  big.NewInt(0),
+		Staked:     big.NewInt(0),
+		Fined:      big.NewInt(0),
+		Unstaked:   big.NewInt(0),
+		UnstakedAt: big.NewInt(0),
 	})
 }
 func (s *GovernanceState) Nodes() []*nodeInfo {
@@ -487,6 +507,15 @@ func (s *GovernanceState) PutNodeOffsets(n *nodeInfo, offset *big.Int) error {
 	s.PutNodesOffsetByAddress(n.Owner, offset)
 	return nil
 }
+func (s *GovernanceState) DeleteNodeOffsets(n *nodeInfo) error {
+	address, err := publicKeyToNodeKeyAddress(n.PublicKey)
+	if err != nil {
+		return err
+	}
+	s.DeleteNodesOffsetByNodeKeyAddress(address)
+	s.DeleteNodesOffsetByAddress(n.Owner)
+	return nil
+}
 
 func (s *GovernanceState) GetNodeOwnerByID(id coreTypes.NodeID) (common.Address, error) {
 	offset := s.NodesOffsetByNodeKeyAddress(idToAddress(id))
@@ -495,99 +524,6 @@ func (s *GovernanceState) GetNodeOwnerByID(id coreTypes.NodeID) (common.Address,
 	}
 	node := s.Node(offset)
 	return node.Owner, nil
-}
-
-// struct Delegator {
-//     address node;
-//     address owner;
-//     uint256 value;
-//     uint256 undelegated_at;
-// }
-
-type delegatorInfo struct {
-	Owner         common.Address
-	Value         *big.Int
-	UndelegatedAt *big.Int
-}
-
-const delegatorStructSize = 3
-
-// mapping(address => Delegator[]) public delegators;
-func (s *GovernanceState) LenDelegators(nodeAddr common.Address) *big.Int {
-	loc := s.getMapLoc(big.NewInt(delegatorsLoc), nodeAddr.Bytes())
-	return s.getStateBigInt(loc)
-}
-func (s *GovernanceState) Delegator(nodeAddr common.Address, offset *big.Int) *delegatorInfo {
-	delegator := new(delegatorInfo)
-
-	loc := s.getMapLoc(big.NewInt(delegatorsLoc), nodeAddr.Bytes())
-	arrayBaseLoc := s.getSlotLoc(loc)
-	elementBaseLoc := new(big.Int).Add(arrayBaseLoc, new(big.Int).Mul(big.NewInt(delegatorStructSize), offset))
-
-	// Owner.
-	loc = elementBaseLoc
-	delegator.Owner = common.BytesToAddress(s.getState(common.BigToHash(elementBaseLoc)).Bytes())
-
-	// Value.
-	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(1))
-	delegator.Value = s.getStateBigInt(loc)
-
-	// UndelegatedAt.
-	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(2))
-	delegator.UndelegatedAt = s.getStateBigInt(loc)
-
-	return delegator
-}
-func (s *GovernanceState) PushDelegator(nodeAddr common.Address, delegator *delegatorInfo) {
-	// Increase length by 1.
-	arrayLength := s.LenDelegators(nodeAddr)
-	loc := s.getMapLoc(big.NewInt(delegatorsLoc), nodeAddr.Bytes())
-	s.setStateBigInt(loc, new(big.Int).Add(arrayLength, big.NewInt(1)))
-
-	s.UpdateDelegator(nodeAddr, arrayLength, delegator)
-}
-func (s *GovernanceState) UpdateDelegator(nodeAddr common.Address, offset *big.Int, delegator *delegatorInfo) {
-	loc := s.getMapLoc(big.NewInt(delegatorsLoc), nodeAddr.Bytes())
-	arrayBaseLoc := s.getSlotLoc(loc)
-	elementBaseLoc := new(big.Int).Add(arrayBaseLoc, new(big.Int).Mul(big.NewInt(delegatorStructSize), offset))
-
-	// Owner.
-	loc = elementBaseLoc
-	s.setState(common.BigToHash(loc), delegator.Owner.Hash())
-
-	// Value.
-	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(1))
-	s.setStateBigInt(loc, delegator.Value)
-
-	// UndelegatedAt.
-	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(2))
-	s.setStateBigInt(loc, delegator.UndelegatedAt)
-}
-func (s *GovernanceState) PopLastDelegator(nodeAddr common.Address) {
-	// Decrease length by 1.
-	arrayLength := s.LenDelegators(nodeAddr)
-	newArrayLength := new(big.Int).Sub(arrayLength, big.NewInt(1))
-	loc := s.getMapLoc(big.NewInt(delegatorsLoc), nodeAddr.Bytes())
-	s.setStateBigInt(loc, newArrayLength)
-
-	s.UpdateDelegator(nodeAddr, newArrayLength, &delegatorInfo{
-		Value:         big.NewInt(0),
-		UndelegatedAt: big.NewInt(0),
-	})
-}
-
-// mapping(address => mapping(address => uint256)) delegatorsOffset;
-func (s *GovernanceState) DelegatorsOffset(nodeAddr, delegatorAddr common.Address) *big.Int {
-	loc := s.getMapLoc(s.getMapLoc(big.NewInt(delegatorsOffsetLoc), nodeAddr.Bytes()), delegatorAddr.Bytes())
-	return new(big.Int).Sub(s.getStateBigInt(loc), big.NewInt(1))
-}
-func (s *GovernanceState) PutDelegatorOffset(nodeAddr, delegatorAddr common.Address, offset *big.Int) {
-	loc := s.getMapLoc(s.getMapLoc(big.NewInt(delegatorsOffsetLoc), nodeAddr.Bytes()), delegatorAddr.Bytes())
-	s.setStateBigInt(loc, new(big.Int).Add(offset, big.NewInt(1)))
-}
-func (s *GovernanceState) DeleteDelegatorsOffset(nodeAddr, delegatorAddr common.Address) {
-	loc := s.getMapLoc(s.getMapLoc(big.NewInt(delegatorsOffsetLoc), nodeAddr.Bytes()), delegatorAddr.Bytes())
-	s.setStateBigInt(loc, big.NewInt(0))
 }
 
 // uint256 public crsRound;
@@ -900,20 +836,22 @@ func (s *GovernanceState) Initialize(config *params.DexconConfig, totalSupply *b
 	s.SetDKGRound(big.NewInt(int64(dexCore.DKGDelayRound)))
 }
 
-// Stake is a helper function for creating genesis state.
-func (s *GovernanceState) Stake(
-	addr common.Address, publicKey []byte, staked *big.Int,
-	name, email, location, url string) {
+// Register is a helper function for creating genesis state.
+func (s *GovernanceState) Register(
+	addr common.Address, publicKey []byte,
+	name, email, location, url string, staked *big.Int) {
 	offset := s.LenNodes()
 	node := &nodeInfo{
-		Owner:     addr,
-		PublicKey: publicKey,
-		Staked:    staked,
-		Fined:     big.NewInt(0),
-		Name:      name,
-		Email:     email,
-		Location:  location,
-		Url:       url,
+		Owner:      addr,
+		PublicKey:  publicKey,
+		Staked:     staked,
+		Fined:      big.NewInt(0),
+		Name:       name,
+		Email:      email,
+		Location:   location,
+		Url:        url,
+		Unstaked:   big.NewInt(0),
+		UnstakedAt: big.NewInt(0),
 	}
 	s.PushNode(node)
 	if err := s.PutNodeOffsets(node, offset); err != nil {
@@ -923,14 +861,6 @@ func (s *GovernanceState) Stake(
 	if staked.Cmp(big.NewInt(0)) == 0 {
 		return
 	}
-
-	offset = s.LenDelegators(addr)
-	s.PushDelegator(addr, &delegatorInfo{
-		Owner:         addr,
-		Value:         staked,
-		UndelegatedAt: big.NewInt(0),
-	})
-	s.PutDelegatorOffset(addr, addr, offset)
 
 	// Add to network total staked.
 	s.IncTotalStaked(staked)
@@ -1024,19 +954,37 @@ func (s *GovernanceState) emitCRSProposed(round *big.Int, crs common.Hash) {
 }
 
 // event Staked(address indexed NodeAddress, uint256 Amount);
-func (s *GovernanceState) emitStaked(nodeAddr common.Address) {
+func (s *GovernanceState) emitStaked(nodeAddr common.Address, amount *big.Int) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{GovernanceABI.Events["Staked"].Id(), nodeAddr.Hash()},
-		Data:    []byte{},
+		Data:    common.BigToHash(amount).Bytes(),
 	})
 }
 
-// event Unstaked(address indexed NodeAddress);
-func (s *GovernanceState) emitUnstaked(nodeAddr common.Address) {
+// event Unstaked(address indexed NodeAddress, uint256 Amount);
+func (s *GovernanceState) emitUnstaked(nodeAddr common.Address, amount *big.Int) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{GovernanceABI.Events["Unstaked"].Id(), nodeAddr.Hash()},
+		Data:    common.BigToHash(amount).Bytes(),
+	})
+}
+
+// event Withdrawn(address indexed NodeAddress, uint256 Amount);
+func (s *GovernanceState) emitWithdrawn(nodeAddr common.Address, amount *big.Int) {
+	s.StateDB.AddLog(&types.Log{
+		Address: GovernanceContractAddress,
+		Topics:  []common.Hash{GovernanceABI.Events["Withdrawn"].Id(), nodeAddr.Hash()},
+		Data:    common.BigToHash(amount).Bytes(),
+	})
+}
+
+// event NodeAdded(address indexed NodeAddress);
+func (s *GovernanceState) emitNodeAdded(nodeAddr common.Address) {
+	s.StateDB.AddLog(&types.Log{
+		Address: GovernanceContractAddress,
+		Topics:  []common.Hash{GovernanceABI.Events["NodeAdded"].Id(), nodeAddr.Hash()},
 		Data:    []byte{},
 	})
 }
@@ -1047,33 +995,6 @@ func (s *GovernanceState) emitNodeRemoved(nodeAddr common.Address) {
 		Address: GovernanceContractAddress,
 		Topics:  []common.Hash{GovernanceABI.Events["NodeRemoved"].Id(), nodeAddr.Hash()},
 		Data:    []byte{},
-	})
-}
-
-// event Delegated(address indexed NodeAddress, address indexed DelegatorAddress, uint256 Amount);
-func (s *GovernanceState) emitDelegated(nodeAddr, delegatorAddr common.Address, amount *big.Int) {
-	s.StateDB.AddLog(&types.Log{
-		Address: GovernanceContractAddress,
-		Topics:  []common.Hash{GovernanceABI.Events["Delegated"].Id(), nodeAddr.Hash(), delegatorAddr.Hash()},
-		Data:    common.BigToHash(amount).Bytes(),
-	})
-}
-
-// event Undelegated(address indexed NodeAddress, address indexed DelegatorAddress, uint256 Amount);
-func (s *GovernanceState) emitUndelegated(nodeAddr, delegatorAddr common.Address, amount *big.Int) {
-	s.StateDB.AddLog(&types.Log{
-		Address: GovernanceContractAddress,
-		Topics:  []common.Hash{GovernanceABI.Events["Undelegated"].Id(), nodeAddr.Hash(), delegatorAddr.Hash()},
-		Data:    common.BigToHash(amount).Bytes(),
-	})
-}
-
-// event Withdrawn(address indexed NodeAddress, address indexed DelegatorAddress, uint256 Amount);
-func (s *GovernanceState) emitWithdrawn(nodeAddr common.Address, delegatorAddr common.Address, amount *big.Int) {
-	s.StateDB.AddLog(&types.Log{
-		Address: GovernanceContractAddress,
-		Topics:  []common.Hash{GovernanceABI.Events["Withdrawn"].Id(), nodeAddr.Hash(), delegatorAddr.Hash()},
-		Data:    common.BigToHash(amount).Bytes(),
 	})
 }
 
@@ -1476,47 +1397,6 @@ func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]
 	return g.useGas(100000)
 }
 
-func (g *GovernanceContract) delegate(nodeAddr common.Address) ([]byte, error) {
-	offset := g.state.NodesOffsetByAddress(nodeAddr)
-	if offset.Cmp(big.NewInt(0)) < 0 {
-		return nil, errExecutionReverted
-	}
-
-	caller := g.contract.Caller()
-	value := g.contract.Value()
-
-	// Can not delegate if no fund was sent.
-	if value.Cmp(big.NewInt(0)) == 0 {
-		return nil, errExecutionReverted
-	}
-
-	// Can not delegate if already delegated.
-	delegatorOffset := g.state.DelegatorsOffset(nodeAddr, caller)
-	if delegatorOffset.Cmp(big.NewInt(0)) >= 0 {
-		return nil, errExecutionReverted
-	}
-
-	// Add to the total staked of node.
-	node := g.state.Node(offset)
-	node.Staked = new(big.Int).Add(node.Staked, g.contract.Value())
-	g.state.UpdateNode(offset, node)
-
-	// Add to network total staked.
-	g.state.IncTotalStaked(g.contract.Value())
-
-	// Push delegator record.
-	offset = g.state.LenDelegators(nodeAddr)
-	g.state.PushDelegator(nodeAddr, &delegatorInfo{
-		Owner:         caller,
-		Value:         value,
-		UndelegatedAt: big.NewInt(0),
-	})
-	g.state.PutDelegatorOffset(nodeAddr, caller, offset)
-	g.state.emitDelegated(nodeAddr, caller, value)
-
-	return g.useGas(200000)
-}
-
 func (g *GovernanceContract) updateConfiguration(cfg *rawConfigStruct) ([]byte, error) {
 	// Only owner can update configuration.
 	if g.contract.Caller() != g.state.Owner() {
@@ -1528,7 +1408,7 @@ func (g *GovernanceContract) updateConfiguration(cfg *rawConfigStruct) ([]byte, 
 	return nil, nil
 }
 
-func (g *GovernanceContract) stake(
+func (g *GovernanceContract) register(
 	publicKey []byte, name, email, location, url string) ([]byte, error) {
 
 	// Reject invalid inputs.
@@ -1537,6 +1417,7 @@ func (g *GovernanceContract) stake(
 	}
 
 	caller := g.contract.Caller()
+	value := g.contract.Value()
 	offset := g.state.NodesOffsetByAddress(caller)
 
 	// Can not stake if already staked.
@@ -1546,119 +1427,121 @@ func (g *GovernanceContract) stake(
 
 	offset = g.state.LenNodes()
 	node := &nodeInfo{
-		Owner:     caller,
-		PublicKey: publicKey,
-		Staked:    big.NewInt(0),
-		Fined:     big.NewInt(0),
-		Name:      name,
-		Email:     email,
-		Location:  location,
-		Url:       url,
+		Owner:      caller,
+		PublicKey:  publicKey,
+		Staked:     value,
+		Fined:      big.NewInt(0),
+		Name:       name,
+		Email:      email,
+		Location:   location,
+		Url:        url,
+		Unstaked:   big.NewInt(0),
+		UnstakedAt: big.NewInt(0),
 	}
 	g.state.PushNode(node)
 	if err := g.state.PutNodeOffsets(node, offset); err != nil {
 		return g.penalize()
 	}
+	g.state.emitNodeAdded(caller)
 
-	// Delegate fund to itself.
-	if g.contract.Value().Cmp(big.NewInt(0)) > 0 {
-		if ret, err := g.delegate(caller); err != nil {
-			return ret, err
-		}
+	if value.Cmp(big.NewInt(0)) > 0 {
+		g.state.IncTotalStaked(value)
+		g.state.emitStaked(caller, value)
 	}
-
-	g.state.emitStaked(caller)
 	return g.useGas(100000)
 }
 
-func (g *GovernanceContract) undelegateHelper(nodeAddr, caller common.Address) ([]byte, error) {
-	nodeOffset := g.state.NodesOffsetByAddress(nodeAddr)
-	if nodeOffset.Cmp(big.NewInt(0)) < 0 {
+func (g *GovernanceContract) stake() ([]byte, error) {
+	caller := g.contract.Caller()
+	value := g.contract.Value()
+
+	if big.NewInt(0).Cmp(value) == 0 {
 		return nil, errExecutionReverted
 	}
 
-	offset := g.state.DelegatorsOffset(nodeAddr, caller)
+	offset := g.state.NodesOffsetByAddress(caller)
 	if offset.Cmp(big.NewInt(0)) < 0 {
 		return nil, errExecutionReverted
 	}
 
-	node := g.state.Node(nodeOffset)
+	node := g.state.Node(offset)
 	if node.Fined.Cmp(big.NewInt(0)) > 0 {
 		return nil, errExecutionReverted
 	}
 
-	delegator := g.state.Delegator(nodeAddr, offset)
+	node.Staked = new(big.Int).Add(node.Staked, value)
+	g.state.UpdateNode(offset, node)
 
-	if delegator.UndelegatedAt.Cmp(big.NewInt(0)) != 0 {
-		return nil, errExecutionReverted
-	}
-
-	// Set undelegate time.
-	delegator.UndelegatedAt = g.evm.Time
-	g.state.UpdateDelegator(nodeAddr, offset, delegator)
-
-	// Subtract from the total staked of node.
-	node.Staked = new(big.Int).Sub(node.Staked, delegator.Value)
-	g.state.UpdateNode(nodeOffset, node)
-
-	// Subtract to network total staked.
-	g.state.DecTotalStaked(delegator.Value)
-
-	g.state.emitUndelegated(nodeAddr, caller, delegator.Value)
-
+	g.state.IncTotalStaked(value)
+	g.state.emitStaked(caller, value)
 	return g.useGas(100000)
 }
 
-func (g *GovernanceContract) undelegate(nodeAddr common.Address) ([]byte, error) {
-	return g.undelegateHelper(nodeAddr, g.contract.Caller())
-}
-
-func (g *GovernanceContract) withdraw(nodeAddr common.Address) ([]byte, error) {
+func (g *GovernanceContract) unstake(amount *big.Int) ([]byte, error) {
 	caller := g.contract.Caller()
 
-	nodeOffset := g.state.NodesOffsetByAddress(nodeAddr)
-	if nodeOffset.Cmp(big.NewInt(0)) < 0 {
-		return nil, errExecutionReverted
-	}
-
-	offset := g.state.DelegatorsOffset(nodeAddr, caller)
+	offset := g.state.NodesOffsetByAddress(caller)
 	if offset.Cmp(big.NewInt(0)) < 0 {
 		return nil, errExecutionReverted
 	}
 
-	delegator := g.state.Delegator(nodeAddr, offset)
+	node := g.state.Node(offset)
 
-	// Not yet undelegated.
-	if delegator.UndelegatedAt.Cmp(big.NewInt(0)) == 0 {
-		return g.penalize()
+	// Can not unstake if there are unpaied fine.
+	if node.Fined.Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
 	}
 
-	unlockTime := new(big.Int).Add(delegator.UndelegatedAt, g.state.LockupPeriod())
+	// Can not unstake if there are unwithdrawn stake.
+	if node.Unstaked.Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
+	}
+	if node.Staked.Cmp(amount) < 0 {
+		return nil, errExecutionReverted
+	}
+
+	node.Staked = new(big.Int).Sub(node.Staked, amount)
+	node.Unstaked = amount
+	node.UnstakedAt = g.evm.Time
+	g.state.UpdateNode(offset, node)
+
+	g.state.DecTotalStaked(amount)
+	g.state.emitUnstaked(caller, amount)
+
+	return g.useGas(100000)
+}
+
+func (g *GovernanceContract) withdraw() ([]byte, error) {
+	caller := g.contract.Caller()
+
+	offset := g.state.NodesOffsetByAddress(caller)
+	if offset.Cmp(big.NewInt(0)) < 0 {
+		return nil, errExecutionReverted
+	}
+
+	node := g.state.Node(offset)
+
+	// Can not withdraw if there are unpaied fine.
+	if node.Fined.Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
+	}
+
+	// Can not withdraw if there are no pending withdrawal.
+	if node.Unstaked.Cmp(big.NewInt(0)) == 0 {
+		return nil, errExecutionReverted
+	}
+
+	unlockTime := new(big.Int).Add(node.UnstakedAt, g.state.LockupPeriod())
 	if g.evm.Time.Cmp(unlockTime) <= 0 {
 		return g.penalize()
 	}
 
-	length := g.state.LenDelegators(nodeAddr)
-	lastIndex := new(big.Int).Sub(length, big.NewInt(1))
+	amount := node.Unstaked
+	node.Unstaked = big.NewInt(0)
+	node.UnstakedAt = big.NewInt(0)
+	g.state.UpdateNode(offset, node)
 
-	// Delete the delegator.
-	if offset.Cmp(lastIndex) != 0 {
-		lastNode := g.state.Delegator(nodeAddr, lastIndex)
-		g.state.UpdateDelegator(nodeAddr, offset, lastNode)
-		g.state.PutDelegatorOffset(nodeAddr, lastNode.Owner, offset)
-	}
-	g.state.DeleteDelegatorsOffset(nodeAddr, caller)
-	g.state.PopLastDelegator(nodeAddr)
-
-	// Return the staked fund.
-	if !g.transfer(GovernanceContractAddress, delegator.Owner, delegator.Value) {
-		return nil, errExecutionReverted
-	}
-
-	g.state.emitWithdrawn(nodeAddr, delegator.Owner, delegator.Value)
-
-	// We are the last delegator to withdraw the fund, remove the node info.
-	if g.state.LenDelegators(nodeAddr).Cmp(big.NewInt(0)) == 0 {
+	if node.Staked.Cmp(big.NewInt(0)) == 0 {
 		length := g.state.LenNodes()
 		lastIndex := new(big.Int).Sub(length, big.NewInt(1))
 
@@ -1670,52 +1553,23 @@ func (g *GovernanceContract) withdraw(nodeAddr common.Address) ([]byte, error) {
 				panic(err)
 			}
 		}
-		g.state.DeleteNodesOffsetByAddress(nodeAddr)
+		g.state.DeleteNodeOffsets(node)
 		g.state.PopLastNode()
-		g.state.emitNodeRemoved(nodeAddr)
+		g.state.emitNodeRemoved(caller)
 	}
 
-	return g.useGas(100000)
-}
-
-func (g *GovernanceContract) unstake() ([]byte, error) {
-	caller := g.contract.Caller()
-	offset := g.state.NodesOffsetByAddress(caller)
-	if offset.Cmp(big.NewInt(0)) < 0 {
+	// Return the staked fund.
+	if !g.transfer(GovernanceContractAddress, node.Owner, amount) {
 		return nil, errExecutionReverted
 	}
-
-	node := g.state.Node(offset)
-	if node.Fined.Cmp(big.NewInt(0)) > 0 {
-		return nil, errExecutionReverted
-	}
-
-	// Undelegate all delegators.
-	lenDelegators := g.state.LenDelegators(caller)
-	i := new(big.Int).Sub(lenDelegators, big.NewInt(1))
-	for i.Cmp(big.NewInt(0)) >= 0 {
-		delegator := g.state.Delegator(caller, i)
-		if ret, err := g.undelegateHelper(caller, delegator.Owner); err != nil {
-			return ret, err
-		}
-		i = i.Sub(i, big.NewInt(1))
-	}
-
-	g.state.emitUnstaked(caller)
+	g.state.emitWithdrawn(caller, amount)
 
 	return g.useGas(100000)
 }
 
 func (g *GovernanceContract) payFine(nodeAddr common.Address) ([]byte, error) {
-	caller := g.contract.Caller()
-
 	nodeOffset := g.state.NodesOffsetByAddress(nodeAddr)
 	if nodeOffset.Cmp(big.NewInt(0)) < 0 {
-		return nil, errExecutionReverted
-	}
-
-	offset := g.state.DelegatorsOffset(nodeAddr, caller)
-	if offset.Cmp(big.NewInt(0)) < 0 {
 		return nil, errExecutionReverted
 	}
 
@@ -2017,22 +1871,6 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return g.addDKGFinalize(args.Round, args.Finalize)
-	case "delegate":
-		address := common.Address{}
-		if err := method.Inputs.Unpack(&address, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.delegate(address)
-	case "delegatorsLength":
-		address := common.Address{}
-		if err := method.Inputs.Unpack(&address, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		res, err := method.Outputs.Pack(g.state.LenDelegators(address))
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
 	case "nodesLength":
 		res, err := method.Outputs.Pack(g.state.LenNodes())
 		if err != nil {
@@ -2072,7 +1910,7 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return g.resetDKG(args.NewSignedCRS)
-	case "stake":
+	case "register":
 		args := struct {
 			PublicKey []byte
 			Name      string
@@ -2083,21 +1921,21 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		if err := method.Inputs.Unpack(&args, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		return g.stake(args.PublicKey, args.Name, args.Email, args.Location, args.Url)
+		return g.register(args.PublicKey, args.Name, args.Email, args.Location, args.Url)
+	case "stake":
+		return g.stake()
 	case "transferOwnership":
 		var newOwner common.Address
 		if err := method.Inputs.Unpack(&newOwner, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
 		return g.transferOwnership(newOwner)
-	case "undelegate":
-		address := common.Address{}
-		if err := method.Inputs.Unpack(&address, arguments); err != nil {
+	case "unstake":
+		amount := new(big.Int)
+		if err := method.Inputs.Unpack(&amount, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		return g.undelegate(address)
-	case "unstake":
-		return g.unstake()
+		return g.unstake(amount)
 	case "updateConfiguration":
 		var cfg rawConfigStruct
 		if err := method.Inputs.Unpack(&cfg, arguments); err != nil {
@@ -2105,11 +1943,7 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		}
 		return g.updateConfiguration(&cfg)
 	case "withdraw":
-		address := common.Address{}
-		if err := method.Inputs.Unpack(&address, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		return g.withdraw(address)
+		return g.withdraw()
 
 	// --------------------------------
 	// Solidity auto generated methods.
@@ -2129,29 +1963,6 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		return res, nil
 	case "crsRound":
 		res, err := method.Outputs.Pack(g.state.CRSRound())
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "delegators":
-		nodeAddr, index := common.Address{}, new(big.Int)
-		args := []interface{}{&nodeAddr, &index}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		delegator := g.state.Delegator(nodeAddr, index)
-		res, err := method.Outputs.Pack(delegator.Owner, delegator.Value, delegator.UndelegatedAt)
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "delegatorsOffset":
-		nodeAddr, delegatorAddr := common.Address{}, common.Address{}
-		args := []interface{}{&nodeAddr, &delegatorAddr}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		res, err := method.Outputs.Pack(g.state.DelegatorsOffset(nodeAddr, delegatorAddr))
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -2328,7 +2139,8 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		info := g.state.Node(index)
 		res, err := method.Outputs.Pack(
 			info.Owner, info.PublicKey, info.Staked, info.Fined,
-			info.Name, info.Email, info.Location, info.Url)
+			info.Name, info.Email, info.Location, info.Url,
+			info.Unstaked, info.UnstakedAt)
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -2524,73 +2336,4 @@ func PackResetDKG(newSignedCRS []byte) ([]byte, error) {
 	}
 	data := append(method.Id(), res...)
 	return data, nil
-}
-
-// NodeInfoOracleContract representing a oracle providing the node information.
-type NodeInfoOracleContract struct {
-}
-
-func (g *NodeInfoOracleContract) Run(evm *EVM, input []byte, contract *Contract) (ret []byte, err error) {
-	if len(input) < 4 {
-		return nil, errExecutionReverted
-	}
-
-	// Parse input.
-	method, exists := NodeInfoOracleABI.Sig2Method[string(input[:4])]
-	if !exists {
-		return nil, errExecutionReverted
-	}
-
-	arguments := input[4:]
-
-	// Dispatch method call.
-	switch method.Name {
-	case "delegators":
-		round, nodeAddr, index := new(big.Int), common.Address{}, new(big.Int)
-		args := []interface{}{&round, &nodeAddr, &index}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		state, err := getConfigState(evm, round)
-		if err != nil {
-			return nil, err
-		}
-		delegator := state.Delegator(nodeAddr, index)
-		res, err := method.Outputs.Pack(delegator.Owner, delegator.Value, delegator.UndelegatedAt)
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "delegatorsLength":
-		round, address := new(big.Int), common.Address{}
-		args := []interface{}{&round, &address}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		state, err := getConfigState(evm, round)
-		if err != nil {
-			return nil, err
-		}
-		res, err := method.Outputs.Pack(state.LenDelegators(address))
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	case "delegatorsOffset":
-		round, nodeAddr, delegatorAddr := new(big.Int), common.Address{}, common.Address{}
-		args := []interface{}{&round, &nodeAddr, &delegatorAddr}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
-			return nil, errExecutionReverted
-		}
-		state, err := getConfigState(evm, round)
-		if err != nil {
-			return nil, err
-		}
-		res, err := method.Outputs.Pack(state.DelegatorsOffset(nodeAddr, delegatorAddr))
-		if err != nil {
-			return nil, errExecutionReverted
-		}
-		return res, nil
-	}
-	return nil, errExecutionReverted
 }

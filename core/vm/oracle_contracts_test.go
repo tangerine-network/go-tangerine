@@ -235,20 +235,20 @@ func (g *OracleContractsTestSuite) TestTransferOwnership() {
 	g.Require().Equal(addr, g.s.Owner())
 }
 
-func (g *OracleContractsTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
+func (g *OracleContractsTestSuite) TestStakingMechanism() {
 	privKey, addr := g.newPrefundAccount()
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
 
-	// Stake.
-	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6))
+	// Register with some stake.
+	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5))
 	balanceBeforeStake := g.stateDB.GetBalance(addr)
-	input, err := GovernanceABI.ABI.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
+	input, err := GovernanceABI.ABI.Pack("register", pk, "Test1", "test1@dexon.org", "Taipei", "https://dexon.org")
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, amount)
 	g.Require().NoError(err)
 
 	g.Require().Equal(1, int(g.s.LenNodes().Uint64()))
-	g.Require().Equal(1, len(g.s.QualifiedNodes()))
+	g.Require().Equal(0, len(g.s.QualifiedNodes()))
 	g.Require().Equal("Test1", g.s.Node(big.NewInt(0)).Name)
 	g.Require().Equal(amount.String(), g.s.TotalStaked().String())
 
@@ -256,40 +256,75 @@ func (g *OracleContractsTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
 	g.Require().Equal(new(big.Int).Sub(balanceBeforeStake, amount), g.stateDB.GetBalance(addr))
 	g.Require().Equal(new(big.Int).Add(big.NewInt(1), amount), g.stateDB.GetBalance(GovernanceContractAddress))
 
-	// Staking again should fail.
+	// Registering again should fail.
 	_, err = g.call(GovernanceContractAddress, addr, input, amount)
-	g.Require().NotNil(err)
+	g.Require().Error(err)
+
+	// Stake more to qualify.
+	input, err = GovernanceABI.ABI.Pack("stake")
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, addr, input, amount)
+	g.Require().NoError(err)
+	g.Require().Equal(1, len(g.s.QualifiedNodes()))
+	g.Require().Equal(new(big.Int).Add(amount, amount).String(), g.s.TotalStaked().String())
+
+	// Unstake more then staked should fail.
+	unstakeAmount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e6))
+	input, err = GovernanceABI.ABI.Pack("unstake", unstakeAmount)
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
+	g.Require().Error(err)
 
 	// Unstake.
-	input, err = GovernanceABI.ABI.Pack("unstake")
+	input, err = GovernanceABI.ABI.Pack("unstake", amount)
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
 	g.Require().NoError(err)
 	g.Require().Equal(0, len(g.s.QualifiedNodes()))
-	g.Require().Equal(1, int(g.s.LenDelegators(addr).Uint64()))
+	g.Require().Equal(amount.String(), g.s.TotalStaked().String())
+
+	// Withdraw immediately should fail.
+	input, err = GovernanceABI.ABI.Pack("withdraw")
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
+	g.Require().Error(err)
+
+	// Wait for lockup time than withdraw.
+	time.Sleep(time.Second * 2)
+	input, err = GovernanceABI.ABI.Pack("withdraw")
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+
+	g.Require().Equal(0, len(g.s.QualifiedNodes()))
 	g.Require().Equal(1, int(g.s.LenNodes().Uint64()))
+
+	// Unstake all to remove node.
+	input, err = GovernanceABI.ABI.Pack("unstake", amount)
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+
+	time.Sleep(time.Second * 2)
+	input, err = GovernanceABI.ABI.Pack("withdraw")
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+
+	g.Require().Equal(0, len(g.s.QualifiedNodes()))
+	g.Require().Equal(0, int(g.s.LenNodes().Uint64()))
 
 	node := g.s.Node(big.NewInt(0))
 	g.Require().Equal(big.NewInt(0).String(), node.Staked.String())
 	g.Require().Equal(big.NewInt(0).String(), g.s.TotalStaked().String())
 
-	// Wait for lockup time than withdraw.
-	time.Sleep(time.Second * 2)
-	input, err = GovernanceABI.ABI.Pack("withdraw", addr)
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
-	g.Require().NoError(err)
-
-	g.Require().Equal(0, len(g.s.QualifiedNodes()))
-	g.Require().Equal(0, int(g.s.LenDelegators(addr).Uint64()))
-	g.Require().Equal(0, int(g.s.LenNodes().Uint64()))
-
 	// Stake 2 nodes, and unstake the first then the second.
+	amount = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6))
 
 	// 2nd node Stake.
 	privKey2, addr2 := g.newPrefundAccount()
 	pk2 := crypto.FromECDSAPub(&privKey2.PublicKey)
-	input, err = GovernanceABI.ABI.Pack("stake", pk2, "Test2", "test2@dexon.org", "Taipei, Taiwan", "https://dexon.org")
+	input, err = GovernanceABI.ABI.Pack("register", pk2, "Test2", "test2@dexon.org", "Taipei", "https://dexon.org")
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr2, input, amount)
 	g.Require().NoError(err)
@@ -297,19 +332,21 @@ func (g *OracleContractsTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
 	g.Require().Equal(0, int(g.s.NodesOffsetByAddress(addr2).Int64()))
 
 	// 1st node Stake.
-	input, err = GovernanceABI.ABI.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
+	input, err = GovernanceABI.ABI.Pack("register", pk, "Test1", "test1@dexon.org", "Taipei", "https://dexon.org")
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, amount)
 	g.Require().NoError(err)
 
+	g.Require().Equal(2, int(g.s.LenNodes().Uint64()))
 	g.Require().Equal(2, len(g.s.QualifiedNodes()))
 	g.Require().Equal(new(big.Int).Mul(amount, big.NewInt(2)).String(), g.s.TotalStaked().String())
 
 	// 2nd node Unstake.
-	input, err = GovernanceABI.ABI.Pack("unstake")
+	input, err = GovernanceABI.ABI.Pack("unstake", amount)
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr2, input, big.NewInt(0))
 	g.Require().NoError(err)
+
 	node = g.s.Node(big.NewInt(0))
 	g.Require().Equal("Test2", node.Name)
 	g.Require().Equal(big.NewInt(0).String(), node.Staked.String())
@@ -317,18 +354,18 @@ func (g *OracleContractsTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
 	g.Require().Equal(amount.String(), g.s.TotalStaked().String())
 
 	time.Sleep(time.Second * 2)
-	input, err = GovernanceABI.ABI.Pack("withdraw", addr2)
+	input, err = GovernanceABI.ABI.Pack("withdraw")
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr2, input, big.NewInt(0))
 	g.Require().NoError(err)
-	g.Require().Equal(1, len(g.s.QualifiedNodes()))
 
+	g.Require().Equal(1, len(g.s.QualifiedNodes()))
 	g.Require().Equal(1, int(g.s.LenNodes().Uint64()))
 	g.Require().Equal("Test1", g.s.Node(big.NewInt(0)).Name)
 	g.Require().Equal(-1, int(g.s.NodesOffsetByAddress(addr2).Int64()))
 
 	// 1st node Unstake.
-	input, err = GovernanceABI.ABI.Pack("unstake")
+	input, err = GovernanceABI.ABI.Pack("unstake", amount)
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
 	g.Require().NoError(err)
@@ -336,14 +373,13 @@ func (g *OracleContractsTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
 	g.Require().Equal(big.NewInt(0).String(), g.s.TotalStaked().String())
 
 	time.Sleep(time.Second * 2)
-	input, err = GovernanceABI.ABI.Pack("withdraw", addr)
+	input, err = GovernanceABI.ABI.Pack("withdraw")
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
 	g.Require().NoError(err)
 
 	g.Require().Equal(0, int(g.s.LenNodes().Uint64()))
 	g.Require().Equal(-1, int(g.s.NodesOffsetByAddress(addr).Int64()))
-	g.Require().Equal(-1, int(g.s.DelegatorsOffset(addr, addr).Int64()))
 
 	// Check balance.
 	g.Require().Equal(balanceBeforeStake, g.stateDB.GetBalance(addr))
@@ -351,178 +387,26 @@ func (g *OracleContractsTestSuite) TestStakeUnstakeWithoutExtraDelegators() {
 	g.Require().Equal(big.NewInt(1), g.stateDB.GetBalance(GovernanceContractAddress))
 }
 
-func (g *OracleContractsTestSuite) TestDelegateUndelegate() {
-	privKey, addr := g.newPrefundAccount()
-	pk := crypto.FromECDSAPub(&privKey.PublicKey)
-
-	// Stake.
-	input, err := GovernanceABI.ABI.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
-	g.Require().NoError(err)
-	ownerStaked := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5))
-	_, err = g.call(GovernanceContractAddress, addr, input, ownerStaked)
-	g.Require().NoError(err)
-	g.Require().Equal(0, len(g.s.QualifiedNodes()))
-	g.Require().Equal(addr, g.s.Delegator(addr, big.NewInt(0)).Owner)
-	g.Require().Equal(ownerStaked, g.s.Node(big.NewInt(0)).Staked)
-
-	// 1st delegator delegate to 1st node.
-	_, addrDelegator := g.newPrefundAccount()
-
-	balanceBeforeDelegate := g.stateDB.GetBalance(addrDelegator)
-	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(3e5))
-	input, err = GovernanceABI.ABI.Pack("delegate", addr)
-	g.Require().NoError(err)
-
-	_, err = g.call(GovernanceContractAddress, addrDelegator, input, amount)
-	g.Require().NoError(err)
-	g.Require().Equal(new(big.Int).Sub(balanceBeforeDelegate, amount), g.stateDB.GetBalance(addrDelegator))
-	g.Require().Equal(addrDelegator, g.s.Delegator(addr, big.NewInt(1)).Owner)
-	g.Require().Equal(new(big.Int).Add(amount, ownerStaked), g.s.Node(big.NewInt(0)).Staked)
-	g.Require().Equal(g.s.Node(big.NewInt(0)).Staked.String(), g.s.TotalStaked().String())
-	g.Require().Equal(1, int(g.s.DelegatorsOffset(addr, addrDelegator).Int64()))
-
-	// Same person delegate the 2nd time should fail.
-	_, err = g.call(GovernanceContractAddress, addrDelegator, input, big.NewInt(1e18))
-	g.Require().NotNil(err)
-
-	// Not yet qualified.
-	g.Require().Equal(0, len(g.s.QualifiedNodes()))
-
-	// 2nd delegator delegate to 1st node.
-	_, addrDelegator2 := g.newPrefundAccount()
-	_, err = g.call(GovernanceContractAddress, addrDelegator2, input, amount)
-	g.Require().NoError(err)
-	g.Require().Equal(new(big.Int).Sub(balanceBeforeDelegate, amount), g.stateDB.GetBalance(addrDelegator2))
-	g.Require().Equal(addrDelegator2, g.s.Delegator(addr, big.NewInt(2)).Owner)
-	g.Require().Equal(new(big.Int).Add(ownerStaked, new(big.Int).Mul(amount, big.NewInt(2))),
-		g.s.Node(big.NewInt(0)).Staked)
-	g.Require().Equal(g.s.Node(big.NewInt(0)).Staked.String(), g.s.TotalStaked().String())
-	g.Require().Equal(2, int(g.s.DelegatorsOffset(addr, addrDelegator2).Int64()))
-
-	// Qualified.
-	g.Require().Equal(1, len(g.s.QualifiedNodes()))
-
-	// Undelegate addrDelegator.
-	balanceBeforeUnDelegate := g.stateDB.GetBalance(addrDelegator)
-	input, err = GovernanceABI.ABI.Pack("undelegate", addr)
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addrDelegator, input, big.NewInt(0))
-	g.Require().Equal(new(big.Int).Add(amount, ownerStaked), g.s.Node(big.NewInt(0)).Staked)
-	g.Require().Equal(g.s.Node(big.NewInt(0)).Staked.String(), g.s.TotalStaked().String())
-	g.Require().NoError(err)
-
-	// Undelegate the second time should fail.
-	_, err = g.call(GovernanceContractAddress, addrDelegator, input, big.NewInt(0))
-	g.Require().Error(err)
-
-	// Withdraw within lockup time should fail.
-	input, err = GovernanceABI.ABI.Pack("withdraw", addr)
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addrDelegator, input, big.NewInt(0))
-	g.Require().NotNil(err)
-
-	g.Require().Equal(3, int(g.s.LenDelegators(addr).Uint64()))
-	g.Require().Equal(balanceBeforeUnDelegate, g.stateDB.GetBalance(addrDelegator))
-	g.Require().NotEqual(-1, int(g.s.DelegatorsOffset(addr, addrDelegator).Int64()))
-
-	// Wait for lockup time than withdraw.
-	time.Sleep(time.Second * 2)
-	input, err = GovernanceABI.ABI.Pack("withdraw", addr)
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addrDelegator, input, big.NewInt(0))
-	g.Require().NoError(err)
-
-	g.Require().Equal(2, int(g.s.LenDelegators(addr).Uint64()))
-	g.Require().Equal(new(big.Int).Add(balanceBeforeUnDelegate, amount), g.stateDB.GetBalance(addrDelegator))
-	g.Require().Equal(-1, int(g.s.DelegatorsOffset(addr, addrDelegator).Int64()))
-
-	// Withdraw when their is no delegation should fail.
-	time.Sleep(time.Second)
-	input, err = GovernanceABI.ABI.Pack("withdraw", addr)
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addrDelegator, input, big.NewInt(0))
-	g.Require().Error(err)
-
-	// Undelegate addrDelegator2.
-	balanceBeforeUnDelegate = g.stateDB.GetBalance(addrDelegator2)
-	input, err = GovernanceABI.ABI.Pack("undelegate", addr)
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addrDelegator2, input, big.NewInt(0))
-	g.Require().NoError(err)
-
-	g.Require().Equal(ownerStaked, g.s.Node(big.NewInt(0)).Staked)
-	g.Require().Equal(g.s.Node(big.NewInt(0)).Staked.String(), g.s.TotalStaked().String())
-
-	// Wait for lockup time than withdraw.
-	time.Sleep(time.Second * 2)
-	input, err = GovernanceABI.ABI.Pack("withdraw", addr)
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addrDelegator2, input, big.NewInt(0))
-	g.Require().NoError(err)
-
-	g.Require().Equal(1, int(g.s.LenDelegators(addr).Uint64()))
-	g.Require().Equal(new(big.Int).Add(balanceBeforeUnDelegate, amount), g.stateDB.GetBalance(addrDelegator2))
-	g.Require().Equal(-1, int(g.s.DelegatorsOffset(addr, addrDelegator2).Int64()))
-
-	// Unqualified
-	g.Require().Equal(0, len(g.s.QualifiedNodes()))
-
-	// Owner undelegate itself.
-	g.Require().Equal(1, int(g.s.LenNodes().Uint64()))
-	g.Require().Equal(1, int(g.s.LenDelegators(addr).Uint64()))
-
-	input, err = GovernanceABI.ABI.Pack("undelegate", addr)
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
-	g.Require().NoError(err)
-	g.Require().Equal(big.NewInt(0).String(), g.s.Node(big.NewInt(0)).Staked.String())
-	g.Require().Equal(big.NewInt(0).String(), g.s.TotalStaked().String())
-
-	time.Sleep(time.Second * 2)
-	input, err = GovernanceABI.ABI.Pack("withdraw", addr)
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
-
-	g.Require().Equal(0, int(g.s.LenNodes().Uint64()))
-	g.Require().Equal(0, int(g.s.LenDelegators(addr).Uint64()))
-}
-
 func (g *OracleContractsTestSuite) TestFine() {
 	privKey, addr := g.newPrefundAccount()
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
 
 	// Stake.
-	input, err := GovernanceABI.ABI.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
+	input, err := GovernanceABI.ABI.Pack("register", pk, "Test1", "test1@dexon.org", "Taipei", "https://dexon.org")
 	g.Require().NoError(err)
-	ownerStaked := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5))
+	ownerStaked := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6))
 	_, err = g.call(GovernanceContractAddress, addr, input, ownerStaked)
 	g.Require().NoError(err)
-	g.Require().Equal(0, len(g.s.QualifiedNodes()))
-	g.Require().Equal(addr, g.s.Delegator(addr, big.NewInt(0)).Owner)
+	g.Require().Equal(1, len(g.s.QualifiedNodes()))
 	g.Require().Equal(ownerStaked, g.s.Node(big.NewInt(0)).Staked)
 
-	// 1st delegator delegate to 1st node.
-	_, addrDelegator := g.newPrefundAccount()
-
-	balanceBeforeDelegate := g.stateDB.GetBalance(addrDelegator)
+	_, finePayer := g.newPrefundAccount()
 	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5))
-	input, err = GovernanceABI.ABI.Pack("delegate", addr)
-	g.Require().NoError(err)
-
-	_, err = g.call(GovernanceContractAddress, addrDelegator, input, amount)
-	g.Require().NoError(err)
-	g.Require().Equal(new(big.Int).Sub(balanceBeforeDelegate, amount), g.stateDB.GetBalance(addrDelegator))
-	g.Require().Equal(addrDelegator, g.s.Delegator(addr, big.NewInt(1)).Owner)
-	g.Require().Equal(new(big.Int).Add(amount, ownerStaked), g.s.Node(big.NewInt(0)).Staked)
-	g.Require().Equal(1, int(g.s.DelegatorsOffset(addr, addrDelegator).Int64()))
-
-	// Qualified.
-	g.Require().Equal(1, len(g.s.QualifiedNodes()))
 
 	// Paying to node without fine should fail.
 	input, err = GovernanceABI.ABI.Pack("payFine", addr)
 	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addrDelegator, input, amount)
+	_, err = g.call(GovernanceContractAddress, finePayer, input, amount)
 	g.Require().NotNil(err)
 
 	// Fined.
@@ -537,106 +421,27 @@ func (g *OracleContractsTestSuite) TestFine() {
 	// Not qualified after fined.
 	g.Require().Equal(0, len(g.s.QualifiedNodes()))
 
-	// Cannot undelegate before fines are paied.
-	input, err = GovernanceABI.ABI.Pack("undelegate", addr)
+	// Cannot unstake before fines are paied.
+	input, err = GovernanceABI.ABI.Pack("unstake", big.NewInt(10))
 	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addrDelegator, input, big.NewInt(0))
-	g.Require().NotNil(err)
-
-	// Only delegators can pay fine.
-	_, addrDelegator2 := g.newPrefundAccount()
-	input, err = GovernanceABI.ABI.Pack("payFine", addr)
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addrDelegator2, input, big.NewInt(5e5))
+	_, err = g.call(GovernanceContractAddress, finePayer, input, big.NewInt(0))
 	g.Require().NotNil(err)
 
 	// Paying more than fine should fail.
 	payAmount := new(big.Int).Add(amount, amount)
 	input, err = GovernanceABI.ABI.Pack("payFine", addr)
 	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addrDelegator, input, payAmount)
+	_, err = g.call(GovernanceContractAddress, finePayer, input, payAmount)
 	g.Require().NotNil(err)
 
 	// Pay the fine.
 	input, err = GovernanceABI.ABI.Pack("payFine", addr)
 	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addrDelegator, input, amount)
+	_, err = g.call(GovernanceContractAddress, finePayer, input, amount)
 	g.Require().NoError(err)
 
 	// Qualified.
 	g.Require().Equal(1, len(g.s.QualifiedNodes()))
-
-	// Can undelegate after all fines are paied.
-	input, err = GovernanceABI.ABI.Pack("undelegate", addr)
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addrDelegator, input, big.NewInt(0))
-	g.Require().NoError(err)
-}
-
-func (g *OracleContractsTestSuite) TestUnstakeWithExtraDelegators() {
-	privKey, addr := g.newPrefundAccount()
-	pk := crypto.FromECDSAPub(&privKey.PublicKey)
-
-	// Stake.
-	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5))
-	input, err := GovernanceABI.ABI.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addr, input, amount)
-	g.Require().NoError(err)
-
-	// 1st delegator delegate to 1st node.
-	_, addrDelegator := g.newPrefundAccount()
-
-	balanceBeforeDelegate := g.stateDB.GetBalance(addrDelegator)
-	amount = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(3e5))
-	input, err = GovernanceABI.ABI.Pack("delegate", addr)
-	g.Require().NoError(err)
-
-	_, err = g.call(GovernanceContractAddress, addrDelegator, input, amount)
-	g.Require().NoError(err)
-	g.Require().Equal(new(big.Int).Sub(balanceBeforeDelegate, amount), g.stateDB.GetBalance(addrDelegator))
-	g.Require().Equal(addrDelegator, g.s.Delegator(addr, big.NewInt(1)).Owner)
-	g.Require().Equal(0, len(g.s.QualifiedNodes()))
-
-	// 2st delegator delegate to 1st node.
-	_, addrDelegator2 := g.newPrefundAccount()
-
-	balanceBeforeDelegate = g.stateDB.GetBalance(addrDelegator2)
-	input, err = GovernanceABI.ABI.Pack("delegate", addr)
-	g.Require().NoError(err)
-
-	_, err = g.call(GovernanceContractAddress, addrDelegator2, input, amount)
-	g.Require().NoError(err)
-	g.Require().Equal(new(big.Int).Sub(balanceBeforeDelegate, amount), g.stateDB.GetBalance(addrDelegator2))
-	g.Require().Equal(addrDelegator2, g.s.Delegator(addr, big.NewInt(2)).Owner)
-
-	// Node is now qualified.
-	g.Require().Equal(1, len(g.s.QualifiedNodes()))
-
-	// Unstake.
-	input, err = GovernanceABI.ABI.Pack("unstake")
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
-	g.Require().NoError(err)
-
-	time.Sleep(time.Second * 2)
-	input, err = GovernanceABI.ABI.Pack("withdraw", addr)
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addrDelegator, input, big.NewInt(0))
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addrDelegator2, input, big.NewInt(0))
-	g.Require().NoError(err)
-
-	g.Require().Equal(0, int(g.s.LenDelegators(addr).Uint64()))
-	g.Require().Equal(0, int(g.s.LenNodes().Uint64()))
-
-	// Check balance.
-	g.Require().Equal(balanceBeforeDelegate, g.stateDB.GetBalance(addr))
-	g.Require().Equal(balanceBeforeDelegate, g.stateDB.GetBalance(addrDelegator))
-	g.Require().Equal(balanceBeforeDelegate, g.stateDB.GetBalance(addrDelegator2))
-	g.Require().Equal(big.NewInt(1), g.stateDB.GetBalance(GovernanceContractAddress))
 }
 
 func (g *OracleContractsTestSuite) TestUpdateConfiguration() {
@@ -805,7 +610,7 @@ func (g *OracleContractsTestSuite) TestReportForkVote() {
 
 	// Stake.
 	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5))
-	input, err := GovernanceABI.ABI.Pack("stake", pkBytes, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
+	input, err := GovernanceABI.ABI.Pack("register", pkBytes, "Test1", "test1@dexon.org", "Taipei", "https://dexon.org")
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, amount)
 	g.Require().NoError(err)
@@ -871,7 +676,7 @@ func (g *OracleContractsTestSuite) TestReportForkBlock() {
 
 	// Stake.
 	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5))
-	input, err := GovernanceABI.ABI.Pack("stake", pkBytes, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
+	input, err := GovernanceABI.ABI.Pack("register", pkBytes, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, amount)
 	g.Require().NoError(err)
@@ -958,24 +763,9 @@ func (g *OracleContractsTestSuite) TestMiscVariableReading() {
 
 	// Stake.
 	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5))
-	input, err = GovernanceABI.ABI.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
+	input, err = GovernanceABI.ABI.Pack("register", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, amount)
-	g.Require().NoError(err)
-
-	// 1st delegator delegate to 1st node.
-	_, addrDelegator := g.newPrefundAccount()
-	amount = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(3e5))
-	input, err = GovernanceABI.ABI.Pack("delegate", addr)
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addrDelegator, input, amount)
-	g.Require().NoError(err)
-
-	// 2st delegator delegate to 1st node.
-	_, addrDelegator2 := g.newPrefundAccount()
-	input, err = GovernanceABI.ABI.Pack("delegate", addr)
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addrDelegator2, input, amount)
 	g.Require().NoError(err)
 
 	input, err = GovernanceABI.ABI.Pack("nodes", big.NewInt(0))
@@ -1010,27 +800,6 @@ func (g *OracleContractsTestSuite) TestMiscVariableReading() {
 	g.Require().NoError(err)
 	g.Require().Equal(0, int(value.Uint64()))
 
-	input, err = GovernanceABI.ABI.Pack("delegators", addr, big.NewInt(0))
-	g.Require().NoError(err)
-	res, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
-	g.Require().NoError(err)
-
-	input, err = GovernanceABI.ABI.Pack("delegatorsLength", addr)
-	g.Require().NoError(err)
-	res, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
-	g.Require().NoError(err)
-	err = GovernanceABI.ABI.Unpack(&value, "delegatorsLength", res)
-	g.Require().NoError(err)
-	g.Require().Equal(3, int(value.Uint64()))
-
-	input, err = GovernanceABI.ABI.Pack("delegatorsOffset", addr, addrDelegator2)
-	g.Require().NoError(err)
-	res, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
-	g.Require().NoError(err)
-	err = GovernanceABI.ABI.Unpack(&value, "delegatorsOffset", res)
-	g.Require().NoError(err)
-	g.Require().Equal(2, int(value.Uint64()))
-
 	input, err = GovernanceABI.ABI.Pack("fineValues", big.NewInt(0))
 	g.Require().NoError(err)
 	res, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
@@ -1051,47 +820,6 @@ func (g *OracleContractsTestSuite) TestHalvingCondition() {
 		g.s.NextHalvingSupply().String())
 	g.Require().Equal(new(big.Int).Mul(big.NewInt(1e18), big.NewInt(0.375e9)).String(),
 		g.s.LastHalvedAmount().String())
-}
-
-func (g *OracleContractsTestSuite) TestNodeInfoOracleContract() {
-	privKey, addr := g.newPrefundAccount()
-	pk := crypto.FromECDSAPub(&privKey.PublicKey)
-
-	// Stake.
-	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(5e5))
-	input, err := GovernanceABI.ABI.Pack("stake", pk, "Test1", "test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
-	g.Require().NoError(err)
-	_, err = g.call(GovernanceContractAddress, addr, input, amount)
-	g.Require().NoError(err)
-
-	// Invalid round.
-	input, err = NodeInfoOracleABI.ABI.Pack("delegators", big.NewInt(100), addr, big.NewInt(0))
-	g.Require().NoError(err)
-	res, err := g.call(NodeInfoOracleAddress, addr, input, big.NewInt(0))
-	g.Require().Error(err)
-
-	round := big.NewInt(0)
-	input, err = NodeInfoOracleABI.ABI.Pack("delegators", round, addr, big.NewInt(0))
-	g.Require().NoError(err)
-	res, err = g.call(NodeInfoOracleAddress, addr, input, big.NewInt(0))
-	g.Require().NoError(err)
-
-	var value *big.Int
-	input, err = NodeInfoOracleABI.ABI.Pack("delegatorsLength", round, addr)
-	g.Require().NoError(err)
-	res, err = g.call(NodeInfoOracleAddress, addr, input, big.NewInt(0))
-	g.Require().NoError(err)
-	err = NodeInfoOracleABI.ABI.Unpack(&value, "delegatorsLength", res)
-	g.Require().NoError(err)
-	g.Require().Equal(1, int(value.Uint64()))
-
-	input, err = NodeInfoOracleABI.ABI.Pack("delegatorsOffset", round, addr, addr)
-	g.Require().NoError(err)
-	res, err = g.call(NodeInfoOracleAddress, addr, input, big.NewInt(0))
-	g.Require().NoError(err)
-	err = NodeInfoOracleABI.ABI.Unpack(&value, "delegatorsOffset", res)
-	g.Require().NoError(err)
-	g.Require().Equal(0, int(value.Uint64()))
 }
 
 type testCoreMock struct {
@@ -1123,8 +851,7 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 
 		// Stake.
 		amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6))
-		input, err := GovernanceABI.ABI.Pack("stake", pk, "Test1",
-			"test1@dexon.org", "Taipei, Taiwan", "https://dexon.org")
+		input, err := GovernanceABI.ABI.Pack("register", pk, "Test1", "test1@dexon.org", "Taipei", "https://dexon.org")
 		g.Require().NoError(err)
 		_, err = g.call(GovernanceContractAddress, addr, input, amount)
 		g.Require().NoError(err)
@@ -1270,6 +997,6 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 	}
 }
 
-func TestGovernanceContract(t *testing.T) {
+func TestOracleContracts(t *testing.T) {
 	suite.Run(t, new(OracleContractsTestSuite))
 }

@@ -24,29 +24,6 @@ const GovernanceABIJSON = `
 [
   {
     "constant": true,
-    "inputs": [
-      {
-        "name": "",
-        "type": "address"
-      },
-      {
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "delegatorsOffset",
-    "outputs": [
-      {
-        "name": "",
-        "type": "int256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
     "inputs": [],
     "name": "notarySetSize",
     "outputs": [
@@ -128,6 +105,14 @@ const GovernanceABIJSON = `
       {
         "name": "url",
         "type": "string"
+      },
+      {
+        "name": "unstaked",
+        "type": "uint256"
+      },
+      {
+        "name": "unstaked_at",
+        "type": "uint256"
       }
     ],
     "payable": false,
@@ -183,37 +168,6 @@ const GovernanceABIJSON = `
     "outputs": [
       {
         "name": "",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "",
-        "type": "address"
-      },
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "delegators",
-    "outputs": [
-      {
-        "name": "owner",
-        "type": "address"
-      },
-      {
-        "name": "value",
-        "type": "uint256"
-      },
-      {
-        "name": "undelegated_at",
         "type": "uint256"
       }
     ],
@@ -637,6 +591,11 @@ const GovernanceABIJSON = `
         "indexed": true,
         "name": "NodeAddress",
         "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "Amount",
+        "type": "uint256"
       }
     ],
     "name": "Staked",
@@ -649,6 +608,11 @@ const GovernanceABIJSON = `
         "indexed": true,
         "name": "NodeAddress",
         "type": "address"
+      },
+      {
+        "indexed": false,
+        "name": "Amount",
+        "type": "uint256"
       }
     ],
     "name": "Unstaked",
@@ -661,67 +625,6 @@ const GovernanceABIJSON = `
         "indexed": true,
         "name": "NodeAddress",
         "type": "address"
-      }
-    ],
-    "name": "NodeRemoved",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "NodeAddress",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "name": "DelegatorAddress",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "name": "Amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "Delegated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "NodeAddress",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "name": "DelegatorAddress",
-        "type": "address"
-      },
-      {
-        "indexed": false,
-        "name": "Amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "Undelegated",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "name": "NodeAddress",
-        "type": "address"
-      },
-      {
-        "indexed": true,
-        "name": "DelegatorAddress",
-        "type": "address"
       },
       {
         "indexed": false,
@@ -730,6 +633,30 @@ const GovernanceABIJSON = `
       }
     ],
     "name": "Withdrawn",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "NodeAddress",
+        "type": "address"
+      }
+    ],
+    "name": "NodeAdded",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "NodeAddress",
+        "type": "address"
+      }
+    ],
+    "name": "NodeRemoved",
     "type": "event"
   },
   {
@@ -893,25 +820,6 @@ const GovernanceABIJSON = `
     "type": "function"
   },
   {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "NodeAddress",
-        "type": "address"
-      }
-    ],
-    "name": "delegatorsLength",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "constant": false,
     "inputs": [
       {
@@ -1025,7 +933,7 @@ const GovernanceABIJSON = `
         "type": "string"
       }
     ],
-    "name": "stake",
+    "name": "register",
     "outputs": [],
     "payable": true,
     "stateMutability": "payable",
@@ -1034,21 +942,7 @@ const GovernanceABIJSON = `
   {
     "constant": false,
     "inputs": [],
-    "name": "unstake",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "NodeAddress",
-        "type": "address"
-      }
-    ],
-    "name": "delegate",
+    "name": "stake",
     "outputs": [],
     "payable": true,
     "stateMutability": "payable",
@@ -1058,11 +952,11 @@ const GovernanceABIJSON = `
     "constant": false,
     "inputs": [
       {
-        "name": "NodeAddress",
-        "type": "address"
+        "name": "Amount",
+        "type": "uint256"
       }
     ],
-    "name": "undelegate",
+    "name": "unstake",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
@@ -1070,12 +964,7 @@ const GovernanceABIJSON = `
   },
   {
     "constant": false,
-    "inputs": [
-      {
-        "name": "NodeAddress",
-        "type": "address"
-      }
-    ],
+    "inputs": [],
     "name": "withdraw",
     "outputs": [],
     "payable": false,
@@ -1130,96 +1019,6 @@ const GovernanceABIJSON = `
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
-    "type": "function"
-  }
-]
-`
-
-const NodeInfoOracleABIJSON = `
-[
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "Round",
-        "type": "uint256"
-      },
-      {
-        "name": "NodeAddress",
-        "type": "address"
-      },
-      {
-        "name": "Index",
-        "type": "uint256"
-      }
-    ],
-    "name": "delegators",
-    "outputs": [
-      {
-        "name": "owner",
-        "type": "address"
-      },
-      {
-        "name": "value",
-        "type": "uint256"
-      },
-      {
-        "name": "undelegated_at",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "Round",
-        "type": "uint256"
-      },
-      {
-        "name": "NodeAddress",
-        "type": "address"
-      }
-    ],
-    "name": "delegatorsLength",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [
-      {
-        "name": "Round",
-        "type": "uint256"
-      },
-      {
-        "name": "NodeAddress",
-        "type": "address"
-      },
-      {
-        "name": "DelegatorAddress",
-        "type": "address"
-      }
-    ],
-    "name": "delegatorsOffset",
-    "outputs": [
-      {
-        "name": "",
-        "type": "int256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
     "type": "function"
   }
 ]

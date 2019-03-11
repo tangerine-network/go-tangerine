@@ -25,14 +25,11 @@ import (
 )
 
 var GovernanceContractAddress = common.HexToAddress("63751838d6485578b23e8b051d40861ecc416794")
-var NodeInfoOracleAddress = common.HexToAddress("58a7c88ad1f32e7252bebba54def98d3e7b3df11")
 
 var GovernanceABI *OracleContractABI
-var NodeInfoOracleABI *OracleContractABI
 
 func init() {
 	GovernanceABI = NewOracleContractABI(GovernanceABIJSON)
-	NodeInfoOracleABI = NewOracleContractABI(NodeInfoOracleABIJSON)
 }
 
 // OracleContract represent special system contracts written in Go.
@@ -45,7 +42,6 @@ var OracleContracts = map[common.Address]OracleContract{
 	GovernanceContractAddress: &GovernanceContract{
 		coreDKGUtils: &defaultCoreDKGUtils{},
 	},
-	NodeInfoOracleAddress: &NodeInfoOracleContract{},
 }
 
 // Run oracle contract.

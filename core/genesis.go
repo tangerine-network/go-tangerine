@@ -302,9 +302,10 @@ func (g *Genesis) ToBlock(db ethdb.Database) *types.Block {
 		for _, addr := range keys {
 			account := g.Alloc[addr]
 			if account.Staked.Cmp(big.NewInt(0)) > 0 {
-				govStateHelper.Stake(addr, account.PublicKey, account.Staked,
+				govStateHelper.Register(addr, account.PublicKey,
 					account.NodeInfo.Name, account.NodeInfo.Email,
-					account.NodeInfo.Location, account.NodeInfo.Url)
+					account.NodeInfo.Location, account.NodeInfo.Url,
+					account.Staked)
 			}
 		}
 
