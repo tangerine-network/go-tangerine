@@ -814,7 +814,7 @@ func (con *Consensus) initialRound(
 				return
 			}
 			con.logger.Info("Selected as DKG set", "round", nextRound)
-			con.cfgModule.registerDKG(nextRound, getDKGThreshold(config))
+			con.cfgModule.registerDKG(nextRound, utils.GetDKGThreshold(config))
 			con.event.RegisterHeight(startHeight+config.RoundLength*2/3,
 				func(uint64) {
 					func() {
@@ -1068,6 +1068,9 @@ func (con *Consensus) ProcessAgreementResult(
 func (con *Consensus) ProcessBlockRandomnessResult(
 	rand *types.BlockRandomnessResult, needBroadcast bool) error {
 	if rand.Position.Round == 0 {
+		return nil
+	}
+	if !con.bcModule.shouldAddRandomness(rand) {
 		return nil
 	}
 	if err := con.bcModule.addRandomness(rand); err != nil {

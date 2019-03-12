@@ -141,16 +141,16 @@
 		{
 			"checksumSHA1": "8EuKVkP1v/w5fRuuvUaXX5k/F+I=",
 			"path": "github.com/dexon-foundation/dexon-consensus/common",
-			"revision": "ac3187e706bc11f1b36e32015a6e51a96cc8cfe9",
-			"revisionTime": "2019-03-09T16:39:54Z",
+			"revision": "bdd9130c05828a158cb8088eec3561f8b1d0f956",
+			"revisionTime": "2019-03-12T03:51:26Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
 		{
-			"checksumSHA1": "2zv4HDhSnwpziM4Yk9A7cKIm8yo=",
+			"checksumSHA1": "2Yi/kGqXHl5F7T3tGfDUS6UZ12I=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core",
-			"revision": "ac3187e706bc11f1b36e32015a6e51a96cc8cfe9",
-			"revisionTime": "2019-03-09T16:39:54Z",
+			"revision": "bdd9130c05828a158cb8088eec3561f8b1d0f956",
+			"revisionTime": "2019-03-12T03:51:26Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
@@ -165,64 +165,64 @@
 		{
 			"checksumSHA1": "tQSbYCu5P00lUhKsx3IbBZCuSLY=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/crypto",
-			"revision": "ac3187e706bc11f1b36e32015a6e51a96cc8cfe9",
-			"revisionTime": "2019-03-09T16:39:54Z",
+			"revision": "bdd9130c05828a158cb8088eec3561f8b1d0f956",
+			"revisionTime": "2019-03-12T03:51:26Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
 		{
 			"checksumSHA1": "vTI0nncFqZ052WvofDhFxLw1Bk4=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/crypto/dkg",
-			"revision": "ac3187e706bc11f1b36e32015a6e51a96cc8cfe9",
-			"revisionTime": "2019-03-09T16:39:54Z",
+			"revision": "bdd9130c05828a158cb8088eec3561f8b1d0f956",
+			"revisionTime": "2019-03-12T03:51:26Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
 		{
 			"checksumSHA1": "BhLKK8RveoLaeXc9UyUKMwQqchU=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa",
-			"revision": "ac3187e706bc11f1b36e32015a6e51a96cc8cfe9",
-			"revisionTime": "2019-03-09T16:39:54Z",
+			"revision": "bdd9130c05828a158cb8088eec3561f8b1d0f956",
+			"revisionTime": "2019-03-12T03:51:26Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
 		{
 			"checksumSHA1": "zpuCdMT8MGsy4pLgHKpg/Wd4izU=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/db",
-			"revision": "ac3187e706bc11f1b36e32015a6e51a96cc8cfe9",
-			"revisionTime": "2019-03-09T16:39:54Z",
+			"revision": "bdd9130c05828a158cb8088eec3561f8b1d0f956",
+			"revisionTime": "2019-03-12T03:51:26Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
 		{
-			"checksumSHA1": "KC7POL7Km89JIWSvrmGpSakHF+4=",
+			"checksumSHA1": "wN+K5gI8+j/7l3SB0DYZ8MkTAwo=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/syncer",
-			"revision": "ac3187e706bc11f1b36e32015a6e51a96cc8cfe9",
-			"revisionTime": "2019-03-09T16:39:54Z",
+			"revision": "bdd9130c05828a158cb8088eec3561f8b1d0f956",
+			"revisionTime": "2019-03-12T03:51:26Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
 		{
 			"checksumSHA1": "id8imcgp3SqYhIx0k3Chd0VZrUQ=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/types",
-			"revision": "ac3187e706bc11f1b36e32015a6e51a96cc8cfe9",
-			"revisionTime": "2019-03-09T16:39:54Z",
+			"revision": "bdd9130c05828a158cb8088eec3561f8b1d0f956",
+			"revisionTime": "2019-03-12T03:51:26Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
 		{
-			"checksumSHA1": "s28gYj+iji8oT7N7Su6HIFHMuwI=",
+			"checksumSHA1": "QXRBX9UmvX4wszA9qlyJtzYcTOw=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/types/dkg",
-			"revision": "ac3187e706bc11f1b36e32015a6e51a96cc8cfe9",
-			"revisionTime": "2019-03-09T16:39:54Z",
+			"revision": "bdd9130c05828a158cb8088eec3561f8b1d0f956",
+			"revisionTime": "2019-03-12T03:51:26Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
 		{
-			"checksumSHA1": "ydfH9XlrRroxsWcvKlGeIDDchB0=",
+			"checksumSHA1": "AAHXrIvOxLg0CGKh5eKe9VcTOp0=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/utils",
-			"revision": "ac3187e706bc11f1b36e32015a6e51a96cc8cfe9",
-			"revisionTime": "2019-03-09T16:39:54Z",
+			"revision": "bdd9130c05828a158cb8088eec3561f8b1d0f956",
+			"revisionTime": "2019-03-12T03:51:26Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},

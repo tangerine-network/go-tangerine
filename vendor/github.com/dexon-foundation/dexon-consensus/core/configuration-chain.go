@@ -48,7 +48,7 @@ type configurationChain struct {
 	logger          common.Logger
 	dkgLock         sync.RWMutex
 	dkgSigner       map[uint64]*dkgShareSecret
-	gpk             map[uint64]*DKGGroupPublicKey
+	npks            map[uint64]*typesDKG.NodePublicKeys
 	dkgResult       sync.RWMutex
 	tsig            map[common.Hash]*tsigProtocol
 	tsigTouched     map[common.Hash]struct{}
@@ -76,7 +76,7 @@ func newConfigurationChain(
 		gov:         gov,
 		logger:      logger,
 		dkgSigner:   make(map[uint64]*dkgShareSecret),
-		gpk:         make(map[uint64]*DKGGroupPublicKey),
+		npks:        make(map[uint64]*typesDKG.NodePublicKeys),
 		tsig:        make(map[common.Hash]*tsigProtocol),
 		tsigTouched: make(map[common.Hash]struct{}),
 		tsigReady:   sync.NewCond(&sync.Mutex{}),
@@ -221,7 +221,7 @@ func (cc *configurationChain) runDKG(round uint64) error {
 	}
 	cc.logger.Debug("Calling Governance.DKGMasterPublicKeys", "round", round)
 	cc.logger.Debug("Calling Governance.DKGComplaints", "round", round)
-	gpk, err := NewDKGGroupPublicKey(round,
+	npks, err := typesDKG.NewNodePublicKeys(round,
 		cc.gov.DKGMasterPublicKeys(round),
 		cc.gov.DKGComplaints(round),
 		cc.dkg.threshold)
@@ -229,19 +229,19 @@ func (cc *configurationChain) runDKG(round uint64) error {
 		return err
 	}
 	qualifies := ""
-	for nID := range gpk.qualifyNodeIDs {
+	for nID := range npks.QualifyNodeIDs {
 		qualifies += fmt.Sprintf("%s ", nID.String()[:6])
 	}
 	cc.logger.Info("Qualify Nodes",
 		"nodeID", cc.ID,
 		"round", round,
-		"count", len(gpk.qualifyIDs),
+		"count", len(npks.QualifyIDs),
 		"qualifies", qualifies)
-	if _, exist := gpk.qualifyNodeIDs[cc.ID]; !exist {
+	if _, exist := npks.QualifyNodeIDs[cc.ID]; !exist {
 		cc.logger.Warn("Self is not in Qualify Nodes")
 		return nil
 	}
-	signer, err := cc.dkg.recoverShareSecret(gpk.qualifyIDs)
+	signer, err := cc.dkg.recoverShareSecret(npks.QualifyIDs)
 	if err != nil {
 		return err
 	}
@@ -252,7 +252,7 @@ func (cc *configurationChain) runDKG(round uint64) error {
 	cc.dkgResult.Lock()
 	defer cc.dkgResult.Unlock()
 	cc.dkgSigner[round] = signer
-	cc.gpk[round] = gpk
+	cc.npks[round] = npks
 	return nil
 }
 
@@ -265,46 +265,44 @@ func (cc *configurationChain) isDKGFinal(round uint64) bool {
 }
 
 func (cc *configurationChain) getDKGInfo(
-	round uint64) (*DKGGroupPublicKey, *dkgShareSecret, error) {
-	getFromCache := func() (*DKGGroupPublicKey, *dkgShareSecret) {
+	round uint64) (*typesDKG.NodePublicKeys, *dkgShareSecret, error) {
+	getFromCache := func() (*typesDKG.NodePublicKeys, *dkgShareSecret) {
 		cc.dkgResult.RLock()
 		defer cc.dkgResult.RUnlock()
-		gpk := cc.gpk[round]
+		npks := cc.npks[round]
 		signer := cc.dkgSigner[round]
-		return gpk, signer
+		return npks, signer
 	}
-	gpk, signer := getFromCache()
-	if gpk == nil || signer == nil {
+	npks, signer := getFromCache()
+	if npks == nil || signer == nil {
 		if err := cc.recoverDKGInfo(round); err != nil {
 			return nil, nil, err
 		}
-		gpk, signer = getFromCache()
+		npks, signer = getFromCache()
 	}
-	if gpk == nil || signer == nil {
+	if npks == nil || signer == nil {
 		return nil, nil, ErrDKGNotReady
 	}
-	return gpk, signer, nil
+	return npks, signer, nil
 }
 
 func (cc *configurationChain) recoverDKGInfo(round uint64) error {
 	cc.dkgResult.Lock()
 	defer cc.dkgResult.Unlock()
 	_, signerExists := cc.dkgSigner[round]
-	_, gpkExists := cc.gpk[round]
-	if signerExists && gpkExists {
+	_, npksExists := cc.npks[round]
+	if signerExists && npksExists {
 		return nil
 	}
 	if !cc.gov.IsDKGFinal(round) {
 		return ErrDKGNotReady
 	}
-
-	threshold := getDKGThreshold(
-		utils.GetConfigWithPanic(cc.gov, round, cc.logger))
 	// Restore group public key.
-	gpk, err := NewDKGGroupPublicKey(round,
+	npks, err := typesDKG.NewNodePublicKeys(round,
 		cc.gov.DKGMasterPublicKeys(round),
 		cc.gov.DKGComplaints(round),
-		threshold)
+		utils.GetDKGThreshold(
+			utils.GetConfigWithPanic(cc.gov, round, cc.logger)))
 	if err != nil {
 		return err
 	}
@@ -313,7 +311,7 @@ func (cc *configurationChain) recoverDKGInfo(round uint64) error {
 	if err != nil {
 		return err
 	}
-	cc.gpk[round] = gpk
+	cc.npks[round] = npks
 	cc.dkgSigner[round] = &dkgShareSecret{
 		privateKey: &prvKey,
 	}
@@ -351,8 +349,8 @@ func (cc *configurationChain) untouchTSigHash(hash common.Hash) {
 func (cc *configurationChain) runTSig(
 	round uint64, hash common.Hash) (
 	crypto.Signature, error) {
-	gpk, _, _ := cc.getDKGInfo(round)
-	if gpk == nil {
+	npks, _, _ := cc.getDKGInfo(round)
+	if npks == nil {
 		return crypto.Signature{}, ErrDKGNotReady
 	}
 	cc.tsigReady.L.Lock()
@@ -360,7 +358,7 @@ func (cc *configurationChain) runTSig(
 	if _, exist := cc.tsig[hash]; exist {
 		return crypto.Signature{}, ErrTSigAlreadyRunning
 	}
-	cc.tsig[hash] = newTSigProtocol(gpk, hash)
+	cc.tsig[hash] = newTSigProtocol(npks, hash)
 	pendingPsig := cc.pendingPsig[hash]
 	delete(cc.pendingPsig, hash)
 	go func() {

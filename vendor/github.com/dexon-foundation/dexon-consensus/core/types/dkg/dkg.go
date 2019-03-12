@@ -31,6 +31,12 @@ import (
 	"github.com/dexon-foundation/dexon-consensus/core/types"
 )
 
+// Errors for typesDKG package.
+var (
+	ErrNotReachThreshold = fmt.Errorf("threshold not reach")
+	ErrInvalidThreshold  = fmt.Errorf("invalid threshold")
+)
+
 // NewID creates a DKGID from NodeID.
 func NewID(ID types.NodeID) cryptoDKG.ID {
 	return cryptoDKG.NewID(ID.Hash[:])
@@ -275,4 +281,159 @@ func (final *Finalize) Equal(other *Finalize) bool {
 // IsNack returns true if it's a nack complaint in DKG protocol.
 func (c *Complaint) IsNack() bool {
 	return len(c.PrivateShare.Signature.Signature) == 0
+}
+
+// GroupPublicKey is the result of DKG protocol.
+type GroupPublicKey struct {
+	Round          uint64
+	QualifyIDs     cryptoDKG.IDs
+	QualifyNodeIDs map[types.NodeID]struct{}
+	IDMap          map[types.NodeID]cryptoDKG.ID
+	GroupPublicKey *cryptoDKG.PublicKey
+	Threshold      int
+}
+
+// VerifySignature verifies if the signature is correct.
+func (gpk *GroupPublicKey) VerifySignature(
+	hash common.Hash, sig crypto.Signature) bool {
+	return gpk.GroupPublicKey.VerifySignature(hash, sig)
+}
+
+func calcQualifyNodes(
+	mpks []*MasterPublicKey, complaints []*Complaint, threshold int) (
+	qualifyIDs cryptoDKG.IDs, qualifyNodeIDs map[types.NodeID]struct{}, err error) {
+	if len(mpks) < threshold {
+		err = ErrInvalidThreshold
+		return
+	}
+
+	// Calculate qualify members.
+	disqualifyIDs := map[types.NodeID]struct{}{}
+	complaintsByID := map[types.NodeID]map[types.NodeID]struct{}{}
+	for _, complaint := range complaints {
+		if complaint.IsNack() {
+			if _, exist := complaintsByID[complaint.PrivateShare.ProposerID]; !exist {
+				complaintsByID[complaint.PrivateShare.ProposerID] =
+					make(map[types.NodeID]struct{})
+			}
+			complaintsByID[complaint.PrivateShare.ProposerID][complaint.ProposerID] =
+				struct{}{}
+		} else {
+			disqualifyIDs[complaint.PrivateShare.ProposerID] = struct{}{}
+		}
+	}
+	for nID, complaints := range complaintsByID {
+		if len(complaints) > threshold {
+			disqualifyIDs[nID] = struct{}{}
+		}
+	}
+	qualifyIDs = make(cryptoDKG.IDs, 0, len(mpks)-len(disqualifyIDs))
+	if cap(qualifyIDs) < threshold {
+		err = ErrNotReachThreshold
+		return
+	}
+	qualifyNodeIDs = make(map[types.NodeID]struct{})
+	for _, mpk := range mpks {
+		if _, exist := disqualifyIDs[mpk.ProposerID]; exist {
+			continue
+		}
+		qualifyIDs = append(qualifyIDs, mpk.DKGID)
+		qualifyNodeIDs[mpk.ProposerID] = struct{}{}
+	}
+	return
+}
+
+// NewGroupPublicKey creats a GroupPublicKey instance.
+func NewGroupPublicKey(
+	round uint64,
+	mpks []*MasterPublicKey, complaints []*Complaint,
+	threshold int) (
+	*GroupPublicKey, error) {
+	qualifyIDs, qualifyNodeIDs, err :=
+		calcQualifyNodes(mpks, complaints, threshold)
+	if err != nil {
+		return nil, err
+	}
+	mpkMap := make(map[cryptoDKG.ID]*MasterPublicKey, cap(qualifyIDs))
+	idMap := make(map[types.NodeID]cryptoDKG.ID)
+	for _, mpk := range mpks {
+		if _, exist := qualifyNodeIDs[mpk.ProposerID]; !exist {
+			continue
+		}
+		mpkMap[mpk.DKGID] = mpk
+		idMap[mpk.ProposerID] = mpk.DKGID
+	}
+	// Recover Group Public Key.
+	pubShares := make([]*cryptoDKG.PublicKeyShares, 0, len(qualifyIDs))
+	for _, id := range qualifyIDs {
+		pubShares = append(pubShares, &mpkMap[id].PublicKeyShares)
+	}
+	groupPK := cryptoDKG.RecoverGroupPublicKey(pubShares)
+	return &GroupPublicKey{
+		Round:          round,
+		QualifyIDs:     qualifyIDs,
+		QualifyNodeIDs: qualifyNodeIDs,
+		IDMap:          idMap,
+		Threshold:      threshold,
+		GroupPublicKey: groupPK,
+	}, nil
+}
+
+// NodePublicKeys is the result of DKG protocol.
+type NodePublicKeys struct {
+	Round          uint64
+	QualifyIDs     cryptoDKG.IDs
+	QualifyNodeIDs map[types.NodeID]struct{}
+	IDMap          map[types.NodeID]cryptoDKG.ID
+	PublicKeys     map[types.NodeID]*cryptoDKG.PublicKey
+	Threshold      int
+}
+
+// NewNodePublicKeys creats a NodePublicKeys instance.
+func NewNodePublicKeys(
+	round uint64,
+	mpks []*MasterPublicKey, complaints []*Complaint,
+	threshold int) (
+	*NodePublicKeys, error) {
+	qualifyIDs, qualifyNodeIDs, err :=
+		calcQualifyNodes(mpks, complaints, threshold)
+	if err != nil {
+		return nil, err
+	}
+	mpkMap := make(map[cryptoDKG.ID]*MasterPublicKey, cap(qualifyIDs))
+	idMap := make(map[types.NodeID]cryptoDKG.ID)
+	for _, mpk := range mpks {
+		if _, exist := qualifyNodeIDs[mpk.ProposerID]; !exist {
+			continue
+		}
+		mpkMap[mpk.DKGID] = mpk
+		idMap[mpk.ProposerID] = mpk.DKGID
+	}
+	// Recover qualify members' public key.
+	pubKeys := make(map[types.NodeID]*cryptoDKG.PublicKey, len(qualifyIDs))
+	for _, recvID := range qualifyIDs {
+		pubShares := cryptoDKG.NewEmptyPublicKeyShares()
+		for _, id := range qualifyIDs {
+			pubShare, err := mpkMap[id].PublicKeyShares.Share(recvID)
+			if err != nil {
+				return nil, err
+			}
+			if err := pubShares.AddShare(id, pubShare); err != nil {
+				return nil, err
+			}
+		}
+		pubKey, err := pubShares.RecoverPublicKey(qualifyIDs)
+		if err != nil {
+			return nil, err
+		}
+		pubKeys[mpkMap[recvID].ProposerID] = pubKey
+	}
+	return &NodePublicKeys{
+		Round:          round,
+		QualifyIDs:     qualifyIDs,
+		QualifyNodeIDs: qualifyNodeIDs,
+		IDMap:          idMap,
+		PublicKeys:     pubKeys,
+		Threshold:      threshold,
+	}, nil
 }

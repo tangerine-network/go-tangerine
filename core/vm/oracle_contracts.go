@@ -1116,7 +1116,7 @@ func (c *defaultCoreDKGUtils) NewGroupPublicKey(round *big.Int, threshold int) (
 		complaints = append(complaints, x)
 	}
 
-	return dexCore.NewDKGGroupPublicKey(round.Uint64(), mpks, complaints, threshold)
+	return dkgTypes.NewGroupPublicKey(round.Uint64(), mpks, complaints, threshold)
 }
 
 func (g *GovernanceContract) Address() common.Address {
@@ -1764,7 +1764,7 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 			return nil, errExecutionReverted
 		}
 		switch err {
-		case dexCore.ErrNotReachThreshold, dexCore.ErrInvalidThreshold:
+		case dkgTypes.ErrNotReachThreshold, dkgTypes.ErrInvalidThreshold:
 		default:
 			return nil, errExecutionReverted
 		}
