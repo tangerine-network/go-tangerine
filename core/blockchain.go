@@ -145,8 +145,9 @@ type BlockChain struct {
 
 	roundHeightMap sync.Map
 
-	gov           *Governance
-	verifierCache *dexCore.TSigVerifierCache
+	gov             *Governance
+	verifierCache   *dexCore.TSigVerifierCache
+	nextTouchHeight uint64
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -1658,6 +1659,9 @@ func (bc *BlockChain) insertDexonChain(chain types.Blocks) (int, []interface{}, 
 		cache, _ := bc.stateCache.TrieDB().Size()
 		stats.report(chain, i, cache)
 	}
+	if lastCanon != nil {
+		bc.touchNextRoundCache(lastCanon.Round(), lastCanon.NumberU64())
+	}
 	// Append a single chain head event if we've progressed the chain
 	if lastCanon != nil && bc.CurrentBlock().Hash() == lastCanon.Hash() {
 		events = append(events, ChainHeadEvent{lastCanon})
@@ -2302,4 +2306,33 @@ func (bc *BlockChain) GetRoundHeight(round uint64) (uint64, bool) {
 
 func (bc *BlockChain) storeRoundHeight(round uint64, height uint64) {
 	bc.roundHeightMap.Store(round, height)
+}
+
+func (bc *BlockChain) touchNextRoundCache(round uint64, height uint64) {
+	if height < bc.nextTouchHeight {
+		return
+	}
+	roundHeight, exist := bc.GetRoundHeight(round)
+	if !exist {
+		log.Warn("Unable to get round height", "round", round)
+		return
+	}
+	roundLength := bc.gov.Configuration(round).RoundLength
+	roundHeight += roundLength*bc.gov.DKGResetCount(round+1) + roundLength*9/10
+	// DKGResetCount might have increased.
+	if height < roundHeight {
+		bc.nextTouchHeight = roundHeight
+		return
+	}
+	bc.nextTouchHeight = roundHeight +
+		roundLength*(1+bc.gov.DKGResetCount(round+1)) +
+		bc.gov.Configuration(round+1).RoundLength*9/10
+	go func() {
+		ok, err := bc.verifierCache.Update(round + 1)
+		if err != nil {
+			log.Warn("Failed to update verifierCache", "err", err)
+		} else if !ok {
+			log.Warn("Unable to updated verifierCache")
+		}
+	}()
 }
