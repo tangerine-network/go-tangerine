@@ -195,7 +195,11 @@ func (g *OracleContractsTestSuite) SetupTest() {
 }
 
 func (g *OracleContractsTestSuite) TearDownTest() {
-	OracleContracts[GovernanceContractAddress].(*GovernanceContract).coreDKGUtils = &defaultCoreDKGUtils{}
+	OracleContracts[GovernanceContractAddress] = func() OracleContract {
+		return &GovernanceContract{
+			coreDKGUtils: &defaultCoreDKGUtils{},
+		}
+	}
 }
 
 func (g *OracleContractsTestSuite) newPrefundAccount() (*ecdsa.PrivateKey, common.Address) {
@@ -936,7 +940,11 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 	mock := &testCoreMock{
 		tsigReturn: true,
 	}
-	OracleContracts[GovernanceContractAddress].(*GovernanceContract).coreDKGUtils = mock
+	OracleContracts[GovernanceContractAddress] = func() OracleContract {
+		return &GovernanceContract{
+			coreDKGUtils: mock,
+		}
+	}
 
 	// Fill data for previous rounds.
 	roundHeight := int64(g.config.RoundLength)

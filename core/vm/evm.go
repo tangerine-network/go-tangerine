@@ -49,7 +49,7 @@ type (
 func run(evm *EVM, contract *Contract, input []byte, readOnly bool) ([]byte, error) {
 	if contract.CodeAddr != nil {
 		if o := OracleContracts[*contract.CodeAddr]; o != nil {
-			return RunOracleContract(o, evm, input, contract)
+			return RunOracleContract(o(), evm, input, contract)
 		}
 		precompiles := PrecompiledContractsHomestead
 		if evm.ChainConfig().IsByzantium(evm.BlockNumber) {
