@@ -538,6 +538,11 @@ func newConsensusForRound(
 		logger:       logger,
 	}
 	cfgModule := newConfigurationChain(ID, recv, gov, nodeSetCache, db, logger)
+	dkg, err := recoverDKGProtocol(ID, recv, initRound, utils.GetDKGThreshold(initConfig), db)
+	if err != nil {
+		panic(err)
+	}
+	cfgModule.dkg = dkg
 	recv.cfgModule = cfgModule
 	appModule := app
 	if usingNonBlocking {
@@ -545,7 +550,7 @@ func newConsensusForRound(
 	}
 	bcConfig := blockChainConfig{}
 	bcConfig.fromConfig(initRound, initConfig)
-	bcConfig.setRoundBeginHeight(initRoundBeginHeight)
+	bcConfig.SetRoundBeginHeight(initRoundBeginHeight)
 	bcModule := newBlockChain(ID, dMoment, initBlock, bcConfig, appModule,
 		NewTSigVerifierCache(gov, 7), signer, logger)
 	// Construct Consensus instance.
@@ -573,8 +578,7 @@ func newConsensusForRound(
 	con.ctx, con.ctxCancel = context.WithCancel(context.Background())
 	baConfig := agreementMgrConfig{}
 	baConfig.from(initRound, initConfig, initCRS)
-	baConfig.setRoundBeginHeight(initRoundBeginHeight)
-	var err error
+	baConfig.SetRoundBeginHeight(initRoundBeginHeight)
 	con.baMgr, err = newAgreementMgr(con, initRound, baConfig)
 	if err != nil {
 		panic(err)
@@ -843,6 +847,10 @@ func (con *Consensus) initialRound(
 			// TODO(jimmy): check DKGResetCount and do not touch if nextRound is reset.
 			if err := con.nodeSetCache.Touch(round + 1); err != nil {
 				con.logger.Warn("Failed to update nodeSetCache",
+					"round", round+1, "error", err)
+			}
+			if _, _, err := con.bcModule.vGetter.UpdateAndGet(round + 1); err != nil {
+				con.logger.Warn("Failed to update tsigVerifierCache",
 					"round", round+1, "error", err)
 			}
 		}()

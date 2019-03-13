@@ -104,4 +104,18 @@ func (d *DB) GetCompactionChainTipInfo() (hash coreCommon.Hash, height uint64) {
 	return rawdb.ReadCoreCompactionChainTip(d.db)
 }
 
+func (d *DB) PutOrUpdateDKGMasterPrivateShares(
+	round uint64, shares coreDKG.PrivateKeyShares) error {
+	return rawdb.WriteCoreDKGMasterPrivateShares(d.db, round, &shares)
+}
+
+func (d *DB) GetDKGMasterPrivateShares(round uint64) (
+	shares coreDKG.PrivateKeyShares, err error) {
+	mpk := rawdb.ReadCoreDKGMasterPrivateShares(d.db, round)
+	if mpk == nil {
+		return coreDKG.PrivateKeyShares{}, coreDb.ErrDKGMasterPrivateSharesDoesNotExist
+	}
+	return *mpk, nil
+}
+
 func (d *DB) Close() error { return nil }
