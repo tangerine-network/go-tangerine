@@ -26,8 +26,8 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0xcf52354de5cb9e38930ef7db9a5fba771d9ac1738398ba3495d2a22897ff64d4")
-	TestnetGenesisHash = common.HexToHash("0x7ffc113d55e3a43f071b7475efc8eb6a866c723c5b3b2ebc7e4657a8f80d2f6c")
+	MainnetGenesisHash = common.HexToHash("0x90f3ee1749d01fe355e8f3e72d2851df4424a0eeb1a97bd49df6d18206726100")
+	TestnetGenesisHash = common.HexToHash("0x736a4d8f7cb6756c239ef0cb7b788fb500f9fec186eb1c29a735556ffd2a965a")
 	YilanGenesisHash   = common.HexToHash("0x35c657b55ee61ffb9b4dbbea43507693da612a0bc89b8713f6865cfd3ed5f2e9")
 )
 
@@ -105,13 +105,13 @@ var (
 			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			LockupPeriod:      86400 * 3 * 1000,
 			MiningVelocity:    0.1875,
-			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e7)),
-			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(4e6)),
-			BlockGasLimit:     40000000,
+			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.8e8)),
+			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.6e7)),
+			BlockGasLimit:     80000000,
 			LambdaBA:          250,
 			LambdaDKG:         10000,
-			NotarySetSize:     4,
-			DKGSetSize:        4,
+			NotarySetSize:     24,
+			DKGSetSize:        24,
 			RoundLength:       1200,
 			MinBlockInterval:  1000,
 			FineValues: []*big.Int{
