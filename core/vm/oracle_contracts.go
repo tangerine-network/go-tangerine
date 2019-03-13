@@ -1603,7 +1603,7 @@ func (g *GovernanceContract) proposeCRS(nextRound *big.Int, signedCRS []byte) ([
 		}
 	}
 
-	threshold := int(g.state.DKGSetSize().Uint64()/3 + 1)
+	threshold := coreUtils.GetDKGThreshold(&coreTypes.Config{DKGSetSize: uint32(g.state.DKGSetSize().Uint64())})
 	dkgGPK, err := g.coreDKGUtils.NewGroupPublicKey(nextRound, threshold)
 	if err != nil {
 		return nil, errExecutionReverted
@@ -1755,10 +1755,11 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 	threshold := new(big.Int).Mul(
 		big.NewInt(2),
 		new(big.Int).Div(g.state.DKGSetSize(), big.NewInt(3)))
+	tsigThreshold := coreUtils.GetDKGThreshold(&coreTypes.Config{DKGSetSize: uint32(g.state.DKGSetSize().Uint64())})
 
 	// If 2f + 1 of DKG set is finalized, check if DKG succeeded.
 	if g.state.DKGFinalizedsCount().Cmp(threshold) > 0 {
-		_, err := g.coreDKGUtils.NewGroupPublicKey(nextRound, int(threshold.Int64()))
+		_, err := g.coreDKGUtils.NewGroupPublicKey(nextRound, tsigThreshold)
 		// DKG success.
 		if err == nil {
 			return nil, errExecutionReverted
@@ -1780,7 +1781,7 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 		prevCRS = crypto.Keccak256Hash(prevCRS[:])
 	}
 
-	dkgGPK, err := g.coreDKGUtils.NewGroupPublicKey(round, int(config.DKGSetSize/3+1))
+	dkgGPK, err := g.coreDKGUtils.NewGroupPublicKey(round, tsigThreshold)
 	if err != nil {
 		return nil, errExecutionReverted
 	}
