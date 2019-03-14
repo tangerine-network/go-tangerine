@@ -39,6 +39,7 @@ const (
 	MetricsOutboundTraffic  = "p2p/OutboundTraffic"  // Name for the registered outbound traffic meter
 	MetricsLatency          = "p2p/Latency"          // Name for the registered Latency gauge
 	MetricsRelativeLatency  = "p2p/RelativeLatency"  // Name for the registered Relative Latency gauge
+	MetricsPeerCount        = "p2p/PeerCounts"       // Name for the registered Peer Counts
 
 	MeteredPeerLimit = 1024 // This amount of peers are individually metered
 )
@@ -57,6 +58,7 @@ var (
 
 	peerLatency         = metrics.NewRegisteredGauge(MetricsLatency, nil)         // Gauge latency
 	peerRelativeLatency = metrics.NewRegisteredGauge(MetricsRelativeLatency, nil) // Gauge Relative latency
+	peerCounts          = metrics.NewRegisteredGauge(MetricsPeerCount, nil)
 )
 
 // MeteredPeerEventType is the type of peer events emitted by a metered connection.

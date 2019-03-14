@@ -808,6 +808,7 @@ running:
 				}
 				name := truncateName(c.name)
 				srv.log.Debug("Adding p2p peer", "name", name, "addr", c.fd.RemoteAddr(), "peers", len(peers)+1)
+				peerCounts.Update(int64((len(peers) + 1)))
 				go srv.runPeer(p)
 				peers[c.node.ID()] = p
 				if p.Inbound() {
@@ -830,6 +831,7 @@ running:
 			if pd.Inbound() {
 				inboundCount--
 			}
+			peerCounts.Update(int64(len(peers)))
 		}
 	}
 
