@@ -430,10 +430,11 @@ func (d *DexconApp) BlockDelivered(
 	var owner common.Address
 	if !block.IsEmpty() {
 		gs := d.gov.GetStateForConfigAtRound(block.Position.Round)
-		owner, err = gs.GetNodeOwnerByID(block.ProposerID)
+		node, err := gs.GetNodeByID(block.ProposerID)
 		if err != nil {
 			panic(err)
 		}
+		owner = node.Owner
 	}
 
 	newBlock := types.NewBlock(&types.Header{

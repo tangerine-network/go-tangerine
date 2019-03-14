@@ -240,7 +240,6 @@ func (s *GovernanceState) read1DByteArray(loc *big.Int) [][]byte {
 		elementLoc := new(big.Int).Add(dataLoc, big.NewInt(i))
 		data = append(data, s.readBytes(elementLoc))
 	}
-
 	return data
 }
 
@@ -517,13 +516,13 @@ func (s *GovernanceState) DeleteNodeOffsets(n *nodeInfo) error {
 	return nil
 }
 
-func (s *GovernanceState) GetNodeOwnerByID(id coreTypes.NodeID) (common.Address, error) {
+func (s *GovernanceState) GetNodeByID(id coreTypes.NodeID) (*nodeInfo, error) {
 	offset := s.NodesOffsetByNodeKeyAddress(idToAddress(id))
 	if offset.Cmp(big.NewInt(0)) < 0 {
-		return common.Address{}, errors.New("node not found")
+		return nil, errors.New("node not found")
 	}
 	node := s.Node(offset)
-	return node.Owner, nil
+	return node, nil
 }
 
 // uint256 public crsRound;
@@ -1270,9 +1269,11 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 		return g.penalize()
 	}
 	if need {
+		node, err := g.state.GetNodeByID(dkgComplaint.PrivateShare.ProposerID)
+		if err != nil {
+			return g.penalize()
+		}
 		fineValue := g.state.FineValue(big.NewInt(ReportTypeInvalidDKG))
-		offset := g.state.NodesOffsetByNodeKeyAddress(idToAddress(dkgComplaint.PrivateShare.ProposerID))
-		node := g.state.Node(offset)
 		if err := g.fine(node.Owner, fineValue, comp, nil); err != nil {
 			return g.penalize()
 		}
@@ -1703,8 +1704,10 @@ func (g *GovernanceContract) report(reportType *big.Int, arg1, arg2 []byte) ([]b
 		return g.penalize()
 	}
 
-	offset := g.state.NodesOffsetByNodeKeyAddress(idToAddress(reportedNodeID))
-	node := g.state.Node(offset)
+	node, err := g.state.GetNodeByID(reportedNodeID)
+	if err != nil {
+		return g.penalize()
+	}
 
 	g.state.emitForkReported(node.Owner, reportType, arg1, arg2)
 
@@ -1931,6 +1934,12 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return g.transferOwnership(newOwner)
+	case "transferNodeOwnership":
+		var newOwner common.Address
+		if err := method.Inputs.Unpack(&newOwner, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.transferNodeOwnership(newOwner)
 	case "unstake":
 		amount := new(big.Int)
 		if err := method.Inputs.Unpack(&amount, arguments); err != nil {
@@ -2216,6 +2225,24 @@ func (g *GovernanceContract) transferOwnership(newOwner common.Address) ([]byte,
 		return nil, errExecutionReverted
 	}
 	g.state.SetOwner(newOwner)
+	return nil, nil
+}
+
+func (g *GovernanceContract) transferNodeOwnership(newOwner common.Address) ([]byte, error) {
+	caller := g.contract.Caller()
+
+	offset := g.state.NodesOffsetByAddress(caller)
+	if offset.Cmp(big.NewInt(0)) < 0 {
+		return g.penalize()
+	}
+
+	node := g.state.Node(offset)
+	g.state.PutNodeOffsets(node, big.NewInt(0))
+
+	node.Owner = newOwner
+	g.state.PutNodeOffsets(node, offset)
+	g.state.UpdateNode(offset, node)
+
 	return nil, nil
 }
 

@@ -741,7 +741,7 @@ const GovernanceABIJSON = `
     "constant": false,
     "inputs": [
       {
-        "name": "newOwner",
+        "name": "NewOwner",
         "type": "address"
       }
     ],
@@ -800,6 +800,20 @@ const GovernanceABIJSON = `
       }
     ],
     "name": "updateConfiguration",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "NewOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferNodeOwnership",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",
