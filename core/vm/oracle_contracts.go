@@ -84,7 +84,7 @@ const (
 	minBlockIntervalLoc
 	fineValuesLoc
 	finedRecordsLoc
-	minGasPriceLoc
+	minGasPriceLoc // TODO(w): reorder this before mainnet
 )
 
 func publicKeyToNodeKeyAddress(pkBytes []byte) (common.Address, error) {
@@ -729,6 +729,11 @@ func (s *GovernanceState) MiningHalved() {
 	s.IncNextHalvingSupply(s.LastHalvedAmount())
 }
 
+// uint256 public minGasPrice;
+func (s *GovernanceState) MinGasPrice() *big.Int {
+	return s.getStateBigInt(big.NewInt(minGasPriceLoc))
+}
+
 // uint256 public blockGasLimit;
 func (s *GovernanceState) BlockGasLimit() *big.Int {
 	return s.getStateBigInt(big.NewInt(blockGasLimitLoc))
@@ -803,11 +808,6 @@ func (s *GovernanceState) SetFineRecords(recordHash Bytes32, status bool) {
 	s.setStateBigInt(loc, big.NewInt(value))
 }
 
-// uint256 public minGasPrice;
-func (s *GovernanceState) MinGasPrice() *big.Int {
-	return s.getStateBigInt(big.NewInt(minGasPriceLoc))
-}
-
 // Initialize initializes governance contract state.
 func (s *GovernanceState) Initialize(config *params.DexconConfig, totalSupply *big.Int) {
 	if config.NextHalvingSupply.Cmp(totalSupply) <= 0 {
@@ -875,6 +875,7 @@ func (s *GovernanceState) Configuration() *params.DexconConfig {
 		MiningVelocity:    float32(s.getStateBigInt(big.NewInt(miningVelocityLoc)).Uint64()) / decimalMultiplier,
 		NextHalvingSupply: s.getStateBigInt(big.NewInt(nextHalvingSupplyLoc)),
 		LastHalvedAmount:  s.getStateBigInt(big.NewInt(lastHalvedAmountLoc)),
+		MinGasPrice:       s.getStateBigInt(big.NewInt(minGasPriceLoc)),
 		BlockGasLimit:     s.getStateBigInt(big.NewInt(blockGasLimitLoc)).Uint64(),
 		LambdaBA:          s.getStateBigInt(big.NewInt(lambdaBALoc)).Uint64(),
 		LambdaDKG:         s.getStateBigInt(big.NewInt(lambdaDKGLoc)).Uint64(),
@@ -883,7 +884,6 @@ func (s *GovernanceState) Configuration() *params.DexconConfig {
 		RoundLength:       s.getStateBigInt(big.NewInt(roundLengthLoc)).Uint64(),
 		MinBlockInterval:  s.getStateBigInt(big.NewInt(minBlockIntervalLoc)).Uint64(),
 		FineValues:        s.FineValues(),
-		MinGasPrice:       s.getStateBigInt(big.NewInt(minGasPriceLoc)),
 	}
 }
 
@@ -894,6 +894,7 @@ func (s *GovernanceState) UpdateConfiguration(cfg *params.DexconConfig) {
 	s.setStateBigInt(big.NewInt(miningVelocityLoc), big.NewInt(int64(cfg.MiningVelocity*decimalMultiplier)))
 	s.setStateBigInt(big.NewInt(nextHalvingSupplyLoc), cfg.NextHalvingSupply)
 	s.setStateBigInt(big.NewInt(lastHalvedAmountLoc), cfg.LastHalvedAmount)
+	s.setStateBigInt(big.NewInt(minGasPriceLoc), cfg.MinGasPrice)
 	s.setStateBigInt(big.NewInt(blockGasLimitLoc), big.NewInt(int64(cfg.BlockGasLimit)))
 	s.setStateBigInt(big.NewInt(lambdaBALoc), big.NewInt(int64(cfg.LambdaBA)))
 	s.setStateBigInt(big.NewInt(lambdaDKGLoc), big.NewInt(int64(cfg.LambdaDKG)))
@@ -902,13 +903,13 @@ func (s *GovernanceState) UpdateConfiguration(cfg *params.DexconConfig) {
 	s.setStateBigInt(big.NewInt(roundLengthLoc), big.NewInt(int64(cfg.RoundLength)))
 	s.setStateBigInt(big.NewInt(minBlockIntervalLoc), big.NewInt(int64(cfg.MinBlockInterval)))
 	s.SetFineValues(cfg.FineValues)
-	s.setStateBigInt(big.NewInt(minGasPriceLoc), cfg.MinGasPrice)
 }
 
 type rawConfigStruct struct {
 	MinStake         *big.Int
 	LockupPeriod     *big.Int
 	BlockGasLimit    *big.Int
+	MinGasPrice      *big.Int
 	LambdaBA         *big.Int
 	LambdaDKG        *big.Int
 	NotarySetSize    *big.Int
@@ -916,13 +917,13 @@ type rawConfigStruct struct {
 	RoundLength      *big.Int
 	MinBlockInterval *big.Int
 	FineValues       []*big.Int
-	MinGasPrice      *big.Int
 }
 
 // UpdateConfigurationRaw updates system configuration.
 func (s *GovernanceState) UpdateConfigurationRaw(cfg *rawConfigStruct) {
 	s.setStateBigInt(big.NewInt(minStakeLoc), cfg.MinStake)
 	s.setStateBigInt(big.NewInt(lockupPeriodLoc), cfg.LockupPeriod)
+	s.setStateBigInt(big.NewInt(minGasPriceLoc), cfg.MinGasPrice)
 	s.setStateBigInt(big.NewInt(blockGasLimitLoc), cfg.BlockGasLimit)
 	s.setStateBigInt(big.NewInt(lambdaBALoc), cfg.LambdaBA)
 	s.setStateBigInt(big.NewInt(lambdaDKGLoc), cfg.LambdaDKG)
@@ -931,7 +932,6 @@ func (s *GovernanceState) UpdateConfigurationRaw(cfg *rawConfigStruct) {
 	s.setStateBigInt(big.NewInt(roundLengthLoc), cfg.RoundLength)
 	s.setStateBigInt(big.NewInt(minBlockIntervalLoc), cfg.MinBlockInterval)
 	s.SetFineValues(cfg.FineValues)
-	s.setStateBigInt(big.NewInt(minGasPriceLoc), cfg.MinGasPrice)
 }
 
 // event ConfigurationChanged();

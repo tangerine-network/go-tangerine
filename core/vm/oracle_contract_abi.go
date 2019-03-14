@@ -763,6 +763,10 @@ const GovernanceABIJSON = `
         "type": "uint256"
       },
       {
+        "name": "MinGasPrice",
+        "type": "uint256"
+      },
+      {
         "name": "BlockGasLimit",
         "type": "uint256"
       },
@@ -793,10 +797,6 @@ const GovernanceABIJSON = `
       {
         "name": "FineValues",
         "type": "uint256[]"
-      },
-      {
-        "name": "MinGasPrice",
-        "type": "uint256"
       }
     ],
     "name": "updateConfiguration",

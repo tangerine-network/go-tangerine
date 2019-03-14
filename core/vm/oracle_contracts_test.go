@@ -487,6 +487,7 @@ func (g *OracleContractsTestSuite) TestUpdateConfiguration() {
 	input, err := GovernanceABI.ABI.Pack("updateConfiguration",
 		new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 		big.NewInt(1000),
+		big.NewInt(2e9),
 		big.NewInt(8000000),
 		big.NewInt(250),
 		big.NewInt(2500),
@@ -494,8 +495,7 @@ func (g *OracleContractsTestSuite) TestUpdateConfiguration() {
 		big.NewInt(4),
 		big.NewInt(600),
 		big.NewInt(900),
-		[]*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)},
-		big.NewInt(2e9))
+		[]*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)})
 	g.Require().NoError(err)
 
 	// Call with non-owner.
