@@ -201,7 +201,24 @@ func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 // transaction and notary node records broadcasts into the remote peer.
 // The goal is to have an async writer that does not lock up node internals.
 func (p *peer) broadcast() {
+	queuedVotes := make([]*coreTypes.Vote, 0, maxQueuedVotes)
 	for {
+	PriorityBroadcastVote:
+		for {
+			select {
+			case votes := <-p.queuedVotes:
+				queuedVotes = append(queuedVotes, votes...)
+			default:
+				break PriorityBroadcastVote
+			}
+		}
+		if len(queuedVotes) != 0 {
+			if err := p.SendVotes(queuedVotes); err != nil {
+				return
+			}
+			p.Log().Trace("Broadcast votes", "count", len(queuedVotes))
+			queuedVotes = queuedVotes[:0]
+		}
 		select {
 		case records := <-p.queuedRecords:
 			if err := p.SendNodeRecords(records); err != nil {
