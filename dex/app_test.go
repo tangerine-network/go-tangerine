@@ -24,7 +24,6 @@ import (
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/event"
-	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/rlp"
 )
 
@@ -2132,8 +2131,6 @@ func (f TxFactory) New(app App, center *ProductCenter, stopTimeMu *sync.RWMutex,
 }
 
 func TestDexonApp(t *testing.T) {
-	log.Root().SetHandler(log.LvlFilterHandler(log.LvlDebug, log.StdoutHandler))
-
 	masterKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatalf("Generate key fail: %v", err)
