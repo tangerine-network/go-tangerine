@@ -84,7 +84,7 @@ const (
 	// Protocol messages belonging to dex/64
 	RecordMsg = 0x11
 
-	LatticeBlockMsg        = 0x20
+	CoreBlockMsg           = 0x20
 	VoteMsg                = 0x21
 	AgreementMsg           = 0x22
 	RandomnessMsg          = 0x23

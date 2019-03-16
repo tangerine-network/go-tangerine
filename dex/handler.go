@@ -790,7 +790,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 	// Block proposer-only messages.
 
-	case msg.Code == LatticeBlockMsg:
+	case msg.Code == CoreBlockMsg:
 		if !pm.isBlockProposer {
 			break
 		}
@@ -871,7 +871,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		blocks := pm.cache.blocks(hashes)
 		log.Debug("Push blocks", "blocks", blocks)
-		return p.SendLatticeBlocks(blocks)
+		return p.SendCoreBlocks(blocks)
 	case msg.Code == PullVotesMsg:
 		if !pm.isBlockProposer {
 			break
@@ -991,11 +991,11 @@ func (pm *ProtocolManager) BroadcastRecords(records []*enr.Record) {
 	}
 }
 
-// BroadcastLatticeBlock broadcasts the lattice block to all its peers.
-func (pm *ProtocolManager) BroadcastLatticeBlock(block *coreTypes.Block) {
+// BroadcastCoreBlock broadcasts the core block to all its peers.
+func (pm *ProtocolManager) BroadcastCoreBlock(block *coreTypes.Block) {
 	pm.cache.addBlock(block)
 	for _, peer := range pm.peers.Peers() {
-		peer.AsyncSendLatticeBlocks([]*coreTypes.Block{block})
+		peer.AsyncSendCoreBlocks([]*coreTypes.Block{block})
 	}
 }
 

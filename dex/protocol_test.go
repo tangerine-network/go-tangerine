@@ -316,7 +316,7 @@ func TestSendNodeRecords(t *testing.T) {
 	wg.Wait()
 }
 
-func TestRecvLatticeBlocks(t *testing.T) {
+func TestRecvCoreBlocks(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
 	p, _ := newTestPeer("peer", dex64, pm, true)
 	defer pm.Stop()
@@ -351,7 +351,7 @@ func TestRecvLatticeBlocks(t *testing.T) {
 		},
 	}
 
-	if err := p2p.Send(p.app, LatticeBlockMsg, []*coreTypes.Block{&block}); err != nil {
+	if err := p2p.Send(p.app, CoreBlockMsg, []*coreTypes.Block{&block}); err != nil {
 		t.Fatalf("send error: %v", err)
 	}
 
@@ -367,7 +367,7 @@ func TestRecvLatticeBlocks(t *testing.T) {
 	}
 }
 
-func TestSendLatticeBlocks(t *testing.T) {
+func TestSendCoreBlocks(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
 	p, _ := newTestPeer("peer", dex64, pm, true)
 	defer pm.Stop()
@@ -403,12 +403,12 @@ func TestSendLatticeBlocks(t *testing.T) {
 	}
 
 	waitForRegister(pm, 1)
-	pm.BroadcastLatticeBlock(&block)
+	pm.BroadcastCoreBlock(&block)
 	msg, err := p.app.ReadMsg()
 	if err != nil {
 		t.Errorf("%v: read error: %v", p.Peer, err)
-	} else if msg.Code != LatticeBlockMsg {
-		t.Errorf("%v: got code %d, want %d", p.Peer, msg.Code, LatticeBlockMsg)
+	} else if msg.Code != CoreBlockMsg {
+		t.Errorf("%v: got code %d, want %d", p.Peer, msg.Code, CoreBlockMsg)
 	}
 
 	var bs []*coreTypes.Block

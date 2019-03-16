@@ -87,7 +87,7 @@ const (
 	// above some healthy uncle limit, so use that.
 	maxQueuedAnns = 4
 
-	maxQueuedLatticeBlocks        = 16
+	maxQueuedCoreBlocks           = 16
 	maxQueuedVotes                = 128
 	maxQueuedAgreements           = 16
 	maxQueuedRandomnesses         = 16
@@ -156,7 +156,7 @@ type peer struct {
 	queuedRecords              chan []*enr.Record        // Queue of node records to broadcast to the peer
 	queuedProps                chan *types.Block         // Queue of blocks to broadcast to the peer
 	queuedAnns                 chan *types.Block         // Queue of blocks to announce to the peer
-	queuedLatticeBlocks        chan []*coreTypes.Block
+	queuedCoreBlocks           chan []*coreTypes.Block
 	queuedVotes                chan []*coreTypes.Vote
 	queuedAgreements           chan *coreTypes.AgreementResult
 	queuedRandomnesses         chan []*coreTypes.BlockRandomnessResult
@@ -184,7 +184,7 @@ func newPeer(version int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 		queuedRecords:              make(chan []*enr.Record, maxQueuedRecords),
 		queuedProps:                make(chan *types.Block, maxQueuedProps),
 		queuedAnns:                 make(chan *types.Block, maxQueuedAnns),
-		queuedLatticeBlocks:        make(chan []*coreTypes.Block, maxQueuedLatticeBlocks),
+		queuedCoreBlocks:           make(chan []*coreTypes.Block, maxQueuedCoreBlocks),
 		queuedVotes:                make(chan []*coreTypes.Vote, maxQueuedVotes),
 		queuedAgreements:           make(chan *coreTypes.AgreementResult, maxQueuedAgreements),
 		queuedRandomnesses:         make(chan []*coreTypes.BlockRandomnessResult, maxQueuedRandomnesses),
@@ -237,11 +237,11 @@ func (p *peer) broadcast() {
 				return
 			}
 			p.Log().Trace("Announced block", "number", block.Number(), "hash", block.Hash())
-		case blocks := <-p.queuedLatticeBlocks:
-			if err := p.SendLatticeBlocks(blocks); err != nil {
+		case blocks := <-p.queuedCoreBlocks:
+			if err := p.SendCoreBlocks(blocks); err != nil {
 				return
 			}
-			p.Log().Trace("Broadcast lattice blocks", "count", len(blocks))
+			p.Log().Trace("Broadcast core blocks", "count", len(blocks))
 		case votes := <-p.queuedVotes:
 			if err := p.SendVotes(votes); err != nil {
 				return
@@ -468,15 +468,15 @@ func (p *peer) AsyncSendNewBlock(block *types.Block) {
 	}
 }
 
-func (p *peer) SendLatticeBlocks(blocks []*coreTypes.Block) error {
-	return p2p.Send(p.rw, LatticeBlockMsg, blocks)
+func (p *peer) SendCoreBlocks(blocks []*coreTypes.Block) error {
+	return p2p.Send(p.rw, CoreBlockMsg, blocks)
 }
 
-func (p *peer) AsyncSendLatticeBlocks(blocks []*coreTypes.Block) {
+func (p *peer) AsyncSendCoreBlocks(blocks []*coreTypes.Block) {
 	select {
-	case p.queuedLatticeBlocks <- blocks:
+	case p.queuedCoreBlocks <- blocks:
 	default:
-		p.Log().Debug("Dropping lattice block propagation")
+		p.Log().Debug("Dropping core block propagation")
 	}
 }
 

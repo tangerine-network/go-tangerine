@@ -470,7 +470,7 @@ func (d *DexconApp) BlockDelivered(
 	go d.finalizedBlockFeed.Send(core.NewFinalizedBlockEvent{Block: d.blockchain.CurrentBlock()})
 }
 
-// BlockConfirmed is called when a block is confirmed and added to lattice.
+// BlockConfirmed is called when a block is confirmed.
 func (d *DexconApp) BlockConfirmed(block coreTypes.Block) {
 	d.appMu.Lock()
 	defer d.appMu.Unlock()

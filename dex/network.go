@@ -60,7 +60,7 @@ func (n *DexconNetwork) BroadcastVote(vote *types.Vote) {
 
 // BroadcastBlock broadcasts block to all nodes in DEXON network.
 func (n *DexconNetwork) BroadcastBlock(block *types.Block) {
-	n.pm.BroadcastLatticeBlock(block)
+	n.pm.BroadcastCoreBlock(block)
 }
 
 // SendDKGPrivateShare sends PrivateShare to a DKG participant.

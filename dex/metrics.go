@@ -34,10 +34,10 @@ var (
 	propBlockInTrafficMeter                = metrics.NewRegisteredMeter("dex/prop/blocks/in/traffic", nil)
 	propBlockOutPacketsMeter               = metrics.NewRegisteredMeter("dex/prop/blocks/out/packets", nil)
 	propBlockOutTrafficMeter               = metrics.NewRegisteredMeter("dex/prop/blocks/out/traffic", nil)
-	propLatticeBlockInPacketsMeter         = metrics.NewRegisteredMeter("dex/prop/latticeblocks/in/packets", nil)
-	propLatticeBlockInTrafficMeter         = metrics.NewRegisteredMeter("dex/prop/latticeblocks/in/traffic", nil)
-	propLatticeBlockOutPacketsMeter        = metrics.NewRegisteredMeter("dex/prop/latticeblocks/out/packets", nil)
-	propLatticeBlockOutTrafficMeter        = metrics.NewRegisteredMeter("dex/prop/latticeblocks/out/traffic", nil)
+	propCoreBlockInPacketsMeter            = metrics.NewRegisteredMeter("dex/prop/coreblocks/in/packets", nil)
+	propCoreBlockInTrafficMeter            = metrics.NewRegisteredMeter("dex/prop/coreblocks/in/traffic", nil)
+	propCoreBlockOutPacketsMeter           = metrics.NewRegisteredMeter("dex/prop/coreblocks/out/packets", nil)
+	propCoreBlockOutTrafficMeter           = metrics.NewRegisteredMeter("dex/prop/coreblocks/out/traffic", nil)
 	propVoteInPacketsMeter                 = metrics.NewRegisteredMeter("dex/prop/votes/in/packets", nil)
 	propVoteInTrafficMeter                 = metrics.NewRegisteredMeter("dex/prop/votes/in/traffic", nil)
 	propVoteOutPacketsMeter                = metrics.NewRegisteredMeter("dex/prop/votes/out/packets", nil)
@@ -62,10 +62,10 @@ var (
 	reqReceiptInTrafficMeter               = metrics.NewRegisteredMeter("dex/req/receipts/in/traffic", nil)
 	reqReceiptOutPacketsMeter              = metrics.NewRegisteredMeter("dex/req/receipts/out/packets", nil)
 	reqReceiptOutTrafficMeter              = metrics.NewRegisteredMeter("dex/req/receipts/out/traffic", nil)
-	reqLatticeBlockInPacketsMeter          = metrics.NewRegisteredMeter("dex/req/latticeblocks/in/packets", nil)
-	reqLatticeBlockInTrafficMeter          = metrics.NewRegisteredMeter("dex/req/latticeblocks/in/traffic", nil)
-	reqLatticeBlockOutPacketsMeter         = metrics.NewRegisteredMeter("dex/req/latticeblocks/out/packets", nil)
-	reqLatticeBlockOutTrafficMeter         = metrics.NewRegisteredMeter("dex/req/latticeblocks/out/traffic", nil)
+	reqCoreBlockInPacketsMeter             = metrics.NewRegisteredMeter("dex/req/coreblocks/in/packets", nil)
+	reqCoreBlockInTrafficMeter             = metrics.NewRegisteredMeter("dex/req/coreblocks/in/traffic", nil)
+	reqCoreBlockOutPacketsMeter            = metrics.NewRegisteredMeter("dex/req/coreblocks/out/packets", nil)
+	reqCoreBlockOutTrafficMeter            = metrics.NewRegisteredMeter("dex/req/coreblocks/out/traffic", nil)
 	reqVoteInPacketsMeter                  = metrics.NewRegisteredMeter("dex/req/votes/in/packets", nil)
 	reqVoteInTrafficMeter                  = metrics.NewRegisteredMeter("dex/req/votes/in/traffic", nil)
 	reqVoteOutPacketsMeter                 = metrics.NewRegisteredMeter("dex/req/votes/out/packets", nil)
@@ -124,15 +124,15 @@ func (rw *meteredMsgReadWriter) ReadMsg() (p2p.Msg, error) {
 	case msg.Code == TxMsg:
 		packets, traffic = propTxnInPacketsMeter, propTxnInTrafficMeter
 
-	case msg.Code == LatticeBlockMsg:
-		packets = propLatticeBlockInPacketsMeter
-		traffic = propLatticeBlockInTrafficMeter
+	case msg.Code == CoreBlockMsg:
+		packets = propCoreBlockInPacketsMeter
+		traffic = propCoreBlockInTrafficMeter
 	case msg.Code == VoteMsg:
 		packets, traffic = propVoteInPacketsMeter, propVoteInTrafficMeter
 
 	case msg.Code == PullBlocksMsg:
-		packets = reqLatticeBlockInPacketsMeter
-		traffic = reqLatticeBlockInTrafficMeter
+		packets = reqCoreBlockInPacketsMeter
+		traffic = reqCoreBlockInTrafficMeter
 	case msg.Code == PullVotesMsg:
 		packets, traffic = reqVoteInPacketsMeter, reqVoteInTrafficMeter
 
@@ -167,15 +167,15 @@ func (rw *meteredMsgReadWriter) WriteMsg(msg p2p.Msg) error {
 	case msg.Code == TxMsg:
 		packets, traffic = propTxnOutPacketsMeter, propTxnOutTrafficMeter
 
-	case msg.Code == LatticeBlockMsg:
-		packets = propLatticeBlockOutPacketsMeter
-		traffic = propLatticeBlockOutTrafficMeter
+	case msg.Code == CoreBlockMsg:
+		packets = propCoreBlockOutPacketsMeter
+		traffic = propCoreBlockOutTrafficMeter
 	case msg.Code == VoteMsg:
 		packets, traffic = propVoteOutPacketsMeter, propVoteOutTrafficMeter
 
 	case msg.Code == PullBlocksMsg:
-		packets = reqLatticeBlockOutPacketsMeter
-		traffic = reqLatticeBlockOutTrafficMeter
+		packets = reqCoreBlockOutPacketsMeter
+		traffic = reqCoreBlockOutTrafficMeter
 	case msg.Code == PullVotesMsg:
 		packets, traffic = reqVoteOutPacketsMeter, reqVoteOutTrafficMeter
 
