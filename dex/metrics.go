@@ -42,6 +42,10 @@ var (
 	propVoteInTrafficMeter                 = metrics.NewRegisteredMeter("dex/prop/votes/in/traffic", nil)
 	propVoteOutPacketsMeter                = metrics.NewRegisteredMeter("dex/prop/votes/out/packets", nil)
 	propVoteOutTrafficMeter                = metrics.NewRegisteredMeter("dex/prop/votes/out/traffic", nil)
+	propAgreementInPacketsMeter            = metrics.NewRegisteredMeter("dex/prop/agreement/in/packets", nil)
+	propAgreementInTrafficMeter            = metrics.NewRegisteredMeter("dex/prop/agreement/in/traffic", nil)
+	propAgreementOutPacketsMeter           = metrics.NewRegisteredMeter("dex/prop/agreement/out/packets", nil)
+	propAgreementOutTrafficMeter           = metrics.NewRegisteredMeter("dex/prop/agreement/out/traffic", nil)
 	propDKGPartialSignatureInPacketsMeter  = metrics.NewRegisteredMeter("dex/prop/dkgpartialsignatures/in/packets", nil)
 	propDKGPartialSignatureInTrafficMeter  = metrics.NewRegisteredMeter("dex/prop/dkgpartialsignatures/in/traffic", nil)
 	propDKGPartialSignatureOutPacketsMeter = metrics.NewRegisteredMeter("dex/prop/dkgpartialsignatures/out/packets", nil)
@@ -125,20 +129,19 @@ func (rw *meteredMsgReadWriter) ReadMsg() (p2p.Msg, error) {
 		packets, traffic = propTxnInPacketsMeter, propTxnInTrafficMeter
 
 	case msg.Code == CoreBlockMsg:
-		packets = propCoreBlockInPacketsMeter
-		traffic = propCoreBlockInTrafficMeter
+		packets, traffic = propCoreBlockInPacketsMeter, propCoreBlockInTrafficMeter
 	case msg.Code == VoteMsg:
 		packets, traffic = propVoteInPacketsMeter, propVoteInTrafficMeter
 
 	case msg.Code == PullBlocksMsg:
-		packets = reqCoreBlockInPacketsMeter
-		traffic = reqCoreBlockInTrafficMeter
+		packets, traffic = reqCoreBlockInPacketsMeter, reqCoreBlockInTrafficMeter
 	case msg.Code == PullVotesMsg:
 		packets, traffic = reqVoteInPacketsMeter, reqVoteInTrafficMeter
 
+	case msg.Code == AgreementMsg:
+		packets, traffic = propAgreementInPacketsMeter, propAgreementInTrafficMeter
 	case msg.Code == DKGPartialSignatureMsg:
-		packets = propDKGPartialSignatureInPacketsMeter
-		traffic = propDKGPartialSignatureInTrafficMeter
+		packets, traffic = propDKGPartialSignatureInPacketsMeter, propDKGPartialSignatureInTrafficMeter
 	}
 	packets.Mark(1)
 	traffic.Mark(int64(msg.Size))
@@ -168,20 +171,19 @@ func (rw *meteredMsgReadWriter) WriteMsg(msg p2p.Msg) error {
 		packets, traffic = propTxnOutPacketsMeter, propTxnOutTrafficMeter
 
 	case msg.Code == CoreBlockMsg:
-		packets = propCoreBlockOutPacketsMeter
-		traffic = propCoreBlockOutTrafficMeter
+		packets, traffic = propCoreBlockOutPacketsMeter, propCoreBlockOutTrafficMeter
 	case msg.Code == VoteMsg:
 		packets, traffic = propVoteOutPacketsMeter, propVoteOutTrafficMeter
 
 	case msg.Code == PullBlocksMsg:
-		packets = reqCoreBlockOutPacketsMeter
-		traffic = reqCoreBlockOutTrafficMeter
+		packets, traffic = reqCoreBlockOutPacketsMeter, reqCoreBlockOutTrafficMeter
 	case msg.Code == PullVotesMsg:
 		packets, traffic = reqVoteOutPacketsMeter, reqVoteOutTrafficMeter
 
+	case msg.Code == AgreementMsg:
+		packets, traffic = propAgreementOutPacketsMeter, propAgreementOutTrafficMeter
 	case msg.Code == DKGPartialSignatureMsg:
-		packets = propDKGPartialSignatureOutPacketsMeter
-		traffic = propDKGPartialSignatureOutTrafficMeter
+		packets, traffic = propDKGPartialSignatureOutPacketsMeter, propDKGPartialSignatureOutTrafficMeter
 	}
 	packets.Mark(1)
 	traffic.Mark(int64(msg.Size))
