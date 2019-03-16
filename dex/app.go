@@ -70,6 +70,7 @@ func NewDexconApp(txPool *core.TxPool, blockchain *core.BlockChain, gov *DexconG
 		addressNonce:    map[common.Address]uint64{},
 		addressCost:     map[common.Address]*big.Int{},
 		addressCounter:  map[common.Address]uint64{},
+		deliveredHeight: blockchain.CurrentBlock().NumberU64(),
 	}
 }
 
