@@ -518,7 +518,13 @@ func (hc *HeaderChain) verifyDexonHeader(header *types.Header,
 			header.Number.Uint64(), err)
 	}
 
-	if header.Coinbase != common.BytesToAddress(coreBlock.ProposerID.Bytes()) {
+	gs := gov.GetStateForConfigAtRound(header.Round)
+	node, err := gs.GetNodeByID(coreBlock.ProposerID)
+	if err != nil {
+		return err
+	}
+
+	if header.Coinbase != node.Owner {
 		return fmt.Errorf("coinbase mismatch")
 	}
 
@@ -538,7 +544,6 @@ func (hc *HeaderChain) verifyDexonHeader(header *types.Header,
 		return fmt.Errorf("round mismatch")
 	}
 
-	gs := gov.GetStateForConfigAtRound(header.Round)
 	config := gs.Configuration()
 	if header.GasLimit != config.BlockGasLimit {
 		return fmt.Errorf("block gas limit mismatch")
