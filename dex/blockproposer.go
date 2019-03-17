@@ -79,10 +79,10 @@ func (b *blockProposer) run(c *dexCore.Consensus) {
 	atomic.StoreInt32(&b.proposing, 1)
 	<-b.stopCh
 	log.Debug("Block proposer receive stop signal")
-	c.Stop()
 }
 
 func (b *blockProposer) Stop() {
+	log.Info("Stopping block proposer")
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -92,6 +92,7 @@ func (b *blockProposer) Stop() {
 		b.wg.Wait()
 		atomic.StoreInt32(&b.proposing, 0)
 	}
+	log.Info("Block proposer stopped")
 }
 
 func (b *blockProposer) IsCoreSyncing() bool {

@@ -305,7 +305,7 @@ func (pm *ProtocolManager) Start(srvr p2pServer, maxPeers int) {
 }
 
 func (pm *ProtocolManager) Stop() {
-	log.Info("Stopping Ethereum protocol")
+	log.Info("Stopping DEXON protocol")
 
 	pm.txsSub.Unsubscribe() // quits txBroadcastLoop
 	pm.chainHeadSub.Unsubscribe()
@@ -330,7 +330,7 @@ func (pm *ProtocolManager) Stop() {
 	// Wait for all peer handler goroutines and the loops to come down.
 	pm.wg.Wait()
 
-	log.Info("Ethereum protocol stopped")
+	log.Info("DEXON protocol stopped")
 }
 
 func (pm *ProtocolManager) ReceiveChan() <-chan interface{} {

@@ -259,14 +259,19 @@ func (s *Dexon) Start(srvr *p2p.Server) error {
 }
 
 func (s *Dexon) Stop() error {
+	s.bloomIndexer.Close()
+	s.blockchain.Stop()
+	s.engine.Close()
+	s.protocolManager.Stop()
+	s.txPool.Stop()
+	s.eventMux.Stop()
 	s.bp.Stop()
 	s.app.Stop()
 	if s.indexer != nil {
 		s.indexer.Stop()
 	}
-	if s.config.BlockProposerEnabled {
-		s.bp.Stop()
-	}
+	s.chainDb.Close()
+	close(s.shutdownChan)
 	return nil
 }
 
