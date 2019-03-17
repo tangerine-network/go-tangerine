@@ -310,6 +310,10 @@ func (pm *ProtocolManager) Stop() {
 	pm.txsSub.Unsubscribe() // quits txBroadcastLoop
 	pm.chainHeadSub.Unsubscribe()
 
+	if pm.isBlockProposer {
+		pm.finalizedBlockSub.Unsubscribe()
+	}
+
 	// Quit the sync loop.
 	// After this send has completed, no new peers will be accepted.
 	pm.noMorePeers <- struct{}{}

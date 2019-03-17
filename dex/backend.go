@@ -251,6 +251,10 @@ func (s *Dexon) Start(srvr *p2p.Server) error {
 	}
 	// Start the networking layer and the light server if requested
 	s.protocolManager.Start(srvr, maxPeers)
+
+	if s.config.BlockProposerEnabled {
+		s.bp.Start()
+	}
 	return nil
 }
 
@@ -260,15 +264,10 @@ func (s *Dexon) Stop() error {
 	if s.indexer != nil {
 		s.indexer.Stop()
 	}
+	if s.config.BlockProposerEnabled {
+		s.bp.Stop()
+	}
 	return nil
-}
-
-func (s *Dexon) StartProposing() error {
-	return s.bp.Start()
-}
-
-func (s *Dexon) StopProposing() {
-	s.bp.Stop()
 }
 
 func (s *Dexon) IsCoreSyncing() bool {

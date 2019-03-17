@@ -372,8 +372,5 @@ func startNode(ctx *cli.Context, stack *node.Node) {
 		if err := stack.Service(&dexon); err != nil {
 			utils.Fatalf("Dexon service not running: %v", err)
 		}
-		if err := dexon.StartProposing(); err != nil {
-			utils.Fatalf("Failed to string proposing: %v", err)
-		}
 	}
 }

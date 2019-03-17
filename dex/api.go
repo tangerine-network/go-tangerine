@@ -131,14 +131,6 @@ func (api *PrivateAdminAPI) ImportChain(file string) (bool, error) {
 	return true, nil
 }
 
-func (api *PrivateAdminAPI) StartProposing() error {
-	return api.dex.StartProposing()
-}
-
-func (api *PrivateAdminAPI) StopProposing() {
-	api.dex.StopProposing()
-}
-
 func (api *PrivateAdminAPI) IsCoreSyncing() bool {
 	return api.dex.IsCoreSyncing()
 }
