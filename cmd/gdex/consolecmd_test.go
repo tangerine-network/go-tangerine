@@ -51,7 +51,7 @@ func TestConsoleWelcome(t *testing.T) {
 	gdex.SetTemplateFunc("goarch", func() string { return runtime.GOARCH })
 	gdex.SetTemplateFunc("gover", runtime.Version)
 	gdex.SetTemplateFunc("gethver", func() string { return params.VersionWithMeta })
-	gdex.SetTemplateFunc("dextime", func() string { return time.Unix(1540024964, 0).Format(time.RFC1123) })
+	gdex.SetTemplateFunc("dextime", func() string { return time.Unix(int64(params.MainnetChainConfig.DMoment), 0).Format(time.RFC1123) })
 	gdex.SetTemplateFunc("apis", func() string { return ipcAPIs })
 
 	// Verify the actual welcome message to the required template
@@ -134,7 +134,7 @@ func testAttachWelcome(t *testing.T, gdex *testgdex, endpoint, apis string) {
 	attach.SetTemplateFunc("gover", runtime.Version)
 	attach.SetTemplateFunc("gethver", func() string { return params.VersionWithMeta })
 	attach.SetTemplateFunc("etherbase", func() string { return gdex.Etherbase })
-	attach.SetTemplateFunc("dextime", func() string { return time.Unix(1540024964, 0).Format(time.RFC1123) })
+	attach.SetTemplateFunc("dextime", func() string { return time.Unix(int64(params.MainnetChainConfig.DMoment), 0).Format(time.RFC1123) })
 	attach.SetTemplateFunc("ipc", func() bool { return strings.HasPrefix(endpoint, "ipc") })
 	attach.SetTemplateFunc("datadir", func() string { return gdex.Datadir })
 	attach.SetTemplateFunc("apis", func() string { return apis })

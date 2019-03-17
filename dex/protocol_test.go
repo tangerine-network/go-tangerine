@@ -69,19 +69,15 @@ func testStatusMsgErrors(t *testing.T, protocol int) {
 			wantError: errResp(ErrNoStatusMsg, "first msg has code 2 (!= 0)"),
 		},
 		{
-			code: StatusMsg, data: statusData{10, DefaultConfig.NetworkId, dMoment, number, head.Hash(), genesis.Hash()},
+			code: StatusMsg, data: statusData{10, DefaultConfig.NetworkId, number, head.Hash(), genesis.Hash()},
 			wantError: errResp(ErrProtocolVersionMismatch, "10 (!= %d)", protocol),
 		},
 		{
-			code: StatusMsg, data: statusData{uint32(protocol), 999, dMoment, number, head.Hash(), genesis.Hash()},
+			code: StatusMsg, data: statusData{uint32(protocol), 999, number, head.Hash(), genesis.Hash()},
 			wantError: errResp(ErrNetworkIdMismatch, "999 (!= 237)"),
 		},
 		{
-			code: StatusMsg, data: statusData{uint32(protocol), DefaultConfig.NetworkId, 123450, number, head.Hash(), genesis.Hash()},
-			wantError: errResp(ErrDMomentMismatch, "123450 (!= %d)", dMoment),
-		},
-		{
-			code: StatusMsg, data: statusData{uint32(protocol), DefaultConfig.NetworkId, dMoment, number, head.Hash(), common.Hash{3}},
+			code: StatusMsg, data: statusData{uint32(protocol), DefaultConfig.NetworkId, number, head.Hash(), common.Hash{3}},
 			wantError: errResp(ErrGenesisBlockMismatch, "0300000000000000 (!= %x)", genesis.Hash().Bytes()[:8]),
 		},
 	}
