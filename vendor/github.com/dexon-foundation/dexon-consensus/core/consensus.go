@@ -56,16 +56,20 @@ var (
 // consensusBAReceiver implements agreementReceiver.
 type consensusBAReceiver struct {
 	// TODO(mission): consensus would be replaced by blockChain and network.
-	consensus          *Consensus
-	agreementModule    *agreement
-	changeNotaryHeight uint64
-	roundValue         *atomic.Value
-	isNotary           bool
-	restartNotary      chan types.Position
+	consensus               *Consensus
+	agreementModule         *agreement
+	changeNotaryHeightValue *atomic.Value
+	roundValue              *atomic.Value
+	isNotary                bool
+	restartNotary           chan types.Position
 }
 
 func (recv *consensusBAReceiver) round() uint64 {
 	return recv.roundValue.Load().(uint64)
+}
+
+func (recv *consensusBAReceiver) changeNotaryHeight() uint64 {
+	return recv.changeNotaryHeightValue.Load().(uint64)
 }
 
 func (recv *consensusBAReceiver) ProposeVote(vote *types.Vote) {
@@ -247,16 +251,17 @@ CleanChannelLoop:
 		}
 	}
 	newPos := block.Position
-	if block.Position.Height+1 == recv.changeNotaryHeight {
+	if block.Position.Height+1 == recv.changeNotaryHeight() {
 		newPos.Round++
 		recv.roundValue.Store(newPos.Round)
 	}
 	currentRound := recv.round()
-	if block.Position.Height > recv.changeNotaryHeight &&
+	changeNotaryHeight := recv.changeNotaryHeight()
+	if block.Position.Height > changeNotaryHeight &&
 		block.Position.Round <= currentRound {
 		panic(fmt.Errorf(
 			"round not switch when confirmig: %s, %d, should switch at %d",
-			block, currentRound, recv.changeNotaryHeight))
+			block, currentRound, changeNotaryHeight))
 	}
 	recv.restartNotary <- newPos
 }
@@ -396,11 +401,11 @@ type Consensus struct {
 	bcModule                 *blockChain
 	dMoment                  time.Time
 	nodeSetCache             *utils.NodeSetCache
-	roundForNewConfig        uint64
 	lock                     sync.RWMutex
 	ctx                      context.Context
 	ctxCancel                context.CancelFunc
 	event                    *common.Event
+	roundEvent               *utils.RoundEvent
 	logger                   common.Logger
 	resetRandomnessTicker    chan struct{}
 	resetDeliveryGuardTicker chan struct{}
@@ -453,6 +458,7 @@ func NewConsensusForSimulation(
 func NewConsensusFromSyncer(
 	initBlock *types.Block,
 	initRoundBeginHeight uint64,
+	startWithEmpty bool,
 	dMoment time.Time,
 	app Application,
 	gov Governance,
@@ -495,6 +501,23 @@ func NewConsensusFromSyncer(
 			continue
 		}
 	}
+	if startWithEmpty {
+		pos := initBlock.Position
+		pos.Height++
+		block, err := con.bcModule.addEmptyBlock(pos)
+		if err != nil {
+			panic(err)
+		}
+		con.processBlockChan <- block
+		if pos.Round >= DKGDelayRound {
+			rand := &types.AgreementResult{
+				BlockHash:    block.Hash,
+				Position:     block.Position,
+				IsEmptyBlock: true,
+			}
+			go con.prepareRandomnessResult(rand)
+		}
+	}
 	return con, nil
 }
 
@@ -522,8 +545,10 @@ func newConsensusForRound(
 	}
 	// Get configuration for bootstrap round.
 	initRound := uint64(0)
+	initBlockHeight := uint64(0)
 	if initBlock != nil {
 		initRound = initBlock.Position.Round
+		initBlockHeight = initBlock.Position.Height
 	}
 	initConfig := utils.GetConfigWithPanic(gov, initRound, logger)
 	initCRS := utils.GetCRSWithPanic(gov, initRound, logger)
@@ -548,10 +573,7 @@ func newConsensusForRound(
 	if usingNonBlocking {
 		appModule = newNonBlocking(app, debugApp)
 	}
-	bcConfig := blockChainConfig{}
-	bcConfig.fromConfig(initRound, initConfig)
-	bcConfig.SetRoundBeginHeight(initRoundBeginHeight)
-	bcModule := newBlockChain(ID, dMoment, initBlock, bcConfig, appModule,
+	bcModule := newBlockChain(ID, dMoment, initBlock, appModule,
 		NewTSigVerifierCache(gov, 7), signer, logger)
 	// Construct Consensus instance.
 	con := &Consensus{
@@ -576,6 +598,10 @@ func newConsensusForRound(
 		processBlockChan:         make(chan *types.Block, 1024),
 	}
 	con.ctx, con.ctxCancel = context.WithCancel(context.Background())
+	if con.roundEvent, err = utils.NewRoundEvent(con.ctx, gov, logger, initRound,
+		initRoundBeginHeight, initBlockHeight, ConfigRoundShift); err != nil {
+		panic(err)
+	}
 	baConfig := agreementMgrConfig{}
 	baConfig.from(initRound, initConfig, initCRS)
 	baConfig.SetRoundBeginHeight(initRoundBeginHeight)
@@ -595,26 +621,139 @@ func newConsensusForRound(
 //  - the last finalized block
 func (con *Consensus) prepare(
 	initRoundBeginHeight uint64, initBlock *types.Block) (err error) {
+	// Trigger the round validation method for the next round of the first
+	// round.
 	// The block past from full node should be delivered already or known by
 	// full node. We don't have to notify it.
 	initRound := uint64(0)
 	if initBlock != nil {
 		initRound = initBlock.Position.Round
 	}
-	// Setup blockChain module.
-	con.roundForNewConfig = initRound + 1
-	initConfig := utils.GetConfigWithPanic(con.gov, initRound, con.logger)
-	initPlusOneCfg := utils.GetConfigWithPanic(con.gov, initRound+1, con.logger)
-	if err = con.bcModule.appendConfig(initRound+1, initPlusOneCfg); err != nil {
-		return
-	}
 	if initRound == 0 {
 		if DKGDelayRound == 0 {
 			panic("not implemented yet")
 		}
 	}
-	// Register events.
-	con.initialRound(initRoundBeginHeight, initRound, initConfig)
+	// Register round event handler to update BA and BC modules.
+	con.roundEvent.Register(func(evts []utils.RoundEventParam) {
+		// Always updates newer configs to the later modules first in the flow.
+		if err := con.bcModule.notifyRoundEvents(evts); err != nil {
+			panic(err)
+		}
+		// The init config is provided to baModule when construction.
+		if evts[len(evts)-1].BeginHeight != initRoundBeginHeight {
+			if err := con.baMgr.notifyRoundEvents(evts); err != nil {
+				panic(err)
+			}
+		}
+	})
+	// Register round event handler to propose new CRS.
+	con.roundEvent.Register(func(evts []utils.RoundEventParam) {
+		// We don't have to propose new CRS during DKG reset, the reset of DKG
+		// would be done by the DKG set in previous round.
+		e := evts[len(evts)-1]
+		if e.Reset != 0 || e.Round < DKGDelayRound {
+			return
+		}
+		if curDkgSet, err := con.nodeSetCache.GetDKGSet(e.Round); err != nil {
+			con.logger.Error("Error getting DKG set when proposing CRS",
+				"round", e.Round,
+				"error", err)
+		} else {
+			if _, exist := curDkgSet[con.ID]; !exist {
+				return
+			}
+			con.event.RegisterHeight(e.NextCRSProposingHeight(), func(uint64) {
+				con.logger.Debug(
+					"Calling Governance.CRS to check if already proposed",
+					"round", e.Round+1)
+				if (con.gov.CRS(e.Round+1) != common.Hash{}) {
+					con.logger.Debug("CRS already proposed", "round", e.Round+1)
+					return
+				}
+				con.runCRS(e.Round, e.CRS)
+			})
+		}
+	})
+	// Touch nodeSetCache for next round.
+	con.roundEvent.Register(func(evts []utils.RoundEventParam) {
+		e := evts[len(evts)-1]
+		if e.Reset != 0 {
+			return
+		}
+		con.event.RegisterHeight(e.NextTouchNodeSetCacheHeight(), func(uint64) {
+			if err := con.nodeSetCache.Touch(e.Round + 1); err != nil {
+				con.logger.Warn("Failed to update nodeSetCache",
+					"round", e.Round+1,
+					"error", err)
+			}
+		})
+	})
+	// checkCRS is a generator of checker to check if CRS for that round is
+	// ready or not.
+	checkCRS := func(round uint64) func() bool {
+		return func() bool {
+			nextCRS := con.gov.CRS(round)
+			if (nextCRS != common.Hash{}) {
+				return true
+			}
+			con.logger.Debug("CRS is not ready yet. Try again later...",
+				"nodeID", con.ID,
+				"round", round)
+			return false
+		}
+	}
+	// Trigger round validation method for next period.
+	con.roundEvent.Register(func(evts []utils.RoundEventParam) {
+		e := evts[len(evts)-1]
+		// Register a routine to trigger round events.
+		con.event.RegisterHeight(e.NextRoundValidationHeight(), func(
+			blockHeight uint64) {
+			con.roundEvent.ValidateNextRound(blockHeight)
+		})
+		// Register a routine to register next DKG.
+		con.event.RegisterHeight(e.NextDKGRegisterHeight(), func(uint64) {
+			nextRound := e.Round + 1
+			if nextRound < DKGDelayRound {
+				con.logger.Info("Skip runDKG for round", "round", nextRound)
+				return
+			}
+			// Normally, gov.CRS would return non-nil. Use this for in case of
+			// unexpected network fluctuation and ensure the robustness.
+			if !checkWithCancel(
+				con.ctx, 500*time.Millisecond, checkCRS(nextRound)) {
+				con.logger.Debug("unable to prepare CRS for DKG set",
+					"round", nextRound)
+				return
+			}
+			nextDkgSet, err := con.nodeSetCache.GetDKGSet(nextRound)
+			if err != nil {
+				con.logger.Error("Error getting DKG set for next round",
+					"round", nextRound,
+					"error", err)
+				return
+			}
+			if _, exist := nextDkgSet[con.ID]; !exist {
+				con.logger.Info("Not selected as DKG set", "round", nextRound)
+				return
+			}
+			con.logger.Info("Selected as DKG set", "round", nextRound)
+			nextConfig := utils.GetConfigWithPanic(con.gov, nextRound,
+				con.logger)
+			con.cfgModule.registerDKG(nextRound, utils.GetDKGThreshold(
+				nextConfig))
+			con.event.RegisterHeight(e.NextDKGPreparationHeight(),
+				func(uint64) {
+					func() {
+						con.dkgReady.L.Lock()
+						defer con.dkgReady.L.Unlock()
+						con.dkgRunning = 0
+					}()
+					con.runDKG(nextRound, nextConfig)
+				})
+		})
+	})
+	con.roundEvent.TriggerInitEvent()
 	return
 }
 
@@ -686,27 +825,9 @@ func (con *Consensus) runDKG(round uint64, config *types.Config) {
 	}()
 }
 
-func (con *Consensus) runCRS(round uint64) {
-	for {
-		con.logger.Debug("Calling Governance.CRS to check if already proposed",
-			"round", round+1)
-		if (con.gov.CRS(round+1) != common.Hash{}) {
-			con.logger.Debug("CRS already proposed", "round", round+1)
-			return
-		}
-		con.logger.Debug("Calling Governance.IsDKGFinal to check if ready to run CRS",
-			"round", round)
-		if con.cfgModule.isDKGFinal(round) {
-			break
-		}
-		con.logger.Debug("DKG is not ready for running CRS. Retry later...",
-			"round", round)
-		time.Sleep(500 * time.Millisecond)
-	}
+func (con *Consensus) runCRS(round uint64, hash common.Hash) {
 	// Start running next round CRS.
-	con.logger.Debug("Calling Governance.CRS", "round", round)
-	psig, err := con.cfgModule.preparePartialSignature(
-		round, utils.GetCRSWithPanic(con.gov, round, con.logger))
+	psig, err := con.cfgModule.preparePartialSignature(round, hash)
 	if err != nil {
 		con.logger.Error("Failed to prepare partial signature", "error", err)
 	} else if err = con.signer.SignDKGPartialSignature(psig); err != nil {
@@ -733,136 +854,16 @@ func (con *Consensus) runCRS(round uint64) {
 	}
 }
 
-func (con *Consensus) initialRound(
-	startHeight uint64, round uint64, config *types.Config) {
-	select {
-	case <-con.ctx.Done():
-		return
-	default:
-	}
-	if round >= DKGDelayRound {
-		curDkgSet, err := con.nodeSetCache.GetDKGSet(round)
-		if err != nil {
-			con.logger.Error("Error getting DKG set", "round", round, "error", err)
-			curDkgSet = make(map[types.NodeID]struct{})
-		}
-		// Initiate CRS routine.
-		if _, exist := curDkgSet[con.ID]; exist {
-			con.event.RegisterHeight(
-				startHeight+config.RoundLength/2,
-				func(uint64) {
-					go func() {
-						con.runCRS(round)
-					}()
-				})
-		}
-	}
-	// checkCRS is a generator of checker to check if CRS for that round is
-	// ready or not.
-	checkCRS := func(round uint64) func() bool {
-		return func() bool {
-			nextCRS := con.gov.CRS(round)
-			if (nextCRS != common.Hash{}) {
-				return true
-			}
-			con.logger.Debug("CRS is not ready yet. Try again later...",
-				"nodeID", con.ID,
-				"round", round)
-			return false
-		}
-	}
-	// Initiate BA modules.
-	con.event.RegisterHeight(startHeight+config.RoundLength/2, func(uint64) {
-		go func(nextRound uint64) {
-			if !checkWithCancel(
-				con.ctx, 500*time.Millisecond, checkCRS(nextRound)) {
-				con.logger.Debug("unable to prepare CRS for baMgr",
-					"round", nextRound)
-				return
-			}
-			// Notify BA for new round.
-			nextConfig := utils.GetConfigWithPanic(
-				con.gov, nextRound, con.logger)
-			nextCRS := utils.GetCRSWithPanic(
-				con.gov, nextRound, con.logger)
-			con.logger.Info("appendConfig for baMgr", "round", nextRound)
-			if err := con.baMgr.appendConfig(
-				nextRound, nextConfig, nextCRS); err != nil {
-				panic(err)
-			}
-		}(round + 1)
-	})
-	// Initiate DKG for this round.
-	con.event.RegisterHeight(startHeight+config.RoundLength/2, func(uint64) {
-		go func(nextRound uint64) {
-			if nextRound < DKGDelayRound {
-				con.logger.Info("Skip runDKG for round", "round", nextRound)
-				return
-			}
-			// Normally, gov.CRS would return non-nil. Use this for in case of
-			// unexpected network fluctuation and ensure the robustness.
-			if !checkWithCancel(
-				con.ctx, 500*time.Millisecond, checkCRS(nextRound)) {
-				con.logger.Debug("unable to prepare CRS for DKG set",
-					"round", nextRound)
-				return
-			}
-			nextDkgSet, err := con.nodeSetCache.GetDKGSet(nextRound)
-			if err != nil {
-				con.logger.Error("Error getting DKG set",
-					"round", nextRound,
-					"error", err)
-				return
-			}
-			if _, exist := nextDkgSet[con.ID]; !exist {
-				return
-			}
-			con.logger.Info("Selected as DKG set", "round", nextRound)
-			con.cfgModule.registerDKG(nextRound, utils.GetDKGThreshold(config))
-			con.event.RegisterHeight(startHeight+config.RoundLength*2/3,
-				func(uint64) {
-					func() {
-						con.dkgReady.L.Lock()
-						defer con.dkgReady.L.Unlock()
-						con.dkgRunning = 0
-					}()
-					nextConfig := utils.GetConfigWithPanic(
-						con.gov, nextRound, con.logger)
-					con.runDKG(nextRound, nextConfig)
-				})
-		}(round + 1)
-	})
-	// Prepare blockChain module for next round and next "initialRound" routine.
-	con.event.RegisterHeight(startHeight+config.RoundLength, func(uint64) {
-		// Change round.
-		// Get configuration for next round.
-		nextRound := round + 1
-		nextConfig := utils.GetConfigWithPanic(con.gov, nextRound, con.logger)
-		con.initialRound(
-			startHeight+config.RoundLength, nextRound, nextConfig)
-	})
-	// Touch nodeSetCache for next round.
-	con.event.RegisterHeight(startHeight+config.RoundLength*9/10, func(uint64) {
-		go func() {
-			// TODO(jimmy): check DKGResetCount and do not touch if nextRound is reset.
-			if err := con.nodeSetCache.Touch(round + 1); err != nil {
-				con.logger.Warn("Failed to update nodeSetCache",
-					"round", round+1, "error", err)
-			}
-			if _, _, err := con.bcModule.vGetter.UpdateAndGet(round + 1); err != nil {
-				con.logger.Warn("Failed to update tsigVerifierCache",
-					"round", round+1, "error", err)
-			}
-		}()
-	})
-}
-
 // Stop the Consensus core.
 func (con *Consensus) Stop() {
 	con.ctxCancel()
 	con.baMgr.stop()
 	con.event.Reset()
 	con.waitGroup.Wait()
+	if nbApp, ok := con.app.(*nonBlocking); ok {
+		fmt.Println("Stopping nonBlocking App")
+		nbApp.wait()
+	}
 }
 
 func (con *Consensus) deliverNetworkMsg() {
@@ -1014,62 +1015,64 @@ func (con *Consensus) ProcessAgreementResult(
 	con.logger.Debug("Rebroadcast AgreementResult",
 		"result", rand)
 	con.network.BroadcastAgreementResult(rand)
-
-	go func() {
-		dkgSet, err := con.nodeSetCache.GetDKGSet(rand.Position.Round)
-		if err != nil {
-			con.logger.Error("Failed to get dkg set",
-				"round", rand.Position.Round, "error", err)
-			return
-		}
-		if _, exist := dkgSet[con.ID]; !exist {
-			return
-		}
-		psig, err := con.cfgModule.preparePartialSignature(rand.Position.Round, rand.BlockHash)
-		if err != nil {
-			con.logger.Error("Failed to prepare psig",
-				"round", rand.Position.Round,
-				"hash", rand.BlockHash.String()[:6],
-				"error", err)
-			return
-		}
-		if err = con.signer.SignDKGPartialSignature(psig); err != nil {
-			con.logger.Error("Failed to sign psig",
-				"hash", rand.BlockHash.String()[:6],
-				"error", err)
-			return
-		}
-		if err = con.cfgModule.processPartialSignature(psig); err != nil {
-			con.logger.Error("Failed process psig",
-				"hash", rand.BlockHash.String()[:6],
-				"error", err)
-			return
-		}
-		con.logger.Debug("Calling Network.BroadcastDKGPartialSignature",
-			"proposer", psig.ProposerID,
-			"round", psig.Round,
-			"hash", psig.Hash.String()[:6])
-		con.network.BroadcastDKGPartialSignature(psig)
-		tsig, err := con.cfgModule.runTSig(rand.Position.Round, rand.BlockHash)
-		if err != nil {
-			if err != ErrTSigAlreadyRunning {
-				con.logger.Error("Failed to run TSIG",
-					"position", rand.Position,
-					"hash", rand.BlockHash.String()[:6],
-					"error", err)
-			}
-			return
-		}
-		result := &types.BlockRandomnessResult{
-			BlockHash:  rand.BlockHash,
-			Position:   rand.Position,
-			Randomness: tsig.Signature,
-		}
-		// ProcessBlockRandomnessResult is not thread-safe so we put the result in
-		// the message channnel to be processed in the main thread.
-		con.msgChan <- result
-	}()
+	go con.prepareRandomnessResult(rand)
 	return nil
+}
+
+func (con *Consensus) prepareRandomnessResult(rand *types.AgreementResult) {
+	dkgSet, err := con.nodeSetCache.GetDKGSet(rand.Position.Round)
+	if err != nil {
+		con.logger.Error("Failed to get dkg set",
+			"round", rand.Position.Round, "error", err)
+		return
+	}
+	if _, exist := dkgSet[con.ID]; !exist {
+		return
+	}
+	con.logger.Debug("PrepareRandomness", "round", rand.Position.Round, "hash", rand.BlockHash)
+	psig, err := con.cfgModule.preparePartialSignature(rand.Position.Round, rand.BlockHash)
+	if err != nil {
+		con.logger.Error("Failed to prepare psig",
+			"round", rand.Position.Round,
+			"hash", rand.BlockHash.String()[:6],
+			"error", err)
+		return
+	}
+	if err = con.signer.SignDKGPartialSignature(psig); err != nil {
+		con.logger.Error("Failed to sign psig",
+			"hash", rand.BlockHash.String()[:6],
+			"error", err)
+		return
+	}
+	if err = con.cfgModule.processPartialSignature(psig); err != nil {
+		con.logger.Error("Failed process psig",
+			"hash", rand.BlockHash.String()[:6],
+			"error", err)
+		return
+	}
+	con.logger.Debug("Calling Network.BroadcastDKGPartialSignature",
+		"proposer", psig.ProposerID,
+		"round", psig.Round,
+		"hash", psig.Hash.String()[:6])
+	con.network.BroadcastDKGPartialSignature(psig)
+	tsig, err := con.cfgModule.runTSig(rand.Position.Round, rand.BlockHash)
+	if err != nil {
+		if err != ErrTSigAlreadyRunning {
+			con.logger.Error("Failed to run TSIG",
+				"position", rand.Position,
+				"hash", rand.BlockHash.String()[:6],
+				"error", err)
+		}
+		return
+	}
+	result := &types.BlockRandomnessResult{
+		BlockHash:  rand.BlockHash,
+		Position:   rand.Position,
+		Randomness: tsig.Signature,
+	}
+	// ProcessBlockRandomnessResult is not thread-safe so we put the result in
+	// the message channnel to be processed in the main thread.
+	con.msgChan <- result
 }
 
 // ProcessBlockRandomnessResult processes the randomness result.
@@ -1094,14 +1097,6 @@ func (con *Consensus) ProcessBlockRandomnessResult(
 
 // preProcessBlock performs Byzantine Agreement on the block.
 func (con *Consensus) preProcessBlock(b *types.Block) (err error) {
-	var exist bool
-	exist, err = con.nodeSetCache.Exists(b.Position.Round, b.ProposerID)
-	if err != nil {
-		return
-	}
-	if !exist {
-		return ErrProposerNotInNodeSet
-	}
 	err = con.baMgr.processBlock(b)
 	if err == nil && con.debugApp != nil {
 		con.debugApp.BlockReceived(b.Hash)
@@ -1137,7 +1132,10 @@ func (con *Consensus) deliveryGuard() {
 	defer con.waitGroup.Done()
 	time.Sleep(con.dMoment.Sub(time.Now()))
 	// Node takes time to start.
-	time.Sleep(60 * time.Second)
+	select {
+	case <-con.ctx.Done():
+	case <-time.After(60 * time.Second):
+	}
 	for {
 		select {
 		case <-con.ctx.Done():
@@ -1176,24 +1174,6 @@ func (con *Consensus) deliverBlock(b *types.Block) {
 	con.cfgModule.untouchTSigHash(b.Hash)
 	con.logger.Debug("Calling Application.BlockDelivered", "block", b)
 	con.app.BlockDelivered(b.Hash, b.Position, b.Finalization.Clone())
-	if b.Position.Round == con.roundForNewConfig {
-		// Get configuration for the round next to next round. Configuration
-		// for that round should be ready at this moment and is required for
-		// blockChain module. This logic is related to:
-		//  - roundShift
-		//  - notifyGenesisRound
-		futureRound := con.roundForNewConfig + 1
-		futureConfig := utils.GetConfigWithPanic(con.gov, futureRound, con.logger)
-		con.logger.Debug("Append Config", "round", futureRound)
-		if err := con.bcModule.appendConfig(
-			futureRound, futureConfig); err != nil {
-			con.logger.Debug("Unable to append config",
-				"round", futureRound,
-				"error", err)
-			panic(err)
-		}
-		con.roundForNewConfig++
-	}
 	if con.debugApp != nil {
 		con.debugApp.BlockReady(b.Hash)
 	}

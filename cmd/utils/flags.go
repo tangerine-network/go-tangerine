@@ -664,6 +664,13 @@ var (
 		Usage: "External indexer plugin's flags if needed",
 		Value: "",
 	}
+
+	// Dexcon settings.
+	RecoveryNetworkRPCFlag = cli.StringFlag{
+		Name:  "recovery.network-rpc",
+		Usage: "RPC URL of the recovery network",
+		Value: "https://mainnet.infura.io",
+	}
 )
 
 // MakeDataDir retrieves the currently requested data directory, terminating
@@ -1257,26 +1264,40 @@ func SetDexConfig(ctx *cli.Context, stack *node.Node, cfg *dex.Config) {
 		cfg.RPCGasCap = new(big.Int).SetUint64(ctx.GlobalUint64(RPCGlobalGasCap.Name))
 	}
 
+	cfg.RecoveryNetworkRPC = ctx.GlobalString(RecoveryNetworkRPCFlag.Name)
+
 	// Override any default configs for hard coded networks.
 	switch {
 	case ctx.GlobalBool(TestnetFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			cfg.NetworkId = 238
 		}
+		if !ctx.GlobalIsSet(RecoveryNetworkRPCFlag.Name) {
+			cfg.RecoveryNetworkRPC = "http://rinkeby.infura.io"
+		}
 		cfg.Genesis = core.DefaultTestnetGenesisBlock()
 	case ctx.GlobalBool(TaipeiFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			cfg.NetworkId = 239
+		}
+		if !ctx.GlobalIsSet(RecoveryNetworkRPCFlag.Name) {
+			cfg.RecoveryNetworkRPC = "http://rinkeby.infura.io"
 		}
 		cfg.Genesis = core.DefaultTaipeiGenesisBlock()
 	case ctx.GlobalBool(YilanFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			cfg.NetworkId = 240
 		}
+		if !ctx.GlobalIsSet(RecoveryNetworkRPCFlag.Name) {
+			cfg.RecoveryNetworkRPC = "http://rinkeby.infura.io"
+		}
 		cfg.Genesis = core.DefaultYilanGenesisBlock()
 	case ctx.GlobalBool(DeveloperFlag.Name):
 		if !ctx.GlobalIsSet(NetworkIdFlag.Name) {
 			cfg.NetworkId = 1337
+		}
+		if !ctx.GlobalIsSet(RecoveryNetworkRPCFlag.Name) {
+			cfg.RecoveryNetworkRPC = "http://rinkeby.infura.io"
 		}
 		// Create new developer account or reuse existing one
 		var (

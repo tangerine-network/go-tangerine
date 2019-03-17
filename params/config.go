@@ -75,6 +75,11 @@ var (
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
 			},
 		},
+		Recovery: &RecoveryConfig{
+			Contract:     common.HexToAddress("0xcb4bb8ae26b2ebe5a1e2e8d5236020f33ffb2294"),
+			Timeout:      120,
+			Confirmation: 5,
+		},
 	}
 
 	// MainnetTrustedCheckpoint contains the light client trusted checkpoint for the main network.
@@ -121,6 +126,11 @@ var (
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
 			},
 		},
+		Recovery: &RecoveryConfig{
+			Contract:     common.HexToAddress("0x4ebe3d13ab18b30d815711b7a33ef1226777b66d"),
+			Timeout:      120,
+			Confirmation: 5,
+		},
 	}
 
 	// TaipeiChainConfig contains the chain parameters to run a node on the Taipei test network.
@@ -157,6 +167,11 @@ var (
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
 			},
+		},
+		Recovery: &RecoveryConfig{
+			Contract:     common.HexToAddress("0xac86ab80ab27007801f36f6622fbe0a9432291a2"),
+			Timeout:      120,
+			Confirmation: 1,
 		},
 	}
 
@@ -203,6 +218,11 @@ var (
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
 			},
 		},
+		Recovery: &RecoveryConfig{
+			Contract:     common.HexToAddress("0x3828134ba7a0629fd52067b80fe696f400eb83dc"),
+			Timeout:      120,
+			Confirmation: 1,
+		},
 	}
 
 	// AllEthashProtocolChanges contains every protocol change (EIPs) introduced
@@ -210,18 +230,18 @@ var (
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllEthashProtocolChanges = &ChainConfig{big.NewInt(1337), 0, big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, new(EthashConfig), nil, nil}
+	AllEthashProtocolChanges = &ChainConfig{big.NewInt(1337), 0, big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, new(EthashConfig), nil, nil, nil}
 
 	// AllCliqueProtocolChanges contains every protocol change (EIPs) introduced
 	// and accepted by the Ethereum core developers into the Clique consensus.
 	//
 	// This configuration is intentionally not using keyed fields to force anyone
 	// adding flags to the config to also have to set these fields.
-	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), 0, big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil}
+	AllCliqueProtocolChanges = &ChainConfig{big.NewInt(1337), 0, big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, &CliqueConfig{Period: 0, Epoch: 30000}, nil, nil}
 
-	AllDexconProtocolChanges = &ChainConfig{big.NewInt(1337), 0, big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, new(DexconConfig)}
+	AllDexconProtocolChanges = &ChainConfig{big.NewInt(1337), 0, big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, nil, nil, new(DexconConfig), new(RecoveryConfig)}
 
-	TestChainConfig = &ChainConfig{big.NewInt(1), 0, big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, new(EthashConfig), nil, nil}
+	TestChainConfig = &ChainConfig{big.NewInt(1), 0, big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, new(EthashConfig), nil, nil, nil}
 	TestRules       = TestChainConfig.Rules(new(big.Int))
 
 	// Ethereum MainnetChainConfig is the chain parameters to run a node on the main network.
@@ -299,6 +319,9 @@ type ChainConfig struct {
 	Ethash *EthashConfig `json:"ethash,omitempty"`
 	Clique *CliqueConfig `json:"clique,omitempty"`
 	Dexcon *DexconConfig `json:"dexcon,omitempty"`
+
+	// Dexcon Recovery
+	Recovery *RecoveryConfig `json:"recovery,omitempty"`
 }
 
 // EthashConfig is the consensus engine configs for proof-of-work based sealing.
@@ -370,6 +393,12 @@ func (d *DexconConfig) String() string {
 		d.MinBlockInterval,
 		d.FineValues,
 	)
+}
+
+type RecoveryConfig struct {
+	Contract     common.Address `json:"contract"`
+	Timeout      int            `json:"timeout"`
+	Confirmation int            `json:"confirmation"`
 }
 
 // String implements the fmt.Stringer interface.

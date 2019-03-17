@@ -141,16 +141,16 @@
 		{
 			"checksumSHA1": "8EuKVkP1v/w5fRuuvUaXX5k/F+I=",
 			"path": "github.com/dexon-foundation/dexon-consensus/common",
-			"revision": "8786160e28cf17c1125e26939b81ac59df5c260a",
-			"revisionTime": "2019-03-13T07:38:33Z",
+			"revision": "c0e1c45539fe882c4cd096a41e36f764d5ad2092",
+			"revisionTime": "2019-03-16T10:51:30Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
 		{
-			"checksumSHA1": "ukcaBY+jnQSKyanW+y/uwysV+VM=",
+			"checksumSHA1": "bYtL3br8SNzJRQzD0leNywoSo2M=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core",
-			"revision": "8786160e28cf17c1125e26939b81ac59df5c260a",
-			"revisionTime": "2019-03-13T07:38:33Z",
+			"revision": "c0e1c45539fe882c4cd096a41e36f764d5ad2092",
+			"revisionTime": "2019-03-16T10:51:30Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
@@ -165,64 +165,64 @@
 		{
 			"checksumSHA1": "tQSbYCu5P00lUhKsx3IbBZCuSLY=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/crypto",
-			"revision": "8786160e28cf17c1125e26939b81ac59df5c260a",
-			"revisionTime": "2019-03-13T07:38:33Z",
+			"revision": "c0e1c45539fe882c4cd096a41e36f764d5ad2092",
+			"revisionTime": "2019-03-16T10:51:30Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
 		{
 			"checksumSHA1": "kC/Tu4is9+jABI/EdvEv7VxwvEo=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/crypto/dkg",
-			"revision": "8786160e28cf17c1125e26939b81ac59df5c260a",
-			"revisionTime": "2019-03-13T07:38:33Z",
+			"revision": "c0e1c45539fe882c4cd096a41e36f764d5ad2092",
+			"revisionTime": "2019-03-16T10:51:30Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
 		{
 			"checksumSHA1": "BhLKK8RveoLaeXc9UyUKMwQqchU=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa",
-			"revision": "8786160e28cf17c1125e26939b81ac59df5c260a",
-			"revisionTime": "2019-03-13T07:38:33Z",
+			"revision": "c0e1c45539fe882c4cd096a41e36f764d5ad2092",
+			"revisionTime": "2019-03-16T10:51:30Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
 		{
 			"checksumSHA1": "dQOZYmiikmjWhwkUJc0QmCJnO9o=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/db",
-			"revision": "8786160e28cf17c1125e26939b81ac59df5c260a",
-			"revisionTime": "2019-03-13T07:38:33Z",
+			"revision": "c0e1c45539fe882c4cd096a41e36f764d5ad2092",
+			"revisionTime": "2019-03-16T10:51:30Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
 		{
-			"checksumSHA1": "wN+K5gI8+j/7l3SB0DYZ8MkTAwo=",
+			"checksumSHA1": "H0+GIDijBmoic/0HSTZBUwEij5A=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/syncer",
-			"revision": "8786160e28cf17c1125e26939b81ac59df5c260a",
-			"revisionTime": "2019-03-13T07:38:33Z",
+			"revision": "c0e1c45539fe882c4cd096a41e36f764d5ad2092",
+			"revisionTime": "2019-03-16T10:51:30Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
 		{
 			"checksumSHA1": "id8imcgp3SqYhIx0k3Chd0VZrUQ=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/types",
-			"revision": "8786160e28cf17c1125e26939b81ac59df5c260a",
-			"revisionTime": "2019-03-13T07:38:33Z",
+			"revision": "c0e1c45539fe882c4cd096a41e36f764d5ad2092",
+			"revisionTime": "2019-03-16T10:51:30Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
 		{
 			"checksumSHA1": "QXRBX9UmvX4wszA9qlyJtzYcTOw=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/types/dkg",
-			"revision": "8786160e28cf17c1125e26939b81ac59df5c260a",
-			"revisionTime": "2019-03-13T07:38:33Z",
+			"revision": "c0e1c45539fe882c4cd096a41e36f764d5ad2092",
+			"revisionTime": "2019-03-16T10:51:30Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
 		{
-			"checksumSHA1": "Hg7KG7RnXK3Autq05xDxSIHKxXI=",
+			"checksumSHA1": "D9I012bShlJM+rsYxG5sH5nvqXA=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/utils",
-			"revision": "8786160e28cf17c1125e26939b81ac59df5c260a",
-			"revisionTime": "2019-03-13T07:38:33Z",
+			"revision": "c0e1c45539fe882c4cd096a41e36f764d5ad2092",
+			"revisionTime": "2019-03-16T10:51:30Z",
 			"version": "single-chain",
 			"versionExact": "single-chain"
 		},
@@ -515,6 +515,12 @@
 			"path": "github.com/olekukonko/tablewriter",
 			"revision": "febf2d34b54a69ce7530036c7503b1c9fbfdf0bb",
 			"revisionTime": "2017-01-28T05:05:32Z"
+		},
+		{
+			"checksumSHA1": "VxE5yTGoSXiesg2xRPo0lomflF0=",
+			"path": "github.com/onrik/ethrpc",
+			"revision": "6b8e9c0e9a8ffd2154cd4470a6ffb4919885e788",
+			"revisionTime": "2019-03-05T11:28:07Z"
 		},
 		{
 			"checksumSHA1": "wIcN7tZiF441h08RHAm4NV8cYO4=",

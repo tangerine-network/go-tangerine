@@ -263,6 +263,19 @@ func (d *DexconGovernance) NotarySet(round uint64) (map[string]struct{}, error) 
 	return r, nil
 }
 
+func (d *DexconGovernance) NotarySetAddresses(round uint64) (map[common.Address]struct{}, error) {
+	notarySet, err := d.nodeSetCache.GetNotarySet(round)
+	if err != nil {
+		return nil, err
+	}
+
+	r := make(map[common.Address]struct{}, len(notarySet))
+	for id := range notarySet {
+		r[vm.IdToAddress(id)] = struct{}{}
+	}
+	return r, nil
+}
+
 func (d *DexconGovernance) DKGSet(round uint64) (map[string]struct{}, error) {
 	dkgSet, err := d.nodeSetCache.GetDKGSet(round)
 	if err != nil {

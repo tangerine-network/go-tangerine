@@ -22,6 +22,7 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 		MiningVelocity    float32                 `json:"miningVelocity"`
 		NextHalvingSupply *math.HexOrDecimal256   `json:"nextHalvingSupply"`
 		LastHalvedAmount  *math.HexOrDecimal256   `json:"lastHalvedAmount"`
+		MinGasPrice       *math.HexOrDecimal256   `json:"minGasPrice"`
 		BlockGasLimit     uint64                  `json:"blockGasLimit"`
 		LambdaBA          uint64                  `json:"lambdaBA"`
 		LambdaDKG         uint64                  `json:"lambdaDKG"`
@@ -30,7 +31,6 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 		RoundLength       uint64                  `json:"roundLength"`
 		MinBlockInterval  uint64                  `json:"minBlockInterval"`
 		FineValues        []*math.HexOrDecimal256 `json:"fineValues"`
-		MinGasPrice       *math.HexOrDecimal256   `json:"minGasPrice"`
 	}
 	var enc DexconConfig
 	enc.GenesisCRSText = d.GenesisCRSText
@@ -40,6 +40,7 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 	enc.MiningVelocity = d.MiningVelocity
 	enc.NextHalvingSupply = (*math.HexOrDecimal256)(d.NextHalvingSupply)
 	enc.LastHalvedAmount = (*math.HexOrDecimal256)(d.LastHalvedAmount)
+	enc.MinGasPrice = (*math.HexOrDecimal256)(d.MinGasPrice)
 	enc.BlockGasLimit = d.BlockGasLimit
 	enc.LambdaBA = d.LambdaBA
 	enc.LambdaDKG = d.LambdaDKG
@@ -53,7 +54,6 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 			enc.FineValues[k] = (*math.HexOrDecimal256)(v)
 		}
 	}
-	enc.MinGasPrice = (*math.HexOrDecimal256)(d.MinGasPrice)
 	return json.Marshal(&enc)
 }
 
@@ -67,6 +67,7 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 		MiningVelocity    *float32                `json:"miningVelocity"`
 		NextHalvingSupply *math.HexOrDecimal256   `json:"nextHalvingSupply"`
 		LastHalvedAmount  *math.HexOrDecimal256   `json:"lastHalvedAmount"`
+		MinGasPrice       *math.HexOrDecimal256   `json:"minGasPrice"`
 		BlockGasLimit     *uint64                 `json:"blockGasLimit"`
 		LambdaBA          *uint64                 `json:"lambdaBA"`
 		LambdaDKG         *uint64                 `json:"lambdaDKG"`
@@ -75,7 +76,6 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 		RoundLength       *uint64                 `json:"roundLength"`
 		MinBlockInterval  *uint64                 `json:"minBlockInterval"`
 		FineValues        []*math.HexOrDecimal256 `json:"fineValues"`
-		MinGasPrice       *math.HexOrDecimal256   `json:"minGasPrice"`
 	}
 	var dec DexconConfig
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -101,6 +101,9 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 	}
 	if dec.LastHalvedAmount != nil {
 		d.LastHalvedAmount = (*big.Int)(dec.LastHalvedAmount)
+	}
+	if dec.MinGasPrice != nil {
+		d.MinGasPrice = (*big.Int)(dec.MinGasPrice)
 	}
 	if dec.BlockGasLimit != nil {
 		d.BlockGasLimit = *dec.BlockGasLimit
@@ -128,9 +131,6 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 		for k, v := range dec.FineValues {
 			d.FineValues[k] = (*big.Int)(v)
 		}
-	}
-	if dec.MinGasPrice != nil {
-		d.MinGasPrice = (*big.Int)(dec.MinGasPrice)
 	}
 	return nil
 }

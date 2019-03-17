@@ -95,7 +95,7 @@ func publicKeyToNodeKeyAddress(pkBytes []byte) (common.Address, error) {
 	return crypto.PubkeyToAddress(*pk), nil
 }
 
-func idToAddress(id coreTypes.NodeID) common.Address {
+func IdToAddress(id coreTypes.NodeID) common.Address {
 	return common.BytesToAddress(id.Hash[12:])
 }
 
@@ -517,7 +517,7 @@ func (s *GovernanceState) DeleteNodeOffsets(n *nodeInfo) error {
 }
 
 func (s *GovernanceState) GetNodeByID(id coreTypes.NodeID) (*nodeInfo, error) {
-	offset := s.NodesOffsetByNodeKeyAddress(idToAddress(id))
+	offset := s.NodesOffsetByNodeKeyAddress(IdToAddress(id))
 	if offset.Cmp(big.NewInt(0)) < 0 {
 		return nil, errors.New("node not found")
 	}
@@ -630,7 +630,7 @@ func (s *GovernanceState) PutDKGMPKReady(addr common.Address, ready bool) {
 }
 func (s *GovernanceState) ClearDKGMPKReady(dkgSet map[coreTypes.NodeID]struct{}) {
 	for id := range dkgSet {
-		s.PutDKGMPKReady(idToAddress(id), false)
+		s.PutDKGMPKReady(IdToAddress(id), false)
 	}
 }
 
@@ -661,7 +661,7 @@ func (s *GovernanceState) PutDKGFinalized(addr common.Address, finalized bool) {
 }
 func (s *GovernanceState) ClearDKGFinalized(dkgSet map[coreTypes.NodeID]struct{}) {
 	for id := range dkgSet {
-		s.PutDKGFinalized(idToAddress(id), false)
+		s.PutDKGFinalized(IdToAddress(id), false)
 	}
 }
 

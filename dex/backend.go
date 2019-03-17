@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dexon-foundation/dexon-consensus/core/syncer"
 	"github.com/dexon-foundation/dexon/accounts"
 	"github.com/dexon-foundation/dexon/consensus"
 	"github.com/dexon-foundation/dexon/consensus/dexcon"
@@ -180,7 +181,12 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	dex.protocolManager = pm
 	dex.network = NewDexconNetwork(pm)
 
-	dex.bp = NewBlockProposer(dex, dMoment)
+	recovery := NewRecovery(chainConfig.Recovery, config.RecoveryNetworkRPC,
+		dex.governance, config.PrivateKey)
+	watchCat := syncer.NewWatchCat(recovery, dex.governance, 10*time.Second,
+		time.Duration(chainConfig.Recovery.Timeout)*time.Second, log.Root())
+
+	dex.bp = NewBlockProposer(dex, watchCat, dMoment)
 	return dex, nil
 }
 

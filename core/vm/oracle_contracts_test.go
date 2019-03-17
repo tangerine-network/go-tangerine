@@ -933,7 +933,7 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 		dkgSets[round] = dkgSet
 
 		for id := range dkgSet {
-			offset := g.s.NodesOffsetByNodeKeyAddress(idToAddress(id))
+			offset := g.s.NodesOffsetByNodeKeyAddress(IdToAddress(id))
 			if offset.Cmp(big.NewInt(0)) < 0 {
 				panic("DKG node does not exist")
 			}

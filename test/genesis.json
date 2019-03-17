@@ -19,6 +19,7 @@
       "miningVelocity": 0.1875,
       "nextHalvingSupply": "0x813f3978f89409844000000",
       "lastHalvedAmount": "0x4d8c55aefb8c05b5c000000",
+      "minGasPrice": "0x3b9aca00",
       "blockGasLimit": 40000000,
       "lambdaBA": 250,
       "lambdaDKG": 1500,
@@ -30,8 +31,12 @@
         "0x21e19e0c9bab2400000",
         "0x21e19e0c9bab2400000",
         "0x152d02c7e14af6800000"
-      ],
-      "minGasPrice": "0x3b9aca00"
+      ]
+    },
+    "recovery": {
+      "contract": "0xf675c0e9bf4b949f50dcec5b224a70f0361d4680",
+      "timeout": 30,
+      "confirmation": 1
     }
   },
   "nonce": "0x42",

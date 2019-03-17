@@ -24,16 +24,18 @@ type blockProposer struct {
 	syncing   int32
 	proposing int32
 	dex       *Dexon
+	watchCat  *syncer.WatchCat
 	dMoment   time.Time
 
 	wg     sync.WaitGroup
 	stopCh chan struct{}
 }
 
-func NewBlockProposer(dex *Dexon, dMoment time.Time) *blockProposer {
+func NewBlockProposer(dex *Dexon, watchCat *syncer.WatchCat, dMoment time.Time) *blockProposer {
 	return &blockProposer{
-		dex:     dex,
-		dMoment: dMoment,
+		dex:      dex,
+		watchCat: watchCat,
+		dMoment:  dMoment,
 	}
 }
 
@@ -116,9 +118,21 @@ func (b *blockProposer) syncConsensus() (*dexCore.Consensus, error) {
 	consensusSync := syncer.NewConsensus(b.dMoment, b.dex.app, b.dex.governance,
 		db, b.dex.network, privkey, log.Root())
 
+	// Start the watchCat.
+	log.Info("Starting sync watchCat ...")
+	b.watchCat.Start()
+
+	// Feed the current block we have in local blockchain.
+	cb := b.dex.blockchain.CurrentBlock()
+	var block coreTypes.Block
+	if err := rlp.DecodeBytes(cb.Header().DexconMeta, &block); err != nil {
+		panic(err)
+	}
+	b.watchCat.Feed(block.Position)
+
 	blocksToSync := func(coreHeight, height uint64) []*coreTypes.Block {
 		var blocks []*coreTypes.Block
-		for len(blocks) < 1024 && coreHeight < height {
+		for coreHeight < height {
 			var block coreTypes.Block
 			b := b.dex.blockchain.GetBlockByNumber(coreHeight + 1)
 			if err := rlp.DecodeBytes(b.Header().DexconMeta, &block); err != nil {
@@ -143,6 +157,7 @@ Loop:
 		if len(blocks) == 0 {
 			break Loop
 		}
+		b.watchCat.Feed(blocks[len(blocks)-1].Position)
 
 		log.Debug("Filling compaction chain", "num", len(blocks),
 			"first", blocks[0].Finalization.Height,
@@ -172,6 +187,8 @@ ListenLoop:
 		select {
 		case ev := <-ch:
 			blocks := blocksToSync(coreHeight, ev.Block.NumberU64())
+			b.watchCat.Feed(blocks[len(blocks)-1].Position)
+
 			if len(blocks) > 0 {
 				log.Debug("Filling compaction chain", "num", len(blocks),
 					"first", blocks[0].Finalization.Height,
@@ -193,8 +210,13 @@ ListenLoop:
 		case <-b.stopCh:
 			log.Debug("Early stop, before consensus core can run")
 			return nil, errors.New("early stop")
+		case <-b.watchCat.Meow():
+			log.Info("WatchCat signaled to stop syncing")
+			consensusSync.ForceSync(true)
+			break ListenLoop
 		}
 	}
 
+	b.watchCat.Stop()
 	return consensusSync.GetSyncedConsensus()
 }

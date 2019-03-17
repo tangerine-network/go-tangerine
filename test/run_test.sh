@@ -1,6 +1,6 @@
 #!/bin/bash
 
-NETWORK="--bootnodes enode://0478aa13c91aa0db8e93b668313b7eb0532fbdb24f64772375373b14dbe326c238ad09ab4469f6442c9a9753f1275aeec2e531912c14a958ed1feb4ae7e227ef@127.0.0.1:30301"
+BOOTNODE_FLAGS="--bootnodes enode://0478aa13c91aa0db8e93b668313b7eb0532fbdb24f64772375373b14dbe326c238ad09ab4469f6442c9a9753f1275aeec2e531912c14a958ed1feb4ae7e227ef@127.0.0.1:30301"
 GENESIS="genesis.json"
 
 GDEX="../build/bin/gdex"
@@ -42,10 +42,12 @@ __FILE__
 
 # A standalone RPC server for accepting RPC requests.
 datadir=$PWD/Dexon.rpc
-rm -rf $datadir
-$GDEX --datadir=$datadir init ${GENESIS}
+if [ "$1" != "--continue" ]; then
+  rm -rf $datadir
+  $GDEX --datadir=$datadir init ${GENESIS}
+fi
 $GDEX \
-  ${NETWORK} \
+  ${BOOTNODE_FLAGS} \
   --verbosity=3 \
   --gcmode=archive \
   --datadir=$datadir --nodekey=keystore/rpc.key \
@@ -61,15 +63,19 @@ NUM_NODES=$(cat ${GENESIS} | grep 'DEXON Test Node' | wc -l)
 # Nodes
 for i in $(seq 0 $(($NUM_NODES - 1))); do
   datadir=$PWD/Dexon.$i
-  rm -rf $datadir
-  $GDEX --datadir=$datadir init ${GENESIS}
+
+  if [ "$1" != "--continue" ]; then
+    rm -rf $datadir
+    $GDEX --datadir=$datadir init ${GENESIS}
+  fi
   $GDEX \
-    ${NETWORK} \
+    ${BOOTNODE_FLAGS} \
     --bp \
     --verbosity=4 \
     --gcmode=archive \
     --datadir=$datadir --nodekey=keystore/test$i.key \
     --port=$((30305 + $i)) \
+    --recovery.network-rpc="https://rinkeby.infura.io" \
     --rpc --rpcapi=eth,net,web3,debug \
     --rpcaddr=0.0.0.0 --rpcport=$((8547 + $i * 2)) \
     --ws --wsapi=eth,net,web3,debug \
