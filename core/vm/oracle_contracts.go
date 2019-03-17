@@ -75,6 +75,7 @@ const (
 	miningVelocityLoc
 	nextHalvingSupplyLoc
 	lastHalvedAmountLoc
+	minGasPriceLoc
 	blockGasLimitLoc
 	lambdaBALoc
 	lambdaDKGLoc
@@ -84,7 +85,6 @@ const (
 	minBlockIntervalLoc
 	fineValuesLoc
 	finedRecordsLoc
-	minGasPriceLoc // TODO(w): reorder this before mainnet
 )
 
 func publicKeyToNodeKeyAddress(pkBytes []byte) (common.Address, error) {
