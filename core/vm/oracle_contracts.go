@@ -1242,6 +1242,10 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 		return g.penalize()
 	}
 
+	if dkgComplaint.Reset != g.state.DKGResetCount(round).Uint64() {
+		return g.penalize()
+	}
+
 	// DKGComplaint must belongs to someone in DKG set.
 	if !g.inDKGSet(round, dkgComplaint.ProposerID) {
 		return g.penalize()
@@ -1324,6 +1328,10 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 		return g.penalize()
 	}
 
+	if dkgMasterPK.Reset != g.state.DKGResetCount(round).Uint64() {
+		return g.penalize()
+	}
+
 	// DKGMasterPublicKey must belongs to someone in DKG set.
 	if !g.inDKGSet(round, dkgMasterPK.ProposerID) {
 		return g.penalize()
@@ -1347,6 +1355,10 @@ func (g *GovernanceContract) addDKGMPKReady(round *big.Int, ready []byte) ([]byt
 
 	var dkgReady dkgTypes.MPKReady
 	if err := rlp.DecodeBytes(ready, &dkgReady); err != nil {
+		return g.penalize()
+	}
+
+	if dkgReady.Reset != g.state.DKGResetCount(round).Uint64() {
 		return g.penalize()
 	}
 
@@ -1377,6 +1389,10 @@ func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]
 
 	var dkgFinalize dkgTypes.Finalize
 	if err := rlp.DecodeBytes(finalize, &dkgFinalize); err != nil {
+		return g.penalize()
+	}
+
+	if dkgFinalize.Reset != g.state.DKGResetCount(round).Uint64() {
 		return g.penalize()
 	}
 
