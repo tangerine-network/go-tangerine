@@ -776,7 +776,8 @@ func (f VerifyBlockFactory) New(app App, center *ProductCenter, stopTimeMu *sync
 	return &f
 }
 
-func (f VerifyBlockFactory) NewWithTester(app App, center *ProductCenter, stopTimeMu *sync.RWMutex) *VerifyBlockFactory {
+func (f VerifyBlockFactory) NewWithTester(app App, center *ProductCenter, masterKey *ecdsa.PrivateKey,
+	stopTimeMu *sync.RWMutex) *VerifyBlockFactory {
 	factory := f.New(app, center, stopTimeMu)
 	factory.testers = []Tester{
 		vbWitnessDataDecodeTester{}.New(app, 10, 5, 3),
@@ -784,12 +785,13 @@ func (f VerifyBlockFactory) NewWithTester(app App, center *ProductCenter, stopTi
 		vbWitnessDataTester{}.New(app, 30, 5, 3),
 		vbBlockHeightTester{}.New(app, 40, 3, 3),
 		vbPayloadDecodeTester{}.New(app, 50, 5, 3),
-		vbTxNonceSequenceTester{}.New(app, 60, 5, 3),
-		vbTxNonceIncrementTester{}.New(app, 70, 5, 3),
-		vbTxIntrinsicGasTester{}.New(app, 80, 5, 3),
-		vbTxGasTooLowTester{}.New(app, 90, 5, 3),
-		vbInsufficientFundsTester{}.New(app, 100, 5, 3),
-		vbBlockLimitTester{}.New(app, 110, 5, 3),
+		vbTxNonceSequenceTester{}.New(app, masterKey, 60, 5, 3),
+		vbTxNonceIncrementTester{}.New(app, masterKey, 70, 5, 3),
+		vbTxIntrinsicGasTester{}.New(app, masterKey, 80, 5, 3),
+		vbTxGasTooLowTester{}.New(app, masterKey, 90, 5, 3),
+		vbTxInvalidGasPriceTester{}.New(app, masterKey, 100, 5, 3),
+		vbInsufficientFundsTester{}.New(app, 110, 5, 3),
+		vbBlockLimitTester{}.New(app, 120, 5, 3),
 	}
 
 	return factory
@@ -1068,9 +1070,12 @@ func (t *vbPayloadDecodeTester) ValidateResults(results []reflect.Value) error {
 
 type vbTxNonceSequenceTester struct {
 	baseTester
+
+	key *ecdsa.PrivateKey
 }
 
-func (t vbTxNonceSequenceTester) New(app App, startAt, interval, threshold int) *vbTxNonceSequenceTester {
+func (t vbTxNonceSequenceTester) New(app App, key *ecdsa.PrivateKey, startAt, interval,
+	threshold int) *vbTxNonceSequenceTester {
 	t.baseTester = baseTester{
 		App:          app,
 		testTimer:    time.NewTimer(time.Duration(startAt) * time.Second),
@@ -1078,6 +1083,7 @@ func (t vbTxNonceSequenceTester) New(app App, startAt, interval, threshold int) 
 		threshold:    threshold,
 		self:         t,
 	}
+	t.key = key
 	return &t
 }
 
@@ -1096,12 +1102,7 @@ func (t *vbTxNonceSequenceTester) ViewAndRecord(product Product) {
 func (t vbTxNonceSequenceTester) InputsForTest(product Product) []reflect.Value {
 	app := t.App.(*DexconApp)
 	block := product.(*PrepareWitnessProduct).block
-	var key *ecdsa.PrivateKey
 	var err error
-	key, err = crypto.GenerateKey()
-	if err != nil {
-		panic(err)
-	}
 
 	blockchain := app.blockchain
 	signer := types.NewEIP155Signer(blockchain.Config().ChainID)
@@ -1111,7 +1112,8 @@ func (t vbTxNonceSequenceTester) InputsForTest(product Product) []reflect.Value 
 			continue
 		}
 
-		tx, err := types.SignTx(types.NewTransaction(i, common.Address{}, nil, 21000, nil, nil), signer, key)
+		tx, err := types.SignTx(
+			types.NewTransaction(i, common.Address{}, nil, 21000, new(big.Int).SetInt64(1e9), nil), signer, t.key)
 		if err != nil {
 			panic(err)
 		}
@@ -1148,9 +1150,12 @@ func (t *vbTxNonceSequenceTester) ValidateResults(results []reflect.Value) error
 
 type vbTxNonceIncrementTester struct {
 	baseTester
+
+	key *ecdsa.PrivateKey
 }
 
-func (t vbTxNonceIncrementTester) New(app App, startAt, interval, threshold int) *vbTxNonceIncrementTester {
+func (t vbTxNonceIncrementTester) New(app App, key *ecdsa.PrivateKey, startAt, interval,
+	threshold int) *vbTxNonceIncrementTester {
 	t.baseTester = baseTester{
 		App:          app,
 		testTimer:    time.NewTimer(time.Duration(startAt) * time.Second),
@@ -1158,6 +1163,7 @@ func (t vbTxNonceIncrementTester) New(app App, startAt, interval, threshold int)
 		threshold:    threshold,
 		self:         t,
 	}
+	t.key = key
 	return &t
 }
 
@@ -1176,16 +1182,14 @@ func (t *vbTxNonceIncrementTester) ViewAndRecord(product Product) {
 func (t vbTxNonceIncrementTester) InputsForTest(product Product) []reflect.Value {
 	app := t.App.(*DexconApp)
 	block := product.(*PrepareWitnessProduct).block
-	key, err := crypto.GenerateKey()
-	if err != nil {
-		panic(err)
-	}
+	var err error
 
 	blockchain := app.blockchain
 	signer := types.NewEIP155Signer(blockchain.Config().ChainID)
 	var txs []*types.Transaction
 	for i := uint64(1); i < 4; i++ {
-		tx, err := types.SignTx(types.NewTransaction(i, common.Address{}, nil, 21000, nil, nil), signer, key)
+		tx, err := types.SignTx(
+			types.NewTransaction(i, common.Address{}, nil, 21000, new(big.Int).SetInt64(1e9), nil), signer, t.key)
 		if err != nil {
 			panic(err)
 		}
@@ -1222,9 +1226,12 @@ func (t *vbTxNonceIncrementTester) ValidateResults(results []reflect.Value) erro
 
 type vbTxIntrinsicGasTester struct {
 	baseTester
+
+	key *ecdsa.PrivateKey
 }
 
-func (t vbTxIntrinsicGasTester) New(app App, startAt, interval, threshold int) *vbTxIntrinsicGasTester {
+func (t vbTxIntrinsicGasTester) New(app App, key *ecdsa.PrivateKey, startAt, interval,
+	threshold int) *vbTxIntrinsicGasTester {
 	t.baseTester = baseTester{
 		App:          app,
 		testTimer:    time.NewTimer(time.Duration(startAt) * time.Second),
@@ -1232,6 +1239,7 @@ func (t vbTxIntrinsicGasTester) New(app App, startAt, interval, threshold int) *
 		threshold:    threshold,
 		self:         t,
 	}
+	t.key = key
 	return &t
 }
 
@@ -1250,16 +1258,14 @@ func (t *vbTxIntrinsicGasTester) ViewAndRecord(product Product) {
 func (t vbTxIntrinsicGasTester) InputsForTest(product Product) []reflect.Value {
 	app := t.App.(*DexconApp)
 	block := product.(*PrepareWitnessProduct).block
-	key, err := crypto.GenerateKey()
-	if err != nil {
-		panic(err)
-	}
+	var err error
 
 	blockchain := app.blockchain
 	signer := types.NewEIP155Signer(blockchain.Config().ChainID)
 	var txs []*types.Transaction
 	for i := uint64(0); i < 3; i++ {
-		tx, err := types.SignTx(types.NewTransaction(i, common.Address{}, nil, 10000, nil, nil), signer, key)
+		tx, err := types.SignTx(types.NewTransaction(i, common.Address{}, nil, 10000, new(big.Int).SetInt64(1e9), nil),
+			signer, t.key)
 		if err != nil {
 			panic(err)
 		}
@@ -1296,9 +1302,12 @@ func (t *vbTxIntrinsicGasTester) ValidateResults(results []reflect.Value) error 
 
 type vbTxGasTooLowTester struct {
 	baseTester
+
+	key *ecdsa.PrivateKey
 }
 
-func (t vbTxGasTooLowTester) New(app App, startAt, interval, threshold int) *vbTxGasTooLowTester {
+func (t vbTxGasTooLowTester) New(app App, key *ecdsa.PrivateKey, startAt, interval,
+	threshold int) *vbTxGasTooLowTester {
 	t.baseTester = baseTester{
 		App:          app,
 		testTimer:    time.NewTimer(time.Duration(startAt) * time.Second),
@@ -1306,6 +1315,7 @@ func (t vbTxGasTooLowTester) New(app App, startAt, interval, threshold int) *vbT
 		threshold:    threshold,
 		self:         t,
 	}
+	t.key = key
 	return &t
 }
 
@@ -1324,16 +1334,14 @@ func (t *vbTxGasTooLowTester) ViewAndRecord(product Product) {
 func (t vbTxGasTooLowTester) InputsForTest(product Product) []reflect.Value {
 	app := t.App.(*DexconApp)
 	block := product.(*PrepareWitnessProduct).block
-	key, err := crypto.GenerateKey()
-	if err != nil {
-		panic(err)
-	}
+	var err error
 
 	blockchain := app.blockchain
 	signer := types.NewEIP155Signer(blockchain.Config().ChainID)
 	var txs []*types.Transaction
 	for i := uint64(0); i < 3; i++ {
-		tx, err := types.SignTx(types.NewTransaction(i, common.Address{}, nil, 21000, nil, []byte{0x00}), signer, key)
+		tx, err := types.SignTx(
+			types.NewTransaction(i, common.Address{}, nil, 21000, new(big.Int).SetInt64(1e9), []byte{0x00}), signer, t.key)
 		if err != nil {
 			panic(err)
 		}
@@ -1349,6 +1357,82 @@ func (t vbTxGasTooLowTester) InputsForTest(product Product) []reflect.Value {
 }
 
 func (t *vbTxGasTooLowTester) ValidateResults(results []reflect.Value) error {
+	if len(results) > 1 {
+		return fmt.Errorf("unexpected return values: %v", results)
+	}
+
+	switch results[0].Interface().(type) {
+	case coreTypes.BlockVerifyStatus:
+		status := results[0].Interface().(coreTypes.BlockVerifyStatus)
+		if status != coreTypes.VerifyInvalidBlock {
+			return fmt.Errorf("unexpect status %v", status)
+		}
+	default:
+		return fmt.Errorf("unexpect results[0] return type %T", results[0].Interface())
+	}
+
+	t.counter++
+	t.ready = false
+	return nil
+}
+
+type vbTxInvalidGasPriceTester struct {
+	baseTester
+
+	key *ecdsa.PrivateKey
+}
+
+func (t vbTxInvalidGasPriceTester) New(app App, key *ecdsa.PrivateKey, startAt, interval,
+	threshold int) *vbTxInvalidGasPriceTester {
+	t.baseTester = baseTester{
+		App:          app,
+		testTimer:    time.NewTimer(time.Duration(startAt) * time.Second),
+		testInterval: time.Duration(interval) * time.Second,
+		threshold:    threshold,
+		self:         t,
+	}
+	t.key = key
+	return &t
+}
+
+func (t *vbTxInvalidGasPriceTester) ViewAndRecord(product Product) {
+	select {
+	case <-t.testTimer.C:
+		switch product.(type) {
+		case *PrepareWitnessProduct:
+			t.ready = true
+		}
+		t.testTimer.Reset(t.testInterval)
+	default:
+	}
+}
+
+func (t vbTxInvalidGasPriceTester) InputsForTest(product Product) []reflect.Value {
+	app := t.App.(*DexconApp)
+	block := product.(*PrepareWitnessProduct).block
+	var err error
+
+	blockchain := app.blockchain
+	signer := types.NewEIP155Signer(blockchain.Config().ChainID)
+	var txs []*types.Transaction
+	for i := uint64(0); i < 3; i++ {
+		tx, err := types.SignTx(
+			types.NewTransaction(i, common.Address{}, nil, 21000, new(big.Int).SetInt64(1e8), nil), signer, t.key)
+		if err != nil {
+			panic(err)
+		}
+		txs = append(txs, tx)
+	}
+
+	block.Payload, err = rlp.EncodeToBytes(txs)
+	if err != nil {
+		panic(err)
+	}
+
+	return []reflect.Value{reflect.ValueOf(&block)}
+}
+
+func (t *vbTxInvalidGasPriceTester) ValidateResults(results []reflect.Value) error {
 	if len(results) > 1 {
 		return fmt.Errorf("unexpected return values: %v", results)
 	}
@@ -1407,7 +1491,8 @@ func (t vbInsufficientFundsTester) InputsForTest(product Product) []reflect.Valu
 	signer := types.NewEIP155Signer(blockchain.Config().ChainID)
 	var txs []*types.Transaction
 	for i := uint64(0); i < 3; i++ {
-		tx, err := types.SignTx(types.NewTransaction(i, common.Address{}, big.NewInt(1), 21000, nil, nil), signer, key)
+		tx, err := types.SignTx(
+			types.NewTransaction(i, common.Address{}, big.NewInt(1), 21000, new(big.Int).SetInt64(1e9), nil), signer, key)
 		if err != nil {
 			panic(err)
 		}
@@ -1481,7 +1566,8 @@ func (t vbBlockLimitTester) InputsForTest(product Product) []reflect.Value {
 	signer := types.NewEIP155Signer(blockchain.Config().ChainID)
 	var txs []*types.Transaction
 	for i := uint64(0); i < 3; i++ {
-		tx, err := types.SignTx(types.NewTransaction(i, common.Address{}, nil, 10e10, nil, nil), signer, key)
+		tx, err := types.SignTx(types.NewTransaction(i, common.Address{}, nil, 10e10, new(big.Int).SetInt64(1e9), nil),
+			signer, key)
 		if err != nil {
 			panic(err)
 		}
@@ -2092,7 +2178,7 @@ func (f *TxFactory) Run() {
 						crypto.PubkeyToAddress(f.keys[i].PublicKey),
 						big.NewInt(1),
 						21000,
-						big.NewInt(10e9),
+						big.NewInt(1e9),
 						[]byte{})
 
 					signer := types.NewEIP155Signer(blockchain.Config().ChainID)
@@ -2147,7 +2233,7 @@ func TestDexonApp(t *testing.T) {
 	configFactory := ConfigFactory{}.New(dex.app, center, stopTimeMu, masterKey)
 	preparePayloadFactory := PreparePayloadFactory{}.NewWithTester(dex.app, center, stopTimeMu)
 	prepareWitnessFactory := PrepareWitnessFactory{}.NewWithTester(dex.app, center, stopTimeMu)
-	verifyBlockFactory := VerifyBlockFactory{}.NewWithTester(dex.app, center, stopTimeMu)
+	verifyBlockFactory := VerifyBlockFactory{}.NewWithTester(dex.app, center, masterKey, stopTimeMu)
 	blockConfirmedFactory := BlockConfirmedFactory{}.NewWithTester(dex.app, center, stopTimeMu, masterKey)
 	blockDeliveredFactory := BlockDeliveredFactory{}.NewWithTester(dex.app, center, stopTimeMu)
 	txFactory := TxFactory{}.New(dex.app, center, stopTimeMu, keys)

@@ -181,6 +181,7 @@ func (d *DexconApp) preparePayload(ctx context.Context, position coreTypes.Posit
 	}
 
 	blockGasLimit := new(big.Int).SetUint64(d.gov.DexconConfiguration(position.Round).BlockGasLimit)
+	minGasPrice := d.gov.DexconConfiguration(position.Round).MinGasPrice
 	blockGasUsed := new(big.Int)
 	allTxs := make([]*types.Transaction, 0, 10000)
 
@@ -216,6 +217,11 @@ addressMap:
 		// Warning: the pending tx will also affect by syncing, so startIndex maybe negative
 		for i := startIndex; i >= 0 && i < len(txs); i++ {
 			tx := txs[i]
+			if minGasPrice.Cmp(tx.GasPrice()) > 0 {
+				log.Error("Invalid gas price minGas(%v) > get(%v)", minGasPrice, tx.GasPrice())
+				break
+			}
+
 			intrGas, err := core.IntrinsicGas(tx.Data(), tx.To() == nil, true)
 			if err != nil {
 				log.Error("Failed to calculate intrinsic gas", "error", err)
