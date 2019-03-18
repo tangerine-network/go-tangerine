@@ -156,6 +156,7 @@ Loop:
 		blocks := blocksToSync(coreHeight, currentBlock.NumberU64())
 
 		if len(blocks) == 0 {
+			log.Debug("No new block to sync", "current", currentBlock.NumberU64())
 			break Loop
 		}
 		b.watchCat.Feed(blocks[len(blocks)-1].Position)
@@ -164,6 +165,7 @@ Loop:
 			"first", blocks[0].Finalization.Height,
 			"last", blocks[len(blocks)-1].Finalization.Height)
 		if _, err := consensusSync.SyncBlocks(blocks, false); err != nil {
+			log.Debug("SyncBlocks fail", "err", err)
 			return nil, err
 		}
 		coreHeight = blocks[len(blocks)-1].Finalization.Height
@@ -181,6 +183,8 @@ Loop:
 	ch := make(chan core.ChainHeadEvent)
 	sub := b.dex.blockchain.SubscribeChainHeadEvent(ch)
 	defer sub.Unsubscribe()
+
+	log.Debug("Listen chain head event until synced")
 
 	// Listen chain head event until synced.
 ListenLoop:

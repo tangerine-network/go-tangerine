@@ -259,13 +259,17 @@ func (pm *ProtocolManager) removePeer(id string) {
 
 	// Unregister the peer from the downloader and Ethereum peer set
 	pm.downloader.UnregisterPeer(id)
+	log.Debug("after downloader unregister peer", "id", id)
 	if err := pm.peers.Unregister(id); err != nil {
 		log.Error("Peer removal failed", "peer", id, "err", err)
 	}
+	log.Debug("after unregister peer", "id", id)
 	// Hard disconnect at the networking layer
 	if peer != nil {
+		log.Debug("removePeer: peer disconnect")
 		peer.Peer.Disconnect(p2p.DiscUselessPeer)
 	}
+	log.Debug("peer removed", "id", id)
 }
 
 func (pm *ProtocolManager) Start(srvr p2pServer, maxPeers int) {
@@ -392,15 +396,45 @@ func (pm *ProtocolManager) handle(p *peer) error {
 // handleMsg is invoked whenever an inbound message is received from a remote
 // peer. The remote connection is torn down upon returning any error.
 func (pm *ProtocolManager) handleMsg(p *peer) error {
+	ch := make(chan struct{})
+	defer close(ch)
+
+	go func() {
+		n := 0
+		for {
+			select {
+			case <-time.After(time.Second):
+				p.Log().Debug("no msg more than 1s", "n", n)
+				n++
+			case <-ch:
+				return
+			}
+		}
+	}()
+
 	// Read the next message from the remote peer, and ensure it's fully consumed
 	msg, err := p.rw.ReadMsg()
 	if err != nil {
 		return err
 	}
+	ch <- struct{}{}
 	if msg.Size > ProtocolMaxMsgSize {
 		return errResp(ErrMsgTooLarge, "%v > %v", msg.Size, ProtocolMaxMsgSize)
 	}
 	defer msg.Discard()
+
+	go func() {
+		n := 0
+		for {
+			select {
+			case <-time.After(100 * time.Millisecond):
+				p.Log().Debug("handle msg more than 100ms", "n", n, "code", msg.Code)
+				n++
+			case <-ch:
+				return
+			}
+		}
+	}()
 
 	// Handle the message depending on its contents
 	switch {

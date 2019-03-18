@@ -249,6 +249,7 @@ loop:
 
 	close(p.closed)
 	p.rw.close(reason)
+	p.Log().Debug("wait for close")
 	p.wg.Wait()
 	return remoteRequested, err
 }
@@ -257,6 +258,7 @@ func (p *Peer) pingLoop() {
 	ping := time.NewTimer(pingInterval)
 	defer p.wg.Done()
 	defer ping.Stop()
+	defer p.Log().Debug("pingLoop stopped")
 	for {
 		select {
 		case <-ping.C:
@@ -273,6 +275,7 @@ func (p *Peer) pingLoop() {
 
 func (p *Peer) readLoop(errc chan<- error) {
 	defer p.wg.Done()
+	defer p.Log().Debug("readLoop stopped")
 	for {
 		msg, err := p.rw.ReadMsg()
 		if err != nil {
@@ -317,6 +320,7 @@ func (p *Peer) handle(msg Msg) error {
 		case proto.in <- msg:
 			return nil
 		case <-p.closed:
+			p.Log().Debug("peer handle closed return EOF")
 			return io.EOF
 		}
 	}
