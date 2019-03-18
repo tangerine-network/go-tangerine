@@ -1265,6 +1265,7 @@ func SetDexConfig(ctx *cli.Context, stack *node.Node, cfg *dex.Config) {
 	}
 
 	cfg.RecoveryNetworkRPC = ctx.GlobalString(RecoveryNetworkRPCFlag.Name)
+	defaultRecoveryNetworkRPC := "https://rinkeby.infura.io"
 
 	// Override any default configs for hard coded networks.
 	switch {
@@ -1273,7 +1274,7 @@ func SetDexConfig(ctx *cli.Context, stack *node.Node, cfg *dex.Config) {
 			cfg.NetworkId = 238
 		}
 		if !ctx.GlobalIsSet(RecoveryNetworkRPCFlag.Name) {
-			cfg.RecoveryNetworkRPC = "http://rinkeby.infura.io"
+			cfg.RecoveryNetworkRPC = defaultRecoveryNetworkRPC
 		}
 		cfg.Genesis = core.DefaultTestnetGenesisBlock()
 	case ctx.GlobalBool(TaipeiFlag.Name):
@@ -1281,7 +1282,7 @@ func SetDexConfig(ctx *cli.Context, stack *node.Node, cfg *dex.Config) {
 			cfg.NetworkId = 239
 		}
 		if !ctx.GlobalIsSet(RecoveryNetworkRPCFlag.Name) {
-			cfg.RecoveryNetworkRPC = "http://rinkeby.infura.io"
+			cfg.RecoveryNetworkRPC = defaultRecoveryNetworkRPC
 		}
 		cfg.Genesis = core.DefaultTaipeiGenesisBlock()
 	case ctx.GlobalBool(YilanFlag.Name):
@@ -1289,7 +1290,7 @@ func SetDexConfig(ctx *cli.Context, stack *node.Node, cfg *dex.Config) {
 			cfg.NetworkId = 240
 		}
 		if !ctx.GlobalIsSet(RecoveryNetworkRPCFlag.Name) {
-			cfg.RecoveryNetworkRPC = "http://rinkeby.infura.io"
+			cfg.RecoveryNetworkRPC = defaultRecoveryNetworkRPC
 		}
 		cfg.Genesis = core.DefaultYilanGenesisBlock()
 	case ctx.GlobalBool(DeveloperFlag.Name):
@@ -1297,7 +1298,7 @@ func SetDexConfig(ctx *cli.Context, stack *node.Node, cfg *dex.Config) {
 			cfg.NetworkId = 1337
 		}
 		if !ctx.GlobalIsSet(RecoveryNetworkRPCFlag.Name) {
-			cfg.RecoveryNetworkRPC = "http://rinkeby.infura.io"
+			cfg.RecoveryNetworkRPC = defaultRecoveryNetworkRPC
 		}
 		// Create new developer account or reuse existing one
 		var (
