@@ -615,7 +615,7 @@ func (s *GovernanceState) ClearDKGComplaints() {
 	s.erase1DByteArray(big.NewInt(dkgComplaintsLoc))
 }
 
-// mapping(address => bool) public dkgReady;
+// mapping(address => bool) public dkgMPKReadys;
 func (s *GovernanceState) DKGMPKReady(addr common.Address) bool {
 	mapLoc := s.getMapLoc(big.NewInt(dkgReadyLoc), addr.Bytes())
 	return s.getStateBigInt(mapLoc).Cmp(big.NewInt(0)) != 0
@@ -628,13 +628,13 @@ func (s *GovernanceState) PutDKGMPKReady(addr common.Address, ready bool) {
 	}
 	s.setStateBigInt(mapLoc, res)
 }
-func (s *GovernanceState) ClearDKGMPKReady(dkgSet map[coreTypes.NodeID]struct{}) {
+func (s *GovernanceState) ClearDKGMPKReadys(dkgSet map[coreTypes.NodeID]struct{}) {
 	for id := range dkgSet {
 		s.PutDKGMPKReady(IdToAddress(id), false)
 	}
 }
 
-// uint256 public dkgReadysCount;
+// uint256 public dkgMPKReadysCount;
 func (s *GovernanceState) DKGMPKReadysCount() *big.Int {
 	return s.getStateBigInt(big.NewInt(dkgReadysCountLoc))
 }
@@ -646,7 +646,7 @@ func (s *GovernanceState) ResetDKGMPKReadysCount() {
 	s.setStateBigInt(big.NewInt(dkgReadysCountLoc), big.NewInt(0))
 }
 
-// mapping(address => bool) public dkgFinalized;
+// mapping(address => bool) public dkgFinalizeds;
 func (s *GovernanceState) DKGFinalized(addr common.Address) bool {
 	mapLoc := s.getMapLoc(big.NewInt(dkgFinalizedLoc), addr.Bytes())
 	return s.getStateBigInt(mapLoc).Cmp(big.NewInt(0)) != 0
@@ -659,7 +659,7 @@ func (s *GovernanceState) PutDKGFinalized(addr common.Address, finalized bool) {
 	}
 	s.setStateBigInt(mapLoc, res)
 }
-func (s *GovernanceState) ClearDKGFinalized(dkgSet map[coreTypes.NodeID]struct{}) {
+func (s *GovernanceState) ClearDKGFinalizeds(dkgSet map[coreTypes.NodeID]struct{}) {
 	for id := range dkgSet {
 		s.PutDKGFinalized(IdToAddress(id), false)
 	}
@@ -1203,9 +1203,9 @@ func (g *GovernanceContract) clearDKG() {
 	dkgSet := g.getDKGSet(g.evm.Round)
 	g.state.ClearDKGMasterPublicKeys()
 	g.state.ClearDKGComplaints()
-	g.state.ClearDKGMPKReady(dkgSet)
+	g.state.ClearDKGMPKReadys(dkgSet)
 	g.state.ResetDKGMPKReadysCount()
-	g.state.ClearDKGFinalized(dkgSet)
+	g.state.ClearDKGFinalizeds(dkgSet)
 	g.state.ResetDKGFinalizedsCount()
 }
 
@@ -2041,7 +2041,7 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return res, nil
-	case "dkgReadys":
+	case "dkgMPKReadys":
 		addr := common.Address{}
 		if err := method.Inputs.Unpack(&addr, arguments); err != nil {
 			return nil, errExecutionReverted
@@ -2052,7 +2052,7 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return res, nil
-	case "dkgReadysCount":
+	case "dkgMPKReadysCount":
 		count := g.state.DKGMPKReadysCount()
 		res, err := method.Outputs.Pack(count)
 		if err != nil {

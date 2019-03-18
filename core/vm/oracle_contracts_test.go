@@ -910,9 +910,9 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 			dkgSet := dkgSets[round-1]
 			g.s.ClearDKGMasterPublicKeys()
 			g.s.ClearDKGComplaints()
-			g.s.ClearDKGMPKReady(dkgSet)
+			g.s.ClearDKGMPKReadys(dkgSet)
 			g.s.ResetDKGMPKReadysCount()
-			g.s.ClearDKGFinalized(dkgSet)
+			g.s.ClearDKGFinalizeds(dkgSet)
 			g.s.ResetDKGFinalizedsCount()
 			g.s.SetDKGRound(big.NewInt(int64(round)))
 		}
