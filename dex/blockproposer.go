@@ -122,6 +122,7 @@ func (b *blockProposer) syncConsensus() (*dexCore.Consensus, error) {
 	// Start the watchCat.
 	log.Info("Starting sync watchCat ...")
 	b.watchCat.Start()
+	defer b.watchCat.Stop()
 
 	// Feed the current block we have in local blockchain.
 	cb := b.dex.blockchain.CurrentBlock()
@@ -217,11 +218,25 @@ ListenLoop:
 			return nil, errors.New("early stop")
 		case <-b.watchCat.Meow():
 			log.Info("WatchCat signaled to stop syncing")
+
+			// Sleep until the next consensus start time slot.
+			// The interval T_i need to meet the following requirement:
+			//
+			//   T_i > T_timeout + T_panic + T_restart
+			//
+			// Currently, T_timeout = 120, T_panic = 60, T_restart ~ 60
+			//
+			// We set T_i = 600 to be safe.
+
+			interval := int64(600)
+			nextDMoment := (time.Now().Unix()/interval + 1) * interval
+			log.Info("Sleeping until next starting time", "time", nextDMoment)
+			time.Sleep(time.Duration(nextDMoment-time.Now().Unix()) * time.Second)
+
 			consensusSync.ForceSync(true)
 			break ListenLoop
 		}
 	}
 
-	b.watchCat.Stop()
 	return consensusSync.GetSyncedConsensus()
 }
