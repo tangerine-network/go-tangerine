@@ -659,6 +659,23 @@ const GovernanceABIJSON = `
         "type": "address"
       },
       {
+        "indexed": true,
+        "name": "NewOwnerAddress",
+        "type": "address"
+      }
+    ],
+    "name": "NodeOwnershipTransfered",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "NodeAddress",
+        "type": "address"
+      },
+      {
         "indexed": false,
         "name": "Amount",
         "type": "uint256"

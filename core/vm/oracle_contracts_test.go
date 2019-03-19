@@ -271,6 +271,20 @@ func (g *OracleContractsTestSuite) TestTransferNodeOwnership() {
 	g.Require().Equal(uint64(0), g.s.NodesOffsetByNodeKeyAddress(nodeKeyAddr).Uint64())
 	g.Require().Equal(offset.Uint64(), g.s.NodesOffsetByAddress(newAddr).Uint64())
 	g.Require().Equal(offset.Uint64(), g.s.NodesOffsetByNodeKeyAddress(newNodeKeyAddr).Uint64())
+
+	// Call with owner.
+	privKey2, addr2 := g.newPrefundAccount()
+	pk2 := crypto.FromECDSAPub(&privKey2.PublicKey)
+	input, err = GovernanceABI.ABI.Pack("register", pk2, "Test2", "test1@dexon.org", "Taipei", "https://dexon.org")
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, addr2, input, amount)
+	g.Require().NoError(err)
+
+	// Transfer to duplicate owner address.
+	input, err = GovernanceABI.ABI.Pack("transferNodeOwnership", addr2)
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, newAddr, input, amount)
+	g.Require().Error(err)
 }
 
 func (g *OracleContractsTestSuite) TestStakingMechanism() {
