@@ -478,6 +478,8 @@ func (d *DexconApp) BlockDelivered(
 
 // BlockConfirmed is called when a block is confirmed.
 func (d *DexconApp) BlockConfirmed(block coreTypes.Block) {
+	propBlockConfirmLatency.Update(time.Since(block.Timestamp).Nanoseconds() / 1000)
+
 	d.appMu.Lock()
 	defer d.appMu.Unlock()
 

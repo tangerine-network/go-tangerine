@@ -22,6 +22,7 @@ import (
 )
 
 var (
+	propBlockConfirmLatency                = metrics.NewRegisteredGauge("dex/prop/blockconfirm/latency", nil)
 	propTxnInPacketsMeter                  = metrics.NewRegisteredMeter("dex/prop/txns/in/packets", nil)
 	propTxnInTrafficMeter                  = metrics.NewRegisteredMeter("dex/prop/txns/in/traffic", nil)
 	propTxnOutPacketsMeter                 = metrics.NewRegisteredMeter("dex/prop/txns/out/packets", nil)
