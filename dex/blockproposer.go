@@ -121,16 +121,20 @@ func (b *blockProposer) syncConsensus() (*dexCore.Consensus, error) {
 
 	// Start the watchCat.
 	log.Info("Starting sync watchCat ...")
+
 	b.watchCat.Start()
 	defer b.watchCat.Stop()
 
 	// Feed the current block we have in local blockchain.
 	cb := b.dex.blockchain.CurrentBlock()
-	var block coreTypes.Block
-	if err := rlp.DecodeBytes(cb.Header().DexconMeta, &block); err != nil {
-		panic(err)
+
+	if cb.NumberU64() > 0 {
+		var block coreTypes.Block
+		if err := rlp.DecodeBytes(cb.Header().DexconMeta, &block); err != nil {
+			panic(err)
+		}
+		b.watchCat.Feed(block.Position)
 	}
-	b.watchCat.Feed(block.Position)
 
 	blocksToSync := func(coreHeight, height uint64) []*coreTypes.Block {
 		var blocks []*coreTypes.Block
