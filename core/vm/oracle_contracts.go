@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"math"
 	"math/big"
 	"sort"
 
@@ -84,6 +85,8 @@ const (
 	lambdaBALoc
 	lambdaDKGLoc
 	notarySetSizeLoc
+	notaryParamAlphaLoc
+	notaryParamBetaLoc
 	dkgSetSizeLoc
 	roundLengthLoc
 	minBlockIntervalLoc
@@ -816,10 +819,42 @@ func (s *GovernanceState) LambdaDKG() *big.Int {
 func (s *GovernanceState) NotarySetSize() *big.Int {
 	return s.getStateBigInt(big.NewInt(notarySetSizeLoc))
 }
+func (s *GovernanceState) CalNotarySetSize() {
+	nodeSetSize := float64(len(s.QualifiedNodes()))
+	setSize := math.Ceil((nodeSetSize*0.6-1)/3)*3 + 1
+
+	if nodeSetSize >= 80 {
+		alpha := float64(s.NotaryParamAlpha().Uint64()) / decimalMultiplier
+		beta := float64(s.NotaryParamBeta().Uint64()) / decimalMultiplier
+		setSize = math.Ceil(alpha*math.Log(nodeSetSize) - beta)
+	}
+	s.setStateBigInt(big.NewInt(notarySetSizeLoc), big.NewInt(int64(setSize)))
+}
+
+// uint256 public notaryParamAlpha;
+func (s *GovernanceState) NotaryParamAlpha() *big.Int {
+	return s.getStateBigInt(big.NewInt(notaryParamAlphaLoc))
+}
+
+// uint256 public notaryParamBeta;
+func (s *GovernanceState) NotaryParamBeta() *big.Int {
+	return s.getStateBigInt(big.NewInt(notaryParamBetaLoc))
+}
 
 // uint256 public dkgSetSize;
 func (s *GovernanceState) DKGSetSize() *big.Int {
 	return s.getStateBigInt(big.NewInt(dkgSetSizeLoc))
+}
+func (s *GovernanceState) CalDKGSetSize() {
+	nodeSetSize := float64(len(s.QualifiedNodes()))
+	setSize := math.Ceil((nodeSetSize*0.6-1)/3)*3 + 1
+
+	if nodeSetSize >= 100 {
+		alpha := float64(s.NotaryParamAlpha().Uint64()) / decimalMultiplier
+		beta := float64(s.NotaryParamBeta().Uint64()) / decimalMultiplier
+		setSize = math.Ceil(alpha*math.Log(nodeSetSize) - beta)
+	}
+	s.setStateBigInt(big.NewInt(dkgSetSizeLoc), big.NewInt(int64(setSize)))
 }
 
 // uint256 public roundLength;
@@ -939,8 +974,8 @@ func (s *GovernanceState) Configuration() *params.DexconConfig {
 		BlockGasLimit:     s.getStateBigInt(big.NewInt(blockGasLimitLoc)).Uint64(),
 		LambdaBA:          s.getStateBigInt(big.NewInt(lambdaBALoc)).Uint64(),
 		LambdaDKG:         s.getStateBigInt(big.NewInt(lambdaDKGLoc)).Uint64(),
-		NotarySetSize:     uint32(s.getStateBigInt(big.NewInt(notarySetSizeLoc)).Uint64()),
-		DKGSetSize:        uint32(s.getStateBigInt(big.NewInt(dkgSetSizeLoc)).Uint64()),
+		NotaryParamAlpha:  float32(s.getStateBigInt(big.NewInt(notaryParamAlphaLoc)).Uint64()) / decimalMultiplier,
+		NotaryParamBeta:   float32(s.getStateBigInt(big.NewInt(notaryParamBetaLoc)).Uint64()) / decimalMultiplier,
 		RoundLength:       s.getStateBigInt(big.NewInt(roundLengthLoc)).Uint64(),
 		MinBlockInterval:  s.getStateBigInt(big.NewInt(minBlockIntervalLoc)).Uint64(),
 		FineValues:        s.FineValues(),
@@ -958,11 +993,15 @@ func (s *GovernanceState) UpdateConfiguration(cfg *params.DexconConfig) {
 	s.setStateBigInt(big.NewInt(blockGasLimitLoc), big.NewInt(int64(cfg.BlockGasLimit)))
 	s.setStateBigInt(big.NewInt(lambdaBALoc), big.NewInt(int64(cfg.LambdaBA)))
 	s.setStateBigInt(big.NewInt(lambdaDKGLoc), big.NewInt(int64(cfg.LambdaDKG)))
-	s.setStateBigInt(big.NewInt(notarySetSizeLoc), big.NewInt(int64(cfg.NotarySetSize)))
-	s.setStateBigInt(big.NewInt(dkgSetSizeLoc), big.NewInt(int64(cfg.DKGSetSize)))
+	s.setStateBigInt(big.NewInt(notaryParamAlphaLoc), big.NewInt(int64(cfg.NotaryParamAlpha*decimalMultiplier)))
+	s.setStateBigInt(big.NewInt(notaryParamBetaLoc), big.NewInt(int64(cfg.NotaryParamBeta*decimalMultiplier)))
 	s.setStateBigInt(big.NewInt(roundLengthLoc), big.NewInt(int64(cfg.RoundLength)))
 	s.setStateBigInt(big.NewInt(minBlockIntervalLoc), big.NewInt(int64(cfg.MinBlockInterval)))
 	s.SetFineValues(cfg.FineValues)
+
+	// Calculate set size.
+	s.CalNotarySetSize()
+	s.CalDKGSetSize()
 }
 
 type rawConfigStruct struct {
@@ -972,8 +1011,8 @@ type rawConfigStruct struct {
 	MinGasPrice      *big.Int
 	LambdaBA         *big.Int
 	LambdaDKG        *big.Int
-	NotarySetSize    *big.Int
-	DKGSetSize       *big.Int
+	NotaryParamAlpha *big.Int
+	NotaryParamBeta  *big.Int
 	RoundLength      *big.Int
 	MinBlockInterval *big.Int
 	FineValues       []*big.Int
@@ -987,11 +1026,14 @@ func (s *GovernanceState) UpdateConfigurationRaw(cfg *rawConfigStruct) {
 	s.setStateBigInt(big.NewInt(blockGasLimitLoc), cfg.BlockGasLimit)
 	s.setStateBigInt(big.NewInt(lambdaBALoc), cfg.LambdaBA)
 	s.setStateBigInt(big.NewInt(lambdaDKGLoc), cfg.LambdaDKG)
-	s.setStateBigInt(big.NewInt(notarySetSizeLoc), cfg.NotarySetSize)
-	s.setStateBigInt(big.NewInt(dkgSetSizeLoc), cfg.DKGSetSize)
+	s.setStateBigInt(big.NewInt(notaryParamAlphaLoc), cfg.NotaryParamAlpha)
+	s.setStateBigInt(big.NewInt(notaryParamBetaLoc), cfg.NotaryParamBeta)
 	s.setStateBigInt(big.NewInt(roundLengthLoc), cfg.RoundLength)
 	s.setStateBigInt(big.NewInt(minBlockIntervalLoc), cfg.MinBlockInterval)
 	s.SetFineValues(cfg.FineValues)
+
+	s.CalNotarySetSize()
+	s.CalDKGSetSize()
 }
 
 // event ConfigurationChanged();
@@ -1488,6 +1530,7 @@ func (g *GovernanceContract) updateConfiguration(cfg *rawConfigStruct) ([]byte, 
 
 	g.state.UpdateConfigurationRaw(cfg)
 	g.state.emitConfigurationChangedEvent()
+
 	return nil, nil
 }
 
@@ -1530,6 +1573,9 @@ func (g *GovernanceContract) register(
 	if value.Cmp(big.NewInt(0)) > 0 {
 		g.state.IncTotalStaked(value)
 		g.state.emitStaked(caller, value)
+
+		g.state.CalNotarySetSize()
+		g.state.CalDKGSetSize()
 	}
 	return g.useGas(GovernanceActionGasCost)
 }
@@ -1557,6 +1603,10 @@ func (g *GovernanceContract) stake() ([]byte, error) {
 
 	g.state.IncTotalStaked(value)
 	g.state.emitStaked(caller, value)
+
+	g.state.CalNotarySetSize()
+	g.state.CalDKGSetSize()
+
 	return g.useGas(GovernanceActionGasCost)
 }
 
@@ -1590,6 +1640,9 @@ func (g *GovernanceContract) unstake(amount *big.Int) ([]byte, error) {
 
 	g.state.DecTotalStaked(amount)
 	g.state.emitUnstaked(caller, amount)
+
+	g.state.CalNotarySetSize()
+	g.state.CalDKGSetSize()
 
 	return g.useGas(GovernanceActionGasCost)
 }

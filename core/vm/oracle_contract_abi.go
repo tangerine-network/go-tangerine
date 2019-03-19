@@ -141,6 +141,20 @@ const GovernanceABIJSON = `
   {
     "constant": true,
     "inputs": [],
+    "name": "notaryParamBeta",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
     "name": "miningVelocity",
     "outputs": [
       {
@@ -184,6 +198,20 @@ const GovernanceABIJSON = `
     "constant": true,
     "inputs": [],
     "name": "crsRound",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "notaryParamAlpha",
     "outputs": [
       {
         "name": "",
@@ -817,11 +845,11 @@ const GovernanceABIJSON = `
         "type": "uint256"
       },
       {
-        "name": "NotarySetSize",
+        "name": "NotaryParamAlpha",
         "type": "uint256"
       },
       {
-        "name": "DKGSetSize",
+        "name": "NotaryParamBeta",
         "type": "uint256"
       },
       {

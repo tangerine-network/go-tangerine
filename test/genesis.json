@@ -23,8 +23,8 @@
       "blockGasLimit": 40000000,
       "lambdaBA": 250,
       "lambdaDKG": 1500,
-      "notarySetSize": 4,
-      "dkgSetSize": 4,
+      "notaryParamAlpha": 70.5,
+      "notaryParamBeta": 264,
       "roundLength": 100,
       "minBlockInterval": 500,
       "fineValues": [

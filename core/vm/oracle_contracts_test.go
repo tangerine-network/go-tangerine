@@ -492,8 +492,8 @@ func (g *OracleContractsTestSuite) TestUpdateConfiguration() {
 		big.NewInt(8000000),
 		big.NewInt(250),
 		big.NewInt(2500),
-		big.NewInt(4),
-		big.NewInt(4),
+		big.NewInt(int64(70.5*decimalMultiplier)),
+		big.NewInt(264*decimalMultiplier),
 		big.NewInt(600),
 		big.NewInt(900),
 		[]*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)})
@@ -591,7 +591,7 @@ func (g *OracleContractsTestSuite) TestConfigurationReading() {
 	g.Require().NoError(err)
 	err = GovernanceABI.ABI.Unpack(&value, "notarySetSize", res)
 	g.Require().NoError(err)
-	g.Require().Equal(g.config.NotarySetSize, uint32(value.Uint64()))
+	g.Require().True(uint32(value.Uint64()) > 0)
 
 	// DKGRound.
 	input, err = GovernanceABI.ABI.Pack("dkgRound")
@@ -612,7 +612,7 @@ func (g *OracleContractsTestSuite) TestConfigurationReading() {
 	g.Require().NoError(err)
 	err = GovernanceABI.ABI.Unpack(&value, "dkgSetSize", res)
 	g.Require().NoError(err)
-	g.Require().Equal(g.config.DKGSetSize, uint32(value.Uint64()))
+	g.Require().True(uint32(value.Uint64()) > 0)
 
 	// RoundLength.
 	input, err = GovernanceABI.ABI.Pack("roundLength")

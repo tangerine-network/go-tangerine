@@ -99,7 +99,7 @@ func (g *Governance) Configuration(round uint64) *coreTypes.Config {
 	return &coreTypes.Config{
 		LambdaBA:         time.Duration(c.LambdaBA) * time.Millisecond,
 		LambdaDKG:        time.Duration(c.LambdaDKG) * time.Millisecond,
-		NotarySetSize:    c.NotarySetSize,
+		NotarySetSize:    uint32(configHelper.NotarySetSize().Uint64()),
 		DKGSetSize:       c.DKGSetSize,
 		RoundLength:      c.RoundLength,
 		MinBlockInterval: time.Duration(c.MinBlockInterval) * time.Millisecond,
