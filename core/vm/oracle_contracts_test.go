@@ -31,6 +31,7 @@ import (
 	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
 	coreEcdsa "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
 	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
 	coreUtils "github.com/dexon-foundation/dexon-consensus/core/utils"
 
 	"github.com/dexon-foundation/dexon/common"
@@ -908,7 +909,9 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 
 			// Clear DKG states for next round.
 			dkgSet := dkgSets[round-1]
+			g.s.ClearDKGMasterPublicKeyProposed()
 			g.s.ClearDKGMasterPublicKeys()
+			g.s.ClearDKGComplaintProposed()
 			g.s.ClearDKGComplaints()
 			g.s.ClearDKGMPKReadys(dkgSet)
 			g.s.ResetDKGMPKReadysCount()
@@ -939,9 +942,19 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 			}
 			node := g.s.Node(offset)
 			// Prepare MPK.
-			g.s.PushDKGMasterPublicKey(randomBytes(32, 64))
+			x := dkgTypes.MasterPublicKey{}
+			b, err := rlp.EncodeToBytes(&x)
+			if err != nil {
+				panic(err)
+			}
+			g.s.PushDKGMasterPublicKey(b)
 			// Prepare Complaint.
-			g.s.PushDKGComplaint(randomBytes(32, 64))
+			y := dkgTypes.Complaint{}
+			b, err = rlp.EncodeToBytes(&y)
+			if err != nil {
+				panic(err)
+			}
+			g.s.PushDKGComplaint(b)
 			addr := node.Owner
 			addrs[round] = append(addrs[round], addr)
 			// Prepare MPK Ready.

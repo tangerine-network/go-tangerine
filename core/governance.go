@@ -93,10 +93,6 @@ func (g *Governance) GetStateAtRound(round uint64) *vm.GovernanceState {
 	return &vm.GovernanceState{StateDB: s}
 }
 
-func (g *Governance) GetRoundHeight(round uint64) uint64 {
-	return g.GetHeadState().RoundHeight(big.NewInt(int64(round))).Uint64()
-}
-
 func (g *Governance) Configuration(round uint64) *coreTypes.Config {
 	configHelper := g.GetStateForConfigAtRound(round)
 	c := configHelper.Configuration()
@@ -108,6 +104,10 @@ func (g *Governance) Configuration(round uint64) *coreTypes.Config {
 		RoundLength:      c.RoundLength,
 		MinBlockInterval: time.Duration(c.MinBlockInterval) * time.Millisecond,
 	}
+}
+
+func (g *Governance) GetRoundHeight(round uint64) uint64 {
+	return g.GetHeadState().RoundHeight(big.NewInt(int64(round))).Uint64()
 }
 
 func (g *Governance) GetStateForDKGAtRound(round uint64) *vm.GovernanceState {

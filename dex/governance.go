@@ -85,11 +85,16 @@ func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
 	// be included in time.
 	gasPrice = new(big.Int).Mul(gasPrice, big.NewInt(10))
 
+	gasLimit, err := core.IntrinsicGas(data, false, false)
+	if err != nil {
+		return err
+	}
+
 	tx := types.NewTransaction(
 		nonce,
 		vm.GovernanceContractAddress,
 		big.NewInt(0),
-		uint64(10000000),
+		gasLimit+vm.GovernanceActionGasCost,
 		gasPrice,
 		data)
 
