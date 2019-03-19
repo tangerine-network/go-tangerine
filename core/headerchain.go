@@ -519,13 +519,20 @@ func (hc *HeaderChain) verifyDexonHeader(header *types.Header,
 	}
 
 	gs := gov.GetStateForConfigAtRound(header.Round)
-	node, err := gs.GetNodeByID(coreBlock.ProposerID)
-	if err != nil {
-		return err
-	}
 
-	if header.Coinbase != node.Owner {
-		return fmt.Errorf("coinbase mismatch")
+	if coreBlock.IsEmpty() {
+		if header.Coinbase != (common.Address{}) {
+			return fmt.Errorf("coinbase should be nil for empty block")
+		}
+	} else {
+		node, err := gs.GetNodeByID(coreBlock.ProposerID)
+		if err != nil {
+			return err
+		}
+
+		if header.Coinbase != node.Owner {
+			return fmt.Errorf("coinbase mismatch")
+		}
 	}
 
 	if header.Time != uint64(coreBlock.Finalization.Timestamp.UnixNano()/1000000) {
