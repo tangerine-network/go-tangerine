@@ -134,7 +134,8 @@ type ProtocolManager struct {
 	chainHeadSub event.Subscription
 
 	// channels for dexon consensus core
-	receiveCh chan interface{}
+	receiveCh      chan interface{}
+	receiveEnabled bool
 
 	srvr p2pServer
 
@@ -178,6 +179,7 @@ func NewProtocolManager(
 		recordsyncCh:     make(chan *recordsync),
 		quitSync:         make(chan struct{}),
 		receiveCh:        make(chan interface{}, 1024),
+		receiveEnabled:   isBlockProposer,
 		isBlockProposer:  isBlockProposer,
 		app:              app,
 		blockNumberGauge: metrics.GetOrRegisterGauge("dex/blocknumber", nil),
@@ -400,12 +402,17 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	defer close(ch)
 
 	go func() {
-		n := 0
+		maxDelay := time.Minute
+		delay := 1 * time.Second
+		start := time.Now()
 		for {
 			select {
-			case <-time.After(time.Second):
-				p.Log().Debug("no msg more than 1s", "n", n)
-				n++
+			case <-time.After(delay):
+				delay *= 2
+				if delay > maxDelay {
+					delay = maxDelay
+				}
+				p.Log().Debug("no msg for a while", "t", time.Since(start))
 			case <-ch:
 				return
 			}
@@ -424,12 +431,11 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	defer msg.Discard()
 
 	go func() {
-		n := 0
+		start := time.Now()
 		for {
 			select {
 			case <-time.After(100 * time.Millisecond):
-				p.Log().Debug("handle msg more than 100ms", "n", n, "code", msg.Code)
-				n++
+				p.Log().Debug("handle msg too long", "code", msg.Code, "t", time.Since(start))
 			case <-ch:
 				return
 			}
@@ -827,7 +833,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	// Block proposer-only messages.
 
 	case msg.Code == CoreBlockMsg:
-		if !pm.isBlockProposer {
+		if !pm.receiveEnabled {
 			break
 		}
 		var blocks []*coreTypes.Block
@@ -839,7 +845,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			pm.receiveCh <- block
 		}
 	case msg.Code == VoteMsg:
-		if !pm.isBlockProposer {
+		if !pm.receiveEnabled {
 			break
 		}
 		var votes []*coreTypes.Vote
@@ -853,7 +859,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			pm.receiveCh <- vote
 		}
 	case msg.Code == AgreementMsg:
-		if !pm.isBlockProposer {
+		if !pm.receiveEnabled {
 			break
 		}
 		// DKG set is receiver
@@ -864,7 +870,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		p.MarkAgreement(rlpHash(agreement))
 		pm.receiveCh <- &agreement
 	case msg.Code == RandomnessMsg:
-		if !pm.isBlockProposer {
+		if !pm.receiveEnabled {
 			break
 		}
 		// Broadcast this to all peer
@@ -877,7 +883,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			pm.receiveCh <- randomness
 		}
 	case msg.Code == DKGPrivateShareMsg:
-		if !pm.isBlockProposer {
+		if !pm.receiveEnabled {
 			break
 		}
 		// Do not relay this msg
@@ -888,7 +894,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		p.MarkDKGPrivateShares(rlpHash(ps))
 		pm.receiveCh <- &ps
 	case msg.Code == DKGPartialSignatureMsg:
-		if !pm.isBlockProposer {
+		if !pm.receiveEnabled {
 			break
 		}
 		// broadcast in DKG set
@@ -898,7 +904,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		pm.receiveCh <- &psig
 	case msg.Code == PullBlocksMsg:
-		if !pm.isBlockProposer {
+		if !pm.receiveEnabled {
 			break
 		}
 		var hashes coreCommon.Hashes
@@ -909,7 +915,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		log.Debug("Push blocks", "blocks", blocks)
 		return p.SendCoreBlocks(blocks)
 	case msg.Code == PullVotesMsg:
-		if !pm.isBlockProposer {
+		if !pm.receiveEnabled {
 			break
 		}
 		next, ok := pm.nextPullVote.Load(p.ID())
@@ -928,7 +934,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		log.Debug("Push votes", "votes", votes)
 		return p.SendVotes(votes)
 	case msg.Code == PullRandomnessMsg:
-		if !pm.isBlockProposer {
+		if !pm.receiveEnabled {
 			break
 		}
 		var hashes coreCommon.Hashes

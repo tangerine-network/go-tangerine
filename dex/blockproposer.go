@@ -87,7 +87,7 @@ func (b *blockProposer) Stop() {
 	defer b.mu.Unlock()
 
 	if atomic.LoadInt32(&b.running) == 1 {
-		b.dex.protocolManager.isBlockProposer = false
+		b.dex.protocolManager.receiveEnabled = false
 		close(b.stopCh)
 		b.wg.Wait()
 		atomic.StoreInt32(&b.proposing, 0)
@@ -127,7 +127,6 @@ func (b *blockProposer) syncConsensus() (*dexCore.Consensus, error) {
 
 	// Feed the current block we have in local blockchain.
 	cb := b.dex.blockchain.CurrentBlock()
-
 	if cb.NumberU64() > 0 {
 		var block coreTypes.Block
 		if err := rlp.DecodeBytes(cb.Header().DexconMeta, &block); err != nil {
@@ -152,6 +151,9 @@ func (b *blockProposer) syncConsensus() (*dexCore.Consensus, error) {
 
 	// Sync all blocks in compaction chain to core.
 	_, coreHeight := db.GetCompactionChainTipInfo()
+
+	// Stop receiving block proposer message when syncing.
+	b.dex.protocolManager.receiveEnabled = false
 
 Loop:
 	for {
@@ -182,9 +184,6 @@ Loop:
 		}
 	}
 
-	// Enable isBlockProposer flag to start receiving msg.
-	b.dex.protocolManager.isBlockProposer = true
-
 	ch := make(chan core.ChainHeadEvent)
 	sub := b.dex.blockchain.SubscribeChainHeadEvent(ch)
 	defer sub.Unsubscribe()
@@ -207,6 +206,10 @@ ListenLoop:
 				if err != nil {
 					log.Error("SyncBlocks fail", "err", err)
 					return nil, err
+				}
+				if !b.dex.protocolManager.receiveEnabled {
+					// Start receiving block proposer message.
+					b.dex.protocolManager.receiveEnabled = true
 				}
 				if synced {
 					log.Debug("Consensus core synced")
