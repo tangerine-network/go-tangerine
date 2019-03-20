@@ -62,6 +62,7 @@ const (
 	nodesLoc
 	nodesOffsetByAddressLoc
 	nodesOffsetByNodeKeyAddressLoc
+	lastProposedHeightLoc
 	crsRoundLoc
 	crsLoc
 	dkgRoundLoc
@@ -332,7 +333,8 @@ func (s *GovernanceState) DecTotalStaked(amount *big.Int) {
 //     string location;
 //     string url;
 //     uint256 unstaked;
-//     uint256 unstaked_at;
+//     uint256 unstakedAt;
+//     uint256 lastProposedHeight;
 // }
 //
 // Node[] nodes;
@@ -541,6 +543,16 @@ func (s *GovernanceState) GetNodeByID(id coreTypes.NodeID) (*nodeInfo, error) {
 	}
 	node := s.Node(offset)
 	return node, nil
+}
+
+// mapping(address => uint256) public lastProposedHeight;
+func (s *GovernanceState) LastProposedHeight(addr common.Address) *big.Int {
+	loc := s.getMapLoc(big.NewInt(lastProposedHeightLoc), addr.Bytes())
+	return s.getStateBigInt(loc)
+}
+func (s *GovernanceState) PutLastProposedHeight(addr common.Address, height *big.Int) {
+	loc := s.getMapLoc(big.NewInt(lastProposedHeightLoc), addr.Bytes())
+	s.setStateBigInt(loc, height)
 }
 
 // uint256 public crsRound;
@@ -958,6 +970,31 @@ func (s *GovernanceState) Register(
 
 	// Add to network total staked.
 	s.IncTotalStaked(staked)
+}
+
+func (s *GovernanceState) Disqualify(n *nodeInfo) error {
+	nodeAddr, err := publicKeyToNodeKeyAddress(n.PublicKey)
+	if err != nil {
+		return err
+	}
+
+	// Node might already been unstaked in the latest state.
+	offset := s.NodesOffsetByNodeKeyAddress(nodeAddr)
+	if offset.Cmp(big.NewInt(0)) < 0 {
+		return errors.New("node does not exist")
+	}
+
+	// Fine the node so it's staked value is 1 wei under minStake.
+	node := s.Node(offset)
+	extra := new(big.Int).Sub(new(big.Int).Sub(node.Staked, node.Fined), s.MinStake())
+	amount := new(big.Int).Add(extra, big.NewInt(1))
+
+	if amount.Cmp(big.NewInt(0)) > 0 {
+		node.Fined = new(big.Int).Add(node.Fined, amount)
+		s.UpdateNode(offset, node)
+	}
+
+	return nil
 }
 
 const decimalMultiplier = 100000000.0
@@ -2244,6 +2281,16 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		return res, nil
 	case "lastHalvedAmount":
 		res, err := method.Outputs.Pack(g.state.LastHalvedAmount())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "lastProposedHeight":
+		address := common.Address{}
+		if err := method.Inputs.Unpack(&address, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		res, err := method.Outputs.Pack(g.state.LastProposedHeight(address))
 		if err != nil {
 			return nil, errExecutionReverted
 		}

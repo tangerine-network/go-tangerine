@@ -130,7 +130,7 @@ const GovernanceABIJSON = `
         "type": "uint256"
       },
       {
-        "name": "unstaked_at",
+        "name": "unstakedAt",
         "type": "uint256"
       }
     ],
@@ -522,6 +522,25 @@ const GovernanceABIJSON = `
       {
         "name": "",
         "type": "bytes"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "lastProposedHeight",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
       }
     ],
     "payable": false,

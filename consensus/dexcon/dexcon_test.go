@@ -31,12 +31,16 @@ import (
 	"github.com/dexon-foundation/dexon/params"
 )
 
-type GovStateFetcher struct {
+type govStateFetcher struct {
 	statedb *state.StateDB
 }
 
-func (g *GovStateFetcher) GetStateForConfigAtRound(_ uint64) *vm.GovernanceState {
+func (g *govStateFetcher) GetStateForConfigAtRound(_ uint64) *vm.GovernanceState {
 	return &vm.GovernanceState{g.statedb}
+}
+
+func (g *govStateFetcher) NotarySetNodeKeyAddresses(round uint64) (map[common.Address]struct{}, error) {
+	return make(map[common.Address]struct{}), nil
 }
 
 type DexconTestSuite struct {
@@ -86,7 +90,7 @@ func (d *DexconTestSuite) SetupTest() {
 
 func (d *DexconTestSuite) TestBlockRewardCalculation() {
 	consensus := New()
-	consensus.SetGovStateFetcher(&GovStateFetcher{d.stateDB})
+	consensus.SetGovStateFetcher(&govStateFetcher{d.stateDB})
 
 	d.s.IncTotalStaked(big.NewInt(1e18))
 

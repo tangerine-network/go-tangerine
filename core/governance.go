@@ -1,16 +1,22 @@
 package core
 
 import (
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"time"
 
+	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
 	dexCore "github.com/dexon-foundation/dexon-consensus/core"
+	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
+	coreEcdsa "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
 	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
 
+	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/vm"
+	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/rlp"
 )
@@ -41,11 +47,14 @@ func (g *governanceStateDB) StateAt(height uint64) (*state.StateDB, error) {
 }
 
 type Governance struct {
-	db GovernanceStateDB
+	db           GovernanceStateDB
+	nodeSetCache *dexCore.NodeSetCache
 }
 
 func NewGovernance(db GovernanceStateDB) *Governance {
-	return &Governance{db: db}
+	g := &Governance{db: db}
+	g.nodeSetCache = dexCore.NewNodeSetCache(g)
+	return g
 }
 
 func (g *Governance) GetHeadState() *vm.GovernanceState {
@@ -93,6 +102,43 @@ func (g *Governance) GetStateAtRound(round uint64) *vm.GovernanceState {
 	return &vm.GovernanceState{StateDB: s}
 }
 
+func (g *Governance) GetStateForDKGAtRound(round uint64) *vm.GovernanceState {
+	dkgRound := g.GetHeadState().DKGRound().Uint64()
+	if round > dkgRound {
+		return nil
+	}
+	if round == dkgRound {
+		return g.GetHeadState()
+	}
+	return g.GetStateAtRound(round)
+}
+
+func (d *Governance) CRSRound() uint64 {
+	return d.GetHeadState().CRSRound().Uint64()
+}
+
+// CRS returns the CRS for a given round.
+func (d *Governance) CRS(round uint64) coreCommon.Hash {
+	if round <= dexCore.DKGDelayRound {
+		s := d.GetStateAtRound(0)
+		crs := s.CRS()
+		for i := uint64(0); i < round; i++ {
+			crs = crypto.Keccak256Hash(crs[:])
+		}
+		return coreCommon.Hash(crs)
+	}
+	if round > d.CRSRound() {
+		return coreCommon.Hash{}
+	}
+	var s *vm.GovernanceState
+	if round == d.CRSRound() {
+		s = d.GetHeadState()
+	} else {
+		s = d.GetStateAtRound(round)
+	}
+	return coreCommon.Hash(s.CRS())
+}
+
 func (g *Governance) Configuration(round uint64) *coreTypes.Config {
 	configHelper := g.GetStateForConfigAtRound(round)
 	c := configHelper.Configuration()
@@ -110,15 +156,62 @@ func (g *Governance) GetRoundHeight(round uint64) uint64 {
 	return g.GetHeadState().RoundHeight(big.NewInt(int64(round))).Uint64()
 }
 
-func (g *Governance) GetStateForDKGAtRound(round uint64) *vm.GovernanceState {
-	dkgRound := g.GetHeadState().DKGRound().Uint64()
-	if round > dkgRound {
-		return nil
+// NodeSet returns the current node set.
+func (d *Governance) NodeSet(round uint64) []coreCrypto.PublicKey {
+	s := d.GetStateForConfigAtRound(round)
+	var pks []coreCrypto.PublicKey
+
+	for _, n := range s.QualifiedNodes() {
+		pk, err := coreEcdsa.NewPublicKeyFromByteSlice(n.PublicKey)
+		if err != nil {
+			panic(err)
+		}
+		pks = append(pks, pk)
 	}
-	if round == dkgRound {
-		return g.GetHeadState()
+	return pks
+}
+
+func (d *Governance) NotarySet(round uint64) (map[string]struct{}, error) {
+	notarySet, err := d.nodeSetCache.GetNotarySet(round)
+	if err != nil {
+		return nil, err
 	}
-	return g.GetStateAtRound(round)
+
+	r := make(map[string]struct{}, len(notarySet))
+	for id := range notarySet {
+		if key, exists := d.nodeSetCache.GetPublicKey(id); exists {
+			r[hex.EncodeToString(key.Bytes())] = struct{}{}
+		}
+	}
+	return r, nil
+}
+
+func (d *Governance) NotarySetNodeKeyAddresses(round uint64) (map[common.Address]struct{}, error) {
+	notarySet, err := d.nodeSetCache.GetNotarySet(round)
+	if err != nil {
+		return nil, err
+	}
+
+	r := make(map[common.Address]struct{}, len(notarySet))
+	for id := range notarySet {
+		r[vm.IdToAddress(id)] = struct{}{}
+	}
+	return r, nil
+}
+
+func (d *Governance) DKGSet(round uint64) (map[string]struct{}, error) {
+	dkgSet, err := d.nodeSetCache.GetDKGSet(round)
+	if err != nil {
+		return nil, err
+	}
+
+	r := make(map[string]struct{}, len(dkgSet))
+	for id := range dkgSet {
+		if key, exists := d.nodeSetCache.GetPublicKey(id); exists {
+			r[hex.EncodeToString(key.Bytes())] = struct{}{}
+		}
+	}
+	return r, nil
 }
 
 func (g *Governance) DKGComplaints(round uint64) []*dkgTypes.Complaint {

@@ -20,13 +20,8 @@ package dex
 import (
 	"context"
 	"crypto/ecdsa"
-	"encoding/hex"
 	"math/big"
 
-	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
-	dexCore "github.com/dexon-foundation/dexon-consensus/core"
-	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
-	coreEcdsa "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
 	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
 
@@ -42,11 +37,10 @@ import (
 type DexconGovernance struct {
 	*core.Governance
 
-	b            *DexAPIBackend
-	chainConfig  *params.ChainConfig
-	privateKey   *ecdsa.PrivateKey
-	address      common.Address
-	nodeSetCache *dexCore.NodeSetCache
+	b           *DexAPIBackend
+	chainConfig *params.ChainConfig
+	privateKey  *ecdsa.PrivateKey
+	address     common.Address
 }
 
 // NewDexconGovernance returns a governance implementation of the DEXON
@@ -61,7 +55,6 @@ func NewDexconGovernance(backend *DexAPIBackend, chainConfig *params.ChainConfig
 		privateKey:  privKey,
 		address:     crypto.PubkeyToAddress(privKey.PublicKey),
 	}
-	g.nodeSetCache = dexCore.NewNodeSetCache(g)
 	return g
 }
 
@@ -110,34 +103,8 @@ func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {
 	return d.b.SendTx(ctx, tx)
 }
 
-// CRS returns the CRS for a given round.
-func (d *DexconGovernance) CRS(round uint64) coreCommon.Hash {
-	if round <= dexCore.DKGDelayRound {
-		s := d.GetStateAtRound(0)
-		crs := s.CRS()
-		for i := uint64(0); i < round; i++ {
-			crs = crypto.Keccak256Hash(crs[:])
-		}
-		return coreCommon.Hash(crs)
-	}
-	if round > d.CRSRound() {
-		return coreCommon.Hash{}
-	}
-	var s *vm.GovernanceState
-	if round == d.CRSRound() {
-		s = d.GetHeadState()
-	} else {
-		s = d.GetStateAtRound(round)
-	}
-	return coreCommon.Hash(s.CRS())
-}
-
 func (d *DexconGovernance) Round() uint64 {
 	return d.b.CurrentBlock().Round()
-}
-
-func (d *DexconGovernance) CRSRound() uint64 {
-	return d.GetHeadState().CRSRound().Uint64()
 }
 
 // ProposeCRS send proposals of a new CRS
@@ -152,21 +119,6 @@ func (d *DexconGovernance) ProposeCRS(round uint64, signedCRS []byte) {
 	if err != nil {
 		log.Error("failed to send proposeCRS tx", "err", err)
 	}
-}
-
-// NodeSet returns the current node set.
-func (d *DexconGovernance) NodeSet(round uint64) []coreCrypto.PublicKey {
-	s := d.GetStateForConfigAtRound(round)
-	var pks []coreCrypto.PublicKey
-
-	for _, n := range s.QualifiedNodes() {
-		pk, err := coreEcdsa.NewPublicKeyFromByteSlice(n.PublicKey)
-		if err != nil {
-			panic(err)
-		}
-		pks = append(pks, pk)
-	}
-	return pks
 }
 
 // AddDKGComplaint adds a DKGComplaint.
@@ -251,49 +203,6 @@ func (d *DexconGovernance) ReportForkBlock(block1, block2 *coreTypes.Block) {
 	if err != nil {
 		log.Error("failed to send report fork block tx", "err", err)
 	}
-}
-
-func (d *DexconGovernance) NotarySet(round uint64) (map[string]struct{}, error) {
-	notarySet, err := d.nodeSetCache.GetNotarySet(round)
-	if err != nil {
-		return nil, err
-	}
-
-	r := make(map[string]struct{}, len(notarySet))
-	for id := range notarySet {
-		if key, exists := d.nodeSetCache.GetPublicKey(id); exists {
-			r[hex.EncodeToString(key.Bytes())] = struct{}{}
-		}
-	}
-	return r, nil
-}
-
-func (d *DexconGovernance) NotarySetAddresses(round uint64) (map[common.Address]struct{}, error) {
-	notarySet, err := d.nodeSetCache.GetNotarySet(round)
-	if err != nil {
-		return nil, err
-	}
-
-	r := make(map[common.Address]struct{}, len(notarySet))
-	for id := range notarySet {
-		r[vm.IdToAddress(id)] = struct{}{}
-	}
-	return r, nil
-}
-
-func (d *DexconGovernance) DKGSet(round uint64) (map[string]struct{}, error) {
-	dkgSet, err := d.nodeSetCache.GetDKGSet(round)
-	if err != nil {
-		return nil, err
-	}
-
-	r := make(map[string]struct{}, len(dkgSet))
-	for id := range dkgSet {
-		if key, exists := d.nodeSetCache.GetPublicKey(id); exists {
-			r[hex.EncodeToString(key.Bytes())] = struct{}{}
-		}
-	}
-	return r, nil
 }
 
 func (d *DexconGovernance) ResetDKG(newSignedCRS []byte) {

@@ -442,7 +442,7 @@ func (r *Recovery) Votes(height uint64) (uint64, error) {
 		return 0, err
 	}
 
-	notarySet, err := r.gov.NotarySetAddresses(r.gov.Round())
+	notarySet, err := r.gov.NotarySetNodeKeyAddresses(r.gov.Round())
 	if err != nil {
 		return 0, err
 	}

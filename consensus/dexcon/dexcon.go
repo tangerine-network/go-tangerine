@@ -17,6 +17,8 @@
 package dexcon
 
 import (
+	"encoding/hex"
+	"fmt"
 	"math/big"
 
 	"github.com/dexon-foundation/dexon/common"
@@ -24,11 +26,13 @@ import (
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
+	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/rpc"
 )
 
 type GovernanceStateFetcher interface {
 	GetStateForConfigAtRound(round uint64) *vm.GovernanceState
+	NotarySetNodeKeyAddresses(round uint64) (map[common.Address]struct{}, error)
 }
 
 // Dexcon is a delegated proof-of-stake consensus engine.
@@ -137,8 +141,39 @@ func (d *Dexcon) Finalize(chain consensus.ChainReader, header *types.Header, sta
 	gs := vm.GovernanceState{state}
 
 	height := gs.RoundHeight(new(big.Int).SetUint64(header.Round))
+
+	// The first block of a round is found.
 	if header.Round > 0 && height.Uint64() == 0 {
 		gs.PushRoundHeight(header.Number)
+
+		// Check for dead node and disqualify them.
+		// A dead node node is defined as: a notary set node that did not propose
+		// any block in the past round.
+		addrs, err := d.govStateFetcer.NotarySetNodeKeyAddresses(header.Round - 1)
+		if err != nil {
+			panic(err)
+		}
+
+		gcs := d.govStateFetcer.GetStateForConfigAtRound(header.Round - 1)
+
+		for addr := range addrs {
+			offset := gcs.NodesOffsetByNodeKeyAddress(addr)
+			if offset.Cmp(big.NewInt(0)) < 0 {
+				panic(fmt.Errorf("invalid notary set found, addr = %s", addr.String()))
+			}
+
+			node := gcs.Node(offset)
+			lastHeight := gs.LastProposedHeight(node.Owner)
+			prevRoundHeight := gs.RoundHeight(big.NewInt(int64(header.Round - 1)))
+
+			if lastHeight.Uint64() < prevRoundHeight.Uint64() {
+				log.Info("Disqualify node", "round", header.Round, "nodePubKey", hex.EncodeToString(node.PublicKey))
+				err = gs.Disqualify(node)
+				if err != nil {
+					log.Error("Failed to disqualify node", "err", err)
+				}
+			}
+		}
 	}
 
 	// Distribute block reward and halving condition.
@@ -147,16 +182,17 @@ func (d *Dexcon) Finalize(chain consensus.ChainReader, header *types.Header, sta
 	} else {
 		reward := d.calculateBlockReward(int64(header.Round), state)
 		state.AddBalance(header.Coinbase, reward)
-
+		header.Reward = reward
 		gs.IncTotalSupply(reward)
 
-		config := gs.Configuration()
+		// Record last proposed height.
+		gs.PutLastProposedHeight(header.Coinbase, header.Number)
 
 		// Check if halving checkpoint reached.
+		config := gs.Configuration()
 		if gs.TotalSupply().Cmp(config.NextHalvingSupply) >= 0 {
 			gs.MiningHalved()
 		}
-		header.Reward = reward
 	}
 
 	header.Root = state.IntermediateRoot(true)

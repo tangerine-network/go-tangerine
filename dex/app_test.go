@@ -2299,12 +2299,10 @@ func newDexon(masterKey *ecdsa.PrivateKey, accountNum int) (*Dexon, []*ecdsa.Pri
 	db := ethdb.NewMemDatabase()
 
 	genesis := core.DefaultTestnetGenesisBlock()
-	genesis.Alloc = core.GenesisAlloc{
-		crypto.PubkeyToAddress(masterKey.PublicKey): {
-			Balance:   big.NewInt(100000000000000000),
-			Staked:    big.NewInt(50000000000000000),
-			PublicKey: crypto.FromECDSAPub(&masterKey.PublicKey),
-		},
+	genesis.Alloc[crypto.PubkeyToAddress(masterKey.PublicKey)] = core.GenesisAccount{
+		Balance:   big.NewInt(100000000000000000),
+		Staked:    big.NewInt(50000000000000000),
+		PublicKey: crypto.FromECDSAPub(&masterKey.PublicKey),
 	}
 
 	var accounts []*ecdsa.PrivateKey
@@ -2322,7 +2320,7 @@ func newDexon(masterKey *ecdsa.PrivateKey, accountNum int) (*Dexon, []*ecdsa.Pri
 	}
 
 	genesis.Config.Dexcon.BlockGasLimit = 2000000
-	genesis.Config.Dexcon.RoundLength = 60
+	genesis.Config.Dexcon.RoundLength = 600
 	genesis.Config.Dexcon.Owner = crypto.PubkeyToAddress(masterKey.PublicKey)
 
 	chainConfig, _, err := core.SetupGenesisBlock(db, genesis)
