@@ -48,8 +48,10 @@ type ReadOnlyBlockChain interface {
 	HasBlockAndState(common.Hash, uint64) bool
 	HasHeader(common.Hash, uint64) bool
 	HasState(common.Hash) bool
+	Processor() core.Processor
 	State() (*state.StateDB, error)
 	StateAt(root common.Hash) (*state.StateDB, error)
+	StateCache() state.Database
 	SubscribeChainEvent(chan<- core.ChainEvent) event.Subscription
 	SubscribeChainHeadEvent(chan<- core.ChainHeadEvent) event.Subscription
 	SubscribeChainSideEvent(chan<- core.ChainSideEvent) event.Subscription
