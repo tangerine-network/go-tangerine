@@ -245,11 +245,11 @@ func (pm *ProtocolManager) syncer() {
 			if pm.peers.Len() < minDesiredPeerCount {
 				break
 			}
-			go pm.synchronise(pm.peers.BestPeer())
+			go pm.synchronise(pm.peers.BestPeer(), false)
 
 		case <-forceSync.C:
 			// Force a sync even if not enough peers are present
-			go pm.synchronise(pm.peers.BestPeer())
+			go pm.synchronise(pm.peers.BestPeer(), false)
 
 		case <-pm.noMorePeers:
 			return
@@ -258,7 +258,7 @@ func (pm *ProtocolManager) syncer() {
 }
 
 // synchronise tries to sync up our local block chain with a remote peer.
-func (pm *ProtocolManager) synchronise(peer *peer) {
+func (pm *ProtocolManager) synchronise(peer *peer, force bool) {
 	// Short circuit if no peers are available
 	if peer == nil {
 		return
@@ -271,9 +271,15 @@ func (pm *ProtocolManager) synchronise(peer *peer) {
 
 	// If we are behind the peer, but not more than acceptable distance, don't
 	// trigger a sync. Fetcher is able to cover this.
-	if pNumber <= number+acceptableDist {
+	var dist uint64
+	if !force {
+		dist = acceptableDist
+	}
+
+	if pNumber <= number+dist {
 		return
 	}
+
 	// Otherwise try to sync with the downloader
 	mode := downloader.FullSync
 	if atomic.LoadUint32(&pm.fastSync) == 1 {

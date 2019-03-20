@@ -793,7 +793,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			// scenario should easily be covered by the fetcher.
 			currentBlock := pm.blockchain.CurrentBlock()
 			if trueNumber > currentBlock.NumberU64() {
-				go pm.synchronise(p)
+				go pm.synchronise(p, false)
 			}
 		}
 

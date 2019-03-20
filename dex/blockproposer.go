@@ -18,6 +18,10 @@ import (
 	"github.com/dexon-foundation/dexon/rlp"
 )
 
+var (
+	forceSyncTimeout = 20 * time.Second
+)
+
 type blockProposer struct {
 	mu        sync.Mutex
 	running   int32
@@ -223,6 +227,14 @@ ListenLoop:
 		case <-b.stopCh:
 			log.Debug("Early stop, before consensus core can run")
 			return nil, errors.New("early stop")
+		case <-time.After(forceSyncTimeout):
+			log.Debug("no new chain head for a while")
+			if p := b.dex.protocolManager.peers.BestPeer(); p != nil {
+				log.Debug("try force sync with peer", "id", p.id)
+				b.dex.protocolManager.synchronise(p, true)
+			} else {
+				log.Debug("no peer to sync")
+			}
 		case <-b.watchCat.Meow():
 			log.Info("WatchCat signaled to stop syncing")
 
