@@ -135,7 +135,7 @@ type ProtocolManager struct {
 
 	// channels for dexon consensus core
 	receiveCh      chan interface{}
-	receiveEnabled bool
+	receiveEnabled int32
 
 	srvr p2pServer
 
@@ -179,10 +179,14 @@ func NewProtocolManager(
 		recordsyncCh:     make(chan *recordsync),
 		quitSync:         make(chan struct{}),
 		receiveCh:        make(chan interface{}, 1024),
-		receiveEnabled:   isBlockProposer,
+		receiveEnabled:   0,
 		isBlockProposer:  isBlockProposer,
 		app:              app,
 		blockNumberGauge: metrics.GetOrRegisterGauge("dex/blocknumber", nil),
+	}
+
+	if isBlockProposer {
+		manager.receiveEnabled = 1
 	}
 
 	// Figure out whether to allow fast sync or not
@@ -833,7 +837,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 	// Block proposer-only messages.
 
 	case msg.Code == CoreBlockMsg:
-		if !pm.receiveEnabled {
+		if atomic.LoadInt32(&pm.receiveEnabled) == 0 {
 			break
 		}
 		var blocks []*coreTypes.Block
@@ -845,7 +849,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			pm.receiveCh <- block
 		}
 	case msg.Code == VoteMsg:
-		if !pm.receiveEnabled {
+		if atomic.LoadInt32(&pm.receiveEnabled) == 0 {
 			break
 		}
 		var votes []*coreTypes.Vote
@@ -859,7 +863,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			pm.receiveCh <- vote
 		}
 	case msg.Code == AgreementMsg:
-		if !pm.receiveEnabled {
+		if atomic.LoadInt32(&pm.receiveEnabled) == 0 {
 			break
 		}
 		// DKG set is receiver
@@ -870,7 +874,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		p.MarkAgreement(rlpHash(agreement))
 		pm.receiveCh <- &agreement
 	case msg.Code == RandomnessMsg:
-		if !pm.receiveEnabled {
+		if atomic.LoadInt32(&pm.receiveEnabled) == 0 {
 			break
 		}
 		// Broadcast this to all peer
@@ -883,7 +887,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			pm.receiveCh <- randomness
 		}
 	case msg.Code == DKGPrivateShareMsg:
-		if !pm.receiveEnabled {
+		if atomic.LoadInt32(&pm.receiveEnabled) == 0 {
 			break
 		}
 		// Do not relay this msg
@@ -894,7 +898,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		p.MarkDKGPrivateShares(rlpHash(ps))
 		pm.receiveCh <- &ps
 	case msg.Code == DKGPartialSignatureMsg:
-		if !pm.receiveEnabled {
+		if atomic.LoadInt32(&pm.receiveEnabled) == 0 {
 			break
 		}
 		// broadcast in DKG set
@@ -904,7 +908,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		pm.receiveCh <- &psig
 	case msg.Code == PullBlocksMsg:
-		if !pm.receiveEnabled {
+		if atomic.LoadInt32(&pm.receiveEnabled) == 0 {
 			break
 		}
 		var hashes coreCommon.Hashes
@@ -915,7 +919,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		log.Debug("Push blocks", "blocks", blocks)
 		return p.SendCoreBlocks(blocks)
 	case msg.Code == PullVotesMsg:
-		if !pm.receiveEnabled {
+		if atomic.LoadInt32(&pm.receiveEnabled) == 0 {
 			break
 		}
 		next, ok := pm.nextPullVote.Load(p.ID())
@@ -934,7 +938,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		log.Debug("Push votes", "votes", votes)
 		return p.SendVotes(votes)
 	case msg.Code == PullRandomnessMsg:
-		if !pm.receiveEnabled {
+		if atomic.LoadInt32(&pm.receiveEnabled) == 0 {
 			break
 		}
 		var hashes coreCommon.Hashes

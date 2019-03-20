@@ -91,7 +91,7 @@ func (b *blockProposer) Stop() {
 	defer b.mu.Unlock()
 
 	if atomic.LoadInt32(&b.running) == 1 {
-		b.dex.protocolManager.receiveEnabled = false
+		atomic.StoreInt32(&b.dex.protocolManager.receiveEnabled, 0)
 		close(b.stopCh)
 		b.wg.Wait()
 		atomic.StoreInt32(&b.proposing, 0)
@@ -157,7 +157,7 @@ func (b *blockProposer) syncConsensus() (*dexCore.Consensus, error) {
 	_, coreHeight := db.GetCompactionChainTipInfo()
 
 	// Stop receiving block proposer message when syncing.
-	b.dex.protocolManager.receiveEnabled = false
+	atomic.StoreInt32(&b.dex.protocolManager.receiveEnabled, 0)
 
 Loop:
 	for {
@@ -211,10 +211,7 @@ ListenLoop:
 					log.Error("SyncBlocks fail", "err", err)
 					return nil, err
 				}
-				if !b.dex.protocolManager.receiveEnabled {
-					// Start receiving block proposer message.
-					b.dex.protocolManager.receiveEnabled = true
-				}
+				atomic.CompareAndSwapInt32(&b.dex.protocolManager.receiveEnabled, 0, 1)
 				if synced {
 					log.Debug("Consensus core synced")
 					break ListenLoop
@@ -252,6 +249,7 @@ ListenLoop:
 			log.Info("Sleeping until next starting time", "time", nextDMoment)
 			time.Sleep(time.Duration(nextDMoment-time.Now().Unix()) * time.Second)
 
+			atomic.StoreInt32(&b.dex.protocolManager.receiveEnabled, 1)
 			consensusSync.ForceSync(true)
 			break ListenLoop
 		}
