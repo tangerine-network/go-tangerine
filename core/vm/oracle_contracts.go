@@ -1764,9 +1764,13 @@ func (g *GovernanceContract) payFine(nodeAddr common.Address) ([]byte, error) {
 	node.Fined = new(big.Int).Sub(node.Fined, g.contract.Value())
 	g.state.UpdateNode(nodeOffset, node)
 
-	// TODO: paid fine should be added to award pool.
+	// Pay the fine to governance owner.
+	g.evm.StateDB.AddBalance(g.state.Owner(), g.contract.Value())
 
 	g.state.emitFinePaid(nodeAddr, g.contract.Value())
+
+	g.state.CalNotarySetSize()
+	g.state.CalDKGSetSize()
 
 	return g.useGas(GovernanceActionGasCost)
 }
