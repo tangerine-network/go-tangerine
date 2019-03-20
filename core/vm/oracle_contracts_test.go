@@ -344,6 +344,13 @@ func (g *OracleContractsTestSuite) TestStakingMechanism() {
 	_, err = g.call(GovernanceContractAddress, addr, input, amount)
 	g.Require().Error(err)
 
+	// Duplicate public key should fail
+	_, addrDup := newPrefundAccount(g.stateDB)
+	input, err = GovernanceABI.ABI.Pack("register", pk, "Test1", "test1@dexon.org", "Taipei", "https://dexon.org")
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, addrDup, input, amount)
+	g.Require().Error(err)
+
 	// Stake more to qualify.
 	input, err = GovernanceABI.ABI.Pack("stake")
 	g.Require().NoError(err)

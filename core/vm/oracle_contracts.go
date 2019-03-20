@@ -1593,7 +1593,19 @@ func (g *GovernanceContract) register(
 	value := g.contract.Value()
 	offset := g.state.NodesOffsetByAddress(caller)
 
-	// Can not stake if already staked.
+	// Can not register if already registered.
+	if offset.Cmp(big.NewInt(0)) >= 0 {
+		return nil, errExecutionReverted
+	}
+
+	nodeKeyAddr, err := publicKeyToNodeKeyAddress(publicKey)
+	if err != nil {
+		return nil, errExecutionReverted
+	}
+
+	offset = g.state.NodesOffsetByNodeKeyAddress(nodeKeyAddr)
+
+	// Can not register if node key is duplicate.
 	if offset.Cmp(big.NewInt(0)) >= 0 {
 		return nil, errExecutionReverted
 	}
