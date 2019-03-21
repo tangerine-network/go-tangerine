@@ -20,6 +20,7 @@ package dex
 import (
 	"crypto/ecdsa"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"math/big"
 	"strconv"
@@ -29,6 +30,7 @@ import (
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/params"
 	"github.com/dexon-foundation/dexon/rlp"
 	"github.com/onrik/ethrpc"
@@ -296,6 +298,8 @@ const recoveryABI = `
 ]
 `
 
+var errAlreadyVoted = errors.New("already voted for recovery")
+
 var abiObject abi.ABI
 
 func init() {
@@ -328,6 +332,23 @@ func NewRecovery(config *params.RecoveryConfig, networkRPC string,
 	}
 }
 
+func (r *Recovery) callRPC(data []byte, tag string) ([]byte, error) {
+	res, err := r.client.EthCall(ethrpc.T{
+		From: r.nodeAddress.String(),
+		To:   r.contract.String(),
+		Data: "0x" + hex.EncodeToString(data),
+	}, tag)
+	if err != nil {
+		return nil, err
+	}
+
+	resBytes, err := hex.DecodeString(res[2:])
+	if err != nil {
+		return nil, err
+	}
+	return resBytes, nil
+}
+
 func (r *Recovery) genVoteForSkipBlockTx(height uint64) (*types.Transaction, error) {
 	netVersion, err := r.client.NetVersion()
 	if err != nil {
@@ -339,21 +360,33 @@ func (r *Recovery) genVoteForSkipBlockTx(height uint64) (*types.Transaction, err
 		return nil, err
 	}
 
-	data, err := abiObject.Pack("depositValue")
+	data, err := abiObject.Pack("voted", big.NewInt(int64(height)), r.nodeAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := r.client.EthCall(ethrpc.T{
-		From: r.nodeAddress.String(),
-		To:   r.contract.String(),
-		Data: "0x" + hex.EncodeToString(data),
-	}, "latest")
+	resBytes, err := r.callRPC(data, "latest")
 	if err != nil {
 		return nil, err
 	}
 
-	resBytes, err := hex.DecodeString(res[2:])
+	var voted bool
+	err = abiObject.Unpack(&voted, "voted", resBytes)
+	if err != nil {
+		return nil, err
+	}
+
+	if voted {
+		log.Info("Already voted for skip block", "height", height)
+		return nil, errAlreadyVoted
+	}
+
+	data, err = abiObject.Pack("depositValue")
+	if err != nil {
+		return nil, err
+	}
+
+	resBytes, err = r.callRPC(data, "latest")
 	if err != nil {
 		return nil, err
 	}
@@ -397,6 +430,9 @@ func (r *Recovery) genVoteForSkipBlockTx(height uint64) (*types.Transaction, err
 
 func (r *Recovery) ProposeSkipBlock(height uint64) error {
 	tx, err := r.genVoteForSkipBlockTx(height)
+	if err == errAlreadyVoted {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
@@ -422,16 +458,7 @@ func (r *Recovery) Votes(height uint64) (uint64, error) {
 
 	snapshotHeight := bn - numConfirmation
 
-	res, err := r.client.EthCall(ethrpc.T{
-		From: r.nodeAddress.String(),
-		To:   r.contract.String(),
-		Data: "0x" + hex.EncodeToString(data),
-	}, fmt.Sprintf("0x%x", snapshotHeight))
-	if err != nil {
-		return 0, err
-	}
-
-	resBytes, err := hex.DecodeString(res[2:])
+	resBytes, err := r.callRPC(data, fmt.Sprintf("0x%x", snapshotHeight))
 	if err != nil {
 		return 0, err
 	}
@@ -456,16 +483,7 @@ func (r *Recovery) Votes(height uint64) (uint64, error) {
 			return 0, err
 		}
 
-		res, err = r.client.EthCall(ethrpc.T{
-			From: r.nodeAddress.String(),
-			To:   r.contract.String(),
-			Data: "0x" + hex.EncodeToString(data),
-		}, fmt.Sprintf("0x%x", snapshotHeight))
-		if err != nil {
-			return 0, err
-		}
-
-		resBytes, err := hex.DecodeString(res[2:])
+		resBytes, err := r.callRPC(data, fmt.Sprintf("0x%x", snapshotHeight))
 		if err != nil {
 			return 0, err
 		}
