@@ -854,21 +854,6 @@ func (ps *peerSet) PeersWithoutBlock(hash common.Hash) []*peer {
 	return list
 }
 
-// PeersWithoutTx retrieves a list of peers that do not have a given transaction
-// in their set of known hashes.
-func (ps *peerSet) PeersWithoutTx(hash common.Hash) []*peer {
-	ps.lock.RLock()
-	defer ps.lock.RUnlock()
-
-	list := make([]*peer, 0, len(ps.peers))
-	for _, p := range ps.peers {
-		if !p.knownTxs.Contains(hash) {
-			list = append(list, p)
-		}
-	}
-	return list
-}
-
 func (ps *peerSet) PeersWithLabel(label peerLabel) []*peer {
 	ps.lock.RLock()
 	defer ps.lock.RUnlock()
