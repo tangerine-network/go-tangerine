@@ -1355,11 +1355,7 @@ func (g *GovernanceContract) clearDKG() {
 	g.state.ResetDKGFinalizedsCount()
 }
 
-func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byte, error) {
-	if round.Uint64() != g.evm.Round.Uint64()+1 {
-		return nil, errExecutionReverted
-	}
-
+func (g *GovernanceContract) addDKGComplaint(comp []byte) ([]byte, error) {
 	caller := g.contract.Caller()
 	offset := g.state.NodesOffsetByNodeKeyAddress(caller)
 
@@ -1389,6 +1385,10 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 	}
 
 	if g.state.DKGComplaintProposed(getDKGComplaintID(&dkgComplaint)) {
+		return nil, errExecutionReverted
+	}
+	round := big.NewInt(int64(dkgComplaint.Round))
+	if round.Uint64() != g.evm.Round.Uint64()+1 {
 		return nil, errExecutionReverted
 	}
 
@@ -1439,7 +1439,12 @@ func (g *GovernanceContract) addDKGComplaint(round *big.Int, comp []byte) ([]byt
 	return g.useGas(GovernanceActionGasCost)
 }
 
-func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) ([]byte, error) {
+func (g *GovernanceContract) addDKGMasterPublicKey(mpk []byte) ([]byte, error) {
+	var dkgMasterPK dkgTypes.MasterPublicKey
+	if err := rlp.DecodeBytes(mpk, &dkgMasterPK); err != nil {
+		return nil, errExecutionReverted
+	}
+	round := big.NewInt(int64(dkgMasterPK.Round))
 	if round.Uint64() != g.evm.Round.Uint64()+1 {
 		return nil, errExecutionReverted
 	}
@@ -1448,6 +1453,10 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 		// Clear DKG states for next round.
 		g.clearDKG()
 		g.state.SetDKGRound(round)
+	}
+
+	if g.state.DKGMasterPublicKeyProposed(getDKGMasterPublicKeyID(&dkgMasterPK)) {
+		return nil, errExecutionReverted
 	}
 
 	caller := g.contract.Caller()
@@ -1473,15 +1482,6 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 		return nil, errExecutionReverted
 	}
 
-	var dkgMasterPK dkgTypes.MasterPublicKey
-	if err := rlp.DecodeBytes(mpk, &dkgMasterPK); err != nil {
-		return nil, errExecutionReverted
-	}
-
-	if g.state.DKGMasterPublicKeyProposed(getDKGMasterPublicKeyID(&dkgMasterPK)) {
-		return nil, errExecutionReverted
-	}
-
 	if dkgMasterPK.Reset != g.state.DKGResetCount(round).Uint64() {
 		return nil, errExecutionReverted
 	}
@@ -1501,15 +1501,15 @@ func (g *GovernanceContract) addDKGMasterPublicKey(round *big.Int, mpk []byte) (
 	return g.useGas(GovernanceActionGasCost)
 }
 
-func (g *GovernanceContract) addDKGMPKReady(round *big.Int, ready []byte) ([]byte, error) {
-	if round.Uint64() != g.evm.Round.Uint64()+1 {
-		return nil, errExecutionReverted
-	}
-
+func (g *GovernanceContract) addDKGMPKReady(ready []byte) ([]byte, error) {
 	caller := g.contract.Caller()
 
 	var dkgReady dkgTypes.MPKReady
 	if err := rlp.DecodeBytes(ready, &dkgReady); err != nil {
+		return nil, errExecutionReverted
+	}
+	round := big.NewInt(int64(dkgReady.Round))
+	if round.Uint64() != g.evm.Round.Uint64()+1 {
 		return nil, errExecutionReverted
 	}
 
@@ -1535,15 +1535,15 @@ func (g *GovernanceContract) addDKGMPKReady(round *big.Int, ready []byte) ([]byt
 	return g.useGas(GovernanceActionGasCost)
 }
 
-func (g *GovernanceContract) addDKGFinalize(round *big.Int, finalize []byte) ([]byte, error) {
-	if round.Uint64() != g.evm.Round.Uint64()+1 {
-		return nil, errExecutionReverted
-	}
-
+func (g *GovernanceContract) addDKGFinalize(finalize []byte) ([]byte, error) {
 	caller := g.contract.Caller()
 
 	var dkgFinalize dkgTypes.Finalize
 	if err := rlp.DecodeBytes(finalize, &dkgFinalize); err != nil {
+		return nil, errExecutionReverted
+	}
+	round := big.NewInt(int64(dkgFinalize.Round))
+	if round.Uint64() != g.evm.Round.Uint64()+1 {
 		return nil, errExecutionReverted
 	}
 
@@ -2036,41 +2036,29 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 	// Dispatch method call.
 	switch method.Name {
 	case "addDKGComplaint":
-		args := struct {
-			Round     *big.Int
-			Complaint []byte
-		}{}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+		var Complaint []byte
+		if err := method.Inputs.Unpack(&Complaint, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		return g.addDKGComplaint(args.Round, args.Complaint)
+		return g.addDKGComplaint(Complaint)
 	case "addDKGMasterPublicKey":
-		args := struct {
-			Round     *big.Int
-			PublicKey []byte
-		}{}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+		var PublicKey []byte
+		if err := method.Inputs.Unpack(&PublicKey, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		return g.addDKGMasterPublicKey(args.Round, args.PublicKey)
+		return g.addDKGMasterPublicKey(PublicKey)
 	case "addDKGMPKReady":
-		args := struct {
-			Round    *big.Int
-			MPKReady []byte
-		}{}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+		var MPKReady []byte
+		if err := method.Inputs.Unpack(&MPKReady, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		return g.addDKGMPKReady(args.Round, args.MPKReady)
+		return g.addDKGMPKReady(MPKReady)
 	case "addDKGFinalize":
-		args := struct {
-			Round    *big.Int
-			Finalize []byte
-		}{}
-		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+		var Finalize []byte
+		if err := method.Inputs.Unpack(&Finalize, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		return g.addDKGFinalize(args.Round, args.Finalize)
+		return g.addDKGFinalize(Finalize)
 	case "nodesLength":
 		res, err := method.Outputs.Pack(g.state.LenNodes())
 		if err != nil {
@@ -2469,13 +2457,13 @@ func PackProposeCRS(round uint64, signedCRS []byte) ([]byte, error) {
 	return data, nil
 }
 
-func PackAddDKGMasterPublicKey(round uint64, mpk *dkgTypes.MasterPublicKey) ([]byte, error) {
+func PackAddDKGMasterPublicKey(mpk *dkgTypes.MasterPublicKey) ([]byte, error) {
 	method := GovernanceABI.Name2Method["addDKGMasterPublicKey"]
 	encoded, err := rlp.EncodeToBytes(mpk)
 	if err != nil {
 		return nil, err
 	}
-	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	res, err := method.Inputs.Pack(encoded)
 	if err != nil {
 		return nil, err
 	}
@@ -2483,13 +2471,13 @@ func PackAddDKGMasterPublicKey(round uint64, mpk *dkgTypes.MasterPublicKey) ([]b
 	return data, nil
 }
 
-func PackAddDKGMPKReady(round uint64, ready *dkgTypes.MPKReady) ([]byte, error) {
+func PackAddDKGMPKReady(ready *dkgTypes.MPKReady) ([]byte, error) {
 	method := GovernanceABI.Name2Method["addDKGMPKReady"]
 	encoded, err := rlp.EncodeToBytes(ready)
 	if err != nil {
 		return nil, err
 	}
-	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	res, err := method.Inputs.Pack(encoded)
 	if err != nil {
 		return nil, err
 	}
@@ -2497,14 +2485,14 @@ func PackAddDKGMPKReady(round uint64, ready *dkgTypes.MPKReady) ([]byte, error) 
 	return data, nil
 }
 
-func PackAddDKGComplaint(round uint64, complaint *dkgTypes.Complaint) ([]byte, error) {
+func PackAddDKGComplaint(complaint *dkgTypes.Complaint) ([]byte, error) {
 	method := GovernanceABI.Name2Method["addDKGComplaint"]
 	encoded, err := rlp.EncodeToBytes(complaint)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	res, err := method.Inputs.Pack(encoded)
 	if err != nil {
 		return nil, err
 	}
@@ -2512,14 +2500,14 @@ func PackAddDKGComplaint(round uint64, complaint *dkgTypes.Complaint) ([]byte, e
 	return data, nil
 }
 
-func PackAddDKGFinalize(round uint64, final *dkgTypes.Finalize) ([]byte, error) {
+func PackAddDKGFinalize(final *dkgTypes.Finalize) ([]byte, error) {
 	method := GovernanceABI.Name2Method["addDKGFinalize"]
 	encoded, err := rlp.EncodeToBytes(final)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := method.Inputs.Pack(big.NewInt(int64(round)), encoded)
+	res, err := method.Inputs.Pack(encoded)
 	if err != nil {
 		return nil, err
 	}

@@ -192,7 +192,7 @@ func (tc *testChain) generate(n int, seed byte, parent *types.Block, nodes *dexc
 
 			// Add DKG MasterPublicKeys
 			for _, node := range testNodes.Nodes(round + 1) {
-				data, err := vm.PackAddDKGMasterPublicKey(round+1, node.MasterPublicKey(round+1))
+				data, err := vm.PackAddDKGMasterPublicKey(node.MasterPublicKey(round + 1))
 				if err != nil {
 					panic(err)
 				}
@@ -201,7 +201,7 @@ func (tc *testChain) generate(n int, seed byte, parent *types.Block, nodes *dexc
 		case half + 2:
 			// Add DKG MPKReady
 			for _, node := range testNodes.Nodes(round + 1) {
-				data, err := vm.PackAddDKGMPKReady(round+1, node.DKGMPKReady(round+1))
+				data, err := vm.PackAddDKGMPKReady(node.DKGMPKReady(round + 1))
 				if err != nil {
 					panic(err)
 				}
@@ -210,7 +210,7 @@ func (tc *testChain) generate(n int, seed byte, parent *types.Block, nodes *dexc
 		case half + 3:
 			// Add DKG Finalize
 			for _, node := range testNodes.Nodes(round + 1) {
-				data, err := vm.PackAddDKGFinalize(round+1, node.DKGFinalize(round+1))
+				data, err := vm.PackAddDKGFinalize(node.DKGFinalize(round + 1))
 				if err != nil {
 					panic(err)
 				}

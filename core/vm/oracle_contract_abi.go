@@ -957,10 +957,6 @@ const GovernanceABIJSON = `
     "constant": false,
     "inputs": [
       {
-        "name": "Round",
-        "type": "uint256"
-      },
-      {
         "name": "Complaint",
         "type": "bytes"
       }
@@ -974,10 +970,6 @@ const GovernanceABIJSON = `
   {
     "constant": false,
     "inputs": [
-      {
-        "name": "Round",
-        "type": "uint256"
-      },
       {
         "name": "PublicKey",
         "type": "bytes"
@@ -993,10 +985,6 @@ const GovernanceABIJSON = `
     "constant": false,
     "inputs": [
       {
-        "name": "Round",
-        "type": "uint256"
-      },
-      {
         "name": "MPKReady",
         "type": "bytes"
       }
@@ -1010,10 +998,6 @@ const GovernanceABIJSON = `
   {
     "constant": false,
     "inputs": [
-      {
-        "name": "Round",
-        "type": "uint256"
-      },
       {
         "name": "Finalize",
         "type": "bytes"

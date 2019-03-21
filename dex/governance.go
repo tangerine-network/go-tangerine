@@ -122,8 +122,8 @@ func (d *DexconGovernance) ProposeCRS(round uint64, signedCRS []byte) {
 }
 
 // AddDKGComplaint adds a DKGComplaint.
-func (d *DexconGovernance) AddDKGComplaint(round uint64, complaint *dkgTypes.Complaint) {
-	data, err := vm.PackAddDKGComplaint(round, complaint)
+func (d *DexconGovernance) AddDKGComplaint(complaint *dkgTypes.Complaint) {
+	data, err := vm.PackAddDKGComplaint(complaint)
 	if err != nil {
 		log.Error("failed to pack addDKGComplaint input", "err", err)
 		return
@@ -136,8 +136,8 @@ func (d *DexconGovernance) AddDKGComplaint(round uint64, complaint *dkgTypes.Com
 }
 
 // AddDKGMasterPublicKey adds a DKGMasterPublicKey.
-func (d *DexconGovernance) AddDKGMasterPublicKey(round uint64, masterPublicKey *dkgTypes.MasterPublicKey) {
-	data, err := vm.PackAddDKGMasterPublicKey(round, masterPublicKey)
+func (d *DexconGovernance) AddDKGMasterPublicKey(masterPublicKey *dkgTypes.MasterPublicKey) {
+	data, err := vm.PackAddDKGMasterPublicKey(masterPublicKey)
 	if err != nil {
 		log.Error("failed to pack addDKGMasterPublicKey input", "err", err)
 		return
@@ -150,8 +150,8 @@ func (d *DexconGovernance) AddDKGMasterPublicKey(round uint64, masterPublicKey *
 }
 
 // AddDKGMPKReady adds a DKG mpk ready message.
-func (d *DexconGovernance) AddDKGMPKReady(round uint64, ready *dkgTypes.MPKReady) {
-	data, err := vm.PackAddDKGMPKReady(round, ready)
+func (d *DexconGovernance) AddDKGMPKReady(ready *dkgTypes.MPKReady) {
+	data, err := vm.PackAddDKGMPKReady(ready)
 	if err != nil {
 		log.Error("failed to pack addDKGMPKReady input", "err", err)
 		return
@@ -164,8 +164,8 @@ func (d *DexconGovernance) AddDKGMPKReady(round uint64, ready *dkgTypes.MPKReady
 }
 
 // AddDKGFinalize adds a DKG finalize message.
-func (d *DexconGovernance) AddDKGFinalize(round uint64, final *dkgTypes.Finalize) {
-	data, err := vm.PackAddDKGFinalize(round, final)
+func (d *DexconGovernance) AddDKGFinalize(final *dkgTypes.Finalize) {
+	data, err := vm.PackAddDKGFinalize(final)
 	if err != nil {
 		log.Error("failed to pack addDKGFinalize input", "err", err)
 		return

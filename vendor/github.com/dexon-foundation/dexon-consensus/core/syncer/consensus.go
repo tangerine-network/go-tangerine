@@ -168,6 +168,16 @@ func (con *Consensus) assureBuffering() {
 	}
 	// Make sure con.roundEvt stopped before stopping con.agreementModule.
 	con.waitGroup.Add(1)
+	// Register a round event handler to reset node set cache, this handler
+	// should be the highest priority.
+	con.roundEvt.Register(func(evts []utils.RoundEventParam) {
+		for _, e := range evts {
+			if e.Reset == 0 {
+				continue
+			}
+			con.nodeSetCache.Purge(e.Round + 1)
+		}
+	})
 	// Register a round event handler to notify CRS to agreementModule.
 	con.roundEvt.Register(func(evts []utils.RoundEventParam) {
 		con.waitGroup.Add(1)
@@ -263,11 +273,14 @@ func (con *Consensus) ForceSync(skip bool) {
 	con.setupConfigsUntilRound(block.Position.Round + core.ConfigRoundShift - 1)
 	con.syncedLastBlock = &block
 	con.stopBuffering()
-	con.dummyCancel, con.dummyFinished = utils.LaunchDummyReceiver(
-		context.Background(), con.network.ReceiveChan(),
-		func(msg interface{}) {
-			con.dummyMsgBuffer = append(con.dummyMsgBuffer, msg)
-		})
+	// We might call stopBuffering without calling assureBuffering.
+	if con.dummyCancel == nil {
+		con.dummyCancel, con.dummyFinished = utils.LaunchDummyReceiver(
+			context.Background(), con.network.ReceiveChan(),
+			func(msg interface{}) {
+				con.dummyMsgBuffer = append(con.dummyMsgBuffer, msg)
+			})
+	}
 	con.syncedSkipNext = skip
 }
 

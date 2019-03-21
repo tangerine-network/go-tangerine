@@ -93,6 +93,13 @@ func (e RoundEventParam) NextDKGRegisterHeight() uint64 {
 	return e.BeginHeight + e.Config.RoundLength/2
 }
 
+func (e RoundEventParam) String() string {
+	return fmt.Sprintf("roundEvtParam{Round:%d Reset:%d Height:%d}",
+		e.Round,
+		e.Reset,
+		e.BeginHeight)
+}
+
 // roundEventFn defines the fingerprint of handlers of round events.
 type roundEventFn func([]RoundEventParam)
 
@@ -135,6 +142,7 @@ type RoundEvent struct {
 	roundShift              uint64
 	ctx                     context.Context
 	ctxCancel               context.CancelFunc
+	retryInterval           time.Duration
 }
 
 // NewRoundEvent creates an RoundEvent instance.
@@ -144,16 +152,17 @@ func NewRoundEvent(parentCtx context.Context, gov governanceAccessor,
 	roundShift uint64) (*RoundEvent, error) {
 	// We need to generate valid ending block height of this round (taken
 	// DKG reset count into consideration).
+	initConfig := GetConfigWithPanic(gov, initRound, logger)
 	e := &RoundEvent{
 		gov:                gov,
 		logger:             logger,
 		lastTriggeredRound: initRound,
 		roundShift:         roundShift,
+		retryInterval:      initConfig.LambdaBA,
 	}
 	e.ctx, e.ctxCancel = context.WithCancel(parentCtx)
 	e.config = RoundBasedConfig{}
-	e.config.SetupRoundBasedFields(initRound, GetConfigWithPanic(
-		gov, initRound, logger))
+	e.config.SetupRoundBasedFields(initRound, initConfig)
 	e.config.SetRoundBeginHeight(initRoundBeginHeight)
 	// Make sure the DKG reset count in current governance can cover the initial
 	// block height.
@@ -175,6 +184,8 @@ func NewRoundEvent(parentCtx context.Context, gov governanceAccessor,
 
 // Register a handler to be called when new round is confirmed or new DKG reset
 // is detected.
+//
+// The earlier registered handler has higher priority.
 func (e *RoundEvent) Register(h roundEventFn) {
 	e.lock.Lock()
 	defer e.lock.Unlock()
@@ -223,13 +234,13 @@ func (e *RoundEvent) ValidateNextRound(blockHeight uint64) {
 			h(events)
 		}
 	}()
-	startRound := e.lastTriggeredRound
+	var (
+		dkgFailed, triggered bool
+		param                RoundEventParam
+		beginHeight          = blockHeight
+		startRound           = e.lastTriggeredRound
+	)
 	for {
-		var (
-			dkgFailed, triggered bool
-			param                RoundEventParam
-			beginHeight          = blockHeight
-		)
 		for {
 			param, dkgFailed, triggered = e.check(beginHeight, startRound,
 				dkgFailed)
@@ -245,7 +256,7 @@ func (e *RoundEvent) ValidateNextRound(blockHeight uint64) {
 		select {
 		case <-e.ctx.Done():
 			return
-		case <-time.After(500 * time.Millisecond):
+		case <-time.After(e.retryInterval):
 		}
 	}
 }
