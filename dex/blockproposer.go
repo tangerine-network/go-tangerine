@@ -50,7 +50,7 @@ func (b *blockProposer) Start() error {
 	if !atomic.CompareAndSwapInt32(&b.running, 0, 1) {
 		return fmt.Errorf("block proposer is already running")
 	}
-	log.Info("Block proposer started")
+	log.Info("Started block proposer")
 
 	b.stopCh = make(chan struct{})
 	b.wg.Add(1)
@@ -61,6 +61,9 @@ func (b *blockProposer) Start() error {
 		var err error
 		var c *dexCore.Consensus
 		if b.dMoment.After(time.Now()) {
+			// Start receiving core messages.
+			b.dex.protocolManager.SetReceiveCoreMessage(true)
+
 			c = b.initConsensus()
 		} else {
 			c, err = b.syncConsensus()
@@ -91,7 +94,7 @@ func (b *blockProposer) Stop() {
 	defer b.mu.Unlock()
 
 	if atomic.LoadInt32(&b.running) == 1 {
-		atomic.StoreInt32(&b.dex.protocolManager.receiveEnabled, 0)
+		b.dex.protocolManager.SetReceiveCoreMessage(false)
 		close(b.stopCh)
 		b.wg.Wait()
 		atomic.StoreInt32(&b.proposing, 0)
@@ -124,10 +127,9 @@ func (b *blockProposer) syncConsensus() (*dexCore.Consensus, error) {
 		db, b.dex.network, privkey, log.Root())
 
 	// Start the watchCat.
-	log.Info("Starting sync watchCat ...")
-
 	b.watchCat.Start()
 	defer b.watchCat.Stop()
+	log.Info("Started sync watchCat")
 
 	// Feed the current block we have in local blockchain.
 	cb := b.dex.blockchain.CurrentBlock()
@@ -155,9 +157,6 @@ func (b *blockProposer) syncConsensus() (*dexCore.Consensus, error) {
 
 	// Sync all blocks in compaction chain to core.
 	_, coreHeight := db.GetCompactionChainTipInfo()
-
-	// Stop receiving block proposer message when syncing.
-	atomic.StoreInt32(&b.dex.protocolManager.receiveEnabled, 0)
 
 Loop:
 	for {
@@ -211,7 +210,7 @@ ListenLoop:
 					log.Error("SyncBlocks fail", "err", err)
 					return nil, err
 				}
-				atomic.CompareAndSwapInt32(&b.dex.protocolManager.receiveEnabled, 0, 1)
+				b.dex.protocolManager.SetReceiveCoreMessage(true)
 				if synced {
 					log.Debug("Consensus core synced")
 					break ListenLoop
@@ -249,7 +248,7 @@ ListenLoop:
 			log.Info("Sleeping until next starting time", "time", nextDMoment)
 			time.Sleep(time.Duration(nextDMoment-time.Now().Unix()) * time.Second)
 
-			atomic.StoreInt32(&b.dex.protocolManager.receiveEnabled, 1)
+			b.dex.protocolManager.SetReceiveCoreMessage(true)
 			consensusSync.ForceSync(true)
 			break ListenLoop
 		}

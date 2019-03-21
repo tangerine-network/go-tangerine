@@ -253,7 +253,20 @@ func (s *Dexon) Start(srvr *p2p.Server) error {
 	s.protocolManager.Start(srvr, maxPeers)
 
 	if s.config.BlockProposerEnabled {
-		s.bp.Start()
+		go func() {
+			// Since we might be in fast sync mode when started. wait for
+			// ChainHeadEvent before starting blockproposer, or else we will trigger
+			// watchcat.
+			if s.config.SyncMode == downloader.FastSync &&
+				s.blockchain.CurrentBlock().NumberU64() == 0 {
+				ch := make(chan core.ChainHeadEvent)
+				sub := s.blockchain.SubscribeChainHeadEvent(ch)
+				defer sub.Unsubscribe()
+
+				<-ch
+			}
+			s.bp.Start()
+		}()
 	}
 	return nil
 }

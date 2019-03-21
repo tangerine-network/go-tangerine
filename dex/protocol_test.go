@@ -314,6 +314,8 @@ func TestSendNodeRecords(t *testing.T) {
 
 func TestRecvCoreBlocks(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	pm.SetReceiveCoreMessage(true)
+
 	p, _ := newTestPeer("peer", dex64, pm, true)
 	defer pm.Stop()
 	defer p.close()
@@ -365,6 +367,8 @@ func TestRecvCoreBlocks(t *testing.T) {
 
 func TestSendCoreBlocks(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	pm.SetReceiveCoreMessage(true)
+
 	p, _ := newTestPeer("peer", dex64, pm, true)
 	defer pm.Stop()
 	defer p.close()
@@ -419,6 +423,8 @@ func TestSendCoreBlocks(t *testing.T) {
 
 func TestRecvVotes(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	pm.SetReceiveCoreMessage(true)
+
 	p, _ := newTestPeer("peer", dex64, pm, true)
 	defer pm.Stop()
 	defer p.close()
@@ -561,6 +567,8 @@ func (p *mockPublicKey) Bytes() []byte {
 
 func TestRecvDKGPrivateShare(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	pm.SetReceiveCoreMessage(true)
+
 	p, _ := newTestPeer("peer1", dex64, pm, true)
 	defer pm.Stop()
 	defer p.close()
@@ -596,6 +604,8 @@ func TestRecvDKGPrivateShare(t *testing.T) {
 
 func TestSendDKGPrivateShare(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	pm.SetReceiveCoreMessage(true)
+
 	p1, _ := newTestPeer("peer1", dex64, pm, true)
 	p2, _ := newTestPeer("peer2", dex64, pm, true)
 	defer pm.Stop()
@@ -644,6 +654,8 @@ func TestSendDKGPrivateShare(t *testing.T) {
 
 func TestRecvAgreement(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	pm.SetReceiveCoreMessage(true)
+
 	p, _ := newTestPeer("peer", dex64, pm, true)
 	defer pm.Stop()
 	defer p.close()
@@ -687,6 +699,8 @@ func TestRecvAgreement(t *testing.T) {
 
 func TestSendAgreement(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	pm.SetReceiveCoreMessage(true)
+
 	p, _ := newTestPeer("peer", dex64, pm, true)
 	defer pm.Stop()
 	defer p.close()
@@ -733,6 +747,8 @@ func TestSendAgreement(t *testing.T) {
 
 func TestRecvRandomnesses(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	pm.SetReceiveCoreMessage(true)
+
 	p, _ := newTestPeer("peer", dex64, pm, true)
 	defer pm.Stop()
 	defer p.close()
@@ -764,6 +780,8 @@ func TestRecvRandomnesses(t *testing.T) {
 
 func TestSendRandomnesses(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
+	pm.SetReceiveCoreMessage(true)
+
 	p, _ := newTestPeer("peer", dex64, pm, true)
 	defer pm.Stop()
 	defer p.close()
