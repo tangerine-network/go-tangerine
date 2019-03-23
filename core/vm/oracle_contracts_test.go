@@ -918,9 +918,7 @@ type testCoreMock struct {
 	tsigReturn     bool
 }
 
-func (m *testCoreMock) SetState(GovernanceState) {}
-
-func (m *testCoreMock) NewGroupPublicKey(*big.Int, int) (tsigVerifierIntf, error) {
+func (m *testCoreMock) NewGroupPublicKey(*GovernanceState, *big.Int, int) (tsigVerifierIntf, error) {
 	if m.newDKGGPKError != nil {
 		return nil, m.newDKGGPKError
 	}

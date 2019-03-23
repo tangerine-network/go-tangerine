@@ -1226,8 +1226,7 @@ func getConfigState(evm *EVM, round *big.Int) (*GovernanceState, error) {
 }
 
 type coreDKGUtils interface {
-	SetState(GovernanceState)
-	NewGroupPublicKey(*big.Int, int) (tsigVerifierIntf, error)
+	NewGroupPublicKey(*GovernanceState, *big.Int, int) (tsigVerifierIntf, error)
 }
 type tsigVerifierIntf interface {
 	VerifySignature(coreCommon.Hash, coreCrypto.Signature) bool
@@ -1243,20 +1242,17 @@ type GovernanceContract struct {
 
 // defaultCoreDKGUtils implements coreDKGUtils.
 type defaultCoreDKGUtils struct {
-	state GovernanceState
 }
 
-func (c *defaultCoreDKGUtils) SetState(state GovernanceState) {
-	c.state = state
-}
+func (c *defaultCoreDKGUtils) NewGroupPublicKey(
+	state *GovernanceState, round *big.Int, threshold int) (tsigVerifierIntf, error) {
 
-func (c *defaultCoreDKGUtils) NewGroupPublicKey(round *big.Int, threshold int) (tsigVerifierIntf, error) {
 	// Prepare DKGMasterPublicKeys.
-	mpks := c.state.UniqueDKGMasterPublicKeys()
+	mpks := state.UniqueDKGMasterPublicKeys()
 
 	// Prepare DKGComplaints.
 	var complaints []*dkgTypes.Complaint
-	for _, comp := range c.state.DKGComplaints() {
+	for _, comp := range state.DKGComplaints() {
 		x := new(dkgTypes.Complaint)
 		if err := rlp.DecodeBytes(comp, x); err != nil {
 			panic(err)
@@ -1802,8 +1798,9 @@ func (g *GovernanceContract) proposeCRS(nextRound *big.Int, signedCRS []byte) ([
 		}
 	}
 
-	threshold := coreUtils.GetDKGThreshold(&coreTypes.Config{DKGSetSize: uint32(g.state.DKGSetSize().Uint64())})
-	dkgGPK, err := g.coreDKGUtils.NewGroupPublicKey(nextRound, threshold)
+	threshold := coreUtils.GetDKGThreshold(&coreTypes.Config{
+		DKGSetSize: uint32(g.state.DKGSetSize().Uint64())})
+	dkgGPK, err := g.coreDKGUtils.NewGroupPublicKey(&g.state, nextRound, threshold)
 	if err != nil {
 		return nil, errExecutionReverted
 	}
@@ -1918,7 +1915,7 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 	round := g.evm.Round
 	nextRound := new(big.Int).Add(round, big.NewInt(1))
 
-	resetCount := g.state.DKGResetCount(round)
+	resetCount := g.state.DKGResetCount(nextRound)
 
 	// Just restart DEXON if failed at round 0.
 	if round.Cmp(big.NewInt(0)) == 0 {
@@ -1954,11 +1951,12 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 	threshold := new(big.Int).Mul(
 		big.NewInt(2),
 		new(big.Int).Div(g.state.DKGSetSize(), big.NewInt(3)))
-	tsigThreshold := coreUtils.GetDKGThreshold(&coreTypes.Config{DKGSetSize: uint32(g.state.DKGSetSize().Uint64())})
+	tsigThreshold := coreUtils.GetDKGThreshold(&coreTypes.Config{
+		DKGSetSize: uint32(g.state.DKGSetSize().Uint64())})
 
 	// If 2f + 1 of DKG set is finalized, check if DKG succeeded.
 	if g.state.DKGFinalizedsCount().Cmp(threshold) > 0 {
-		_, err := g.coreDKGUtils.NewGroupPublicKey(nextRound, tsigThreshold)
+		_, err := g.coreDKGUtils.NewGroupPublicKey(&g.state, nextRound, tsigThreshold)
 		// DKG success.
 		if err == nil {
 			return nil, errExecutionReverted
@@ -1971,16 +1969,24 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 	}
 
 	// Update CRS.
-	headState, err := getRoundState(g.evm, round)
+	state, err := getRoundState(g.evm, round)
 	if err != nil {
 		return nil, errExecutionReverted
 	}
-	prevCRS := headState.CRS()
+	prevCRS := state.CRS()
+
+	// CRS(n) = hash(CRS(n-1)) if n <= core.DKGRoundDelay
+	if round.Uint64() == dexCore.DKGDelayRound {
+		for i := uint64(0); i < dexCore.DKGDelayRound; i++ {
+			prevCRS = crypto.Keccak256Hash(prevCRS[:])
+		}
+	}
+
 	for i := uint64(0); i < resetCount.Uint64()+1; i++ {
 		prevCRS = crypto.Keccak256Hash(prevCRS[:])
 	}
 
-	dkgGPK, err := g.coreDKGUtils.NewGroupPublicKey(round, tsigThreshold)
+	dkgGPK, err := g.coreDKGUtils.NewGroupPublicKey(state, round, tsigThreshold)
 	if err != nil {
 		return nil, errExecutionReverted
 	}
@@ -2007,9 +2013,9 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 	g.state.emitCRSProposed(newRound, crs)
 
 	// Increase reset count.
-	g.state.IncDKGResetCount(new(big.Int).Add(round, big.NewInt(1)))
-
+	g.state.IncDKGResetCount(nextRound)
 	g.state.emitDKGReset(round, blockHeight)
+
 	return nil, nil
 }
 
@@ -2023,7 +2029,6 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 	g.evm = evm
 	g.state = GovernanceState{evm.StateDB}
 	g.contract = contract
-	g.coreDKGUtils.SetState(g.state)
 
 	// Parse input.
 	method, exists := GovernanceABI.Sig2Method[string(input[:4])]

@@ -22,7 +22,7 @@
       "minGasPrice": "0x3b9aca00",
       "blockGasLimit": 40000000,
       "lambdaBA": 250,
-      "lambdaDKG": 1500,
+      "lambdaDKG": 1000,
       "notaryParamAlpha": 70.5,
       "notaryParamBeta": 264,
       "roundLength": 100,
