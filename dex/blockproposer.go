@@ -227,7 +227,7 @@ ListenLoop:
 			log.Debug("no new chain head for a while")
 			if p := b.dex.protocolManager.peers.BestPeer(); p != nil {
 				log.Debug("try force sync with peer", "id", p.id)
-				b.dex.protocolManager.synchronise(p, true)
+				go b.dex.protocolManager.synchronise(p, true)
 			} else {
 				log.Debug("no peer to sync")
 			}
