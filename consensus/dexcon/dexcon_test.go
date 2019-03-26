@@ -96,7 +96,7 @@ func (d *DexconTestSuite) TestBlockRewardCalculation() {
 
 	// blockReard = miningVelocity * totalStaked * roundInterval / aYear / numBlocksInCurRound
 	// 0.1875 * 1e18 * 3600 * 1000 / (86400 * 1000 * 365 * 3600) = 5945585996.96
-	d.Require().Equal(big.NewInt(5945585996), consensus.calculateBlockReward(0, d.stateDB))
+	d.Require().Equal(big.NewInt(5945585996), consensus.calculateBlockReward(0))
 }
 
 func TestDexcon(t *testing.T) {

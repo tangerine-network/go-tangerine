@@ -86,6 +86,7 @@ func (b *BlockGen) SetNonce(nonce types.BlockNonce) {
 // added. Notably, contract code relying on the BLOCKHASH instruction
 // will panic during execution.
 func (b *BlockGen) AddTx(tx *types.Transaction) {
+	TestingMode = true
 	b.AddTxWithChain(nil, tx)
 }
 

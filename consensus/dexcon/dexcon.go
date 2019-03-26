@@ -111,8 +111,21 @@ func (d *Dexcon) Prepare(chain consensus.ChainReader, header *types.Header) erro
 	return nil
 }
 
-func (d *Dexcon) calculateBlockReward(round int64, state *state.StateDB) *big.Int {
-	gs := d.govStateFetcer.GetStateForConfigAtRound(uint64(round))
+func (d *Dexcon) inExtendedRound(header *types.Header, state *state.StateDB) bool {
+	gs := vm.GovernanceState{state}
+	rgs := d.govStateFetcer.GetStateForConfigAtRound(header.Round)
+
+	roundEnd := gs.RoundHeight(new(big.Int).SetUint64(header.Round)).Uint64() + rgs.RoundLength().Uint64()
+
+	// Round 0 starts and height 0 instead of height 1.
+	if header.Round == 0 {
+		roundEnd += 1
+	}
+	return header.Number.Uint64() >= roundEnd
+}
+
+func (d *Dexcon) calculateBlockReward(round uint64) *big.Int {
+	gs := d.govStateFetcer.GetStateForConfigAtRound(round)
 	config := gs.Configuration()
 
 	blocksPerRound := config.RoundLength
@@ -177,23 +190,26 @@ func (d *Dexcon) Finalize(chain consensus.ChainReader, header *types.Header, sta
 	}
 
 	// Distribute block reward and halving condition.
-	if header.Coinbase == (common.Address{}) {
-		header.Reward = new(big.Int)
-	} else {
-		reward := d.calculateBlockReward(int64(header.Round), state)
-		state.AddBalance(header.Coinbase, reward)
-		header.Reward = reward
-		gs.IncTotalSupply(reward)
+	reward := new(big.Int)
 
-		// Record last proposed height.
-		gs.PutLastProposedHeight(header.Coinbase, header.Number)
-
-		// Check if halving checkpoint reached.
-		config := gs.Configuration()
-		if gs.TotalSupply().Cmp(config.NextHalvingSupply) >= 0 {
-			gs.MiningHalved()
-		}
+	// If this is not an empty block and we are not in extended round, calculate
+	// the block reward.
+	if header.Coinbase != (common.Address{}) && !d.inExtendedRound(header, state) {
+		reward = d.calculateBlockReward(header.Round)
 	}
+
+	header.Reward = reward
+	state.AddBalance(header.Coinbase, reward)
+	gs.IncTotalSupply(reward)
+
+	// Check if halving checkpoint reached.
+	config := gs.Configuration()
+	if gs.TotalSupply().Cmp(config.NextHalvingSupply) >= 0 {
+		gs.MiningHalved()
+	}
+
+	// Record last proposed height.
+	gs.PutLastProposedHeight(header.Coinbase, header.Number)
 
 	header.Root = state.IntermediateRoot(true)
 	return types.NewBlock(header, txs, uncles, receipts), nil

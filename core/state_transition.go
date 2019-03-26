@@ -21,7 +21,9 @@ import (
 	"flag"
 	"math"
 	"math/big"
+	"sync/atomic"
 
+	dexCore "github.com/dexon-foundation/dexon-consensus/core"
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/vm"
 	"github.com/dexon-foundation/dexon/log"
@@ -29,10 +31,18 @@ import (
 )
 
 var legacyEvm = flag.Bool("legacy-evm", false, "make evm run origin logic")
+var TestingMode = false
 
 var (
 	errInsufficientBalanceForGas = errors.New("insufficient balance to pay for gas")
 )
+
+var lastInExtendedRoundResultCache atomic.Value
+
+type lastInExtendedRoundResultType struct {
+	Height uint64
+	Result bool
+}
 
 /*
 The State Transitioning Model
@@ -180,6 +190,53 @@ func (st *StateTransition) preCheck() error {
 	return st.buyGas()
 }
 
+func (st *StateTransition) inExtendedRound() bool {
+	// If we are running tests with chian_makers.go, there will be no valid
+	// blockchain instance for st.evm.StateAtNumber to work correctly. Simply
+	// return false in this case.
+	if TestingMode {
+		return false
+	}
+
+	if h := lastInExtendedRoundResultCache.Load(); h != nil {
+		res := h.(*lastInExtendedRoundResultType)
+		if res.Height == st.evm.BlockNumber.Uint64() {
+			return res.Result
+		}
+	}
+
+	gs := vm.GovernanceState{st.state}
+
+	round := st.evm.Round.Uint64()
+	if round < dexCore.ConfigRoundShift {
+		round = 0
+	} else {
+		round -= dexCore.ConfigRoundShift
+	}
+
+	configHeight := gs.RoundHeight(new(big.Int).SetUint64(round))
+	state, err := st.evm.StateAtNumber(configHeight.Uint64())
+	if err != nil {
+		panic(err)
+	}
+	rgs := vm.GovernanceState{state}
+
+	roundEnd := gs.RoundHeight(st.evm.Round).Uint64() + rgs.RoundLength().Uint64()
+
+	// Round 0 starts and height 0 instead of height 1.
+	if round == 0 {
+		roundEnd += 1
+	}
+
+	res := st.evm.BlockNumber.Uint64() >= roundEnd
+
+	lastInExtendedRoundResultCache.Store(&lastInExtendedRoundResultType{
+		Height: st.evm.BlockNumber.Uint64(),
+		Result: res,
+	})
+	return res
+}
+
 // TransitionDb will transition the state by applying the current message and
 // returning the result including the used gas. It returns an error if failed.
 // An error indicates a consensus issue.
@@ -230,7 +287,14 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	} else {
 		st.dexonRefundGas()
 	}
-	st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
+
+	receiver := st.evm.Coinbase
+	if !*legacyEvm && st.inExtendedRound() {
+		gs := vm.GovernanceState{st.state}
+		receiver = gs.Owner()
+	}
+
+	st.state.AddBalance(receiver, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
 
 	return ret, st.gasUsed(), vmerr != nil, err
 }
