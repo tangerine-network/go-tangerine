@@ -99,7 +99,7 @@ func (recv *consensusBAReceiver) ProposeBlock() common.Hash {
 	}
 	block, err := recv.consensus.proposeBlock(recv.agreementModule.agreementID())
 	if err != nil || block == nil {
-		recv.consensus.logger.Error("unable to propose block", "error", err)
+		recv.consensus.logger.Error("Unable to propose block", "error", err)
 		return types.NullBlockHash
 	}
 	go func() {
@@ -429,7 +429,7 @@ func NewConsensus(
 	prv crypto.PrivateKey,
 	logger common.Logger) *Consensus {
 	return newConsensusForRound(
-		nil, 0, dMoment, app, gov, db, network, prv, logger, true)
+		nil, dMoment, app, gov, db, network, prv, logger, true)
 }
 
 // NewConsensusForSimulation creates an instance of Consensus for simulation,
@@ -443,7 +443,7 @@ func NewConsensusForSimulation(
 	prv crypto.PrivateKey,
 	logger common.Logger) *Consensus {
 	return newConsensusForRound(
-		nil, 0, dMoment, app, gov, db, network, prv, logger, false)
+		nil, dMoment, app, gov, db, network, prv, logger, false)
 }
 
 // NewConsensusFromSyncer constructs an Consensus instance from information
@@ -457,7 +457,6 @@ func NewConsensusForSimulation(
 //       their positions, in ascending order.
 func NewConsensusFromSyncer(
 	initBlock *types.Block,
-	initRoundBeginHeight uint64,
 	startWithEmpty bool,
 	dMoment time.Time,
 	app Application,
@@ -470,8 +469,8 @@ func NewConsensusFromSyncer(
 	cachedMessages []interface{},
 	logger common.Logger) (*Consensus, error) {
 	// Setup Consensus instance.
-	con := newConsensusForRound(initBlock, initRoundBeginHeight, dMoment, app,
-		gov, db, networkModule, prv, logger, true)
+	con := newConsensusForRound(initBlock, dMoment, app, gov, db,
+		networkModule, prv, logger, true)
 	// Launch a dummy receiver before we start receiving from network module.
 	con.dummyMsgBuffer = cachedMessages
 	con.dummyCancel, con.dummyFinished = utils.LaunchDummyReceiver(
@@ -525,7 +524,6 @@ func NewConsensusFromSyncer(
 // TODO(mission): remove dMoment, it's no longer one part of consensus.
 func newConsensusForRound(
 	initBlock *types.Block,
-	initRoundBeginHeight uint64,
 	dMoment time.Time,
 	app Application,
 	gov Governance,
@@ -594,18 +592,19 @@ func newConsensusForRound(
 	}
 	con.ctx, con.ctxCancel = context.WithCancel(context.Background())
 	var err error
-	if con.roundEvent, err = utils.NewRoundEvent(con.ctx, gov, logger, initRound,
-		initRoundBeginHeight, initBlockHeight, ConfigRoundShift); err != nil {
+	con.roundEvent, err = utils.NewRoundEvent(con.ctx, gov, logger, initRound,
+		initBlockHeight, ConfigRoundShift)
+	if err != nil {
 		panic(err)
 	}
 	baConfig := agreementMgrConfig{}
 	baConfig.from(initRound, initConfig, initCRS)
-	baConfig.SetRoundBeginHeight(initRoundBeginHeight)
+	baConfig.SetRoundBeginHeight(gov.GetRoundHeight(initRound))
 	con.baMgr, err = newAgreementMgr(con, initRound, baConfig)
 	if err != nil {
 		panic(err)
 	}
-	if err = con.prepare(initRoundBeginHeight, initBlock); err != nil {
+	if err = con.prepare(initBlock); err != nil {
 		panic(err)
 	}
 	return con
@@ -615,8 +614,7 @@ func newConsensusForRound(
 // 'initBlock' could be either:
 //  - nil
 //  - the last finalized block
-func (con *Consensus) prepare(
-	initRoundBeginHeight uint64, initBlock *types.Block) (err error) {
+func (con *Consensus) prepare(initBlock *types.Block) (err error) {
 	// Trigger the round validation method for the next round of the first
 	// round.
 	// The block past from full node should be delivered already or known by
@@ -633,11 +631,11 @@ func (con *Consensus) prepare(
 	// Measure time elapse for each handler of round events.
 	elapse := func(what string, lastE utils.RoundEventParam) func() {
 		start := time.Now()
-		con.logger.Info("handle round event",
+		con.logger.Info("Handle round event",
 			"what", what,
 			"event", lastE)
 		return func() {
-			con.logger.Info("finish round event",
+			con.logger.Info("Finish round event",
 				"what", what,
 				"event", lastE,
 				"elapse", time.Since(start))
@@ -647,7 +645,7 @@ func (con *Consensus) prepare(
 	// modules see the up-to-date node set, we need to make sure this action
 	// should be taken as the first one.
 	con.roundEvent.Register(func(evts []utils.RoundEventParam) {
-		defer elapse("purge node set", evts[len(evts)-1])()
+		defer elapse("purge-node-set", evts[len(evts)-1])()
 		for _, e := range evts {
 			if e.Reset == 0 {
 				continue
@@ -659,19 +657,25 @@ func (con *Consensus) prepare(
 	con.roundEvent.Register(func(evts []utils.RoundEventParam) {
 		e := evts[len(evts)-1]
 		go func() {
-			defer elapse("abort DKG", e)()
-			con.cfgModule.abortDKG(e.Round+1, e.Reset)
+			defer elapse("abort-DKG", e)()
+			if e.Reset > 0 {
+				aborted := con.cfgModule.abortDKG(con.ctx, e.Round+1, e.Reset-1)
+				con.logger.Info("DKG aborting result",
+					"round", e.Round+1,
+					"reset", e.Reset-1,
+					"aborted", aborted)
+			}
 		}()
 	})
 	// Register round event handler to update BA and BC modules.
 	con.roundEvent.Register(func(evts []utils.RoundEventParam) {
-		defer elapse("append config", evts[len(evts)-1])()
+		defer elapse("append-config", evts[len(evts)-1])()
 		// Always updates newer configs to the later modules first in the flow.
 		if err := con.bcModule.notifyRoundEvents(evts); err != nil {
 			panic(err)
 		}
 		// The init config is provided to baModule when construction.
-		if evts[len(evts)-1].BeginHeight != initRoundBeginHeight {
+		if evts[len(evts)-1].BeginHeight != con.gov.GetRoundHeight(initRound) {
 			if err := con.baMgr.notifyRoundEvents(evts); err != nil {
 				panic(err)
 			}
@@ -681,7 +685,7 @@ func (con *Consensus) prepare(
 	// failed to setup.
 	con.roundEvent.Register(func(evts []utils.RoundEventParam) {
 		e := evts[len(evts)-1]
-		defer elapse("reset DKG", e)()
+		defer elapse("reset-DKG", e)()
 		nextRound := e.Round + 1
 		if nextRound < DKGDelayRound {
 			return
@@ -723,10 +727,7 @@ func (con *Consensus) prepare(
 				return
 			}
 			// Aborting all previous running DKG protocol instance if any.
-			go func() {
-				con.cfgModule.abortDKG(nextRound, e.Reset)
-				con.runCRS(e.Round, utils.Rehash(e.CRS, uint(e.Reset+1)), true)
-			}()
+			go con.runCRS(e.Round, utils.Rehash(e.CRS, uint(e.Reset+1)), true)
 		})
 	})
 	// Register round event handler to propose new CRS.
@@ -734,7 +735,7 @@ func (con *Consensus) prepare(
 		// We don't have to propose new CRS during DKG reset, the reset of DKG
 		// would be done by the DKG set in previous round.
 		e := evts[len(evts)-1]
-		defer elapse("propose CRS", e)()
+		defer elapse("propose-CRS", e)()
 		if e.Reset != 0 || e.Round < DKGDelayRound {
 			return
 		}
@@ -761,7 +762,7 @@ func (con *Consensus) prepare(
 	// Touch nodeSetCache for next round.
 	con.roundEvent.Register(func(evts []utils.RoundEventParam) {
 		e := evts[len(evts)-1]
-		defer elapse("touch node set cache", e)()
+		defer elapse("touch-NodeSetCache", e)()
 		if e.Reset != 0 {
 			return
 		}
@@ -790,7 +791,7 @@ func (con *Consensus) prepare(
 	// Trigger round validation method for next period.
 	con.roundEvent.Register(func(evts []utils.RoundEventParam) {
 		e := evts[len(evts)-1]
-		defer elapse("next round", e)()
+		defer elapse("next-round", e)()
 		// Register a routine to trigger round events.
 		con.event.RegisterHeight(e.NextRoundValidationHeight(),
 			utils.RoundEventRetryHandlerGenerator(con.roundEvent, con.event))
@@ -832,7 +833,7 @@ func (con *Consensus) prepare(
 					"reset", e.Reset)
 				nextConfig := utils.GetConfigWithPanic(con.gov, nextRound,
 					con.logger)
-				con.cfgModule.registerDKG(nextRound, e.Reset,
+				con.cfgModule.registerDKG(con.ctx, nextRound, e.Reset,
 					utils.GetDKGThreshold(nextConfig))
 				con.event.RegisterHeight(e.NextDKGPreparationHeight(),
 					func(uint64) {
@@ -1249,8 +1250,8 @@ func (con *Consensus) deliveryGuard() {
 			return
 		case <-con.resetDeliveryGuardTicker:
 		case <-time.After(60 * time.Second):
-			con.logger.Error("no blocks delivered for too long", "ID", con.ID)
-			panic(fmt.Errorf("no blocks delivered for too long"))
+			con.logger.Error("No blocks delivered for too long", "ID", con.ID)
+			panic(fmt.Errorf("No blocks delivered for too long"))
 		}
 	}
 }

@@ -174,7 +174,7 @@ func (a *agreement) restart(
 		a.data.votes[1] = newVoteListMap()
 		a.data.period = 2
 		a.data.blocks = make(map[types.NodeID]*types.Block)
-		a.data.requiredVote = len(notarySet)/3*2 + 1
+		a.data.requiredVote = len(notarySet)*2/3 + 1
 		a.data.leader.restart(crs)
 		a.data.lockValue = types.NullBlockHash
 		a.data.lockIter = 0
@@ -239,14 +239,14 @@ func (a *agreement) restart(
 
 	for _, block := range replayBlock {
 		if err := a.processBlock(block); err != nil {
-			a.logger.Error("failed to process block when restarting agreement",
+			a.logger.Error("Failed to process block when restarting agreement",
 				"block", block)
 		}
 	}
 
 	for _, vote := range replayVote {
 		if err := a.processVote(vote); err != nil {
-			a.logger.Error("failed to process vote when restarting agreement",
+			a.logger.Error("Failed to process vote when restarting agreement",
 				"vote", vote)
 		}
 	}
