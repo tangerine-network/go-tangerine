@@ -110,6 +110,7 @@ const (
 	ErrNoStatusMsg
 	ErrExtraStatusMsg
 	ErrSuspendedPeer
+	ErrInvalidGovStateMsg
 )
 
 const (

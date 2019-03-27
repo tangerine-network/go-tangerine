@@ -361,7 +361,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// Execute the Ethereum handshake
 	var (
 		genesis = pm.blockchain.Genesis()
-		head    = pm.blockchain.CurrentHeader()
+		head    = pm.blockchain.CurrentBlock().Header()
 		hash    = head.Hash()
 		number  = head.Number.Uint64()
 	)
@@ -953,7 +953,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		govState, err := pm.blockchain.GetGovStateByHash(hash)
 		if err != nil {
-			panic(err)
+			p.Log().Debug("Invalid gov state msg", "hash", hash.String(), "err", err)
+			return errResp(ErrInvalidGovStateMsg, "hash=%v", hash.String())
 		}
 		return p.SendGovState(govState)
 	case msg.Code == GovStateMsg:
