@@ -641,6 +641,11 @@ func (p *peer) RequestHeadersByNumber(origin uint64, amount int, skip int, rever
 	return p2p.Send(p.rw, GetBlockHeadersMsg, &getBlockHeadersData{Origin: hashOrNumber{Number: origin}, Amount: uint64(amount), Skip: uint64(skip), Reverse: reverse, WithGov: withGov, Flag: downloaderReq})
 }
 
+func (p *peer) RequestWhitelistHeader(origin uint64) error {
+	p.Log().Debug("Fetching whitelist header", "number", origin, "flag", whitelistReq)
+	return p2p.Send(p.rw, GetBlockHeadersMsg, &getBlockHeadersData{Origin: hashOrNumber{Number: origin}, Amount: 1, Skip: 0, Reverse: false, WithGov: false, Flag: whitelistReq})
+}
+
 func (p *peer) RequestGovStateByHash(hash common.Hash) error {
 	p.Log().Debug("Fetching one gov state", "hash", hash)
 	return p2p.Send(p.rw, GetGovStateMsg, hash)

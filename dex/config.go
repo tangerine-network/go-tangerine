@@ -25,6 +25,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/dex/downloader"
 	"github.com/dexon-foundation/dexon/eth/gasprice"
@@ -81,6 +82,9 @@ type Config struct {
 	SyncMode  downloader.SyncMode
 	NoPruning bool
 
+	// Whitelist of required block number -> hash values to accept
+	Whitelist map[uint64]common.Hash `toml:"-"`
+
 	// Light client options
 	LightServ  int `toml:",omitempty"` // Maximum percentage of time allowed for serving LES requests
 	LightPeers int `toml:",omitempty"` // Maximum number of LES client peers
@@ -112,7 +116,7 @@ type Config struct {
 	// Miscellaneous options
 	DocRoot string `toml:"-"`
 
-	// Type of the EWASM interpreter ("" for detault)
+	// Type of the EWASM interpreter ("" for default)
 	EWASMInterpreter string
 
 	// Type of the EVM interpreter ("" for default)

@@ -1126,7 +1126,7 @@ func setEthash(ctx *cli.Context, cfg *eth.Config) {
 	}
 }
 
-func setWhitelist(ctx *cli.Context, cfg *eth.Config) {
+func setWhitelist(ctx *cli.Context, cfg *dex.Config) {
 	whitelist := ctx.GlobalString(WhitelistFlag.Name)
 	if whitelist == "" {
 		return
@@ -1212,6 +1212,7 @@ func SetDexConfig(ctx *cli.Context, stack *node.Node, cfg *dex.Config) {
 	ks := stack.AccountManager().Backends(keystore.KeyStoreType)[0].(*keystore.KeyStore)
 	setGPO(ctx, &cfg.GPO)
 	setTxPool(ctx, &cfg.TxPool)
+	setWhitelist(ctx, cfg)
 
 	if ctx.GlobalIsSet(SyncModeFlag.Name) {
 		cfg.SyncMode = *GlobalTextMarshaler(ctx, SyncModeFlag.Name).(*downloader.SyncMode)

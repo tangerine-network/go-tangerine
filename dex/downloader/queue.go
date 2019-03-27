@@ -325,7 +325,7 @@ func (q *queue) Schedule(headers []*types.HeaderWithGovState, from uint64) []*ty
 		}
 		// Make sure no duplicate requests are executed
 		if _, ok := q.blockTaskPool[hash]; ok {
-			log.Warn("Header  already scheduled for block fetch", "number", header.Number, "hash", hash)
+			log.Warn("Header already scheduled for block fetch", "number", header.Number, "hash", hash)
 			continue
 		}
 		if _, ok := q.receiptTaskPool[hash]; ok {

@@ -124,6 +124,8 @@ type ProtocolManager struct {
 	recordsCh  chan newRecordsEvent
 	recordsSub event.Subscription
 
+	whitelist map[uint64]common.Hash
+
 	// channels for fetcher, syncer, txsyncLoop
 	newPeerCh    chan *peer
 	txsyncCh     chan *txsync
@@ -161,7 +163,7 @@ type ProtocolManager struct {
 func NewProtocolManager(
 	config *params.ChainConfig, mode downloader.SyncMode, networkID uint64,
 	mux *event.TypeMux, txpool txPool, engine consensus.Engine,
-	blockchain *core.BlockChain, chaindb ethdb.Database,
+	blockchain *core.BlockChain, chaindb ethdb.Database, whitelist map[uint64]common.Hash,
 	isBlockProposer bool, gov governance, app dexconApp) (*ProtocolManager, error) {
 	tab := newNodeTable()
 	// Create the protocol manager with the base fields
@@ -175,6 +177,7 @@ func NewProtocolManager(
 		cache:              newCache(5120, dexDB.NewDatabase(chaindb)),
 		nextPullVote:       &sync.Map{},
 		chainconfig:        config,
+		whitelist:          whitelist,
 		newPeerCh:          make(chan *peer),
 		noMorePeers:        make(chan struct{}),
 		txsyncCh:           make(chan *txsync),
@@ -388,7 +391,13 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	pm.syncTransactions(p)
 	pm.syncNodeRecords(p)
 
-	// main loop. handle incoming messages.
+	// If we have any explicit whitelist block hashes, request them
+	for number := range pm.whitelist {
+		if err := p.RequestWhitelistHeader(number); err != nil {
+			return err
+		}
+	}
+	// Handle incoming messages until the connection is torn down
 	for {
 		if err := pm.handleMsg(p); err != nil {
 			p.Log().Debug("Ethereum message handling failed", "err", err)
@@ -597,6 +606,14 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			if err != nil {
 				log.Debug("Failed to deliver headers", "err", err)
 			}
+		case whitelistReq:
+			if want, ok := pm.whitelist[data.Headers[0].Number.Uint64()]; ok {
+				if hash := data.Headers[0].Hash(); want != hash {
+					p.Log().Info("Whitelist mismatch, dropping peer", "number", data.Headers[0].Number.Uint64(), "hash", hash, "want", want)
+					return errors.New("whitelist block mismatch")
+				}
+				p.Log().Debug("Whitelist block verified", "number", data.Headers[0].Number.Uint64(), "hash", want)
+			}
 		default:
 			log.Debug("Got headers with unexpected flag", "flag", data.Flag)
 		}
@@ -791,7 +808,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			p.SetHead(trueHead, trueNumber)
 
 			// Schedule a sync if above ours. Note, this will not fire a sync for a gap of
-			// a singe block (as the true number is below the propagated block), however this
+			// a single block (as the true number is below the propagated block), however this
 			// scenario should easily be covered by the fetcher.
 			currentBlock := pm.blockchain.CurrentBlock()
 			if trueNumber > currentBlock.NumberU64() {

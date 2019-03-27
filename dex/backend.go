@@ -173,7 +173,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 
 	pm, err := NewProtocolManager(dex.chainConfig, config.SyncMode,
 		config.NetworkId, dex.eventMux, dex.txPool, dex.engine, dex.blockchain,
-		chainDb, config.BlockProposerEnabled, dex.governance, dex.app)
+		chainDb, config.Whitelist, config.BlockProposerEnabled, dex.governance, dex.app)
 	if err != nil {
 		return nil, err
 	}

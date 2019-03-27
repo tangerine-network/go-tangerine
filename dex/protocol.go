@@ -55,7 +55,7 @@ const (
 // ProtocolName is the official short name of the protocol used during capability negotiation.
 var ProtocolName = "dex"
 
-// ProtocolVersions are the upported versions of the eth protocol (first is primary).
+// ProtocolVersions are the supported versions of the eth protocol (first is primary).
 var ProtocolVersions = []uint{dex64}
 
 // ProtocolLengths are the number of implemented message corresponding to different protocol versions.
@@ -116,6 +116,7 @@ const (
 const (
 	fetcherReq = uint8(iota)
 	downloaderReq
+	whitelistReq
 )
 
 func (e errCode) String() string {

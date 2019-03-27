@@ -25,7 +25,6 @@ import (
 	"github.com/dexon-foundation/dexon/common/math"
 	"github.com/dexon-foundation/dexon/core"
 	"github.com/dexon-foundation/dexon/core/bloombits"
-	"github.com/dexon-foundation/dexon/core/rawdb"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
@@ -92,18 +91,11 @@ func (b *DexAPIBackend) GetBlock(ctx context.Context, hash common.Hash) (*types.
 }
 
 func (b *DexAPIBackend) GetReceipts(ctx context.Context, hash common.Hash) (types.Receipts, error) {
-	if number := rawdb.ReadHeaderNumber(b.dex.chainDb, hash); number != nil {
-		return rawdb.ReadReceipts(b.dex.chainDb, hash, *number), nil
-	}
-	return nil, nil
+	return b.dex.blockchain.GetReceiptsByHash(hash), nil
 }
 
 func (b *DexAPIBackend) GetLogs(ctx context.Context, hash common.Hash) ([][]*types.Log, error) {
-	number := rawdb.ReadHeaderNumber(b.dex.chainDb, hash)
-	if number == nil {
-		return nil, nil
-	}
-	receipts := rawdb.ReadReceipts(b.dex.chainDb, hash, *number)
+	receipts := b.dex.blockchain.GetReceiptsByHash(hash)
 	if receipts == nil {
 		return nil, nil
 	}
