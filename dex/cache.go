@@ -44,23 +44,23 @@ func voteToKey(vote *coreTypes.Vote) voteKey {
 }
 
 type cache struct {
-	lock            sync.RWMutex
-	blockCache      map[coreCommon.Hash]*coreTypes.Block
-	voteCache       map[coreTypes.Position]map[voteKey]*coreTypes.Vote
-	randomnessCache map[coreCommon.Hash]*coreTypes.BlockRandomnessResult
-	votePosition    []coreTypes.Position
-	db              coreDb.Database
-	voteSize        int
-	size            int
+	lock                sync.RWMutex
+	blockCache          map[coreCommon.Hash]*coreTypes.Block
+	finalizedBlockCache map[coreTypes.Position]*coreTypes.Block
+	voteCache           map[coreTypes.Position]map[voteKey]*coreTypes.Vote
+	votePosition        []coreTypes.Position
+	db                  coreDb.Database
+	voteSize            int
+	size                int
 }
 
 func newCache(size int, db coreDb.Database) *cache {
 	return &cache{
-		blockCache:      make(map[coreCommon.Hash]*coreTypes.Block),
-		voteCache:       make(map[coreTypes.Position]map[voteKey]*coreTypes.Vote),
-		randomnessCache: make(map[coreCommon.Hash]*coreTypes.BlockRandomnessResult),
-		db:              db,
-		size:            size,
+		blockCache:          make(map[coreCommon.Hash]*coreTypes.Block),
+		finalizedBlockCache: make(map[coreTypes.Position]*coreTypes.Block),
+		voteCache:           make(map[coreTypes.Position]map[voteKey]*coreTypes.Vote),
+		db:                  db,
+		size:                size,
 	}
 }
 
@@ -110,6 +110,28 @@ func (c *cache) addBlock(block *coreTypes.Block) {
 	c.blockCache[block.Hash] = block
 }
 
+func (c *cache) addFinalizedBlock(block *coreTypes.Block) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	block = block.Clone()
+	if len(c.blockCache) >= c.size {
+		// Randomly delete one entry.
+		for k := range c.blockCache {
+			delete(c.blockCache, k)
+			break
+		}
+	}
+	if len(c.finalizedBlockCache) >= c.size {
+		// Randomly delete one entry.
+		for k := range c.finalizedBlockCache {
+			delete(c.finalizedBlockCache, k)
+			break
+		}
+	}
+	c.blockCache[block.Hash] = block
+	c.finalizedBlockCache[block.Position] = block
+}
+
 func (c *cache) blocks(hashes coreCommon.Hashes) []*coreTypes.Block {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
@@ -122,48 +144,18 @@ func (c *cache) blocks(hashes coreCommon.Hashes) []*coreTypes.Block {
 			if err != nil {
 				continue
 			}
-			// Blocks request from the cache do not need the finalization info.
-			block.Finalization = coreTypes.FinalizationResult{}
 			cacheBlocks = append(cacheBlocks, &block)
 		}
 	}
 	return cacheBlocks
 }
 
-func (c *cache) addRandomness(rand *coreTypes.BlockRandomnessResult) {
-	c.lock.Lock()
-	defer c.lock.Unlock()
-	if len(c.randomnessCache) >= c.size {
-		// Randomly delete one entry.
-		for k := range c.randomnessCache {
-			delete(c.randomnessCache, k)
-			break
-		}
-	}
-	c.randomnessCache[rand.BlockHash] = rand
-}
-
-func (c *cache) randomness(hashes coreCommon.Hashes) []*coreTypes.BlockRandomnessResult {
+func (c *cache) finalizedBlock(pos coreTypes.Position) *coreTypes.Block {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
-	cacheRandomnesss := make([]*coreTypes.BlockRandomnessResult, 0, len(hashes))
-	for _, hash := range hashes {
-		if block, exist := c.randomnessCache[hash]; exist {
-			cacheRandomnesss = append(cacheRandomnesss, block)
-		} else {
-			block, err := c.db.GetBlock(hash)
-			if err != nil {
-				continue
-			}
-			if len(block.Finalization.Randomness) == 0 {
-				continue
-			}
-			cacheRandomnesss = append(cacheRandomnesss, &coreTypes.BlockRandomnessResult{
-				BlockHash:  block.Hash,
-				Position:   block.Position,
-				Randomness: block.Finalization.Randomness,
-			})
-		}
+	if block, exist := c.finalizedBlockCache[pos]; exist {
+		return block
 	}
-	return cacheRandomnesss
+	// TODO(jimmy): get finalized block from db
+	return nil
 }

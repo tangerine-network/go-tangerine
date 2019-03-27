@@ -32,18 +32,19 @@ import (
 
 // Errors for sanity check error.
 var (
-	ErrBlockFromOlderPosition         = errors.New("block from older position")
-	ErrNotGenesisBlock                = errors.New("not a genesis block")
-	ErrIsGenesisBlock                 = errors.New("is a genesis block")
-	ErrIncorrectParentHash            = errors.New("incorrect parent hash")
-	ErrInvalidBlockHeight             = errors.New("invalid block height")
-	ErrInvalidRoundID                 = errors.New("invalid round id")
-	ErrNotFollowTipPosition           = errors.New("not follow tip position")
-	ErrDuplicatedPendingBlock         = errors.New("duplicated pending block")
-	ErrRetrySanityCheckLater          = errors.New("retry sanity check later")
-	ErrRoundNotSwitch                 = errors.New("round not switch")
-	ErrIncorrectBlockRandomnessResult = errors.New(
+	ErrBlockFromOlderPosition   = errors.New("block from older position")
+	ErrNotGenesisBlock          = errors.New("not a genesis block")
+	ErrIsGenesisBlock           = errors.New("is a genesis block")
+	ErrIncorrectParentHash      = errors.New("incorrect parent hash")
+	ErrInvalidBlockHeight       = errors.New("invalid block height")
+	ErrInvalidRoundID           = errors.New("invalid round id")
+	ErrNotFollowTipPosition     = errors.New("not follow tip position")
+	ErrDuplicatedPendingBlock   = errors.New("duplicated pending block")
+	ErrRetrySanityCheckLater    = errors.New("retry sanity check later")
+	ErrRoundNotSwitch           = errors.New("round not switch")
+	ErrIncorrectAgreementResult = errors.New(
 		"incorrect block randomness result")
+	ErrMissingRandomness = errors.New("missing block randomness")
 )
 
 type pendingBlockRecord struct {
@@ -134,7 +135,7 @@ type blockChain struct {
 	vGetter             tsigVerifierGetter
 	app                 Application
 	logger              common.Logger
-	pendingRandomnesses map[types.Position]*types.BlockRandomnessResult
+	pendingRandomnesses map[types.Position]*types.AgreementResult
 	configs             []blockChainConfig
 	pendingBlocks       pendingBlockRecords
 	confirmedBlocks     types.BlocksByPosition
@@ -154,7 +155,7 @@ func newBlockChain(nID types.NodeID, dMoment time.Time, initBlock *types.Block,
 		logger:        logger,
 		dMoment:       dMoment,
 		pendingRandomnesses: make(
-			map[types.Position]*types.BlockRandomnessResult),
+			map[types.Position]*types.AgreementResult),
 	}
 }
 
@@ -211,10 +212,10 @@ func (bc *blockChain) notifyRoundEvents(evts []utils.RoundEventParam) error {
 }
 
 func (bc *blockChain) proposeBlock(position types.Position,
-	proposeTime time.Time) (b *types.Block, err error) {
+	proposeTime time.Time, isEmpty bool) (b *types.Block, err error) {
 	bc.lock.RLock()
 	defer bc.lock.RUnlock()
-	return bc.prepareBlock(position, proposeTime, false)
+	return bc.prepareBlock(position, proposeTime, isEmpty)
 }
 
 func (bc *blockChain) extractBlocks() (ret []*types.Block) {
@@ -222,7 +223,9 @@ func (bc *blockChain) extractBlocks() (ret []*types.Block) {
 	defer bc.lock.Unlock()
 	for len(bc.confirmedBlocks) > 0 {
 		c := bc.confirmedBlocks[0]
-		if c.Position.Round >= DKGDelayRound && len(c.Finalization.Randomness) == 0 {
+		if c.Position.Round >= DKGDelayRound &&
+			len(c.Finalization.Randomness) == 0 &&
+			!bc.setRandomnessFromPending(c) {
 			break
 		}
 		c, bc.confirmedBlocks = bc.confirmedBlocks[0], bc.confirmedBlocks[1:]
@@ -230,8 +233,6 @@ func (bc *blockChain) extractBlocks() (ret []*types.Block) {
 		//                to single chain.
 		c.Finalization.ParentHash = c.ParentHash
 		c.Finalization.Timestamp = c.Timestamp
-		// It's a workaround, the height for application is one-based.
-		c.Finalization.Height = c.Position.Height + 1
 		ret = append(ret, c)
 		bc.lastDelivered = c
 	}
@@ -292,6 +293,7 @@ func (bc *blockChain) addEmptyBlock(position types.Position) (
 			// to be confirmed.
 			panic(err)
 		}
+		emptyB.Finalization.Height = emptyB.Position.Height + 1
 		bc.confirmBlock(emptyB)
 		bc.checkIfBlocksConfirmed()
 		return emptyB
@@ -315,6 +317,11 @@ func (bc *blockChain) addEmptyBlock(position types.Position) (
 // addBlock should be called when the block is confirmed by BA, we won't perform
 // sanity check against this block, it's ok to add block with skipping height.
 func (bc *blockChain) addBlock(b *types.Block) error {
+	if b.Position.Round >= DKGDelayRound &&
+		len(b.Finalization.Randomness) == 0 &&
+		!bc.setRandomnessFromPending(b) {
+		return ErrMissingRandomness
+	}
 	bc.lock.Lock()
 	defer bc.lock.Unlock()
 	confirmed := false
@@ -330,50 +337,12 @@ func (bc *blockChain) addBlock(b *types.Block) error {
 	} else if b.IsGenesis() {
 		confirmed = true
 	}
+	delete(bc.pendingRandomnesses, b.Position)
 	if !confirmed {
 		return bc.addPendingBlockRecord(pendingBlockRecord{b.Position, b})
 	}
 	bc.confirmBlock(b)
 	bc.checkIfBlocksConfirmed()
-	return nil
-}
-
-func (bc *blockChain) shouldAddRandomness(r *types.BlockRandomnessResult) bool {
-	bc.lock.RLock()
-	defer bc.lock.RUnlock()
-	if bc.lastDelivered != nil &&
-		bc.lastDelivered.Position.Newer(r.Position) {
-		return false
-	}
-	_, exists := bc.pendingRandomnesses[r.Position]
-	if exists {
-		return false
-	}
-	b := bc.findPendingBlock(r.Position)
-	return b == nil || len(b.Finalization.Randomness) == 0
-}
-
-func (bc *blockChain) addRandomness(r *types.BlockRandomnessResult) error {
-	if !bc.shouldAddRandomness(r) {
-		return nil
-	}
-	ok, err := bc.verifyRandomness(r.BlockHash, r.Position.Round, r.Randomness)
-	if err != nil {
-		return err
-	}
-	if !ok {
-		return ErrIncorrectBlockRandomnessResult
-	}
-	bc.lock.Lock()
-	defer bc.lock.Unlock()
-	if b := bc.findPendingBlock(r.Position); b != nil {
-		if !r.BlockHash.Equal(b.Hash) {
-			panic(fmt.Errorf("mismathed randomness: %s %s", b, r))
-		}
-		b.Finalization.Randomness = r.Randomness
-	} else {
-		bc.pendingRandomnesses[r.Position] = r
-	}
 	return nil
 }
 
@@ -421,24 +390,29 @@ func (bc *blockChain) nextBlock() (uint64, time.Time) {
 	return tip.Position.Height + 1, tip.Timestamp.Add(config.minBlockInterval)
 }
 
-func (bc *blockChain) pendingBlocksWithoutRandomness() (hashes common.Hashes) {
+func (bc *blockChain) pendingBlocksWithoutRandomness() []*types.Block {
 	bc.lock.RLock()
 	defer bc.lock.RUnlock()
+	blocks := make([]*types.Block, 0)
 	for _, b := range bc.confirmedBlocks {
-		if b.Position.Round == 0 || len(b.Finalization.Randomness) > 0 {
+		if b.Position.Round < DKGDelayRound ||
+			len(b.Finalization.Randomness) > 0 ||
+			bc.setRandomnessFromPending(b) {
 			continue
 		}
-		hashes = append(hashes, b.Hash)
+		blocks = append(blocks, b)
 	}
 	for _, r := range bc.pendingBlocks {
-		if r.position.Round == 0 {
+		if r.position.Round < DKGDelayRound {
 			continue
 		}
-		if r.block != nil && len(r.block.Finalization.Randomness) == 0 {
-			hashes = append(hashes, r.block.Hash)
+		if r.block != nil &&
+			len(r.block.Finalization.Randomness) == 0 &&
+			!bc.setRandomnessFromPending(r.block) {
+			blocks = append(blocks, r.block)
 		}
 	}
-	return
+	return blocks
 }
 
 func (bc *blockChain) lastDeliveredBlock() *types.Block {
@@ -454,14 +428,6 @@ func (bc *blockChain) lastPendingBlock() *types.Block {
 		return nil
 	}
 	return bc.confirmedBlocks[0]
-}
-
-func (bc *blockChain) processFinalizedBlock(b *types.Block) error {
-	return bc.addRandomness(&types.BlockRandomnessResult{
-		BlockHash:  b.Hash,
-		Position:   b.Position,
-		Randomness: b.Finalization.Randomness,
-	})
 }
 
 /////////////////////////////////////////////
@@ -491,9 +457,6 @@ func (bc *blockChain) addPendingBlockRecord(p pendingBlockRecord) error {
 			err = nil
 		}
 		return err
-	}
-	if p.block != nil {
-		bc.setRandomnessFromPending(p.block)
 	}
 	return nil
 }
@@ -656,17 +619,39 @@ func (bc *blockChain) confirmBlock(b *types.Block) {
 	bc.logger.Debug("Calling Application.BlockConfirmed", "block", b)
 	bc.app.BlockConfirmed(*b)
 	bc.lastConfirmed = b
-	bc.setRandomnessFromPending(b)
 	bc.confirmedBlocks = append(bc.confirmedBlocks, b)
 	bc.purgeConfig()
 }
 
-func (bc *blockChain) setRandomnessFromPending(b *types.Block) {
+func (bc *blockChain) setRandomnessFromPending(b *types.Block) bool {
 	if r, exist := bc.pendingRandomnesses[b.Position]; exist {
 		if !r.BlockHash.Equal(b.Hash) {
 			panic(fmt.Errorf("mismathed randomness: %s %s", b, r))
 		}
 		b.Finalization.Randomness = r.Randomness
 		delete(bc.pendingRandomnesses, b.Position)
+		return true
 	}
+	return false
+}
+
+func (bc *blockChain) processAgreementResult(result *types.AgreementResult) error {
+	if result.Position.Round < DKGDelayRound {
+		return nil
+	}
+	ok, err := bc.verifyRandomness(
+		result.BlockHash, result.Position.Round, result.Randomness)
+	if err != nil {
+		return err
+	}
+	if !ok {
+		return ErrIncorrectAgreementResult
+	}
+	bc.lock.Lock()
+	defer bc.lock.Unlock()
+	if !result.Position.Newer(bc.lastDelivered.Position) {
+		return nil
+	}
+	bc.pendingRandomnesses[result.Position] = result
+	return nil
 }

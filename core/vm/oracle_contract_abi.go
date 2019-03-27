@@ -58,20 +58,6 @@ const GovernanceABIJSON = `
   {
     "constant": true,
     "inputs": [],
-    "name": "dkgSetSize",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
     "name": "totalSupply",
     "outputs": [
       {

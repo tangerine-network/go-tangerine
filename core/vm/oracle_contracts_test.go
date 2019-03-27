@@ -189,7 +189,6 @@ func (g *OracleContractsTestSuite) SetupTest() {
 	config.NextHalvingSupply = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2.5e9))
 	config.LastHalvedAmount = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.5e9))
 	config.MiningVelocity = 0.1875
-	config.DKGSetSize = 7
 
 	g.config = config
 
@@ -658,15 +657,6 @@ func (g *OracleContractsTestSuite) TestConfigurationReading() {
 	res, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
 	g.Require().NoError(err)
 
-	// DKGSetSize.
-	input, err = GovernanceABI.ABI.Pack("dkgSetSize")
-	g.Require().NoError(err)
-	res, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
-	g.Require().NoError(err)
-	err = GovernanceABI.ABI.Unpack(&value, "dkgSetSize", res)
-	g.Require().NoError(err)
-	g.Require().True(uint32(value.Uint64()) > 0)
-
 	// RoundLength.
 	input, err = GovernanceABI.ABI.Pack("roundLength")
 	g.Require().NoError(err)
@@ -934,18 +924,18 @@ func (v *testTSigVerifierMock) VerifySignature(coreCommon.Hash, coreCrypto.Signa
 }
 
 func (g *OracleContractsTestSuite) TestResetDKG() {
-	for i := uint32(0); i < g.config.DKGSetSize; i++ {
+	for i := 0; i < 7; i++ {
 		privKey, addr := newPrefundAccount(g.stateDB)
 		pk := crypto.FromECDSAPub(&privKey.PublicKey)
 
 		// Stake.
 		amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6))
-		input, err := GovernanceABI.ABI.Pack("register", pk, "Test1", "test1@dexon.org", "Taipei", "https://dexon.org")
+		input, err := GovernanceABI.ABI.Pack("register", pk, "Test", "test1@dexon.org", "Taipei", "https://dexon.org")
 		g.Require().NoError(err)
 		_, err = g.call(GovernanceContractAddress, addr, input, amount)
 		g.Require().NoError(err)
 	}
-	g.Require().Len(g.s.QualifiedNodes(), int(g.config.DKGSetSize))
+	g.Require().Len(g.s.QualifiedNodes(), int(g.s.NotarySetSize().Uint64()))
 
 	addrs := make(map[int][]common.Address)
 	dkgSets := make(map[int]map[coreTypes.NodeID]struct{})
@@ -972,7 +962,7 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 		}
 
 		addrs[round] = []common.Address{}
-		target := coreTypes.NewDKGSetTarget(coreCommon.Hash(g.s.CRS()))
+		target := coreTypes.NewNotarySetTarget(coreCommon.Hash(g.s.CRS()))
 		ns := coreTypes.NewNodeSet()
 
 		for _, x := range g.s.QualifiedNodes() {
@@ -982,8 +972,8 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 			}
 			ns.Add(coreTypes.NewNodeID(mpk))
 		}
-		dkgSet := ns.GetSubSet(int(g.s.DKGSetSize().Uint64()), target)
-		g.Require().Len(dkgSet, int(g.config.DKGSetSize))
+		dkgSet := ns.GetSubSet(int(g.s.NotarySetSize().Uint64()), target)
+		g.Require().Len(dkgSet, int(g.s.NotarySetSize().Uint64()))
 		dkgSets[round] = dkgSet
 
 		for id := range dkgSet {

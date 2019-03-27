@@ -106,7 +106,6 @@ type agreementMgr struct {
 	signer            *utils.Signer
 	bcModule          *blockChain
 	ctx               context.Context
-	initRound         uint64
 	configs           []agreementMgrConfig
 	baModule          *agreement
 	recv              *consensusBAReceiver
@@ -117,7 +116,7 @@ type agreementMgr struct {
 	lock              sync.RWMutex
 }
 
-func newAgreementMgr(con *Consensus, initRound uint64,
+func newAgreementMgr(con *Consensus,
 	initConfig agreementMgrConfig) (mgr *agreementMgr, err error) {
 	mgr = &agreementMgr{
 		con:               con,
@@ -130,7 +129,6 @@ func newAgreementMgr(con *Consensus, initRound uint64,
 		signer:            con.signer,
 		bcModule:          con.bcModule,
 		ctx:               con.ctx,
-		initRound:         initRound,
 		processedBAResult: make(map[types.Position]struct{}, maxResultCache),
 		configs:           []agreementMgrConfig{initConfig},
 		voteFilter:        utils.NewVoteFilter(),
@@ -141,21 +139,26 @@ func newAgreementMgr(con *Consensus, initRound uint64,
 		roundValue:              &atomic.Value{},
 		changeNotaryHeightValue: &atomic.Value{},
 	}
-	mgr.recv.roundValue.Store(uint64(0))
+	mgr.recv.updateRound(uint64(0))
 	mgr.recv.changeNotaryHeightValue.Store(uint64(0))
+	return mgr, nil
+}
+
+func (mgr *agreementMgr) prepare() {
+	round := mgr.bcModule.tipRound()
 	agr := newAgreement(
 		mgr.ID,
 		mgr.recv,
 		newLeaderSelector(genValidLeader(mgr), mgr.logger),
 		mgr.signer,
 		mgr.logger)
-	// Hacky way to initialize first notarySet.
-	nodes, err := mgr.cache.GetNodeSet(initRound)
+	nodes, err := mgr.cache.GetNodeSet(round)
 	if err != nil {
 		return
 	}
 	agr.notarySet = nodes.GetSubSet(
-		int(initConfig.notarySetSize), types.NewNotarySetTarget(initConfig.crs))
+		int(mgr.config(round).notarySetSize),
+		types.NewNotarySetTarget(mgr.config(round).crs))
 	// Hacky way to make agreement module self contained.
 	mgr.recv.agreementModule = agr
 	mgr.baModule = agr
@@ -172,17 +175,17 @@ func (mgr *agreementMgr) run() {
 	mgr.waitGroup.Add(1)
 	go func() {
 		defer mgr.waitGroup.Done()
-		mgr.runBA(mgr.initRound)
+		mgr.runBA(mgr.bcModule.tipRound())
 	}()
 }
 
 func (mgr *agreementMgr) config(round uint64) *agreementMgrConfig {
 	mgr.lock.RLock()
 	defer mgr.lock.RUnlock()
-	if round < mgr.initRound {
+	if round < mgr.configs[0].RoundID() {
 		panic(ErrRoundOutOfRange)
 	}
-	roundIndex := round - mgr.initRound
+	roundIndex := round - mgr.configs[0].RoundID()
 	if roundIndex >= uint64(len(mgr.configs)) {
 		return nil
 	}
@@ -274,6 +277,9 @@ func (mgr *agreementMgr) processAgreementResult(
 	}
 	if result.Position == aID && !mgr.baModule.confirmed() {
 		mgr.logger.Info("Syncing BA", "position", result.Position)
+		if result.Position.Round >= DKGDelayRound {
+			return mgr.baModule.processAgreementResult(result)
+		}
 		for key := range result.Votes {
 			if err := mgr.baModule.processVote(&result.Votes[key]); err != nil {
 				return err
@@ -285,22 +291,36 @@ func (mgr *agreementMgr) processAgreementResult(
 		if err != nil {
 			return err
 		}
-		mgr.logger.Debug("Calling Network.PullBlocks for fast syncing BA",
-			"hash", result.BlockHash)
-		mgr.network.PullBlocks(common.Hashes{result.BlockHash})
-		mgr.logger.Debug("Calling Governance.CRS", "round", result.Position.Round)
-		crs := utils.GetCRSWithPanic(mgr.gov, result.Position.Round, mgr.logger)
-		for key := range result.Votes {
-			if err := mgr.baModule.processVote(&result.Votes[key]); err != nil {
-				return err
+		if result.Position.Round < DKGDelayRound {
+			mgr.logger.Debug("Calling Network.PullBlocks for fast syncing BA",
+				"hash", result.BlockHash)
+			mgr.network.PullBlocks(common.Hashes{result.BlockHash})
+			for key := range result.Votes {
+				if err := mgr.baModule.processVote(&result.Votes[key]); err != nil {
+					return err
+				}
 			}
 		}
+		mgr.logger.Debug("Calling Governance.CRS", "round", result.Position.Round)
+		crs := utils.GetCRSWithPanic(mgr.gov, result.Position.Round, mgr.logger)
 		leader, err := mgr.cache.GetLeaderNode(result.Position)
 		if err != nil {
 			return err
 		}
 		mgr.baModule.restart(nIDs, result.Position, leader, crs)
+		if result.Position.Round >= DKGDelayRound {
+			return mgr.baModule.processAgreementResult(result)
+		}
 	}
+	return nil
+}
+
+func (mgr *agreementMgr) processFinalizedBlock(block *types.Block) error {
+	aID := mgr.baModule.agreementID()
+	if block.Position.Older(aID) {
+		return nil
+	}
+	mgr.baModule.processFinalizedBlock(block)
 	return nil
 }
 
@@ -377,13 +397,14 @@ Loop:
 		}
 		mgr.recv.isNotary = checkRound()
 		// Run BA for this round.
-		mgr.recv.roundValue.Store(currentRound)
+		mgr.recv.updateRound(currentRound)
 		mgr.recv.changeNotaryHeightValue.Store(curConfig.RoundEndHeight())
 		mgr.recv.restartNotary <- types.Position{
 			Round:  mgr.recv.round(),
 			Height: math.MaxUint64,
 		}
 		mgr.voteFilter = utils.NewVoteFilter()
+		mgr.recv.emptyBlockHashMap = &sync.Map{}
 		if err := mgr.baRoutineForOneRound(&setting); err != nil {
 			mgr.logger.Error("BA routine failed",
 				"error", err,

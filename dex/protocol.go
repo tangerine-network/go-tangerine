@@ -92,7 +92,6 @@ const (
 	DKGPartialSignatureMsg = 0x25
 	PullBlocksMsg          = 0x26
 	PullVotesMsg           = 0x27
-	PullRandomnessMsg      = 0x28
 
 	GetGovStateMsg = 0x29
 	GovStateMsg    = 0x2a
@@ -157,8 +156,6 @@ type governance interface {
 	CRSRound() uint64
 
 	NotarySet(uint64) (map[string]struct{}, error)
-
-	DKGSet(uint64) (map[string]struct{}, error)
 }
 
 type dexconApp interface {

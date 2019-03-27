@@ -45,14 +45,6 @@ func (n *DexconNetwork) PullVotes(pos types.Position) {
 	n.pm.BroadcastPullVotes(pos)
 }
 
-// PullRandomness tries to pull randomness result from the DEXON network.
-func (n *DexconNetwork) PullRandomness(hashes coreCommon.Hashes) {
-	if len(hashes) == 0 {
-		return
-	}
-	n.pm.BroadcastPullRandomness(hashes)
-}
-
 // BroadcastVote broadcasts vote to all nodes in DEXON network.
 func (n *DexconNetwork) BroadcastVote(vote *types.Vote) {
 	n.pm.BroadcastVote(vote)
@@ -60,7 +52,11 @@ func (n *DexconNetwork) BroadcastVote(vote *types.Vote) {
 
 // BroadcastBlock broadcasts block to all nodes in DEXON network.
 func (n *DexconNetwork) BroadcastBlock(block *types.Block) {
-	n.pm.BroadcastCoreBlock(block)
+	if block.IsFinalized() {
+		n.pm.BroadcastFinalizedBlock(block)
+	} else {
+		n.pm.BroadcastCoreBlock(block)
+	}
 }
 
 // SendDKGPrivateShare sends PrivateShare to a DKG participant.
@@ -83,13 +79,8 @@ func (n *DexconNetwork) BroadcastDKGPartialSignature(
 }
 
 // BroadcastAgreementResult broadcasts rand request to DKG set.
-func (n *DexconNetwork) BroadcastAgreementResult(randRequest *types.AgreementResult) {
-	n.pm.BroadcastAgreementResult(randRequest)
-}
-
-// BroadcastRandomnessResult broadcasts rand request to Notary set.
-func (n *DexconNetwork) BroadcastRandomnessResult(randResult *types.BlockRandomnessResult) {
-	n.pm.BroadcastRandomnessResult(randResult)
+func (n *DexconNetwork) BroadcastAgreementResult(result *types.AgreementResult) {
+	n.pm.BroadcastAgreementResult(result)
 }
 
 // ReceiveChan returns a channel to receive messages from DEXON network.

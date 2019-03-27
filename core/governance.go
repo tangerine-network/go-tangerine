@@ -146,7 +146,6 @@ func (g *Governance) Configuration(round uint64) *coreTypes.Config {
 		LambdaBA:         time.Duration(c.LambdaBA) * time.Millisecond,
 		LambdaDKG:        time.Duration(c.LambdaDKG) * time.Millisecond,
 		NotarySetSize:    uint32(configHelper.NotarySetSize().Uint64()),
-		DKGSetSize:       c.DKGSetSize,
 		RoundLength:      c.RoundLength,
 		MinBlockInterval: time.Duration(c.MinBlockInterval) * time.Millisecond,
 	}
@@ -199,21 +198,6 @@ func (d *Governance) NotarySetNodeKeyAddresses(round uint64) (map[common.Address
 	return r, nil
 }
 
-func (d *Governance) DKGSet(round uint64) (map[string]struct{}, error) {
-	dkgSet, err := d.nodeSetCache.GetDKGSet(round)
-	if err != nil {
-		return nil, err
-	}
-
-	r := make(map[string]struct{}, len(dkgSet))
-	for id := range dkgSet {
-		if key, exists := d.nodeSetCache.GetPublicKey(id); exists {
-			r[hex.EncodeToString(key.Bytes())] = struct{}{}
-		}
-	}
-	return r, nil
-}
-
 func (g *Governance) DKGComplaints(round uint64) []*dkgTypes.Complaint {
 	s := g.GetStateForDKGAtRound(round)
 	if s == nil {
@@ -245,7 +229,7 @@ func (g *Governance) IsDKGMPKReady(round uint64) bool {
 		return false
 	}
 	config := g.Configuration(round)
-	threshold := 2*uint64(config.DKGSetSize)/3 + 1
+	threshold := 2*uint64(config.NotarySetSize)/3 + 1
 	count := s.DKGMPKReadysCount().Uint64()
 	return count >= threshold
 }
@@ -256,7 +240,7 @@ func (g *Governance) IsDKGFinal(round uint64) bool {
 		return false
 	}
 	config := g.Configuration(round)
-	threshold := 2*uint64(config.DKGSetSize)/3 + 1
+	threshold := 2*uint64(config.NotarySetSize)/3 + 1
 	count := s.DKGFinalizedsCount().Uint64()
 	return count >= threshold
 }

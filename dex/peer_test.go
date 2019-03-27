@@ -62,27 +62,12 @@ func TestPeerSetBuildAndForgetConn(t *testing.T) {
 			nodes[1].ID().String(): nodes[1],
 			nodes[2].ID().String(): nodes[2],
 		},
-		{set: dkgset, round: 10}: {
-			self.ID().String():     self,
-			nodes[1].ID().String(): nodes[1],
-			nodes[3].ID().String(): nodes[3],
-		},
 		{set: notaryset, round: 11}: {
 			self.ID().String():     self,
 			nodes[1].ID().String(): nodes[1],
 			nodes[5].ID().String(): nodes[5],
 		},
-		{set: dkgset, round: 11}: {
-			nodes[1].ID().String(): nodes[1],
-			nodes[2].ID().String(): nodes[2],
-			nodes[5].ID().String(): nodes[5],
-		},
 		{set: notaryset, round: 12}: {
-			self.ID().String():     self,
-			nodes[3].ID().String(): nodes[3],
-			nodes[5].ID().String(): nodes[5],
-		},
-		{set: dkgset, round: 12}: {
 			self.ID().String():     self,
 			nodes[3].ID().String(): nodes[3],
 			nodes[5].ID().String(): nodes[5],
@@ -97,26 +82,10 @@ func TestPeerSetBuildAndForgetConn(t *testing.T) {
 		{set: notaryset, round: 10}: {},
 		{set: notaryset, round: 11}: {},
 		{set: notaryset, round: 12}: {},
-		{set: dkgset, round: 10}:    {},
-		{set: dkgset, round: 12}:    {},
 	}
 
 	if !reflect.DeepEqual(ps.directConn, expectedDirectConn) {
 		t.Errorf("direct conn not match")
-	}
-
-	expectedGroupConn := []peerLabel{
-		{set: dkgset, round: 11},
-	}
-
-	if len(ps.groupConnPeers) != len(expectedGroupConn) {
-		t.Errorf("group conn peers not match")
-	}
-
-	for _, l := range expectedGroupConn {
-		if len(ps.groupConnPeers[l]) == 0 {
-			t.Errorf("group conn peers is 0")
-		}
 	}
 
 	expectedAllDirect := make(map[string]map[peerLabel]struct{})
@@ -152,11 +121,6 @@ func TestPeerSetBuildAndForgetConn(t *testing.T) {
 			nodes[3].ID().String(): nodes[3],
 			nodes[5].ID().String(): nodes[5],
 		},
-		{set: dkgset, round: 12}: {
-			self.ID().String():     self,
-			nodes[3].ID().String(): nodes[3],
-			nodes[5].ID().String(): nodes[5],
-		},
 	}
 
 	if !reflect.DeepEqual(ps.label2Nodes, expectedlabel2Nodes) {
@@ -165,14 +129,13 @@ func TestPeerSetBuildAndForgetConn(t *testing.T) {
 
 	expectedDirectConn = map[peerLabel]struct{}{
 		{set: notaryset, round: 12}: {},
-		{set: dkgset, round: 12}:    {},
 	}
 
 	if !reflect.DeepEqual(ps.directConn, expectedDirectConn) {
 		t.Error("direct conn not match")
 	}
 
-	expectedGroupConn = []peerLabel{}
+	expectedGroupConn := []peerLabel{}
 
 	if len(ps.groupConnPeers) != len(expectedGroupConn) {
 		t.Errorf("group conn peers not match")

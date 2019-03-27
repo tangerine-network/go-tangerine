@@ -438,6 +438,10 @@ func TestRecvVotes(t *testing.T) {
 				Height: 13,
 			},
 		},
+		PartialSignature: dkg.PartialSignature{
+			Type:      "456",
+			Signature: []byte("psig"),
+		},
 		Signature: coreCrypto.Signature{
 			Type:      "123",
 			Signature: []byte("sig"),
@@ -453,7 +457,7 @@ func TestRecvVotes(t *testing.T) {
 	select {
 	case msg := <-ch:
 		rvote := msg.(*coreTypes.Vote)
-		if rlpHash(rvote) != rlpHash(vote) {
+		if !reflect.DeepEqual(rvote, &vote) {
 			t.Errorf("vote mismatch")
 		}
 	case <-time.After(1 * time.Second):
@@ -473,6 +477,10 @@ func TestSendVotes(t *testing.T) {
 				Round:  10,
 				Height: 13,
 			},
+		},
+		PartialSignature: dkg.PartialSignature{
+			Type:      "456",
+			Signature: []byte("psig"),
 		},
 		Signature: coreCrypto.Signature{
 			Type:      "123",
@@ -529,10 +537,6 @@ func TestSendVotes(t *testing.T) {
 		},
 		{
 			label:      &peerLabel{set: notaryset, round: 11},
-			isReceiver: false,
-		},
-		{
-			label:      &peerLabel{set: dkgset, round: 10},
 			isReceiver: false,
 		},
 	}
@@ -669,6 +673,10 @@ func TestRecvAgreement(t *testing.T) {
 				Height: 13,
 			},
 		},
+		PartialSignature: dkg.PartialSignature{
+			Type:      "456",
+			Signature: []byte("psig"),
+		},
 		Signature: coreCrypto.Signature{
 			Type:      "123",
 			Signature: []byte("sig"),
@@ -676,9 +684,10 @@ func TestRecvAgreement(t *testing.T) {
 	}
 
 	agreement := coreTypes.AgreementResult{
-		BlockHash: coreCommon.Hash{9, 9, 9},
-		Position:  vote.Position,
-		Votes:     []coreTypes.Vote{vote},
+		BlockHash:  coreCommon.Hash{9, 9, 9},
+		Position:   vote.Position,
+		Votes:      []coreTypes.Vote{vote},
+		Randomness: []byte{9, 4, 8, 7},
 	}
 
 	if err := p2p.Send(p.app, AgreementMsg, &agreement); err != nil {
@@ -714,6 +723,10 @@ func TestSendAgreement(t *testing.T) {
 				Height: 13,
 			},
 		},
+		PartialSignature: dkg.PartialSignature{
+			Type:      "456",
+			Signature: []byte("psig"),
+		},
 		Signature: coreCrypto.Signature{
 			Type:      "123",
 			Signature: []byte("sig"),
@@ -721,9 +734,10 @@ func TestSendAgreement(t *testing.T) {
 	}
 
 	agreement := coreTypes.AgreementResult{
-		BlockHash: coreCommon.Hash{9, 9, 9},
-		Position:  vote.Position,
-		Votes:     []coreTypes.Vote{vote},
+		BlockHash:  coreCommon.Hash{9, 9, 9},
+		Position:   vote.Position,
+		Votes:      []coreTypes.Vote{vote},
+		Randomness: []byte{9, 4, 8, 7},
 	}
 
 	waitForRegister(pm, 1)
@@ -742,75 +756,6 @@ func TestSendAgreement(t *testing.T) {
 
 	if !reflect.DeepEqual(a, agreement) {
 		t.Errorf("agreement mismatch")
-	}
-}
-
-func TestRecvRandomnesses(t *testing.T) {
-	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
-	pm.SetReceiveCoreMessage(true)
-
-	p, _ := newTestPeer("peer", dex64, pm, true)
-	defer pm.Stop()
-	defer p.close()
-
-	randomness := coreTypes.BlockRandomnessResult{
-		BlockHash: coreCommon.Hash{8, 8, 8},
-		Position: coreTypes.Position{
-			Round:  10,
-			Height: 13,
-		},
-		Randomness: []byte{7, 7, 7, 7},
-	}
-
-	if err := p2p.Send(p.app, RandomnessMsg, []*coreTypes.BlockRandomnessResult{&randomness}); err != nil {
-		t.Fatalf("send error: %v", err)
-	}
-
-	ch := pm.ReceiveChan()
-	select {
-	case msg := <-ch:
-		r := msg.(*coreTypes.BlockRandomnessResult)
-		if !reflect.DeepEqual(r, &randomness) {
-			t.Errorf("randomness mismatch")
-		}
-	case <-time.After(1 * time.Second):
-		t.Errorf("no randomness received within 1 seconds")
-	}
-}
-
-func TestSendRandomnesses(t *testing.T) {
-	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
-	pm.SetReceiveCoreMessage(true)
-
-	p, _ := newTestPeer("peer", dex64, pm, true)
-	defer pm.Stop()
-	defer p.close()
-
-	randomness := coreTypes.BlockRandomnessResult{
-		BlockHash: coreCommon.Hash{8, 8, 8},
-		Position: coreTypes.Position{
-			Round:  10,
-			Height: 13,
-		},
-		Randomness: []byte{7, 7, 7, 7},
-	}
-
-	waitForRegister(pm, 1)
-	pm.BroadcastRandomnessResult(&randomness)
-	msg, err := p.app.ReadMsg()
-	if err != nil {
-		t.Errorf("%v: read error: %v", p.Peer, err)
-	} else if msg.Code != RandomnessMsg {
-		t.Errorf("%v: got code %d, want %d", p.Peer, msg.Code, RandomnessMsg)
-	}
-
-	var rs []*coreTypes.BlockRandomnessResult
-	if err := msg.Decode(&rs); err != nil {
-		t.Errorf("%v: %v", p.Peer, err)
-	}
-
-	if !reflect.DeepEqual(rs, []*coreTypes.BlockRandomnessResult{&randomness}) {
-		t.Errorf("randomness mismatch")
 	}
 }
 
