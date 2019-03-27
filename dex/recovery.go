@@ -314,6 +314,7 @@ type Recovery struct {
 	gov          *DexconGovernance
 	contract     common.Address
 	confirmation int
+	publicKey    string
 	privateKey   *ecdsa.PrivateKey
 	nodeAddress  common.Address
 	client       *ethrpc.EthRPC
@@ -326,6 +327,7 @@ func NewRecovery(config *params.RecoveryConfig, networkRPC string,
 		gov:          gov,
 		contract:     config.Contract,
 		confirmation: config.Confirmation,
+		publicKey:    hex.EncodeToString(crypto.FromECDSAPub(&privKey.PublicKey)),
 		privateKey:   privKey,
 		nodeAddress:  crypto.PubkeyToAddress(privKey.PublicKey),
 		client:       client,
@@ -429,6 +431,14 @@ func (r *Recovery) genVoteForSkipBlockTx(height uint64) (*types.Transaction, err
 }
 
 func (r *Recovery) ProposeSkipBlock(height uint64) error {
+	notarySet, err := r.gov.NotarySet(r.gov.Round())
+	if err != nil {
+		return err
+	}
+	if _, ok := notarySet[r.publicKey]; !ok {
+		return errors.New("not in notary set")
+	}
+
 	tx, err := r.genVoteForSkipBlockTx(height)
 	if err == errAlreadyVoted {
 		return nil
