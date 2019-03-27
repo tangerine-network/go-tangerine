@@ -208,8 +208,10 @@ func (d *Dexcon) Finalize(chain consensus.ChainReader, header *types.Header, sta
 		gs.MiningHalved()
 	}
 
-	// Record last proposed height.
-	gs.PutLastProposedHeight(header.Coinbase, header.Number)
+	if header.Coinbase != (common.Address{}) {
+		// Record last proposed height.
+		gs.PutLastProposedHeight(header.Coinbase, header.Number)
+	}
 
 	header.Root = state.IntermediateRoot(true)
 	return types.NewBlock(header, txs, uncles, receipts), nil
