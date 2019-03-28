@@ -456,6 +456,9 @@ func (s *GovernanceState) UpdateNode(index *big.Int, n *nodeInfo) {
 	// UnstakedAt.
 	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(9))
 	s.setStateBigInt(loc, n.UnstakedAt)
+
+	// Update set size.
+	s.CalNotarySetSize()
 }
 func (s *GovernanceState) PopLastNode() {
 	// Decrease length by 1.
@@ -1051,6 +1054,7 @@ func (s *GovernanceState) UpdateConfigurationRaw(cfg *rawConfigStruct) {
 	s.setStateBigInt(big.NewInt(minBlockIntervalLoc), cfg.MinBlockInterval)
 	s.SetFineValues(cfg.FineValues)
 
+	// Calculate set size.
 	s.CalNotarySetSize()
 }
 
@@ -1609,8 +1613,6 @@ func (g *GovernanceContract) register(
 	if value.Cmp(big.NewInt(0)) > 0 {
 		g.state.IncTotalStaked(value)
 		g.state.emitStaked(caller, value)
-
-		g.state.CalNotarySetSize()
 	}
 	return g.useGas(GovernanceActionGasCost)
 }
@@ -1638,8 +1640,6 @@ func (g *GovernanceContract) stake() ([]byte, error) {
 
 	g.state.IncTotalStaked(value)
 	g.state.emitStaked(caller, value)
-
-	g.state.CalNotarySetSize()
 
 	return g.useGas(GovernanceActionGasCost)
 }
@@ -1674,8 +1674,6 @@ func (g *GovernanceContract) unstake(amount *big.Int) ([]byte, error) {
 
 	g.state.DecTotalStaked(amount)
 	g.state.emitUnstaked(caller, amount)
-
-	g.state.CalNotarySetSize()
 
 	return g.useGas(GovernanceActionGasCost)
 }
@@ -1754,8 +1752,6 @@ func (g *GovernanceContract) payFine(nodeAddr common.Address) ([]byte, error) {
 	g.evm.StateDB.AddBalance(g.state.Owner(), g.contract.Value())
 
 	g.state.emitFinePaid(nodeAddr, g.contract.Value())
-
-	g.state.CalNotarySetSize()
 
 	return g.useGas(GovernanceActionGasCost)
 }
