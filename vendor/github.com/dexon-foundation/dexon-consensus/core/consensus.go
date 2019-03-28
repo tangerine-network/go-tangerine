@@ -390,14 +390,17 @@ CleanChannelLoop:
 		}
 	}
 	newPos := block.Position
-	if block.Position.Height+1 == recv.changeNotaryHeight() {
+	changeNotaryHeight := recv.changeNotaryHeight()
+	if block.Position.Height+1 >= changeNotaryHeight {
+		recv.consensus.logger.Info("Round will change",
+			"block", block,
+			"change-height", changeNotaryHeight)
 		newPos.Round++
 		recv.updateRound(newPos.Round)
 	}
 	currentRound := recv.round()
-	changeNotaryHeight := recv.changeNotaryHeight()
 	if block.Position.Height > changeNotaryHeight &&
-		block.Position.Round <= currentRound {
+		block.Position.Round < currentRound {
 		panic(fmt.Errorf(
 			"round not switch when confirming: %s, %d, should switch at %d, %s",
 			block, currentRound, changeNotaryHeight, newPos))
@@ -733,7 +736,12 @@ func newConsensusForRound(
 	}
 	baConfig := agreementMgrConfig{}
 	baConfig.from(initRound, initConfig, initCRS)
-	baConfig.SetRoundBeginHeight(gov.GetRoundHeight(initRound))
+	// TODO(jimmy): remove -1 after we match the height with fullnode.
+	roundHeight := gov.GetRoundHeight(initRound)
+	if initRound > 0 {
+		roundHeight--
+	}
+	baConfig.SetRoundBeginHeight(roundHeight)
 	con.baMgr, err = newAgreementMgr(con, baConfig)
 	if err != nil {
 		panic(err)
@@ -804,15 +812,13 @@ func (con *Consensus) prepare(initBlock *types.Block) (err error) {
 	// Register round event handler to update BA and BC modules.
 	con.roundEvent.Register(func(evts []utils.RoundEventParam) {
 		defer elapse("append-config", evts[len(evts)-1])()
-		// Always updates newer configs to the later modules first in the flow.
+		// Always updates newer configs to the later modules first in the data
+		// flow.
 		if err := con.bcModule.notifyRoundEvents(evts); err != nil {
 			panic(err)
 		}
-		// The init config is provided to baModule when construction.
-		if evts[len(evts)-1].BeginHeight != con.gov.GetRoundHeight(initRound) {
-			if err := con.baMgr.notifyRoundEvents(evts); err != nil {
-				panic(err)
-			}
+		if err := con.baMgr.notifyRoundEvents(evts); err != nil {
+			panic(err)
 		}
 	})
 	// Register round event handler to reset DKG if the DKG set for next round

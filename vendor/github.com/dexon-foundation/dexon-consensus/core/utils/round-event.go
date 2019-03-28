@@ -92,6 +92,11 @@ func (e RoundEventParam) NextDKGRegisterHeight() uint64 {
 	return e.BeginHeight + e.Config.RoundLength/2
 }
 
+// RoundEndHeight returns the round ending height of this round event.
+func (e RoundEventParam) RoundEndHeight() uint64 {
+	return e.BeginHeight + e.Config.RoundLength
+}
+
 func (e RoundEventParam) String() string {
 	return fmt.Sprintf("roundEvtParam{Round:%d Reset:%d Height:%d}",
 		e.Round,
@@ -179,7 +184,12 @@ func NewRoundEvent(parentCtx context.Context, gov governanceAccessor,
 	e.ctx, e.ctxCancel = context.WithCancel(parentCtx)
 	e.config = RoundBasedConfig{}
 	e.config.SetupRoundBasedFields(initRound, initConfig)
-	e.config.SetRoundBeginHeight(gov.GetRoundHeight(initRound))
+	// TODO(jimmy): remove -1 after we match the height with fullnode.
+	roundHeight := gov.GetRoundHeight(initRound)
+	if initRound != 0 {
+		roundHeight--
+	}
+	e.config.SetRoundBeginHeight(roundHeight)
 	// Make sure the DKG reset count in current governance can cover the initial
 	// block height.
 	resetCount := gov.DKGResetCount(initRound + 1)
