@@ -221,6 +221,12 @@ func (g *testGovernance) CRSRound() uint64 {
 	return g.lenCRSFunc()
 }
 
+func (g *testGovernance) DKGResetCount(uint64) uint64 {
+	return 0
+}
+
+func (g *testGovernance) PurgeNotarySet(uint64) {}
+
 func (g *testGovernance) NotarySet(
 	round uint64) (map[string]struct{}, error) {
 	return g.notarySetFunc(round)

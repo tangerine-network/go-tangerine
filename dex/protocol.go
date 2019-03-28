@@ -156,6 +156,10 @@ type governance interface {
 	CRSRound() uint64
 
 	NotarySet(uint64) (map[string]struct{}, error)
+
+	PurgeNotarySet(uint64)
+
+	DKGResetCount(uint64) uint64
 }
 
 type dexconApp interface {

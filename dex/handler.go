@@ -1320,6 +1320,7 @@ func (pm *ProtocolManager) peerSetLoop() {
 		pm.peers.BuildConnection(CRSRound)
 		round = CRSRound
 	}
+	resetCount := uint64(0)
 
 	for {
 		select {
@@ -1334,9 +1335,12 @@ func (pm *ProtocolManager) peerSetLoop() {
 			if newRound == 0 {
 				break
 			}
+			reset := pm.gov.DKGResetCount(round)
 
-			log.Debug("ProtocolManager: new round", "round", newRound)
-			if newRound <= round {
+			log.Debug("ProtocolManager: new round",
+				"round", newRound,
+				"reset", reset)
+			if newRound <= round && resetCount == reset {
 				break
 			}
 
@@ -1345,6 +1349,10 @@ func (pm *ProtocolManager) peerSetLoop() {
 				if round >= 1 {
 					pm.peers.ForgetConnection(round - 1)
 				}
+			} else if newRound == round && resetCount+1 == reset {
+				pm.peers.ForgetConnection(newRound)
+				pm.gov.PurgeNotarySet(newRound)
+				pm.peers.BuildConnection(newRound)
 			} else {
 				// just forget all network connection and rebuild.
 				pm.peers.ForgetConnection(round)
@@ -1355,6 +1363,7 @@ func (pm *ProtocolManager) peerSetLoop() {
 				pm.peers.BuildConnection(newRound)
 			}
 			round = newRound
+			resetCount = reset
 		case <-pm.chainHeadSub.Err():
 			return
 		}

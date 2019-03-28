@@ -2347,6 +2347,18 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return res, nil
+	case "notaryParamAlpha":
+		res, err := method.Outputs.Pack(g.state.NotaryParamAlpha())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "notaryParamBeta":
+		res, err := method.Outputs.Pack(g.state.NotaryParamBeta())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	case "owner":
 		res, err := method.Outputs.Pack(g.state.Owner())
 		if err != nil {

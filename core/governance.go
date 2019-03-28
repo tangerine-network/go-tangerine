@@ -170,6 +170,10 @@ func (d *Governance) NodeSet(round uint64) []coreCrypto.PublicKey {
 	return pks
 }
 
+func (d *Governance) PurgeNotarySet(round uint64) {
+	d.nodeSetCache.Purge(round)
+}
+
 func (d *Governance) NotarySet(round uint64) (map[string]struct{}, error) {
 	notarySet, err := d.nodeSetCache.GetNotarySet(round)
 	if err != nil {
