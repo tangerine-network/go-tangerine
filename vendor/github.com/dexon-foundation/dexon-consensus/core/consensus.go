@@ -849,15 +849,19 @@ func (con *Consensus) prepare(initBlock *types.Block) (err error) {
 					"reset", e.Reset)
 				return false
 			}
-			if _, err := typesDKG.NewGroupPublicKey(
+			gpk, err := typesDKG.NewGroupPublicKey(
 				nextRound,
 				con.gov.DKGMasterPublicKeys(nextRound),
 				con.gov.DKGComplaints(nextRound),
-				utils.GetDKGThreshold(nextConfig)); err != nil {
+				utils.GetDKGThreshold(nextConfig))
+			if err != nil {
 				con.logger.Error("Next DKG failed to prepare, reset it",
 					"round", e.Round,
 					"reset", e.Reset,
 					"error", err)
+				return false
+			}
+			if len(gpk.QualifyNodeIDs) < utils.GetDKGValidThreshold(nextConfig) {
 				return false
 			}
 			return true
@@ -976,13 +980,17 @@ func (con *Consensus) prepare(initBlock *types.Block) (err error) {
 				con.cfgModule.registerDKG(con.ctx, nextRound, e.Reset,
 					utils.GetDKGThreshold(nextConfig))
 				con.event.RegisterHeight(e.NextDKGPreparationHeight(),
-					func(uint64) {
+					func(h uint64) {
 						func() {
 							con.dkgReady.L.Lock()
 							defer con.dkgReady.L.Unlock()
 							con.dkgRunning = 0
 						}()
-						con.runDKG(nextRound, e.Reset, nextConfig)
+						// We want to skip some of the DKG phases when started.
+						dkgCurrentHeight := h - e.NextDKGPreparationHeight()
+						con.runDKG(
+							nextRound, e.Reset,
+							e.NextDKGPreparationHeight(), dkgCurrentHeight)
 					})
 			}()
 		})
@@ -1114,7 +1122,8 @@ func (con *Consensus) generateBlockRandomness(blocks []*types.Block) {
 }
 
 // runDKG starts running DKG protocol.
-func (con *Consensus) runDKG(round, reset uint64, config *types.Config) {
+func (con *Consensus) runDKG(
+	round, reset, dkgBeginHeight, dkgHeight uint64) {
 	con.dkgReady.L.Lock()
 	defer con.dkgReady.L.Unlock()
 	if con.dkgRunning != 0 {
@@ -1128,7 +1137,10 @@ func (con *Consensus) runDKG(round, reset uint64, config *types.Config) {
 			con.dkgReady.Broadcast()
 			con.dkgRunning = 2
 		}()
-		if err := con.cfgModule.runDKG(round, reset); err != nil {
+		if err :=
+			con.cfgModule.runDKG(
+				round, reset,
+				con.event, dkgBeginHeight, dkgHeight); err != nil {
 			con.logger.Error("Failed to runDKG", "error", err)
 		}
 	}()
