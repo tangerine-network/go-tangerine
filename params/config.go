@@ -26,10 +26,10 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0x8d5edbabff11387ccff24278e9251b56e18a2604b9913695b2bbd5072533dfb2")
-	TestnetGenesisHash = common.HexToHash("0xc70b04d189f2a1391e843552489fa6e19eb6b29021be2e7e6ceed6a2ccc855ff")
-	TaipeiGenesisHash  = common.HexToHash("0xcc805f44f6917b04be770a70fb1cdff089f7197fb68bc6839ef46e62c8011e2c")
-	YilanGenesisHash   = common.HexToHash("0x86fec7f128b5e6525f4177debddc2a375439593ebbd9d8c19a58e289d8621ce8")
+	MainnetGenesisHash = common.HexToHash("0x2cc76c5c8f969a84a7836780e15583f18b9687d5a27a86a17eb8faf05a18a567")
+	TestnetGenesisHash = common.HexToHash("0xe1df7b888109249932dad7f38435cfbbe4a525498b79c7c30f23069140fbca23")
+	TaipeiGenesisHash  = common.HexToHash("0xd7c18ff0c38f727d94cffef4d880032399c7baafaf2eb8fd620865ac1dc5998a")
+	YilanGenesisHash   = common.HexToHash("0xad24a02194aa8239fd1a14d77d0c905c306bbac8ec69125b442b8e8dbd1e486b")
 )
 
 // TrustedCheckpoints associates each known checkpoint with the genesis hash of
@@ -71,9 +71,11 @@ var (
 			RoundLength:       600,
 			MinBlockInterval:  1000,
 			FineValues: []*big.Int{
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(200)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			},
 		},
 		Recovery: &RecoveryConfig{
@@ -122,9 +124,11 @@ var (
 			RoundLength:       1200,
 			MinBlockInterval:  1000,
 			FineValues: []*big.Int{
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(200)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			},
 		},
 		Recovery: &RecoveryConfig{
@@ -164,9 +168,11 @@ var (
 			RoundLength:       1200,
 			MinBlockInterval:  500,
 			FineValues: []*big.Int{
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(200)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			},
 		},
 		Recovery: &RecoveryConfig{
@@ -214,9 +220,11 @@ var (
 			RoundLength:       1200,
 			MinBlockInterval:  500,
 			FineValues: []*big.Int{
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e4)),
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e5)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(200)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			},
 		},
 		Recovery: &RecoveryConfig{

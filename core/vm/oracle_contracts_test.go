@@ -89,6 +89,7 @@ func (g *GovernanceStateTestSuite) SetupTest() {
 	config := params.TestnetChainConfig.Dexcon
 	g.s.Initialize(config, new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e7)))
 
+	statedb.AddBalance(GovernanceContractAddress, big.NewInt(1))
 	statedb.Commit(true)
 }
 
@@ -117,8 +118,9 @@ func (g *GovernanceStateTestSuite) TestReadWriteEraseBytes() {
 }
 
 func (g *GovernanceStateTestSuite) TestReadWriteErase1DArray() {
+	emptyOffset := 100
 	for j := 0; j < 50; j++ {
-		idx := big.NewInt(int64(j))
+		idx := big.NewInt(int64(j + emptyOffset))
 		data := make([][]byte, 30)
 		for key := range data {
 			data[key] = randomBytes(3, 32)
@@ -147,12 +149,7 @@ func (g *GovernanceStateTestSuite) TestDisqualify() {
 	// Disqualify
 	g.s.Disqualify(node)
 	node = g.s.Node(big.NewInt(0))
-	g.Require().Equal(uint64(1), node.Fined.Uint64())
-
-	// Disqualify again should change nothing.
-	g.s.Disqualify(node)
-	node = g.s.Node(big.NewInt(0))
-	g.Require().Equal(uint64(1), node.Fined.Uint64())
+	g.Require().Equal(uint64(0xd78ebc5ac6200000), node.Fined.Uint64())
 
 	// Disqualify none exist node should return error.
 	privKey2, _ := newPrefundAccount(g.stateDB)
@@ -548,7 +545,7 @@ func (g *OracleContractsTestSuite) TestUpdateConfiguration() {
 		big.NewInt(264*decimalMultiplier),
 		big.NewInt(600),
 		big.NewInt(900),
-		[]*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1)})
+		[]*big.Int{big.NewInt(1), big.NewInt(1), big.NewInt(1), big.NewInt(1), big.NewInt(1)})
 	g.Require().NoError(err)
 
 	// Call with non-owner.
@@ -716,21 +713,21 @@ func (g *OracleContractsTestSuite) TestReportForkVote() {
 	g.Require().NoError(err)
 
 	// Report wrong type (fork block)
-	input, err = GovernanceABI.ABI.Pack("report", big.NewInt(2), vote1Bytes, vote2Bytes)
+	input, err = GovernanceABI.ABI.Pack("report", big.NewInt(FineTypeForkBlock), vote1Bytes, vote2Bytes)
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
 	g.Require().Error(err)
 
-	input, err = GovernanceABI.ABI.Pack("report", big.NewInt(1), vote1Bytes, vote2Bytes)
+	input, err = GovernanceABI.ABI.Pack("report", big.NewInt(FineTypeForkVote), vote1Bytes, vote2Bytes)
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
 	g.Require().NoError(err)
 
 	node := g.s.Node(big.NewInt(0))
-	g.Require().Equal(node.Fined, g.s.FineValue(big.NewInt(1)))
+	g.Require().Equal(node.Fined, g.s.FineValue(big.NewInt(FineTypeForkVote)))
 
 	// Duplicate report should fail.
-	input, err = GovernanceABI.ABI.Pack("report", big.NewInt(1), vote1Bytes, vote2Bytes)
+	input, err = GovernanceABI.ABI.Pack("report", big.NewInt(FineTypeForkVote), vote1Bytes, vote2Bytes)
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
 	g.Require().Error(err)
@@ -793,21 +790,21 @@ func (g *OracleContractsTestSuite) TestReportForkBlock() {
 	g.Require().NoError(err)
 
 	// Report wrong type (fork vote)
-	input, err = GovernanceABI.ABI.Pack("report", big.NewInt(1), block1Bytes, block2Bytes)
+	input, err = GovernanceABI.ABI.Pack("report", big.NewInt(FineTypeForkVote), block1Bytes, block2Bytes)
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
 	g.Require().Error(err)
 
-	input, err = GovernanceABI.ABI.Pack("report", big.NewInt(2), block1Bytes, block2Bytes)
+	input, err = GovernanceABI.ABI.Pack("report", big.NewInt(FineTypeForkBlock), block1Bytes, block2Bytes)
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
 	g.Require().NoError(err)
 
 	node := g.s.Node(big.NewInt(0))
-	g.Require().Equal(node.Fined, g.s.FineValue(big.NewInt(2)))
+	g.Require().Equal(node.Fined, g.s.FineValue(big.NewInt(FineTypeForkBlock)))
 
 	// Duplicate report should fail.
-	input, err = GovernanceABI.ABI.Pack("report", big.NewInt(2), block1Bytes, block2Bytes)
+	input, err = GovernanceABI.ABI.Pack("report", big.NewInt(FineTypeForkBlock), block1Bytes, block2Bytes)
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
 	g.Require().Error(err)

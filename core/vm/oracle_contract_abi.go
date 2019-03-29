@@ -771,7 +771,7 @@ const GovernanceABIJSON = `
         "type": "bytes"
       }
     ],
-    "name": "ForkReported",
+    "name": "Reported",
     "type": "event"
   },
   {

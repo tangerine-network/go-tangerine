@@ -44,12 +44,14 @@ import (
 
 type Bytes32 [32]byte
 
-type ReportType uint64
+type FineType uint64
 
 const (
-	ReportTypeInvalidDKG = iota
-	ReportTypeForkVote
-	ReportTypeForkBlock
+	FineTypeFailStop = iota
+	FineTypeFailStopDKG
+	FineTypeInvalidDKG
+	FineTypeForkVote
+	FineTypeForkBlock
 )
 
 const GovernanceActionGasCost = 200000
@@ -484,7 +486,11 @@ func (s *GovernanceState) QualifiedNodes() []*nodeInfo {
 	var nodes []*nodeInfo
 	for i := int64(0); i < int64(s.LenNodes().Uint64()); i++ {
 		node := s.Node(big.NewInt(i))
-		if new(big.Int).Sub(node.Staked, node.Fined).Cmp(s.MinStake()) >= 0 {
+		// Node with unpaid fine is consider unqualified.
+		if node.Fined.Cmp(big.NewInt(0)) > 0 {
+			continue
+		}
+		if node.Staked.Cmp(s.MinStake()) >= 0 {
 			nodes = append(nodes, node)
 		}
 	}
@@ -970,15 +976,11 @@ func (s *GovernanceState) Disqualify(n *nodeInfo) error {
 		return errors.New("node does not exist")
 	}
 
-	// Fine the node so it's staked value is 1 wei under minStake.
+	// Set fined value.
 	node := s.Node(offset)
-	extra := new(big.Int).Sub(new(big.Int).Sub(node.Staked, node.Fined), s.MinStake())
-	amount := new(big.Int).Add(extra, big.NewInt(1))
-
-	if amount.Cmp(big.NewInt(0)) > 0 {
-		node.Fined = new(big.Int).Add(node.Fined, amount)
-		s.UpdateNode(offset, node)
-	}
+	amount := s.FineValue(big.NewInt(FineTypeFailStop))
+	node.Fined = new(big.Int).Add(node.Fined, amount)
+	s.UpdateNode(offset, node)
 
 	return nil
 }
@@ -1132,7 +1134,7 @@ func (s *GovernanceState) emitNodeRemoved(nodeAddr common.Address) {
 }
 
 // event ForkReported(address indexed NodeAddress, address indexed Type, bytes Arg1, bytes Arg2);
-func (s *GovernanceState) emitForkReported(nodeAddr common.Address, reportType *big.Int, arg1, arg2 []byte) {
+func (s *GovernanceState) emitReported(nodeAddr common.Address, reportType *big.Int, arg1, arg2 []byte) {
 
 	t, err := abi.NewType("bytes", nil)
 	if err != nil {
@@ -1158,7 +1160,7 @@ func (s *GovernanceState) emitForkReported(nodeAddr common.Address, reportType *
 	}
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
-		Topics:  []common.Hash{GovernanceABI.Events["ForkReported"].Id(), nodeAddr.Hash()},
+		Topics:  []common.Hash{GovernanceABI.Events["Reported"].Id(), nodeAddr.Hash()},
 		Data:    data,
 	})
 }
@@ -1336,6 +1338,39 @@ func (g *GovernanceContract) clearDKG() {
 	g.state.ResetDKGFinalizedsCount()
 }
 
+func (g *GovernanceContract) fineFailStopDKG(threshold int) {
+	complaintsByID := map[coreTypes.NodeID]map[coreTypes.NodeID]struct{}{}
+	for _, complaint := range g.state.DKGComplaints() {
+		comp := new(dkgTypes.Complaint)
+		if err := rlp.DecodeBytes(complaint, comp); err != nil {
+			panic(err)
+		}
+
+		if comp.IsNack() {
+			if _, exist := complaintsByID[comp.PrivateShare.ProposerID]; !exist {
+				complaintsByID[comp.PrivateShare.ProposerID] =
+					make(map[coreTypes.NodeID]struct{})
+			}
+			complaintsByID[comp.PrivateShare.ProposerID][comp.ProposerID] = struct{}{}
+		}
+	}
+	for id, complaints := range complaintsByID {
+		if len(complaints) > threshold {
+			offset := g.state.NodesOffsetByNodeKeyAddress(IdToAddress(id))
+			// Node might have been unstaked.
+			if offset.Cmp(big.NewInt(0)) < 0 {
+				continue
+			}
+
+			node := g.state.Node(offset)
+			amount := g.state.FineValue(big.NewInt(FineTypeFailStopDKG))
+			node.Fined = new(big.Int).Add(node.Fined, amount)
+			g.state.UpdateNode(offset, node)
+			g.state.emitFined(node.Owner, amount)
+		}
+	}
+}
+
 func (g *GovernanceContract) addDKGComplaint(comp []byte) ([]byte, error) {
 	caller := g.contract.Caller()
 	offset := g.state.NodesOffsetByNodeKeyAddress(caller)
@@ -1350,13 +1385,11 @@ func (g *GovernanceContract) addDKGComplaint(comp []byte) ([]byte, error) {
 		return nil, errExecutionReverted
 	}
 
-	// Calculate 2f
-	threshold := new(big.Int).Mul(
-		big.NewInt(2),
-		new(big.Int).Div(g.state.NotarySetSize(), big.NewInt(3)))
+	// Calculate 2f + 1
+	threshold := 2*g.configNotarySetSize(g.evm.Round).Uint64()/3 + 1
 
 	// If 2f + 1 of DKG set is finalized, one can not propose complaint anymore.
-	if g.state.DKGFinalizedsCount().Cmp(threshold) > 0 {
+	if g.state.DKGFinalizedsCount().Uint64() >= threshold {
 		return nil, errExecutionReverted
 	}
 
@@ -1408,7 +1441,7 @@ func (g *GovernanceContract) addDKGComplaint(comp []byte) ([]byte, error) {
 		if err != nil {
 			return nil, errExecutionReverted
 		}
-		fineValue := g.state.FineValue(big.NewInt(ReportTypeInvalidDKG))
+		fineValue := g.state.FineValue(big.NewInt(FineTypeInvalidDKG))
 		if err := g.fine(node.Owner, fineValue, comp, nil); err != nil {
 			return nil, errExecutionReverted
 		}
@@ -1453,13 +1486,11 @@ func (g *GovernanceContract) addDKGMasterPublicKey(mpk []byte) ([]byte, error) {
 		return nil, errExecutionReverted
 	}
 
-	// Calculate 2f
-	threshold := new(big.Int).Mul(
-		big.NewInt(2),
-		new(big.Int).Div(g.state.NotarySetSize(), big.NewInt(3)))
+	// Calculate 2f + 1
+	threshold := 2*g.configNotarySetSize(g.evm.Round).Uint64()/3 + 1
 
 	// If 2f + 1 of DKG set is mpk ready, one can not propose mpk anymore.
-	if g.state.DKGMPKReadysCount().Cmp(threshold) > 0 {
+	if g.state.DKGMPKReadysCount().Uint64() >= threshold {
 		return nil, errExecutionReverted
 	}
 
@@ -1545,6 +1576,14 @@ func (g *GovernanceContract) addDKGFinalize(finalize []byte) ([]byte, error) {
 	if !g.state.DKGFinalized(caller) {
 		g.state.PutDKGFinalized(caller, true)
 		g.state.IncDKGFinalizedsCount()
+	}
+
+	threshold := 2*g.configNotarySetSize(g.evm.Round).Uint64()/3 + 1
+
+	if g.state.DKGFinalizedsCount().Uint64() >= threshold {
+		tsigThreshold := coreUtils.GetDKGThreshold(&coreTypes.Config{
+			NotarySetSize: uint32(g.configNotarySetSize(g.evm.Round).Uint64())})
+		g.fineFailStopDKG(tsigThreshold)
 	}
 
 	return g.useGas(GovernanceActionGasCost)
@@ -1834,11 +1873,11 @@ func (g *GovernanceContract) fine(nodeAddr common.Address, amount *big.Int, payl
 }
 
 func (g *GovernanceContract) report(reportType *big.Int, arg1, arg2 []byte) ([]byte, error) {
-	typeEnum := ReportType(reportType.Uint64())
+	typeEnum := FineType(reportType.Uint64())
 	var reportedNodeID coreTypes.NodeID
 
 	switch typeEnum {
-	case ReportTypeForkVote:
+	case FineTypeForkVote:
 		vote1 := new(coreTypes.Vote)
 		if err := rlp.DecodeBytes(arg1, vote1); err != nil {
 			return nil, errExecutionReverted
@@ -1852,7 +1891,7 @@ func (g *GovernanceContract) report(reportType *big.Int, arg1, arg2 []byte) ([]b
 			return nil, errExecutionReverted
 		}
 		reportedNodeID = vote1.ProposerID
-	case ReportTypeForkBlock:
+	case FineTypeForkBlock:
 		block1 := new(coreTypes.Block)
 		if err := rlp.DecodeBytes(arg1, block1); err != nil {
 			return nil, errExecutionReverted
@@ -1875,7 +1914,7 @@ func (g *GovernanceContract) report(reportType *big.Int, arg1, arg2 []byte) ([]b
 		return nil, errExecutionReverted
 	}
 
-	g.state.emitForkReported(node.Owner, reportType, arg1, arg2)
+	g.state.emitReported(node.Owner, reportType, arg1, arg2)
 
 	fineValue := g.state.FineValue(reportType)
 	if err := g.fine(node.Owner, fineValue, arg1, arg2); err != nil {
@@ -1920,15 +1959,13 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 	}
 
 	// Check if next DKG did not success.
-	// Calculate 2f
-	threshold := new(big.Int).Mul(
-		big.NewInt(2),
-		new(big.Int).Div(g.state.NotarySetSize(), big.NewInt(3)))
+	// Calculate 2f + 1
+	threshold := 2*g.configNotarySetSize(g.evm.Round).Uint64()/3 + 1
 	tsigThreshold := coreUtils.GetDKGThreshold(&coreTypes.Config{
-		NotarySetSize: uint32(g.state.NotarySetSize().Uint64())})
+		NotarySetSize: uint32(g.configNotarySetSize(g.evm.Round).Uint64())})
 
 	// If 2f + 1 of DKG set is finalized, check if DKG succeeded.
-	if g.state.DKGFinalizedsCount().Cmp(threshold) > 0 {
+	if g.state.DKGFinalizedsCount().Uint64() >= threshold {
 		_, err := g.coreDKGUtils.NewGroupPublicKey(&g.state, nextRound, tsigThreshold)
 		// DKG success.
 		if err == nil {
@@ -1940,6 +1977,9 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 			return nil, errExecutionReverted
 		}
 	}
+
+	// Fine fail stop DKGs.
+	g.fineFailStopDKG(tsigThreshold)
 
 	// Update CRS.
 	state, err := getRoundState(g.evm, round)
@@ -2512,7 +2552,7 @@ func PackReportForkVote(vote1, vote2 *coreTypes.Vote) ([]byte, error) {
 		return nil, err
 	}
 
-	res, err := method.Inputs.Pack(big.NewInt(ReportTypeForkVote), vote1Bytes, vote2Bytes)
+	res, err := method.Inputs.Pack(big.NewInt(FineTypeForkVote), vote1Bytes, vote2Bytes)
 	if err != nil {
 		return nil, err
 	}
@@ -2533,7 +2573,7 @@ func PackReportForkBlock(block1, block2 *coreTypes.Block) ([]byte, error) {
 		return nil, err
 	}
 
-	res, err := method.Inputs.Pack(big.NewInt(ReportTypeForkBlock), block1Bytes, block2Bytes)
+	res, err := method.Inputs.Pack(big.NewInt(FineTypeForkBlock), block1Bytes, block2Bytes)
 	if err != nil {
 		return nil, err
 	}

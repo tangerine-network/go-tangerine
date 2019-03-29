@@ -28,9 +28,11 @@
       "roundLength": 100,
       "minBlockInterval": 500,
       "fineValues": [
-        "0x21e19e0c9bab2400000",
-        "0x21e19e0c9bab2400000",
-        "0x152d02c7e14af6800000"
+        "0xad78ebc5ac6200000",
+        "0xde0b6b3a7640000",
+        "0xd3c21bcecceda0000000",
+        "0xd3c21bcecceda0000000",
+        "0xd3c21bcecceda0000000"
       ]
     },
     "recovery": {
