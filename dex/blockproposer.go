@@ -199,9 +199,9 @@ ListenLoop:
 		select {
 		case ev := <-ch:
 			blocks := blocksToSync(coreHeight, ev.Block.NumberU64())
-			b.watchCat.Feed(blocks[len(blocks)-1].Position)
 
 			if len(blocks) > 0 {
+				b.watchCat.Feed(blocks[len(blocks)-1].Position)
 				log.Debug("Filling compaction chain", "num", len(blocks),
 					"first", blocks[0].Finalization.Height,
 					"last", blocks[len(blocks)-1].Finalization.Height)
