@@ -1302,10 +1302,11 @@ func (pm *ProtocolManager) SetReceiveCoreMessage(enabled bool) {
 // a loop keep building and maintaining peers in notary set.
 // TODO: finish this
 func (pm *ProtocolManager) peerSetLoop() {
-	log.Debug("ProtocolManager: started peer set loop")
-
 	round := pm.gov.Round()
-	log.Trace("ProtocolManager: startup round", "round", round)
+	resetCount := pm.gov.DKGResetCount(round)
+	log.Debug("ProtocolManager: startup round",
+		"round", round,
+		"reset", resetCount)
 
 	if round < dexCore.DKGDelayRound {
 		for i := round; i <= dexCore.DKGDelayRound; i++ {
@@ -1319,8 +1320,8 @@ func (pm *ProtocolManager) peerSetLoop() {
 	if CRSRound > round {
 		pm.peers.BuildConnection(CRSRound)
 		round = CRSRound
+		resetCount = pm.gov.DKGResetCount(round)
 	}
-	resetCount := uint64(0)
 
 	for {
 		select {

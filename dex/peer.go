@@ -929,6 +929,8 @@ func (ps *peerSet) ForgetConnection(round uint64) {
 	ps.lock.Lock()
 	defer ps.lock.Unlock()
 
+	log.Debug("Forget connection", "round", round)
+
 	for label := range ps.directConn {
 		if label.round <= round {
 			ps.forgetDirectConn(label)
