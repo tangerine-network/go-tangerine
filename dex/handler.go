@@ -1351,7 +1351,7 @@ func (pm *ProtocolManager) peerSetLoop() {
 					pm.peers.ForgetConnection(round - 1)
 				}
 			} else if newRound == round && resetCount+1 == reset {
-				pm.peers.ForgetConnection(newRound)
+				pm.peers.ForgetLabelConnection(peerLabel{set: notaryset, round: newRound})
 				pm.gov.PurgeNotarySet(newRound)
 				pm.peers.BuildConnection(newRound)
 			} else {

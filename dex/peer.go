@@ -922,7 +922,18 @@ func (ps *peerSet) BuildConnection(round uint64) {
 			ps.buildGroupConn(notaryLabel)
 		}
 	}
+}
 
+func (ps *peerSet) ForgetLabelConnection(label peerLabel) {
+	ps.lock.Lock()
+	defer ps.lock.Unlock()
+
+	log.Debug("Forget label connection", "label", label)
+	ps.forgetDirectConn(label)
+	ps.forgetGroupConn(label)
+	delete(ps.directConn, label)
+	delete(ps.groupConnPeers, label)
+	delete(ps.label2Nodes, label)
 }
 
 func (ps *peerSet) ForgetConnection(round uint64) {
