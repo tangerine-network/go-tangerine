@@ -1966,7 +1966,15 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 
 	// If 2f + 1 of DKG set is finalized, check if DKG succeeded.
 	if g.state.DKGFinalizedsCount().Uint64() >= threshold {
-		_, err := g.coreDKGUtils.NewGroupPublicKey(&g.state, nextRound, tsigThreshold)
+		gpk, err := g.coreDKGUtils.NewGroupPublicKey(&g.state, nextRound, tsigThreshold)
+		if gpk, ok := gpk.(*dkgTypes.GroupPublicKey); ok {
+			nextRound := new(big.Int).Add(g.evm.Round, big.NewInt(1))
+			if len(gpk.QualifyNodeIDs) < coreUtils.GetDKGValidThreshold(&coreTypes.Config{
+				NotarySetSize: uint32(g.configNotarySetSize(nextRound).Uint64())}) {
+				err = dkgTypes.ErrNotReachThreshold
+			}
+		}
+
 		// DKG success.
 		if err == nil {
 			return nil, errExecutionReverted
