@@ -1327,7 +1327,7 @@ func (g *GovernanceContract) inNotarySet(round *big.Int, nodeID coreTypes.NodeID
 }
 
 func (g *GovernanceContract) clearDKG() {
-	dkgSet := g.getNotarySet(g.evm.Round)
+	dkgSet := g.getNotarySet(g.state.DKGRound())
 	g.state.ClearDKGMasterPublicKeyProposed()
 	g.state.ClearDKGMasterPublicKeys()
 	g.state.ClearDKGComplaintProposed()
