@@ -682,6 +682,23 @@ const GovernanceABIJSON = `
       },
       {
         "indexed": false,
+        "name": "PublicKey",
+        "type": "bytes"
+      }
+    ],
+    "name": "NodePublicKeyReplaced",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "name": "NodeAddress",
+        "type": "address"
+      },
+      {
+        "indexed": false,
         "name": "Amount",
         "type": "uint256"
       }
@@ -902,6 +919,20 @@ const GovernanceABIJSON = `
       }
     ],
     "name": "transferNodeOwnership",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "NewPublicKey",
+        "type": "bytes"
+      }
+    ],
+    "name": "replaceNodePublicKey",
     "outputs": [],
     "payable": false,
     "stateMutability": "nonpayable",

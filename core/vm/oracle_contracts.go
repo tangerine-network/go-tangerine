@@ -1088,6 +1088,15 @@ func (s *GovernanceState) emitNodeOwnershipTransfered(nodeAddr, newNodeAddr comm
 	})
 }
 
+// event NodePublicKeyReplaced(address indexed NodeAddress, bytes PublicKey);
+func (s *GovernanceState) emitNodePublicKeyReplaced(nodeAddr common.Address, pk []byte) {
+	s.StateDB.AddLog(&types.Log{
+		Address: GovernanceContractAddress,
+		Topics:  []common.Hash{GovernanceABI.Events["NodePublicKeyReplaced"].Id(), nodeAddr.Hash()},
+		Data:    pk,
+	})
+}
+
 // event Staked(address indexed NodeAddress, uint256 Amount);
 func (s *GovernanceState) emitStaked(nodeAddr common.Address, amount *big.Int) {
 	s.StateDB.AddLog(&types.Log{
@@ -2413,6 +2422,12 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return res, nil
+	case "replaceNodePublicKey":
+		var pk []byte
+		if err := method.Inputs.Unpack(&pk, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.replaceNodePublicKey(pk)
 	case "roundHeight":
 		round := new(big.Int)
 		if err := method.Inputs.Unpack(&round, arguments); err != nil {
@@ -2475,6 +2490,32 @@ func (g *GovernanceContract) transferNodeOwnership(newOwner common.Address) ([]b
 	g.state.UpdateNode(offset, node)
 
 	g.state.emitNodeOwnershipTransfered(caller, newOwner)
+
+	return nil, nil
+}
+
+func (g *GovernanceContract) replaceNodePublicKey(newPublicKey []byte) ([]byte, error) {
+	caller := g.contract.Caller()
+
+	offset := g.state.NodesOffsetByAddress(caller)
+	if offset.Cmp(big.NewInt(0)) < 0 {
+		return nil, errExecutionReverted
+	}
+
+	node := g.state.Node(offset)
+
+	_, err := publicKeyToNodeKeyAddress(newPublicKey)
+	if err != nil {
+		return nil, errExecutionReverted
+	}
+
+	g.state.PutNodeOffsets(node, big.NewInt(0))
+
+	node.PublicKey = newPublicKey
+	g.state.PutNodeOffsets(node, offset)
+	g.state.UpdateNode(offset, node)
+
+	g.state.emitNodePublicKeyReplaced(caller, newPublicKey)
 
 	return nil, nil
 }
