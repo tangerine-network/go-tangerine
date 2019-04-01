@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"math/big"
 
+	dexCore "github.com/dexon-foundation/dexon-consensus/core"
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/consensus"
 	"github.com/dexon-foundation/dexon/core/state"
@@ -32,7 +33,7 @@ import (
 
 type GovernanceStateFetcher interface {
 	GetStateForConfigAtRound(round uint64) *vm.GovernanceState
-	NotarySetNodeKeyAddresses(round uint64) (map[common.Address]struct{}, error)
+	DKGSetNodeKeyAddresses(round uint64) (map[common.Address]struct{}, error)
 }
 
 // Dexcon is a delegated proof-of-stake consensus engine.
@@ -159,31 +160,33 @@ func (d *Dexcon) Finalize(chain consensus.ChainReader, header *types.Header, sta
 	if header.Round > 0 && height.Uint64() == 0 {
 		gs.PushRoundHeight(header.Number)
 
-		// Check for dead node and disqualify them.
-		// A dead node node is defined as: a notary set node that did not propose
-		// any block in the past round.
-		addrs, err := d.govStateFetcer.NotarySetNodeKeyAddresses(header.Round - 1)
-		if err != nil {
-			panic(err)
-		}
-
-		gcs := d.govStateFetcer.GetStateForConfigAtRound(header.Round - 1)
-
-		for addr := range addrs {
-			offset := gcs.NodesOffsetByNodeKeyAddress(addr)
-			if offset.Cmp(big.NewInt(0)) < 0 {
-				panic(fmt.Errorf("invalid notary set found, addr = %s", addr.String()))
+		if header.Round > dexCore.DKGDelayRound {
+			// Check for dead node and disqualify them.
+			// A dead node node is defined as: a notary set node that did not propose
+			// any block in the past round.
+			addrs, err := d.govStateFetcer.DKGSetNodeKeyAddresses(header.Round - 1)
+			if err != nil {
+				panic(err)
 			}
 
-			node := gcs.Node(offset)
-			lastHeight := gs.LastProposedHeight(node.Owner)
-			prevRoundHeight := gs.RoundHeight(big.NewInt(int64(header.Round - 1)))
+			gcs := d.govStateFetcer.GetStateForConfigAtRound(header.Round - 1)
 
-			if lastHeight.Uint64() < prevRoundHeight.Uint64() {
-				log.Info("Disqualify node", "round", header.Round, "nodePubKey", hex.EncodeToString(node.PublicKey))
-				err = gs.Disqualify(node)
-				if err != nil {
-					log.Error("Failed to disqualify node", "err", err)
+			for addr := range addrs {
+				offset := gcs.NodesOffsetByNodeKeyAddress(addr)
+				if offset.Cmp(big.NewInt(0)) < 0 {
+					panic(fmt.Errorf("invalid notary set found, addr = %s", addr.String()))
+				}
+
+				node := gcs.Node(offset)
+				lastHeight := gs.LastProposedHeight(node.Owner)
+				prevRoundHeight := gs.RoundHeight(big.NewInt(int64(header.Round - 1)))
+
+				if lastHeight.Uint64() < prevRoundHeight.Uint64() {
+					log.Info("Disqualify node", "round", header.Round, "nodePubKey", hex.EncodeToString(node.PublicKey))
+					err = gs.Disqualify(node)
+					if err != nil {
+						log.Error("Failed to disqualify node", "err", err)
+					}
 				}
 			}
 		}

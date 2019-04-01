@@ -12,6 +12,7 @@ import (
 	coreEcdsa "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
 	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
+	coreUtils "github.com/dexon-foundation/dexon-consensus/core/utils"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/state"
@@ -113,28 +114,28 @@ func (g *Governance) GetStateForDKGAtRound(round uint64) *vm.GovernanceState {
 	return g.GetStateAtRound(round)
 }
 
-func (d *Governance) CRSRound() uint64 {
-	return d.GetHeadState().CRSRound().Uint64()
+func (g *Governance) CRSRound() uint64 {
+	return g.GetHeadState().CRSRound().Uint64()
 }
 
 // CRS returns the CRS for a given round.
-func (d *Governance) CRS(round uint64) coreCommon.Hash {
+func (g *Governance) CRS(round uint64) coreCommon.Hash {
 	if round <= dexCore.DKGDelayRound {
-		s := d.GetStateAtRound(0)
+		s := g.GetStateAtRound(0)
 		crs := s.CRS()
 		for i := uint64(0); i < round; i++ {
 			crs = crypto.Keccak256Hash(crs[:])
 		}
 		return coreCommon.Hash(crs)
 	}
-	if round > d.CRSRound() {
+	if round > g.CRSRound() {
 		return coreCommon.Hash{}
 	}
 	var s *vm.GovernanceState
-	if round == d.CRSRound() {
-		s = d.GetHeadState()
+	if round == g.CRSRound() {
+		s = g.GetHeadState()
 	} else {
-		s = d.GetStateAtRound(round)
+		s = g.GetStateAtRound(round)
 	}
 	return coreCommon.Hash(s.CRS())
 }
@@ -156,8 +157,8 @@ func (g *Governance) GetRoundHeight(round uint64) uint64 {
 }
 
 // NodeSet returns the current node set.
-func (d *Governance) NodeSet(round uint64) []coreCrypto.PublicKey {
-	s := d.GetStateForConfigAtRound(round)
+func (g *Governance) NodeSet(round uint64) []coreCrypto.PublicKey {
+	s := g.GetStateForConfigAtRound(round)
 	var pks []coreCrypto.PublicKey
 
 	for _, n := range s.QualifiedNodes() {
@@ -170,33 +171,40 @@ func (d *Governance) NodeSet(round uint64) []coreCrypto.PublicKey {
 	return pks
 }
 
-func (d *Governance) PurgeNotarySet(round uint64) {
-	d.nodeSetCache.Purge(round)
+func (g *Governance) PurgeNotarySet(round uint64) {
+	g.nodeSetCache.Purge(round)
 }
 
-func (d *Governance) NotarySet(round uint64) (map[string]struct{}, error) {
-	notarySet, err := d.nodeSetCache.GetNotarySet(round)
+func (g *Governance) NotarySet(round uint64) (map[string]struct{}, error) {
+	notarySet, err := g.nodeSetCache.GetNotarySet(round)
 	if err != nil {
 		return nil, err
 	}
 
 	r := make(map[string]struct{}, len(notarySet))
 	for id := range notarySet {
-		if key, exists := d.nodeSetCache.GetPublicKey(id); exists {
+		if key, exists := g.nodeSetCache.GetPublicKey(id); exists {
 			r[hex.EncodeToString(key.Bytes())] = struct{}{}
 		}
 	}
 	return r, nil
 }
 
-func (d *Governance) NotarySetNodeKeyAddresses(round uint64) (map[common.Address]struct{}, error) {
-	notarySet, err := d.nodeSetCache.GetNotarySet(round)
+func (g *Governance) DKGSetNodeKeyAddresses(round uint64) (map[common.Address]struct{}, error) {
+	config := g.Configuration(round)
+
+	mpks := g.DKGMasterPublicKeys(round)
+	complaints := g.DKGComplaints(round)
+	threshold := coreUtils.GetDKGThreshold(&coreTypes.Config{
+		NotarySetSize: config.NotarySetSize})
+
+	_, ids, err := dkgTypes.CalcQualifyNodes(mpks, complaints, threshold)
 	if err != nil {
 		return nil, err
 	}
 
-	r := make(map[common.Address]struct{}, len(notarySet))
-	for id := range notarySet {
+	r := make(map[common.Address]struct{})
+	for id := range ids {
 		r[vm.IdToAddress(id)] = struct{}{}
 	}
 	return r, nil

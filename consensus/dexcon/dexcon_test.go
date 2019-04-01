@@ -39,7 +39,7 @@ func (g *govStateFetcher) GetStateForConfigAtRound(_ uint64) *vm.GovernanceState
 	return &vm.GovernanceState{g.statedb}
 }
 
-func (g *govStateFetcher) NotarySetNodeKeyAddresses(round uint64) (map[common.Address]struct{}, error) {
+func (g *govStateFetcher) DKGSetNodeKeyAddresses(round uint64) (map[common.Address]struct{}, error) {
 	return make(map[common.Address]struct{}), nil
 }
 
