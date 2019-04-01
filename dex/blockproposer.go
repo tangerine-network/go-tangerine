@@ -172,13 +172,13 @@ Loop:
 		b.watchCat.Feed(blocks[len(blocks)-1].Position)
 
 		log.Debug("Filling compaction chain", "num", len(blocks),
-			"first", blocks[0].Finalization.Height,
-			"last", blocks[len(blocks)-1].Finalization.Height)
+			"first", blocks[0].Position.Height,
+			"last", blocks[len(blocks)-1].Position.Height)
 		if _, err := consensusSync.SyncBlocks(blocks, false); err != nil {
 			log.Debug("SyncBlocks fail", "err", err)
 			return nil, err
 		}
-		coreHeight = blocks[len(blocks)-1].Finalization.Height
+		coreHeight = blocks[len(blocks)-1].Position.Height
 
 		select {
 		case <-b.stopCh:
@@ -203,8 +203,8 @@ ListenLoop:
 			if len(blocks) > 0 {
 				b.watchCat.Feed(blocks[len(blocks)-1].Position)
 				log.Debug("Filling compaction chain", "num", len(blocks),
-					"first", blocks[0].Finalization.Height,
-					"last", blocks[len(blocks)-1].Finalization.Height)
+					"first", blocks[0].Position.Height,
+					"last", blocks[len(blocks)-1].Position.Height)
 				synced, err := consensusSync.SyncBlocks(blocks, true)
 				if err != nil {
 					log.Error("SyncBlocks fail", "err", err)
@@ -215,7 +215,7 @@ ListenLoop:
 					log.Debug("Consensus core synced")
 					break ListenLoop
 				}
-				coreHeight = blocks[len(blocks)-1].Finalization.Height
+				coreHeight = blocks[len(blocks)-1].Position.Height
 			}
 		case <-sub.Err():
 			log.Debug("System stopped when syncing consensus core")

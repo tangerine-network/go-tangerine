@@ -1083,7 +1083,7 @@ func (pm *ProtocolManager) BroadcastRecords(records []*enr.Record) {
 
 // BroadcastFinalizedBlock broadcasts the finalized core block to some of its peers.
 func (pm *ProtocolManager) BroadcastFinalizedBlock(block *coreTypes.Block) {
-	if len(block.Finalization.Randomness) == 0 {
+	if len(block.Randomness) == 0 {
 		log.Warn("Ignore broadcast finalized block without randomness", "block", block)
 		return
 	}
@@ -1132,8 +1132,7 @@ func (pm *ProtocolManager) BroadcastAgreementResult(
 	agreement *coreTypes.AgreementResult) {
 	block := pm.cache.blocks(coreCommon.Hashes{agreement.BlockHash})
 	if len(block) != 0 {
-		block[0].Finalization.Height = agreement.FinalizationHeight
-		block[0].Finalization.Randomness = agreement.Randomness
+		block[0].Randomness = agreement.Randomness
 		pm.cache.addFinalizedBlock(block[0])
 	}
 

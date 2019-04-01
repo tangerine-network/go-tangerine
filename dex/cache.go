@@ -99,7 +99,6 @@ func (c *cache) addBlock(block *coreTypes.Block) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	block = block.Clone()
-	block.Finalization.Height = 0
 	if len(c.blockCache) >= c.size {
 		// Randomly delete one entry.
 		for k := range c.blockCache {

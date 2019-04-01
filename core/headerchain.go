@@ -535,15 +535,15 @@ func (hc *HeaderChain) verifyDexonHeader(header *types.Header,
 		}
 	}
 
-	if header.Time != uint64(coreBlock.Finalization.Timestamp.UnixNano()/1000000) {
+	if header.Time != uint64(coreBlock.Timestamp.UnixNano()/1000000) {
 		return fmt.Errorf("timestamp mismatch")
 	}
 
-	if header.Number.Uint64() != coreBlock.Finalization.Height {
+	if header.Number.Uint64() != coreBlock.Position.Height {
 		return fmt.Errorf("height mismatch")
 	}
 
-	if !reflect.DeepEqual(header.Randomness, coreBlock.Finalization.Randomness) {
+	if !reflect.DeepEqual(header.Randomness, coreBlock.Randomness) {
 		return fmt.Errorf("randomness mismatch")
 	}
 
@@ -562,7 +562,7 @@ func (hc *HeaderChain) verifyTSig(coreBlock *coreTypes.Block,
 	verifierCache *dexCore.TSigVerifierCache) error {
 
 	round := coreBlock.Position.Round
-	randomness := coreBlock.Finalization.Randomness
+	randomness := coreBlock.Randomness
 
 	if round == 0 {
 		return nil

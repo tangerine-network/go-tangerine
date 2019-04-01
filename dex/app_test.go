@@ -39,7 +39,7 @@ type App interface {
 	PrepareWitness(height uint64) (witness coreTypes.Witness, err error)
 	VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifyStatus
 	BlockConfirmed(block coreTypes.Block)
-	BlockDelivered(blockHash coreCommon.Hash, position coreTypes.Position, result coreTypes.FinalizationResult)
+	BlockDelivered(blockHash coreCommon.Hash, position coreTypes.Position, rand []byte)
 	SubscribeNewFinalizedBlockEvent(ch chan<- core.NewFinalizedBlockEvent) event.Subscription
 	Stop()
 }
@@ -268,7 +268,7 @@ func (f *ConfigFactory) Run() {
 			go f.center.DeliverProduct(makerName(f.name),
 				&PositionProduct{position: coreTypes.Position{
 					Round:  0,
-					Height: 0,
+					Height: coreTypes.GenesisHeight,
 				}})
 
 			f.initialized = true
@@ -1634,14 +1634,10 @@ func (f *BlockConfirmedFactory) Run() {
 
 			block := f.convertProduct(product)
 			block.ProposerID = coreTypes.NewNodeID(f.masterKey.PublicKey())
+			block.Timestamp = time.Now()
 			f.stopTimeMu.RLock()
 			f.App.BlockConfirmed(block)
 			f.stopTimeMu.RUnlock()
-
-			block.Finalization = coreTypes.FinalizationResult{
-				Timestamp: time.Now(),
-				Height:    block.Position.Height + 1,
-			}
 
 			f.center.DeliverProduct(makerName(f.name), &BlockConfirmedProduct{
 				block: block,
@@ -1916,7 +1912,7 @@ func (f *BlockDeliveredFactory) Run() {
 
 		block := f.convertProduct(product)
 		f.stopTimeMu.RLock()
-		f.App.BlockDelivered(block.Hash, block.Position, block.Finalization)
+		f.App.BlockDelivered(block.Hash, block.Position, block.Randomness)
 		f.stopTimeMu.RUnlock()
 	}
 }
@@ -1987,7 +1983,7 @@ func (t *bdBlockHashTester) ViewAndRecord(product Product) {
 func (t bdBlockHashTester) InputsForTest(product Product) []reflect.Value {
 	block := product.(*BlockConfirmedProduct).block
 	return []reflect.Value{reflect.ValueOf(coreCommon.Hash{}), reflect.ValueOf(block.Position),
-		reflect.ValueOf(block.Finalization)}
+		reflect.ValueOf(block.Randomness)}
 }
 
 func (t *bdBlockHashTester) ValidateResults(results []reflect.Value) error {
@@ -2042,7 +2038,7 @@ func (t *bdBlockDeliveredTester) ViewAndRecord(product Product) {
 		case *BlockConfirmedProduct:
 			app := t.App.(*DexconApp)
 			block := product.(*BlockConfirmedProduct).block
-			t.expectHeight = block.Position.Height + 1
+			t.expectHeight = block.Position.Height
 			var txs []*types.Transaction
 			_, txs = app.getConfirmedBlockByHash(block.Hash)
 
@@ -2079,7 +2075,7 @@ func (t *bdBlockDeliveredTester) ViewAndRecord(product Product) {
 func (t bdBlockDeliveredTester) InputsForTest(product Product) []reflect.Value {
 	block := product.(*BlockConfirmedProduct).block
 	return []reflect.Value{reflect.ValueOf(block.Hash), reflect.ValueOf(block.Position),
-		reflect.ValueOf(block.Finalization)}
+		reflect.ValueOf(block.Randomness)}
 }
 
 func (t *bdBlockDeliveredTester) ValidateResults(results []reflect.Value) error {

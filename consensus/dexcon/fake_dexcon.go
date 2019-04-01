@@ -3,7 +3,6 @@ package dexcon
 import (
 	"crypto/ecdsa"
 	"math/big"
-	"time"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
 	dexCore "github.com/dexon-foundation/dexon-consensus/core"
@@ -54,15 +53,8 @@ func (f *FakeDexcon) Prepare(chain consensus.ChainReader, header *types.Header) 
 		}
 	}
 
-	parentCoreBlockHash, err := coreUtils.HashBlock(&parentCoreBlock)
-	if err != nil {
-		return err
-	}
 	randomness := f.nodes.Randomness(header.Round, common.Hash(blockHash))
-	coreBlock.Finalization.ParentHash = parentCoreBlockHash
-	coreBlock.Finalization.Randomness = randomness
-	coreBlock.Finalization.Timestamp = time.Now().UTC()
-	coreBlock.Finalization.Height = parentHeader.Number.Uint64()
+	coreBlock.Randomness = randomness
 
 	dexconMeta, err := rlp.EncodeToBytes(&coreBlock)
 	if err != nil {

@@ -162,9 +162,9 @@ func (d *DexconApp) preparePayload(ctx context.Context, position coreTypes.Posit
 	default:
 	}
 
-	// deliver height = position height + 1
-	if d.deliveredHeight+d.undeliveredNum != position.Height {
-		return nil, fmt.Errorf("expected height %d but get %d", d.deliveredHeight+d.undeliveredNum, position.Height)
+	// deliver height + 1 = position height
+	if d.deliveredHeight+d.undeliveredNum+1 != position.Height {
+		return nil, fmt.Errorf("expected height %d but get %d", d.deliveredHeight+d.undeliveredNum+1, position.Height)
 	}
 
 	deliveredBlock := d.blockchain.GetBlockByNumber(d.deliveredHeight)
@@ -308,8 +308,8 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 	d.appMu.RLock()
 	defer d.appMu.RUnlock()
 
-	// deliver height = position height + 1
-	if d.deliveredHeight+d.undeliveredNum != block.Position.Height {
+	// deliver height + 1 = position height
+	if d.deliveredHeight+d.undeliveredNum+1 != block.Position.Height {
 		return coreTypes.VerifyRetryLater
 	}
 
@@ -414,10 +414,10 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 func (d *DexconApp) BlockDelivered(
 	blockHash coreCommon.Hash,
 	blockPosition coreTypes.Position,
-	result coreTypes.FinalizationResult) {
+	rand []byte) {
 
-	log.Debug("DexconApp block deliver", "height", result.Height, "hash", blockHash, "position", blockPosition.String())
-	defer log.Debug("DexconApp block delivered", "height", result.Height, "hash", blockHash, "position", blockPosition.String())
+	log.Debug("DexconApp block deliver", "hash", blockHash, "position", blockPosition.String())
+	defer log.Debug("DexconApp block delivered", "hash", blockHash, "position", blockPosition.String())
 
 	d.appMu.Lock()
 	defer d.appMu.Unlock()
@@ -428,7 +428,7 @@ func (d *DexconApp) BlockDelivered(
 	}
 
 	block.Payload = nil
-	block.Finalization = result
+	block.Randomness = rand
 	dexconMeta, err := rlp.EncodeToBytes(block)
 	if err != nil {
 		panic(err)
@@ -445,14 +445,14 @@ func (d *DexconApp) BlockDelivered(
 	}
 
 	newBlock := types.NewBlock(&types.Header{
-		Number:     new(big.Int).SetUint64(result.Height),
-		Time:       big.NewInt(result.Timestamp.UnixNano() / 1000000),
+		Number:     new(big.Int).SetUint64(block.Position.Height),
+		Time:       uint64(block.Timestamp.UnixNano() / 1000000),
 		Coinbase:   owner,
 		GasLimit:   d.gov.DexconConfiguration(block.Position.Round).BlockGasLimit,
 		Difficulty: big.NewInt(1),
 		Round:      block.Position.Round,
 		DexconMeta: dexconMeta,
-		Randomness: result.Randomness,
+		Randomness: block.Randomness,
 	}, txs, nil, nil)
 
 	if block.IsEmpty() {
@@ -470,7 +470,7 @@ func (d *DexconApp) BlockDelivered(
 	}
 
 	d.removeConfirmedBlock(blockHash)
-	d.deliveredHeight = result.Height
+	d.deliveredHeight = block.Position.Height
 
 	// New blocks are finalized, notify other components.
 	go d.finalizedBlockFeed.Send(core.NewFinalizedBlockEvent{Block: d.blockchain.CurrentBlock()})

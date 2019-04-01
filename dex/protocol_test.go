@@ -334,11 +334,7 @@ func TestRecvCoreBlocks(t *testing.T) {
 			Height: 13,
 			Data:   []byte{4, 4, 4, 4, 4},
 		},
-		Finalization: coreTypes.FinalizationResult{
-			Randomness: []byte{5, 5, 5, 5, 5},
-			Timestamp:  time.Now().UTC(),
-			Height:     13,
-		},
+		Randomness: []byte{5, 5, 5, 5, 5},
 		Signature: coreCrypto.Signature{
 			Type:      "signature",
 			Signature: []byte("signature"),
@@ -387,11 +383,7 @@ func TestSendCoreBlocks(t *testing.T) {
 			Height: 13,
 			Data:   []byte{4, 4, 4, 4, 4},
 		},
-		Finalization: coreTypes.FinalizationResult{
-			Randomness: []byte{5, 5, 5, 5, 5},
-			Timestamp:  time.Now().UTC(),
-			Height:     13,
-		},
+		Randomness: []byte{5, 5, 5, 5, 5},
 		Signature: coreCrypto.Signature{
 			Type:      "signature",
 			Signature: []byte("signature"),

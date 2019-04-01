@@ -216,37 +216,29 @@ func TestCacheFinalizedBlock(t *testing.T) {
 		Position: coreTypes.Position{
 			Height: 1,
 		},
-		Hash: coreCommon.NewRandomHash(),
-		Finalization: coreTypes.FinalizationResult{
-			Randomness: randomBytes(),
-		},
+		Hash:       coreCommon.NewRandomHash(),
+		Randomness: randomBytes(),
 	}
 	block2 := &coreTypes.Block{
 		Position: coreTypes.Position{
 			Height: 2,
 		},
-		Hash: coreCommon.NewRandomHash(),
-		Finalization: coreTypes.FinalizationResult{
-			Randomness: randomBytes(),
-		},
+		Hash:       coreCommon.NewRandomHash(),
+		Randomness: randomBytes(),
 	}
 	block3 := &coreTypes.Block{
 		Position: coreTypes.Position{
 			Height: 3,
 		},
-		Hash: coreCommon.NewRandomHash(),
-		Finalization: coreTypes.FinalizationResult{
-			Randomness: randomBytes(),
-		},
+		Hash:       coreCommon.NewRandomHash(),
+		Randomness: randomBytes(),
 	}
 	block4 := &coreTypes.Block{
 		Position: coreTypes.Position{
 			Height: 4,
 		},
-		Hash: coreCommon.NewRandomHash(),
-		Finalization: coreTypes.FinalizationResult{
-			Randomness: randomBytes(),
-		},
+		Hash:       coreCommon.NewRandomHash(),
+		Randomness: randomBytes(),
 	}
 	cache.addFinalizedBlock(block1)
 	cache.addFinalizedBlock(block2)
@@ -291,18 +283,18 @@ func TestCacheFinalizedBlock(t *testing.T) {
 		}
 	}
 	finalizedBlock5 := block5.Clone()
-	finalizedBlock5.Finalization.Randomness = randomBytes()
+	finalizedBlock5.Randomness = randomBytes()
 	cache.addFinalizedBlock(finalizedBlock5)
 	block = cache.finalizedBlock(block5.Position)
 	if block == nil {
 		t.Errorf("expecting block %s in cache", finalizedBlock5)
 	}
 	if !reflect.DeepEqual(
-		block.Finalization.Randomness,
-		finalizedBlock5.Finalization.Randomness) {
+		block.Randomness,
+		finalizedBlock5.Randomness) {
 		t.Errorf("mismatch randomness, have %s, want %s",
-			block.Finalization.Randomness,
-			finalizedBlock5.Finalization.Randomness)
+			block.Randomness,
+			finalizedBlock5.Randomness)
 	}
 	blocks = cache.blocks(coreCommon.Hashes{block5.Hash})
 	if len(blocks) != 1 {
@@ -312,11 +304,11 @@ func TestCacheFinalizedBlock(t *testing.T) {
 			t.Errorf("get wrong block: have %s, want %s", blocks[0], block5)
 		}
 		if !reflect.DeepEqual(
-			blocks[0].Finalization.Randomness,
-			finalizedBlock5.Finalization.Randomness) {
+			blocks[0].Randomness,
+			finalizedBlock5.Randomness) {
 			t.Errorf("mismatch randomness, have %s, want %s",
-				blocks[0].Finalization.Randomness,
-				finalizedBlock5.Finalization.Randomness)
+				blocks[0].Randomness,
+				finalizedBlock5.Randomness)
 		}
 	}
 }
