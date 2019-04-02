@@ -95,9 +95,30 @@ func (c *cache) votes(pos coreTypes.Position) []*coreTypes.Vote {
 	return votes
 }
 
+func (c *cache) addBlocks(blocks []*coreTypes.Block) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	for _, b := range blocks {
+		if b.IsFinalized() {
+			c.addFinalizedBlockNoLock(b)
+		} else {
+			c.addBlockNoLock(b)
+		}
+	}
+}
+
 func (c *cache) addBlock(block *coreTypes.Block) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+	c.addBlockNoLock(block)
+}
+
+func (c *cache) addBlockNoLock(block *coreTypes.Block) {
+	// Avoid polluting cache by non-finalized blocks when we've received some
+	// finalized block from the same position.
+	if _, exist := c.finalizedBlockCache[block.Position]; exist {
+		return
+	}
 	block = block.Clone()
 	if len(c.blockCache) >= c.size {
 		// Randomly delete one entry.
@@ -112,6 +133,10 @@ func (c *cache) addBlock(block *coreTypes.Block) {
 func (c *cache) addFinalizedBlock(block *coreTypes.Block) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+	c.addFinalizedBlockNoLock(block)
+}
+
+func (c *cache) addFinalizedBlockNoLock(block *coreTypes.Block) {
 	block = block.Clone()
 	if len(c.blockCache) >= c.size {
 		// Randomly delete one entry.
@@ -131,14 +156,14 @@ func (c *cache) addFinalizedBlock(block *coreTypes.Block) {
 	c.finalizedBlockCache[block.Position] = block
 }
 
-func (c *cache) blocks(hashes coreCommon.Hashes) []*coreTypes.Block {
+func (c *cache) blocks(hashes coreCommon.Hashes, includeDB bool) []*coreTypes.Block {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	cacheBlocks := make([]*coreTypes.Block, 0, len(hashes))
 	for _, hash := range hashes {
 		if block, exist := c.blockCache[hash]; exist {
 			cacheBlocks = append(cacheBlocks, block)
-		} else {
+		} else if includeDB {
 			block, err := c.db.GetBlock(hash)
 			if err != nil {
 				continue

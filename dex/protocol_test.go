@@ -364,10 +364,7 @@ func TestRecvCoreBlocks(t *testing.T) {
 func TestSendCoreBlocks(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
 	pm.SetReceiveCoreMessage(true)
-
-	p, _ := newTestPeer("peer", dex64, pm, true)
 	defer pm.Stop()
-	defer p.close()
 
 	block := coreTypes.Block{
 		ProposerID: coreTypes.NodeID{coreCommon.Hash{1, 2, 3}},
@@ -394,23 +391,75 @@ func TestSendCoreBlocks(t *testing.T) {
 		},
 	}
 
-	waitForRegister(pm, 1)
+	var wg sync.WaitGroup
+	checkBlock := func(p *testPeer, isReceiver bool) {
+		defer wg.Done()
+		defer p.close()
+		if !isReceiver {
+			go func() {
+				time.Sleep(100 * time.Millisecond)
+				p.close()
+			}()
+		}
+
+		msg, err := p.app.ReadMsg()
+		if !isReceiver {
+			if err != p2p.ErrPipeClosed {
+				t.Errorf("err mismatch: got %v, want %v (not receiver peer)",
+					err, p2p.ErrPipeClosed)
+			}
+			return
+		}
+		if err != nil {
+			t.Errorf("%v: read error: %v", p.Peer, err)
+		} else if msg.Code != CoreBlockMsg {
+			t.Errorf("%v: got code %d, want %d", p.Peer, msg.Code, CoreBlockMsg)
+		}
+
+		var bs []*coreTypes.Block
+		if err := msg.Decode(&bs); err != nil {
+			t.Errorf("%v: %v", p.Peer, err)
+		}
+
+		if !reflect.DeepEqual(bs, []*coreTypes.Block{&block}) {
+			t.Errorf("block mismatch")
+		}
+	}
+
+	testPeers := []struct {
+		label      *peerLabel
+		isReceiver bool
+	}{
+		{
+			label:      &peerLabel{set: notaryset, round: 12},
+			isReceiver: true,
+		},
+		{
+			label:      nil,
+			isReceiver: false,
+		},
+		{
+			label:      &peerLabel{set: notaryset, round: 11},
+			isReceiver: false,
+		},
+	}
+
+	pm.peers.label2Nodes = make(map[peerLabel]map[string]*enode.Node)
+	for i, tt := range testPeers {
+		p, _ := newTestPeer(fmt.Sprintf("peer #%d", i), dex64, pm, true)
+		if tt.label != nil {
+			if pm.peers.label2Nodes[*tt.label] == nil {
+				pm.peers.label2Nodes[*tt.label] = make(map[string]*enode.Node)
+			}
+			pm.peers.label2Nodes[*tt.label][p.ID().String()] = p.Node()
+			pm.peers.addDirectPeer(p.ID().String(), *tt.label)
+		}
+		wg.Add(1)
+		go checkBlock(p, tt.isReceiver)
+	}
+	waitForRegister(pm, len(testPeers))
 	pm.BroadcastCoreBlock(&block)
-	msg, err := p.app.ReadMsg()
-	if err != nil {
-		t.Errorf("%v: read error: %v", p.Peer, err)
-	} else if msg.Code != CoreBlockMsg {
-		t.Errorf("%v: got code %d, want %d", p.Peer, msg.Code, CoreBlockMsg)
-	}
-
-	var bs []*coreTypes.Block
-	if err := msg.Decode(&bs); err != nil {
-		t.Errorf("%v: %v", p.Peer, err)
-	}
-
-	if !reflect.DeepEqual(bs, []*coreTypes.Block{&block}) {
-		t.Errorf("block mismatch")
-	}
+	wg.Wait()
 }
 
 func TestRecvVotes(t *testing.T) {

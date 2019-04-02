@@ -160,7 +160,7 @@ func TestCacheBlock(t *testing.T) {
 		block2.Hash: {},
 		block3.Hash: {},
 	}
-	blocks := cache.blocks(hashes)
+	blocks := cache.blocks(hashes, true)
 	if len(blocks) != 3 {
 		t.Errorf("fail to get blocks: have %d, want 3", len(blocks))
 	}
@@ -172,7 +172,7 @@ func TestCacheBlock(t *testing.T) {
 
 	cache.addBlock(block4)
 
-	blocks = cache.blocks(hashes)
+	blocks = cache.blocks(hashes, true)
 	hashMap[block4.Hash] = struct{}{}
 	if len(blocks) != 3 {
 		t.Errorf("fail to get blocks: have %d, want 3", len(blocks))
@@ -196,13 +196,17 @@ func TestCacheBlock(t *testing.T) {
 	if err := db.PutBlock(*block5); err != nil {
 		panic(err)
 	}
-	blocks = cache.blocks(coreCommon.Hashes{block5.Hash})
+	blocks = cache.blocks(coreCommon.Hashes{block5.Hash}, true)
 	if len(blocks) != 1 {
 		t.Errorf("fail to get blocks: have %d, want 1", len(blocks))
 	} else {
 		if !blocks[0].Hash.Equal(block5.Hash) {
 			t.Errorf("get wrong block: have %s, want %s", blocks[0], block5)
 		}
+	}
+	blocks = cache.blocks(coreCommon.Hashes{block5.Hash}, false)
+	if len(blocks) != 0 {
+		t.Errorf("unexpected length of blocks: have %d, want 0", len(blocks))
 	}
 }
 
@@ -274,7 +278,7 @@ func TestCacheFinalizedBlock(t *testing.T) {
 	if block := cache.finalizedBlock(block5.Position); block != nil {
 		t.Errorf("unexpected block %s in cache", block)
 	}
-	blocks := cache.blocks(coreCommon.Hashes{block5.Hash})
+	blocks := cache.blocks(coreCommon.Hashes{block5.Hash}, true)
 	if len(blocks) != 1 {
 		t.Errorf("fail to get blocks: have %d, want 1", len(blocks))
 	} else {
@@ -296,7 +300,7 @@ func TestCacheFinalizedBlock(t *testing.T) {
 			block.Randomness,
 			finalizedBlock5.Randomness)
 	}
-	blocks = cache.blocks(coreCommon.Hashes{block5.Hash})
+	blocks = cache.blocks(coreCommon.Hashes{block5.Hash}, true)
 	if len(blocks) != 1 {
 		t.Errorf("fail to get blocks: have %d, want 1", len(blocks))
 	} else {

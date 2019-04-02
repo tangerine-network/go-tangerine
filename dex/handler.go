@@ -862,8 +862,8 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&blocks); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
+		pm.cache.addBlocks(blocks)
 		for _, block := range blocks {
-			pm.cache.addBlock(block)
 			pm.receiveCh <- block
 		}
 	case msg.Code == VoteMsg:
@@ -889,7 +889,13 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&agreement); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
-		p.MarkAgreement(rlpHash(agreement))
+		p.MarkAgreement(agreement.Position)
+		// Update randomness field for blocks in cache.
+		block := pm.cache.blocks(coreCommon.Hashes{agreement.BlockHash}, false)
+		if len(block) != 0 {
+			block[0].Randomness = agreement.Randomness
+			pm.cache.addFinalizedBlock(block[0])
+		}
 		pm.receiveCh <- &agreement
 	case msg.Code == DKGPrivateShareMsg:
 		if atomic.LoadInt32(&pm.receiveCoreMessage) == 0 {
@@ -920,7 +926,7 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&hashes); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
-		blocks := pm.cache.blocks(hashes)
+		blocks := pm.cache.blocks(hashes, true)
 		log.Debug("Push blocks", "blocks", blocks)
 		return p.SendCoreBlocks(blocks)
 	case msg.Code == PullVotesMsg:
@@ -1109,7 +1115,12 @@ func (pm *ProtocolManager) BroadcastFinalizedBlock(block *coreTypes.Block) {
 // BroadcastCoreBlock broadcasts the core block to all its peers.
 func (pm *ProtocolManager) BroadcastCoreBlock(block *coreTypes.Block) {
 	pm.cache.addBlock(block)
-	for _, peer := range pm.peers.Peers() {
+	// send to notary nodes only.
+	label := peerLabel{
+		set:   notaryset,
+		round: block.Position.Round,
+	}
+	for _, peer := range pm.peers.PeersWithLabel(label) {
 		peer.AsyncSendCoreBlocks([]*coreTypes.Block{block})
 	}
 }
@@ -1130,7 +1141,7 @@ func (pm *ProtocolManager) BroadcastVote(vote *coreTypes.Vote) {
 
 func (pm *ProtocolManager) BroadcastAgreementResult(
 	agreement *coreTypes.AgreementResult) {
-	block := pm.cache.blocks(coreCommon.Hashes{agreement.BlockHash})
+	block := pm.cache.blocks(coreCommon.Hashes{agreement.BlockHash}, false)
 	if len(block) != 0 {
 		block[0].Randomness = agreement.Randomness
 		pm.cache.addFinalizedBlock(block[0])
@@ -1143,17 +1154,17 @@ func (pm *ProtocolManager) BroadcastAgreementResult(
 	}
 	peers := pm.peers.PeersWithLabel(label)
 	count := maxAgreementResultBroadcast
-	agrHash := rlpHash(agreement)
 	for _, peer := range peers {
-		if count <= 0 {
-			peer.MarkAgreement(agrHash)
-		} else if !peer.knownAgreements.Contains(agrHash) {
+		if peer.MarkAgreement(agreement.Position) {
+			if count <= 0 {
+				continue
+			}
 			count--
 			peer.AsyncSendAgreement(agreement)
 		}
 	}
 
-	for _, peer := range pm.peers.PeersWithoutAgreement(rlpHash(agreement)) {
+	for _, peer := range pm.peers.PeersWithoutAgreement(agreement.Position) {
 		peer.AsyncSendAgreement(agreement)
 	}
 }
