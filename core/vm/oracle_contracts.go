@@ -1364,7 +1364,7 @@ func (g *GovernanceContract) fineFailStopDKG(threshold int) {
 		}
 	}
 	for id, complaints := range complaintsByID {
-		if len(complaints) > threshold {
+		if len(complaints) >= threshold {
 			offset := g.state.NodesOffsetByNodeKeyAddress(IdToAddress(id))
 			// Node might have been unstaked.
 			if offset.Cmp(big.NewInt(0)) < 0 {
