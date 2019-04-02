@@ -160,7 +160,8 @@ func newAgreement(
 
 // restart the agreement
 func (a *agreement) restart(
-	notarySet map[types.NodeID]struct{}, aID types.Position, leader types.NodeID,
+	notarySet map[types.NodeID]struct{},
+	threshold int, aID types.Position, leader types.NodeID,
 	crs common.Hash) {
 	if !func() bool {
 		a.lock.Lock()
@@ -181,7 +182,7 @@ func (a *agreement) restart(
 		a.data.votes[1] = newVoteListMap()
 		a.data.period = 2
 		a.data.blocks = make(map[types.NodeID]*types.Block)
-		a.data.requiredVote = len(notarySet)*2/3 + 1
+		a.data.requiredVote = threshold
 		a.data.leader.restart(crs)
 		a.data.lockValue = types.SkipBlockHash
 		a.data.lockIter = 0
@@ -289,9 +290,11 @@ func (a *agreement) restart(
 }
 
 func (a *agreement) stop() {
-	a.restart(make(map[types.NodeID]struct{}), types.Position{
-		Height: math.MaxUint64,
-	}, types.NodeID{}, common.Hash{})
+	a.restart(make(map[types.NodeID]struct{}), int(math.MaxInt32),
+		types.Position{
+			Height: math.MaxUint64,
+		},
+		types.NodeID{}, common.Hash{})
 }
 
 func isStop(aID types.Position) bool {
@@ -399,6 +402,9 @@ func (a *agreement) prepareVote(vote *types.Vote) (err error) {
 }
 
 func (a *agreement) updateFilter(filter *utils.VoteFilter) {
+	if isStop(a.agreementID()) {
+		return
+	}
 	a.lock.RLock()
 	defer a.lock.RUnlock()
 	a.data.lock.RLock()
@@ -417,6 +423,7 @@ func (a *agreement) processVote(vote *types.Vote) error {
 		return err
 	}
 	aID := a.agreementID()
+
 	// Agreement module has stopped.
 	if isStop(aID) {
 		// Hacky way to not drop first votes for genesis height.
