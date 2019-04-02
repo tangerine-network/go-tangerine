@@ -42,7 +42,7 @@ func (t *nodeTable) AddRecords(records []*enr.Record) {
 		}
 
 		if n, ok := t.entry[node.ID()]; ok && n.Seq() >= node.Seq() {
-			log.Debug("Ignore new record, already exists", "id", node.ID().String(),
+			log.Trace("Ignore new record, already exists", "id", node.ID().String(),
 				"ip", node.IP().String(), "udp", node.UDP(), "tcp", node.TCP())
 			continue
 		}

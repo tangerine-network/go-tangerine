@@ -33,6 +33,8 @@ const (
 	// redialing a certain node.
 	dialHistoryExpiration = 30 * time.Second
 
+	directDialHistoryExpiration = 10 * time.Second
+
 	// Discovery lookups are throttled and can only run
 	// once every few seconds.
 	lookupInterval = 4 * time.Second
@@ -223,7 +225,6 @@ func (s *dialstate) newTasks(nRunning int, peers map[enode.ID]*Peer, now time.Ti
 			log.Warn("Removing direct dial candidate", "id", t.dest.ID(), "addr", &net.TCPAddr{IP: t.dest.IP(), Port: t.dest.TCP()}, "err", err)
 			delete(s.direct, t.dest.ID())
 		case nil:
-			log.Debug("Direct peer connected", "id", id)
 			s.dialing[id] = t.flags
 			newtasks = append(newtasks, t)
 		}
@@ -306,7 +307,11 @@ func (s *dialstate) checkDial(n *enode.Node, peers map[enode.ID]*Peer) error {
 func (s *dialstate) taskDone(t task, now time.Time) {
 	switch t := t.(type) {
 	case *dialTask:
-		s.hist.add(t.dest.ID(), now.Add(dialHistoryExpiration))
+		expiration := dialHistoryExpiration
+		if t.flags&directDialedConn != 0 {
+			expiration = directDialHistoryExpiration
+		}
+		s.hist.add(t.dest.ID(), now.Add(expiration))
 		delete(s.dialing, t.dest.ID())
 	case *discoverTask:
 		s.lookupRunning = false
@@ -322,11 +327,17 @@ func (t *dialTask) Do(srv *Server) {
 	}
 	err := t.dial(srv, t.dest)
 	if err != nil {
-		log.Trace("Dial error", "task", t, "err", err)
+		if t.flags&directDialedConn != 0 {
+			log.Debug("Direct dial error", "task", t, "err", err)
+		} else {
+			log.Trace("Dial error", "task", t, "err", err)
+		}
 		// Try resolving the ID of static nodes if dialing failed.
 		if _, ok := err.(*dialError); ok && t.flags&(staticDialedConn|directDialedConn) != 0 {
 			if t.resolve(srv) {
-				t.dial(srv, t.dest)
+				if err := t.dial(srv, t.dest); err != nil && t.flags&(directDialedConn) != 0 {
+					log.Debug("Direct dial error 2", "task", t, "err", err)
+				}
 			}
 		}
 	}
@@ -340,7 +351,7 @@ func (t *dialTask) Do(srv *Server) {
 // The backoff delay resets when the node is found.
 func (t *dialTask) resolve(srv *Server) bool {
 	if srv.ntab == nil {
-		log.Debug("Can't resolve node", "id", t.dest.ID, "err", "discovery is disabled")
+		log.Debug("Can't resolve node", "id", t.dest.ID(), "err", "discovery is disabled")
 		return false
 	}
 	if t.resolveDelay == 0 {
@@ -352,17 +363,20 @@ func (t *dialTask) resolve(srv *Server) bool {
 	resolved := srv.ntab.Resolve(t.dest)
 	t.lastResolved = time.Now()
 	if resolved == nil {
-		t.resolveDelay *= 2
-		if t.resolveDelay > maxResolveDelay {
-			t.resolveDelay = maxResolveDelay
+		// Only backoff delay if this is not direct connection.
+		if t.flags&directDialedConn == 0 {
+			t.resolveDelay *= 2
+			if t.resolveDelay > maxResolveDelay {
+				t.resolveDelay = maxResolveDelay
+			}
 		}
-		log.Debug("Resolving node failed", "id", t.dest.ID, "newdelay", t.resolveDelay)
+		log.Debug("Resolving node failed", "id", t.dest.ID(), "newdelay", t.resolveDelay)
 		return false
 	}
 	// The node was found.
 	t.resolveDelay = initialResolveDelay
 	t.dest = resolved
-	log.Debug("Resolved node", "id", t.dest.ID, "addr", &net.TCPAddr{IP: t.dest.IP(), Port: t.dest.TCP()})
+	log.Debug("Resolved node", "id", t.dest.ID(), "addr", &net.TCPAddr{IP: t.dest.IP(), Port: t.dest.TCP()})
 	return true
 }
 

@@ -581,7 +581,7 @@ func TestDialStateDirectDial(t *testing.T) {
 					&dialTask{flags: directDialedConn, dest: newNode(uintID(5), nil)},
 				},
 				new: []task{
-					&waitExpireTask{Duration: 14 * time.Second},
+					&waitExpireTask{Duration: 10 * time.Second},
 				},
 			},
 			// Wait a round for dial history to expire, no new tasks should spawn.
