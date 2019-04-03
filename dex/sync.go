@@ -26,7 +26,6 @@ import (
 	"github.com/dexon-foundation/dexon/dex/downloader"
 	"github.com/dexon-foundation/dexon/log"
 	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/p2p/enr"
 )
 
 const (
@@ -40,9 +39,6 @@ const (
 	// This is the target size for the packs of transactions sent by txsyncLoop.
 	// A pack can get larger than this if a single transactions exceeds this size.
 	txsyncPackSize = 100 * 1024
-
-	// This is the target number for the packs of records sent by recordsyncLoop.
-	recordsyncPackNum = 1024
 )
 
 type txsync struct {
@@ -125,95 +121,6 @@ func (pm *ProtocolManager) txsyncLoop() {
 			// Stop tracking peers that cause send failures.
 			if err != nil {
 				pack.p.Log().Debug("Transaction send failed", "err", err)
-				delete(pending, pack.p.ID())
-			}
-			// Schedule the next send.
-			if s := pick(); s != nil {
-				send(s)
-			}
-		case <-pm.quitSync:
-			return
-		}
-	}
-}
-
-type recordsync struct {
-	p       *peer
-	records []*enr.Record
-}
-
-// syncNodeRecords starts sending all node records to the given peer.
-func (pm *ProtocolManager) syncNodeRecords(p *peer) {
-	records := pm.nodeTable.Records()
-	p.Log().Debug("Sync node records", "num", len(records))
-	if len(records) == 0 {
-		return
-	}
-	select {
-	case pm.recordsyncCh <- &recordsync{p, records}:
-	case <-pm.quitSync:
-	}
-}
-
-// recordsyncLoop takes care of the initial node record sync for each new
-// connection. When a new peer appears, we relay all currently node records.
-// In order to minimise egress bandwidth usage, we send
-// the records in small packs to one peer at a time.
-func (pm *ProtocolManager) recordsyncLoop() {
-	var (
-		pending = make(map[enode.ID]*recordsync)
-		sending = false               // whether a send is active
-		pack    = new(recordsync)     // the pack that is being sent
-		done    = make(chan error, 1) // result of the send
-	)
-
-	// send starts a sending a pack of transactions from the sync.
-	send := func(s *recordsync) {
-		// Fill pack with node records up to the target num.
-		var num int
-		pack.p = s.p
-		pack.records = pack.records[:0]
-		for i := 0; i < len(s.records) && num < recordsyncPackNum; i++ {
-			pack.records = append(pack.records, s.records[i])
-			num += 1
-		}
-		// Remove the records that will be sent.
-		s.records = s.records[:copy(s.records, s.records[len(pack.records):])]
-		if len(s.records) == 0 {
-			delete(pending, s.p.ID())
-		}
-		// Send the pack in the background.
-		s.p.Log().Trace("Sending batch of records", "count", len(pack.records), "bytes", num)
-		sending = true
-		go func() { done <- pack.p.SendNodeRecords(pack.records) }()
-	}
-
-	// pick chooses the next pending sync.
-	pick := func() *recordsync {
-		if len(pending) == 0 {
-			return nil
-		}
-		n := rand.Intn(len(pending)) + 1
-		for _, s := range pending {
-			if n--; n == 0 {
-				return s
-			}
-		}
-		return nil
-	}
-
-	for {
-		select {
-		case s := <-pm.recordsyncCh:
-			pending[s.p.ID()] = s
-			if !sending {
-				send(s)
-			}
-		case err := <-done:
-			sending = false
-			// Stop tracking peers that cause send failures.
-			if err != nil {
-				pack.p.Log().Debug("Record send failed", "err", err)
 				delete(pending, pack.p.ID())
 			}
 			// Schedule the next send.

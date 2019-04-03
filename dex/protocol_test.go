@@ -36,7 +36,6 @@ import (
 	"github.com/dexon-foundation/dexon/dex/downloader"
 	"github.com/dexon-foundation/dexon/p2p"
 	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/p2p/enr"
 	"github.com/dexon-foundation/dexon/rlp"
 )
 
@@ -232,86 +231,6 @@ func TestGetBlockHeadersDataEncodeDecode(t *testing.T) {
 	}
 }
 
-func TestRecvNodeRecords(t *testing.T) {
-	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
-	p, _ := newTestPeer("peer", dex64, pm, true)
-	defer pm.Stop()
-	defer p.close()
-
-	record := randomNode().Record()
-
-	ch := make(chan newRecordsEvent)
-	pm.nodeTable.SubscribeNewRecordsEvent(ch)
-
-	if err := p2p.Send(p.app, RecordMsg, []interface{}{record}); err != nil {
-		t.Fatalf("send error: %v", err)
-	}
-
-	select {
-	case event := <-ch:
-		records := event.Records
-		if len(records) != 1 {
-			t.Errorf("wrong number of new records: got %d, want 1", len(records))
-		} else if rlpHash(records[0]) != rlpHash(record) {
-			t.Errorf("added wrong records hash: got %v, want %v", rlpHash(records[0]), rlpHash(record))
-		}
-	case <-time.After(3 * time.Second):
-		t.Errorf("no newRecordsEvent received within 3 seconds")
-	}
-}
-
-func TestSendNodeRecords(t *testing.T) {
-	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
-	defer pm.Stop()
-
-	allrecords := make([]*enr.Record, 100)
-	for i := 0; i < len(allrecords); i++ {
-		allrecords[i] = randomNode().Record()
-	}
-
-	// Connect several peers. They should all receive the pending transactions.
-	var wg sync.WaitGroup
-	checkrecords := func(p *testPeer) {
-		defer wg.Done()
-		defer p.close()
-		seen := make(map[common.Hash]bool)
-		for _, record := range allrecords {
-			seen[rlpHash(record)] = false
-		}
-		for n := 0; n < len(allrecords) && !t.Failed(); {
-			var records []*enr.Record
-			msg, err := p.app.ReadMsg()
-			if err != nil {
-				t.Errorf("%v: read error: %v", p.Peer, err)
-			} else if msg.Code != RecordMsg {
-				t.Errorf("%v: got code %d, want RecordMsg", p.Peer, msg.Code)
-			}
-			if err := msg.Decode(&records); err != nil {
-				t.Errorf("%v: %v", p.Peer, err)
-			}
-			for _, record := range records {
-				hash := rlpHash(record)
-				seenrecord, want := seen[hash]
-				if seenrecord {
-					t.Errorf("%v: got record more than once: %x", p.Peer, hash)
-				}
-				if !want {
-					t.Errorf("%v: got unexpected record: %x", p.Peer, hash)
-				}
-				seen[hash] = true
-				n++
-			}
-		}
-	}
-	for i := 0; i < 3; i++ {
-		p, _ := newTestPeer(fmt.Sprintf("peer #%d", i), dex64, pm, true)
-		wg.Add(1)
-		go checkrecords(p)
-	}
-	pm.nodeTable.AddRecords(allrecords)
-	wg.Wait()
-}
-
 func TestRecvCoreBlocks(t *testing.T) {
 	pm, _ := newTestProtocolManagerMust(t, downloader.FullSync, 0, nil, nil)
 	pm.SetReceiveCoreMessage(true)
@@ -357,7 +276,7 @@ func TestRecvCoreBlocks(t *testing.T) {
 			t.Errorf("block mismatch")
 		}
 	case <-time.After(3 * time.Second):
-		t.Errorf("no newRecordsEvent received within 3 seconds")
+		t.Errorf("no core block received within 3 seconds")
 	}
 }
 

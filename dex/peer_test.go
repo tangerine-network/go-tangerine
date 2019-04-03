@@ -17,7 +17,6 @@ func TestPeerSetBuildAndForgetConn(t *testing.T) {
 	}
 	server := newTestP2PServer(key)
 	self := server.Self()
-	table := newNodeTable()
 
 	gov := &testGovernance{}
 
@@ -49,7 +48,7 @@ func TestPeerSetBuildAndForgetConn(t *testing.T) {
 		return newTestNodeSet(m[round]), nil
 	}
 
-	ps := newPeerSet(gov, server, table)
+	ps := newPeerSet(gov, server)
 
 	// build round 10
 	ps.BuildConnection(10)

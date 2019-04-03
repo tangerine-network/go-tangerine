@@ -226,7 +226,9 @@ func (s *dialstate) newTasks(nRunning int, peers map[enode.ID]*Peer, now time.Ti
 			delete(s.direct, t.dest.ID())
 		case nil:
 			s.dialing[id] = t.flags
-			newtasks = append(newtasks, t)
+			// New a task instance with no lastResolved, resolveDelay here,
+			// so that we can pass the resolve delay check.
+			newtasks = append(newtasks, &dialTask{flags: t.flags, dest: t.dest})
 		}
 	}
 
@@ -363,12 +365,9 @@ func (t *dialTask) resolve(srv *Server) bool {
 	resolved := srv.ntab.Resolve(t.dest)
 	t.lastResolved = time.Now()
 	if resolved == nil {
-		// Only backoff delay if this is not direct connection.
-		if t.flags&directDialedConn == 0 {
-			t.resolveDelay *= 2
-			if t.resolveDelay > maxResolveDelay {
-				t.resolveDelay = maxResolveDelay
-			}
+		t.resolveDelay *= 2
+		if t.resolveDelay > maxResolveDelay {
+			t.resolveDelay = maxResolveDelay
 		}
 		log.Debug("Resolving node failed", "id", t.dest.ID(), "newdelay", t.resolveDelay)
 		return false
