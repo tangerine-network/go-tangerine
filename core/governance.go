@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
@@ -13,14 +14,16 @@ import (
 	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
 	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
 	coreUtils "github.com/dexon-foundation/dexon-consensus/core/utils"
+	"github.com/hashicorp/golang-lru/simplelru"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/state"
 	"github.com/dexon-foundation/dexon/core/vm"
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/rlp"
 )
+
+const dkgCacheSize = 5
 
 type GovernanceStateDB interface {
 	State() (*state.StateDB, error)
@@ -47,13 +50,32 @@ func (g *governanceStateDB) StateAt(height uint64) (*state.StateDB, error) {
 	return g.bc.StateAt(header.Root)
 }
 
+type dkgCacheItem struct {
+	Round               uint64
+	Reset               uint64
+	MasterPublicKeysLen uint64
+	MasterPublicKeys    []*dkgTypes.MasterPublicKey
+	ComplaintsLen       uint64
+	Complaints          []*dkgTypes.Complaint
+}
+
 type Governance struct {
 	db           GovernanceStateDB
 	nodeSetCache *dexCore.NodeSetCache
+	dkgCache     *simplelru.LRU
+	dkgCacheMu   sync.RWMutex
 }
 
 func NewGovernance(db GovernanceStateDB) *Governance {
-	g := &Governance{db: db}
+	cache, err := simplelru.NewLRU(dkgCacheSize, nil)
+	if err != nil {
+		log.Error("Failed to initialize DKG cache", "error", err)
+		return nil
+	}
+	g := &Governance{
+		db:       db,
+		dkgCache: cache,
+	}
 	g.nodeSetCache = dexCore.NewNodeSetCache(g)
 	return g
 }
@@ -210,29 +232,60 @@ func (g *Governance) DKGSetNodeKeyAddresses(round uint64) (map[common.Address]st
 	return r, nil
 }
 
-func (g *Governance) DKGComplaints(round uint64) []*dkgTypes.Complaint {
+func (g *Governance) getOrUpdateDKGCache(round uint64) *dkgCacheItem {
 	s := g.GetStateForDKGAtRound(round)
 	if s == nil {
+		log.Error("Failed to get DKG state", "round", round)
 		return nil
 	}
+	reset := s.DKGResetCount(new(big.Int).SetUint64(round))
+	mpksLen := s.LenDKGMasterPublicKeys().Uint64()
+	compsLen := s.LenDKGComplaints().Uint64()
 
-	var dkgComplaints []*dkgTypes.Complaint
-	for _, pk := range s.DKGComplaints() {
-		x := new(dkgTypes.Complaint)
-		if err := rlp.DecodeBytes(pk, x); err != nil {
-			panic(err)
-		}
-		dkgComplaints = append(dkgComplaints, x)
+	var cache *dkgCacheItem
+
+	g.dkgCacheMu.RLock()
+	if v, ok := g.dkgCache.Get(round); ok {
+		cache = v.(*dkgCacheItem)
 	}
-	return dkgComplaints
+	g.dkgCacheMu.RUnlock()
+
+	if cache != nil && cache.Reset == reset.Uint64() &&
+		cache.MasterPublicKeysLen == mpksLen &&
+		cache.ComplaintsLen == compsLen {
+		return cache
+	}
+
+	g.dkgCacheMu.Lock()
+	defer g.dkgCacheMu.Unlock()
+
+	cache = &dkgCacheItem{
+		Round: round,
+		Reset: reset.Uint64(),
+	}
+
+	if cache == nil || cache.MasterPublicKeysLen != mpksLen {
+		cache.MasterPublicKeys = s.DKGMasterPublicKeyItems()
+		cache.MasterPublicKeysLen = uint64(len(cache.MasterPublicKeys))
+	}
+
+	if cache == nil || cache.ComplaintsLen != compsLen {
+		cache.Complaints = s.DKGComplaintItems()
+		cache.ComplaintsLen = uint64(len(cache.Complaints))
+	}
+
+	g.dkgCache.Add(round, cache)
+	return cache
+}
+
+func (g *Governance) DKGComplaints(round uint64) []*dkgTypes.Complaint {
+	cache := g.getOrUpdateDKGCache(round)
+	return cache.Complaints
 }
 
 func (g *Governance) DKGMasterPublicKeys(round uint64) []*dkgTypes.MasterPublicKey {
-	s := g.GetStateForDKGAtRound(round)
-	if s == nil {
-		return nil
-	}
-	return s.UniqueDKGMasterPublicKeys()
+	cache := g.getOrUpdateDKGCache(round)
+	return cache.MasterPublicKeys
 }
 
 func (g *Governance) IsDKGMPKReady(round uint64) bool {

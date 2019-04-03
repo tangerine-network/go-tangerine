@@ -599,27 +599,23 @@ func (s *GovernanceState) IncDKGResetCount(round *big.Int) {
 }
 
 // bytes[] public dkgMasterPublicKeys;
+func (s *GovernanceState) LenDKGMasterPublicKeys() *big.Int {
+	return s.getStateBigInt(big.NewInt(dkgMasterPublicKeysLoc))
+}
 func (s *GovernanceState) DKGMasterPublicKeys() [][]byte {
 	return s.read1DByteArray(big.NewInt(dkgMasterPublicKeysLoc))
 }
 func (s *GovernanceState) PushDKGMasterPublicKey(mpk []byte) {
 	s.appendTo1DByteArray(big.NewInt(dkgMasterPublicKeysLoc), mpk)
 }
-func (s *GovernanceState) UniqueDKGMasterPublicKeys() []*dkgTypes.MasterPublicKey {
+func (s *GovernanceState) DKGMasterPublicKeyItems() []*dkgTypes.MasterPublicKey {
 	// Prepare DKGMasterPublicKeys.
 	var dkgMasterPKs []*dkgTypes.MasterPublicKey
-	existence := make(map[coreTypes.NodeID]struct{})
 	for _, mpk := range s.DKGMasterPublicKeys() {
 		x := new(dkgTypes.MasterPublicKey)
 		if err := rlp.DecodeBytes(mpk, x); err != nil {
 			panic(err)
 		}
-
-		// Only the first DKG MPK submission is valid.
-		if _, exists := existence[x.ProposerID]; exists {
-			continue
-		}
-		existence[x.ProposerID] = struct{}{}
 		dkgMasterPKs = append(dkgMasterPKs, x)
 	}
 	return dkgMasterPKs
@@ -666,6 +662,9 @@ func (s *GovernanceState) ClearDKGMasterPublicKeyProposed() {
 }
 
 // bytes[] public dkgComplaints;
+func (s *GovernanceState) LenDKGComplaints() *big.Int {
+	return s.getStateBigInt(big.NewInt(dkgComplaintsLoc))
+}
 func (s *GovernanceState) DKGComplaints() [][]byte {
 	return s.read1DByteArray(big.NewInt(dkgComplaintsLoc))
 }
@@ -674,6 +673,17 @@ func (s *GovernanceState) PushDKGComplaint(complaint []byte) {
 }
 func (s *GovernanceState) ClearDKGComplaints() {
 	s.erase1DByteArray(big.NewInt(dkgComplaintsLoc))
+}
+func (s *GovernanceState) DKGComplaintItems() []*dkgTypes.Complaint {
+	var dkgComplaints []*dkgTypes.Complaint
+	for _, pk := range s.DKGComplaints() {
+		x := new(dkgTypes.Complaint)
+		if err := rlp.DecodeBytes(pk, x); err != nil {
+			panic(err)
+		}
+		dkgComplaints = append(dkgComplaints, x)
+	}
+	return dkgComplaints
 }
 
 // mapping(bytes32 => bool) public dkgComplaintsProposed;
@@ -1244,19 +1254,10 @@ func (c *defaultCoreDKGUtils) NewGroupPublicKey(
 	state *GovernanceState, round *big.Int, threshold int) (tsigVerifierIntf, error) {
 
 	// Prepare DKGMasterPublicKeys.
-	mpks := state.UniqueDKGMasterPublicKeys()
+	mpks := state.DKGMasterPublicKeyItems()
+	comps := state.DKGComplaintItems()
 
-	// Prepare DKGComplaints.
-	var complaints []*dkgTypes.Complaint
-	for _, comp := range state.DKGComplaints() {
-		x := new(dkgTypes.Complaint)
-		if err := rlp.DecodeBytes(comp, x); err != nil {
-			panic(err)
-		}
-		complaints = append(complaints, x)
-	}
-
-	return dkgTypes.NewGroupPublicKey(round.Uint64(), mpks, complaints, threshold)
+	return dkgTypes.NewGroupPublicKey(round.Uint64(), mpks, comps, threshold)
 }
 
 func (g *GovernanceContract) Address() common.Address {
