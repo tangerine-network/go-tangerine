@@ -121,10 +121,12 @@ func (b *blockProposer) syncConsensus() (*dexCore.Consensus, error) {
 	atomic.StoreInt32(&b.syncing, 1)
 	defer atomic.StoreInt32(&b.syncing, 0)
 
+	cb := b.dex.blockchain.CurrentBlock()
+
 	db := db.NewDatabase(b.dex.chainDb)
 	privkey := coreEcdsa.NewPrivateKeyFromECDSA(b.dex.config.PrivateKey)
-	consensusSync := syncer.NewConsensus(b.dMoment, b.dex.app, b.dex.governance,
-		db, b.dex.network, privkey, log.Root())
+	consensusSync := syncer.NewConsensus(cb.NumberU64(), b.dMoment, b.dex.app,
+		b.dex.governance, db, b.dex.network, privkey, log.Root())
 
 	// Start the watchCat.
 	b.watchCat.Start()
@@ -132,7 +134,6 @@ func (b *blockProposer) syncConsensus() (*dexCore.Consensus, error) {
 	log.Info("Started sync watchCat")
 
 	// Feed the current block we have in local blockchain.
-	cb := b.dex.blockchain.CurrentBlock()
 	if cb.NumberU64() > 0 {
 		var block coreTypes.Block
 		if err := rlp.DecodeBytes(cb.Header().DexconMeta, &block); err != nil {
