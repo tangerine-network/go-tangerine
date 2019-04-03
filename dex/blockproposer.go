@@ -193,6 +193,7 @@ Loop:
 
 	log.Debug("Listen chain head event until synced")
 
+	nextDMoment := time.Now().Unix()
 	// Listen chain head event until synced.
 ListenLoop:
 	for {
@@ -244,9 +245,8 @@ ListenLoop:
 			// We set T_i = 600 to be safe.
 
 			interval := int64(600)
-			nextDMoment := (time.Now().Unix()/interval + 1) * interval
+			nextDMoment = (time.Now().Unix()/interval + 1) * interval
 			log.Info("Sleeping until next starting time", "time", nextDMoment)
-			time.Sleep(time.Duration(nextDMoment-time.Now().Unix()) * time.Second)
 
 			b.dex.protocolManager.SetReceiveCoreMessage(true)
 			consensusSync.ForceSync(true)
@@ -254,5 +254,7 @@ ListenLoop:
 		}
 	}
 
-	return consensusSync.GetSyncedConsensus()
+	con, err := consensusSync.GetSyncedConsensus()
+	time.Sleep(time.Duration(nextDMoment-time.Now().Unix()) * time.Second)
+	return con, err
 }
