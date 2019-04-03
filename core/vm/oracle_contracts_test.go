@@ -1015,6 +1015,7 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 				panic(err)
 			}
 			g.s.PushDKGMasterPublicKey(b)
+			g.s.PutDKGMasterPublicKeyProposed(Bytes32(id.Hash), true)
 			// Prepare Complaint.
 			y := dkgTypes.Complaint{}
 			b, err = rlp.EncodeToBytes(&y)
