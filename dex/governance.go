@@ -111,13 +111,13 @@ func (d *DexconGovernance) Round() uint64 {
 func (d *DexconGovernance) ProposeCRS(round uint64, signedCRS []byte) {
 	data, err := vm.PackProposeCRS(round, signedCRS)
 	if err != nil {
-		log.Error("failed to pack proposeCRS input", "err", err)
+		log.Error("Failed to pack proposeCRS input", "err", err)
 		return
 	}
 
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
-		log.Error("failed to send proposeCRS tx", "err", err)
+		log.Error("Failed to send proposeCRS tx", "err", err)
 	}
 }
 
@@ -125,13 +125,13 @@ func (d *DexconGovernance) ProposeCRS(round uint64, signedCRS []byte) {
 func (d *DexconGovernance) AddDKGComplaint(complaint *dkgTypes.Complaint) {
 	data, err := vm.PackAddDKGComplaint(complaint)
 	if err != nil {
-		log.Error("failed to pack addDKGComplaint input", "err", err)
+		log.Error("Failed to pack addDKGComplaint input", "err", err)
 		return
 	}
 
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
-		log.Error("failed to send addDKGComplaint tx", "err", err)
+		log.Error("Failed to send addDKGComplaint tx", "err", err)
 	}
 }
 
@@ -139,13 +139,13 @@ func (d *DexconGovernance) AddDKGComplaint(complaint *dkgTypes.Complaint) {
 func (d *DexconGovernance) AddDKGMasterPublicKey(masterPublicKey *dkgTypes.MasterPublicKey) {
 	data, err := vm.PackAddDKGMasterPublicKey(masterPublicKey)
 	if err != nil {
-		log.Error("failed to pack addDKGMasterPublicKey input", "err", err)
+		log.Error("Failed to pack addDKGMasterPublicKey input", "err", err)
 		return
 	}
 
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
-		log.Error("failed to send addDKGMasterPublicKey tx", "err", err)
+		log.Error("Failed to send addDKGMasterPublicKey tx", "err", err)
 	}
 }
 
@@ -153,13 +153,13 @@ func (d *DexconGovernance) AddDKGMasterPublicKey(masterPublicKey *dkgTypes.Maste
 func (d *DexconGovernance) AddDKGMPKReady(ready *dkgTypes.MPKReady) {
 	data, err := vm.PackAddDKGMPKReady(ready)
 	if err != nil {
-		log.Error("failed to pack addDKGMPKReady input", "err", err)
+		log.Error("Failed to pack addDKGMPKReady input", "err", err)
 		return
 	}
 
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
-		log.Error("failed to send addDKGMPKReady tx", "err", err)
+		log.Error("Failed to send addDKGMPKReady tx", "err", err)
 	}
 }
 
@@ -167,13 +167,13 @@ func (d *DexconGovernance) AddDKGMPKReady(ready *dkgTypes.MPKReady) {
 func (d *DexconGovernance) AddDKGFinalize(final *dkgTypes.Finalize) {
 	data, err := vm.PackAddDKGFinalize(final)
 	if err != nil {
-		log.Error("failed to pack addDKGFinalize input", "err", err)
+		log.Error("Failed to pack addDKGFinalize input", "err", err)
 		return
 	}
 
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
-		log.Error("failed to send addDKGFinalize tx", "err", err)
+		log.Error("Failed to send addDKGFinalize tx", "err", err)
 	}
 }
 
@@ -181,13 +181,13 @@ func (d *DexconGovernance) AddDKGFinalize(final *dkgTypes.Finalize) {
 func (d *DexconGovernance) ReportForkVote(vote1, vote2 *coreTypes.Vote) {
 	data, err := vm.PackReportForkVote(vote1, vote2)
 	if err != nil {
-		log.Error("failed to pack report fork vote input", "err", err)
+		log.Error("Failed to pack report fork vote input", "err", err)
 		return
 	}
 
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
-		log.Error("failed to send report fork vote tx", "err", err)
+		log.Error("Failed to send report fork vote tx", "err", err)
 	}
 }
 
@@ -195,25 +195,25 @@ func (d *DexconGovernance) ReportForkVote(vote1, vote2 *coreTypes.Vote) {
 func (d *DexconGovernance) ReportForkBlock(block1, block2 *coreTypes.Block) {
 	data, err := vm.PackReportForkBlock(block1, block2)
 	if err != nil {
-		log.Error("failed to pack report fork block input", "err", err)
+		log.Error("Failed to pack report fork block input", "err", err)
 		return
 	}
 
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
-		log.Error("failed to send report fork block tx", "err", err)
+		log.Error("Failed to send report fork block tx", "err", err)
 	}
 }
 
 func (d *DexconGovernance) ResetDKG(newSignedCRS []byte) {
 	data, err := vm.PackResetDKG(newSignedCRS)
 	if err != nil {
-		log.Error("failed to pack resetDKG input", "err", err)
+		log.Error("Failed to pack resetDKG input", "err", err)
 		return
 	}
 
 	err = d.sendGovTx(context.Background(), data)
 	if err != nil {
-		log.Error("failed to send resetDKG tx", "err", err)
+		log.Error("Failed to send resetDKG tx", "err", err)
 	}
 }

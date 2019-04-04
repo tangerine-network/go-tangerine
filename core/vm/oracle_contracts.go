@@ -24,6 +24,7 @@ import (
 	"math"
 	"math/big"
 	"sort"
+	"sync/atomic"
 
 	"github.com/dexon-foundation/dexon/accounts/abi"
 	"github.com/dexon-foundation/dexon/common"
@@ -1248,16 +1249,32 @@ type GovernanceContract struct {
 
 // defaultCoreDKGUtils implements coreDKGUtils.
 type defaultCoreDKGUtils struct {
+	gpk atomic.Value
 }
 
 func (c *defaultCoreDKGUtils) NewGroupPublicKey(
 	state *GovernanceState, round *big.Int, threshold int) (tsigVerifierIntf, error) {
+	var gpk *dkgTypes.GroupPublicKey
+	var err error
+
+	v := c.gpk.Load()
+	if v != nil {
+		gpk = v.(*dkgTypes.GroupPublicKey)
+		if gpk.Round == round.Uint64() {
+			return gpk, nil
+		}
+	}
 
 	// Prepare DKGMasterPublicKeys.
 	mpks := state.DKGMasterPublicKeyItems()
 	comps := state.DKGComplaintItems()
 
-	return dkgTypes.NewGroupPublicKey(round.Uint64(), mpks, comps, threshold)
+	gpk, err = dkgTypes.NewGroupPublicKey(round.Uint64(), mpks, comps, threshold)
+	if err != nil {
+		return nil, err
+	}
+	c.gpk.Store(gpk)
+	return gpk, nil
 }
 
 func (g *GovernanceContract) Address() common.Address {
