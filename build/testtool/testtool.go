@@ -16,6 +16,7 @@ import (
 	"github.com/dexon-foundation/dexon"
 	"github.com/dexon-foundation/dexon/accounts/abi"
 	"github.com/dexon-foundation/dexon/cmd/zoo/monkey"
+	"github.com/dexon-foundation/dexon/core/types"
 	"github.com/dexon-foundation/dexon/core/vm"
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/ethclient"
@@ -34,6 +35,8 @@ func main() {
 		doVerifyGovMPK(os.Args[2:])
 	case "monkeyTest":
 		doMonkeyTest(os.Args[2:])
+	case "waitForRecovery":
+		doWaitForRecovery(os.Args[2:])
 	case "upload":
 		doUpload(os.Args[2:])
 	}
@@ -204,5 +207,60 @@ func doMonkeyTest(args []string) {
 		if currentNonce != nonce+1 {
 			log.Fatalf("expect nonce %v but %v", nonce, currentNonce)
 		}
+	}
+}
+
+func doWaitForRecovery(args []string) {
+	if len(args) < 2 {
+		log.Fatal("arg length is not enough")
+	}
+
+	client, err := ethclient.Dial(args[0])
+	if err != nil {
+		log.Fatalf("new ethclient fail: %v", err)
+	}
+
+	lastBlock, err := client.BlockByNumber(context.Background(), nil)
+	if err != nil {
+		log.Fatalf("get last block fail %v", err)
+	}
+	t, err := strconv.ParseInt(args[1], 10, 64)
+	if err != nil {
+		log.Fatalf("timeout args invalid, %s", args[1])
+	}
+
+	sleep := time.Duration(t) * time.Second
+
+	ctx, cancel := context.WithCancel(context.Background())
+
+	go func() {
+		for ctx.Err() == nil {
+			select {
+			case <-time.After(1 * time.Minute):
+				log.Printf("tick")
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	log.Printf("Sleep %s", sleep)
+	time.Sleep(sleep)
+	cancel()
+
+	// Check block height is increasing 5 time for safe.
+	var block *types.Block
+	for i := 0; i < 5; i++ {
+		block, err = client.BlockByNumber(context.Background(), nil)
+		if err != nil {
+			log.Fatalf("get current block fail, err=%v, i=%d", err, i)
+		}
+		if block.NumberU64() <= lastBlock.NumberU64() {
+			log.Fatalf("recovery fail, last=%d, current=%d",
+				lastBlock.NumberU64(), block.NumberU64())
+		}
+		log.Printf("last=%d, current=%d, ok, sleep a while", lastBlock.NumberU64(), block.NumberU64())
+		lastBlock = block
+		time.Sleep(2 * time.Second)
 	}
 }

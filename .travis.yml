@@ -76,6 +76,11 @@ matrix:
         - ./run_test.sh --ignore-log
         - cd ..
         - ./build/fullnode-test.sh
+        - pkill -15 -f gdex
+        - cd test
+        - ./run_test.sh --continue --ignore-log
+        - cd ..
+        - ./build/recovery-test.sh
       addons:
         homebrew:
           packages:

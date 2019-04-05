@@ -6,6 +6,22 @@ GENESIS="genesis.json"
 GDEX="../build/bin/gdex"
 BOOTNODE="../build/bin/bootnode"
 
+
+CONTINUE=false
+IGNORELOG=false
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --continue)
+    CONTINUE=true
+    ;;
+    --ignore-log)
+    IGNORELOG=true
+    ;;
+  esac
+  shift
+done
+
+
 if [ ! -e "$BOOTNODE" ]; then
   echo "Building bootnode for the first time ..."
   go build -o $BOOTNODE ../cmd/bootnode
@@ -42,7 +58,7 @@ __FILE__
 
 # A standalone RPC server for accepting RPC requests.
 datadir=$PWD/Dexon.rpc
-if [ "$1" != "--continue" ]; then
+if ! $CONTINUE; then
   rm -rf $datadir
   $GDEX --datadir=$datadir init ${GENESIS}
 fi
@@ -64,7 +80,7 @@ NUM_NODES=$(cat ${GENESIS} | grep 'DEXON Test Node' | wc -l)
 for i in $(seq 0 $(($NUM_NODES - 1))); do
   datadir=$PWD/Dexon.$i
 
-  if [ "$1" != "--continue" ]; then
+  if ! $CONTINUE; then
     rm -rf $datadir
     $GDEX --datadir=$datadir init ${GENESIS}
   fi
@@ -85,6 +101,6 @@ for i in $(seq 0 $(($NUM_NODES - 1))); do
     > $logsdir/gdex.$i.log 2>&1 &
 done
 
-if [ "$1" != "--ignore-log" ]; then
+if ! $IGNORELOG; then
   tail -f $logsdir/gdex.*.log
 fi
