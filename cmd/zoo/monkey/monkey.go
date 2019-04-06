@@ -124,16 +124,21 @@ func (m *Monkey) prepareTx(ctx *transferContext) *types.Transaction {
 		}
 	}
 
+	gasPrice, err := m.client.SuggestGasPrice(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
 	tx := types.NewTransaction(
 		ctx.Nonce,
 		ctx.ToAddress,
 		ctx.Amount,
 		ctx.Gas,
-		big.NewInt(1e9),
+		gasPrice,
 		ctx.Data)
 
 	signer := types.NewEIP155Signer(m.networkID)
-	tx, err := types.SignTx(tx, signer, ctx.Key)
+	tx, err = types.SignTx(tx, signer, ctx.Key)
 	if err != nil {
 		panic(err)
 	}
