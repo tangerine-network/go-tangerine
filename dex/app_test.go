@@ -2161,6 +2161,7 @@ func (f *TxFactory) Run() {
 	blockchain := f.App.(*DexconApp).blockchain
 	txPool := f.App.(*DexconApp).txPool
 	for {
+		gasPrice := f.App.(*DexconApp).gov.GetHeadState().MinGasPrice()
 		for i, key := range f.keys {
 			go func(at int, nonce uint64, key *ecdsa.PrivateKey) {
 				f.stopTimeMu.RLock()
@@ -2174,7 +2175,7 @@ func (f *TxFactory) Run() {
 						crypto.PubkeyToAddress(f.keys[i].PublicKey),
 						big.NewInt(1),
 						21000,
-						big.NewInt(1e9),
+						gasPrice,
 						[]byte{})
 
 					signer := types.NewEIP155Signer(blockchain.Config().ChainID)

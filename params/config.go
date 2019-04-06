@@ -26,9 +26,9 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0x2cc76c5c8f969a84a7836780e15583f18b9687d5a27a86a17eb8faf05a18a567")
-	TestnetGenesisHash = common.HexToHash("0xe1df7b888109249932dad7f38435cfbbe4a525498b79c7c30f23069140fbca23")
-	TaipeiGenesisHash  = common.HexToHash("0xd7c18ff0c38f727d94cffef4d880032399c7baafaf2eb8fd620865ac1dc5998a")
+	MainnetGenesisHash = common.HexToHash("0x704a63495d74c51adc6c053c6303065124690065ac6f942b13dc9b1a6f094143")
+	TestnetGenesisHash = common.HexToHash("0x22a8128aee762ceb6c4f848e38cc5a07e5fa92fcce9a5618dd1c90c00bc89b3a")
+	TaipeiGenesisHash  = common.HexToHash("0x8d0ceb3cd2b59e3c7f3a229e148ad5192055c234da3628715ff7aa5fb598b390")
 	YilanGenesisHash   = common.HexToHash("0xad24a02194aa8239fd1a14d77d0c905c306bbac8ec69125b442b8e8dbd1e486b")
 )
 
@@ -43,7 +43,7 @@ var (
 	// MainnetChainConfig is the chain parameters to run a node on the main network.
 	MainnetChainConfig = &ChainConfig{
 		ChainID:             big.NewInt(237),
-		DMoment:             0,
+		DMoment:             1554142300,
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        big.NewInt(0),
 		DAOForkSupport:      true,
@@ -58,17 +58,17 @@ var (
 			GenesisCRSText:    "In DEXON, we trust.",
 			Owner:             common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
 			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
-			LockupPeriod:      86400 * 3 * 1000,
+			LockupPeriod:      86400 * 1000,
 			MiningVelocity:    0.1875,
 			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2.5e9)),
 			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.5e9)),
-			MinGasPrice:       new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1)),
-			BlockGasLimit:     40000000,
+			MinGasPrice:       new(big.Int).Mul(big.NewInt(1e9), big.NewInt(24)),
+			BlockGasLimit:     210000000,
 			LambdaBA:          250,
-			LambdaDKG:         2500,
+			LambdaDKG:         10000,
 			NotaryParamAlpha:  70.5,
 			NotaryParamBeta:   264,
-			RoundLength:       600,
+			RoundLength:       3600,
 			MinBlockInterval:  1000,
 			FineValues: []*big.Int{
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(200)),
@@ -97,7 +97,7 @@ var (
 	// TestnetChainConfig contains the chain parameters to run a node on the Taiwan test network.
 	TestnetChainConfig = &ChainConfig{
 		ChainID:             big.NewInt(238),
-		DMoment:             1548661200,
+		DMoment:             1554437500,
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
@@ -111,12 +111,12 @@ var (
 			GenesisCRSText:    "In DEXON, we trust.",
 			Owner:             common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
 			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
-			LockupPeriod:      86400 * 3 * 1000,
+			LockupPeriod:      86400 * 1000,
 			MiningVelocity:    0.1875,
-			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.8e8)),
-			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.6e7)),
-			MinGasPrice:       new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1)),
-			BlockGasLimit:     80000000,
+			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2.5e9)),
+			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.5e9)),
+			MinGasPrice:       new(big.Int).Mul(big.NewInt(1e9), big.NewInt(24)),
+			BlockGasLimit:     210000000,
 			LambdaBA:          250,
 			LambdaDKG:         10000,
 			NotaryParamAlpha:  70.5,
@@ -141,7 +141,7 @@ var (
 	// TaipeiChainConfig contains the chain parameters to run a node on the Taipei test network.
 	TaipeiChainConfig = &ChainConfig{
 		ChainID:             big.NewInt(239),
-		DMoment:             1548556500,
+		DMoment:             1554388800,
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
@@ -155,12 +155,12 @@ var (
 			GenesisCRSText:    "In DEXON, we trust.",
 			Owner:             common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
 			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
-			LockupPeriod:      86400 * 3 * 1000,
+			LockupPeriod:      3600 * 2 * 1000,
 			MiningVelocity:    0.1875,
 			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.8e8)),
 			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.6e7)),
 			MinGasPrice:       new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1)),
-			BlockGasLimit:     21000 * 5000,
+			BlockGasLimit:     21000 * 10000,
 			LambdaBA:          250,
 			LambdaDKG:         10000,
 			NotaryParamAlpha:  70.5,
