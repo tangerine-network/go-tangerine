@@ -384,7 +384,7 @@ func GenesisBlockForTesting(db ethdb.Database, addr common.Address, balance *big
 func DefaultGenesisBlock() *Genesis {
 	return &Genesis{
 		Config:     params.MainnetChainConfig,
-		Timestamp:  params.MainnetChainConfig.DMoment,
+		Timestamp:  params.MainnetChainConfig.DMoment * 1000,
 		Nonce:      0x42,
 		ExtraData:  hexutil.MustDecode("0x5765692d4e696e6720536f6e696320426f6a696520323031382d31302d32302e"),
 		GasLimit:   40000000,
@@ -397,7 +397,7 @@ func DefaultGenesisBlock() *Genesis {
 func DefaultTestnetGenesisBlock() *Genesis {
 	return &Genesis{
 		Config:     params.TestnetChainConfig,
-		Timestamp:  params.TestnetChainConfig.DMoment,
+		Timestamp:  params.TestnetChainConfig.DMoment * 1000,
 		Nonce:      0x42,
 		ExtraData:  hexutil.MustDecode("0x3535353535353535353535353535353535353535353535353535353535353535"),
 		GasLimit:   40000000,
@@ -410,7 +410,7 @@ func DefaultTestnetGenesisBlock() *Genesis {
 func DefaultTaipeiGenesisBlock() *Genesis {
 	return &Genesis{
 		Config:     params.TaipeiChainConfig,
-		Timestamp:  params.TaipeiChainConfig.DMoment,
+		Timestamp:  params.TaipeiChainConfig.DMoment * 1000,
 		Nonce:      0x42,
 		ExtraData:  hexutil.MustDecode("0x3535353535353535353535353535353535353535353535353535353535353535"),
 		GasLimit:   40000000,
@@ -423,7 +423,7 @@ func DefaultTaipeiGenesisBlock() *Genesis {
 func DefaultYilanGenesisBlock() *Genesis {
 	return &Genesis{
 		Config:     params.YilanChainConfig,
-		Timestamp:  params.YilanChainConfig.DMoment,
+		Timestamp:  params.YilanChainConfig.DMoment * 1000,
 		Nonce:      0x42,
 		ExtraData:  hexutil.MustDecode("0x3535353535353535353535353535353535353535353535353535353535353535"),
 		GasLimit:   40000000,
