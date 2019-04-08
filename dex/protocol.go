@@ -85,11 +85,10 @@ const (
 	CoreBlockMsg           = 0x20
 	VoteMsg                = 0x21
 	AgreementMsg           = 0x22
-	RandomnessMsg          = 0x23
-	DKGPrivateShareMsg     = 0x24
-	DKGPartialSignatureMsg = 0x25
-	PullBlocksMsg          = 0x26
-	PullVotesMsg           = 0x27
+	DKGPrivateShareMsg     = 0x23
+	DKGPartialSignatureMsg = 0x24
+	PullBlocksMsg          = 0x25
+	PullVotesMsg           = 0x26
 
 	GetGovStateMsg = 0x29
 	GovStateMsg    = 0x2a
