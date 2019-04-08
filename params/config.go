@@ -27,7 +27,7 @@ import (
 // Genesis hashes to enforce below configs on.
 var (
 	MainnetGenesisHash = common.HexToHash("0x55f87cf5428a78a015d06088cb76b4f50afa7b081a45a25dbf0ae7ffb2366b98")
-	TestnetGenesisHash = common.HexToHash("0xa2e8d6813569c389f620b56e838d335d0db405250286a552201793e48badc47b")
+	TestnetGenesisHash = common.HexToHash("0xd3fdd64dfeed341be98d39732f65c8b31dbb72a703c1b91083b6d2bf2f8f184f")
 	TaipeiGenesisHash  = common.HexToHash("0xec0bff2d28a4cb4a2b6a689ee71f450ec56d0438d0fcb4ef18c4c6a231dc8df4")
 	YilanGenesisHash   = common.HexToHash("0x6618f722c32f044ecd9ce09f02efc9757744762a6d7e12c4bd0aedc6b83ae92b")
 )
@@ -97,7 +97,7 @@ var (
 	// TestnetChainConfig contains the chain parameters to run a node on the Taiwan test network.
 	TestnetChainConfig = &ChainConfig{
 		ChainID:             big.NewInt(238),
-		DMoment:             1554437500,
+		DMoment:             1554694200,
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
