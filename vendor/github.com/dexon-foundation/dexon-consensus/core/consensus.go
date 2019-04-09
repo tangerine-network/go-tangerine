@@ -383,7 +383,11 @@ func (recv *consensusBAReceiver) ReportForkVote(v1, v2 *types.Vote) {
 }
 
 func (recv *consensusBAReceiver) ReportForkBlock(b1, b2 *types.Block) {
-	recv.consensus.gov.ReportForkBlock(b1, b2)
+	b1Clone := b1.Clone()
+	b2Clone := b2.Clone()
+	b1Clone.Payload = []byte{}
+	b2Clone.Payload = []byte{}
+	recv.consensus.gov.ReportForkBlock(b1Clone, b2Clone)
 }
 
 // consensusDKGReceiver implements dkgReceiver.
@@ -1338,7 +1342,11 @@ func (con *Consensus) ProcessAgreementResult(
 		return nil
 	}
 	// Sanity Check.
-	if err := VerifyAgreementResult(rand, con.nodeSetCache); err != nil {
+	notarySet, err := con.nodeSetCache.GetNotarySet(rand.Position.Round)
+	if err != nil {
+		return err
+	}
+	if err := VerifyAgreementResult(rand, notarySet); err != nil {
 		con.baMgr.untouchAgreementResult(rand)
 		return err
 	}
