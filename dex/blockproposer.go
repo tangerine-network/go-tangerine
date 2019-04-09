@@ -194,7 +194,6 @@ Loop:
 
 	log.Debug("Listen chain head event until synced")
 
-	nextDMoment := time.Now().Unix()
 	// Listen chain head event until synced.
 ListenLoop:
 	for {
@@ -236,26 +235,12 @@ ListenLoop:
 		case <-b.watchCat.Meow():
 			log.Info("WatchCat signaled to stop syncing")
 
-			// Sleep until the next consensus start time slot.
-			// The interval T_i need to meet the following requirement:
-			//
-			//   T_i > T_timeout + T_panic + T_restart
-			//
-			// Currently, T_timeout = 120, T_panic = 60, T_restart ~ 60
-			//
-			// We set T_i = 600 to be safe.
-
-			interval := int64(600)
-			nextDMoment = (time.Now().Unix()/interval + 1) * interval
-			log.Info("Sleeping until next starting time", "time", nextDMoment)
-
 			b.dex.protocolManager.SetReceiveCoreMessage(true)
-			consensusSync.ForceSync(true)
+			consensusSync.ForceSync(b.watchCat.LastPosition(), true)
 			break ListenLoop
 		}
 	}
 
 	con, err := consensusSync.GetSyncedConsensus()
-	time.Sleep(time.Duration(nextDMoment-time.Now().Unix()) * time.Second)
 	return con, err
 }
