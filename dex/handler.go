@@ -1116,6 +1116,7 @@ func (pm *ProtocolManager) BroadcastAgreementResult(
 	}
 
 	for _, peer := range pm.peers.PeersWithoutAgreement(agreement.Position) {
+		peer.MarkAgreement(agreement.Position)
 		peer.AsyncSendAgreement(agreement)
 	}
 }
