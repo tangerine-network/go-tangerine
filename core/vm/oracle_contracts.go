@@ -71,7 +71,7 @@ const (
 	dkgRoundLoc
 	dkgResetCountLoc
 	dkgMasterPublicKeysLoc
-	dkgMasterPublicKeyProposedLoc
+	dkgMasterPublicKeyOffsetLoc
 	dkgComplaintsLoc
 	dkgComplaintsProposedLoc
 	dkgReadyLoc
@@ -603,6 +603,20 @@ func (s *GovernanceState) IncDKGResetCount(round *big.Int) {
 func (s *GovernanceState) LenDKGMasterPublicKeys() *big.Int {
 	return s.getStateBigInt(big.NewInt(dkgMasterPublicKeysLoc))
 }
+func (s *GovernanceState) DKGMasterPublicKey(offset *big.Int) []byte {
+	loc := big.NewInt(dkgMasterPublicKeysLoc)
+	dataLoc := s.getSlotLoc(loc)
+	elementLoc := new(big.Int).Add(dataLoc, offset)
+	return s.readBytes(elementLoc)
+}
+func (s *GovernanceState) DKGMasterPublicKeyItem(offset *big.Int) *dkgTypes.MasterPublicKey {
+	element := s.DKGMasterPublicKey(offset)
+	x := new(dkgTypes.MasterPublicKey)
+	if err := rlp.DecodeBytes(element, x); err != nil {
+		panic(err)
+	}
+	return x
+}
 func (s *GovernanceState) DKGMasterPublicKeys() [][]byte {
 	return s.read1DByteArray(big.NewInt(dkgMasterPublicKeysLoc))
 }
@@ -621,50 +635,34 @@ func (s *GovernanceState) DKGMasterPublicKeyItems() []*dkgTypes.MasterPublicKey 
 	}
 	return dkgMasterPKs
 }
-func (s *GovernanceState) GetDKGMasterPublicKeyByProposerID(
-	proposerID coreTypes.NodeID) (*dkgTypes.MasterPublicKey, error) {
-
-	for _, mpk := range s.DKGMasterPublicKeys() {
-		x := new(dkgTypes.MasterPublicKey)
-		if err := rlp.DecodeBytes(mpk, x); err != nil {
-			panic(err)
-		}
-		if x.ProposerID.Equal(proposerID) {
-			return x, nil
-		}
-	}
-	return nil, errors.New("not found")
-}
 func (s *GovernanceState) ClearDKGMasterPublicKeys() {
 	s.erase1DByteArray(big.NewInt(dkgMasterPublicKeysLoc))
 }
 
-// mapping(bytes32 => bool) public dkgMasterPublicKeyProposed;
-func (s *GovernanceState) DKGMasterPublicKeyProposed(id Bytes32) bool {
-	loc := s.getMapLoc(big.NewInt(dkgMasterPublicKeyProposedLoc), id[:])
-	return s.getStateBigInt(loc).Cmp(big.NewInt(0)) > 0
+// mapping(bytes32 => uint256) public dkgMasterPublicKeyOffset;
+func (s *GovernanceState) DKGMasterPublicKeyOffset(id Bytes32) *big.Int {
+	loc := s.getMapLoc(big.NewInt(dkgMasterPublicKeyOffsetLoc), id[:])
+	return new(big.Int).Sub(s.getStateBigInt(loc), big.NewInt(1))
 }
-func (s *GovernanceState) PutDKGMasterPublicKeyProposed(id Bytes32, status bool) {
-	loc := s.getMapLoc(big.NewInt(dkgMasterPublicKeyProposedLoc), id[:])
-	val := big.NewInt(0)
-	if status {
-		val = big.NewInt(1)
-	}
-	s.setStateBigInt(loc, val)
+func (s *GovernanceState) PutDKGMasterPublicKeyOffset(id Bytes32, offset *big.Int) {
+	loc := s.getMapLoc(big.NewInt(dkgMasterPublicKeyOffsetLoc), id[:])
+	s.setStateBigInt(loc, new(big.Int).Add(offset, big.NewInt(1)))
 }
-func (s *GovernanceState) ClearDKGMasterPublicKeyProposed() {
-	for _, mpk := range s.DKGMasterPublicKeys() {
-		x := new(dkgTypes.MasterPublicKey)
-		if err := rlp.DecodeBytes(mpk, x); err != nil {
-			panic(err)
-		}
-		s.PutDKGMasterPublicKeyProposed(getDKGMasterPublicKeyID(x), false)
+func (s *GovernanceState) ClearDKGMasterPublicKeyOffset() {
+	for _, mpk := range s.DKGMasterPublicKeyItems() {
+		s.PutDKGMasterPublicKeyOffset(getDKGMasterPublicKeyID(mpk), big.NewInt(-1))
 	}
 }
 
 // bytes[] public dkgComplaints;
 func (s *GovernanceState) LenDKGComplaints() *big.Int {
 	return s.getStateBigInt(big.NewInt(dkgComplaintsLoc))
+}
+func (s *GovernanceState) DKGComplaint(offset *big.Int) []byte {
+	loc := big.NewInt(dkgComplaintsLoc)
+	dataLoc := s.getSlotLoc(loc)
+	elementLoc := new(big.Int).Add(dataLoc, offset)
+	return s.readBytes(elementLoc)
 }
 func (s *GovernanceState) DKGComplaints() [][]byte {
 	return s.read1DByteArray(big.NewInt(dkgComplaintsLoc))
@@ -701,12 +699,8 @@ func (s *GovernanceState) PutDKGComplaintProposed(id Bytes32, status bool) {
 	s.setStateBigInt(loc, val)
 }
 func (s *GovernanceState) ClearDKGComplaintProposed() {
-	for _, comp := range s.DKGComplaints() {
-		x := new(dkgTypes.Complaint)
-		if err := rlp.DecodeBytes(comp, x); err != nil {
-			panic(err)
-		}
-		s.PutDKGComplaintProposed(getDKGComplaintID(x), false)
+	for _, comp := range s.DKGComplaintItems() {
+		s.PutDKGComplaintProposed(getDKGComplaintID(comp), false)
 	}
 }
 
@@ -1265,10 +1259,8 @@ func (c *defaultCoreDKGUtils) NewGroupPublicKey(
 		}
 	}
 
-	// Prepare DKGMasterPublicKeys.
 	mpks := state.DKGMasterPublicKeyItems()
 	comps := state.DKGComplaintItems()
-
 	gpk, err = dkgTypes.NewGroupPublicKey(round.Uint64(), mpks, comps, threshold)
 	if err != nil {
 		return nil, err
@@ -1355,7 +1347,7 @@ func (g *GovernanceContract) inNotarySet(round *big.Int, nodeID coreTypes.NodeID
 
 func (g *GovernanceContract) clearDKG() {
 	dkgSet := g.getNotarySet(g.state.DKGRound())
-	g.state.ClearDKGMasterPublicKeyProposed()
+	g.state.ClearDKGMasterPublicKeyOffset()
 	g.state.ClearDKGMasterPublicKeys()
 	g.state.ClearDKGComplaintProposed()
 	g.state.ClearDKGComplaints()
@@ -1369,7 +1361,8 @@ func (g *GovernanceContract) fineFailStopDKG(threshold int) {
 	fineNode := make(map[coreTypes.NodeID]struct{})
 	dkgSet := g.getNotarySet(g.state.DKGRound())
 	for id := range dkgSet {
-		if g.state.DKGMasterPublicKeyProposed(Bytes32(id.Hash)) {
+		offset := g.state.DKGMasterPublicKeyOffset(Bytes32(id.Hash))
+		if offset.Cmp(big.NewInt(0)) >= 0 {
 			continue
 		}
 		fineNode[id] = struct{}{}
@@ -1463,10 +1456,8 @@ func (g *GovernanceContract) addDKGComplaint(comp []byte) ([]byte, error) {
 		return nil, errExecutionReverted
 	}
 
-	mpk, err := g.state.GetDKGMasterPublicKeyByProposerID(dkgComplaint.PrivateShare.ProposerID)
-	if err != nil {
-		return nil, errExecutionReverted
-	}
+	mpkOffset := g.state.DKGMasterPublicKeyOffset(Bytes32(dkgComplaint.PrivateShare.ProposerID.Hash))
+	mpk := g.state.DKGMasterPublicKeyItem(mpkOffset)
 
 	// Verify DKG complaint is correct.
 	ok, err := coreUtils.VerifyDKGComplaint(&dkgComplaint, mpk)
@@ -1512,7 +1503,8 @@ func (g *GovernanceContract) addDKGMasterPublicKey(mpk []byte) ([]byte, error) {
 		g.state.SetDKGRound(round)
 	}
 
-	if g.state.DKGMasterPublicKeyProposed(getDKGMasterPublicKeyID(&dkgMasterPK)) {
+	mpkOffset := g.state.DKGMasterPublicKeyOffset(getDKGMasterPublicKeyID(&dkgMasterPK))
+	if mpkOffset.Cmp(big.NewInt(0)) >= 0 {
 		return nil, errExecutionReverted
 	}
 
@@ -1551,8 +1543,10 @@ func (g *GovernanceContract) addDKGMasterPublicKey(mpk []byte) ([]byte, error) {
 		return nil, errExecutionReverted
 	}
 
+	mpkOffset = g.state.LenDKGMasterPublicKeys()
 	g.state.PushDKGMasterPublicKey(mpk)
-	g.state.PutDKGMasterPublicKeyProposed(getDKGMasterPublicKeyID(&dkgMasterPK), true)
+	g.state.PutDKGMasterPublicKeyOffset(getDKGMasterPublicKeyID(&dkgMasterPK), mpkOffset)
+
 	return g.useGas(GovernanceActionGasCost)
 }
 
@@ -2231,16 +2225,23 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		}
 		return res, nil
 	case "dkgComplaints":
-		index := new(big.Int)
-		if err := method.Inputs.Unpack(&index, arguments); err != nil {
+		offset := new(big.Int)
+		if err := method.Inputs.Unpack(&offset, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		complaints := g.state.DKGComplaints()
-		if int(index.Uint64()) >= len(complaints) {
-			return nil, errExecutionReverted
-		}
-		complaint := complaints[index.Uint64()]
+		complaint := g.state.DKGComplaint(offset)
 		res, err := method.Outputs.Pack(complaint)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgComplaintsProposed":
+		id := Bytes32{}
+		if err := method.Inputs.Unpack(&id, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		proposed := g.state.DKGComplaintProposed(id)
+		res, err := method.Outputs.Pack(proposed)
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -2264,16 +2265,23 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		}
 		return res, nil
 	case "dkgMasterPublicKeys":
-		index := new(big.Int)
-		if err := method.Inputs.Unpack(&index, arguments); err != nil {
+		offset := new(big.Int)
+		if err := method.Inputs.Unpack(&offset, arguments); err != nil {
 			return nil, errExecutionReverted
 		}
-		mpks := g.state.DKGMasterPublicKeys()
-		if int(index.Uint64()) >= len(mpks) {
-			return nil, errExecutionReverted
-		}
-		mpk := mpks[index.Uint64()]
+		mpk := g.state.DKGMasterPublicKey(offset)
 		res, err := method.Outputs.Pack(mpk)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgMasterPublicKeyOffset":
+		id := Bytes32{}
+		if err := method.Inputs.Unpack(&id, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		offset := g.state.DKGMasterPublicKeyOffset(id)
+		res, err := method.Outputs.Pack(offset)
 		if err != nil {
 			return nil, errExecutionReverted
 		}
