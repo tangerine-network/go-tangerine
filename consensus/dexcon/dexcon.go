@@ -57,7 +57,7 @@ func (d *Dexcon) SetGovStateFetcher(fetcher GovernanceStateFetcher) {
 // Author implements consensus.Engine, returning the Ethereum address recovered
 // from the signature in the header's extra-data section.
 func (d *Dexcon) Author(header *types.Header) (common.Address, error) {
-	return common.Address{}, nil
+	return header.Coinbase, nil
 }
 
 // VerifyHeader checks whether a header conforms to the consensus rules.
