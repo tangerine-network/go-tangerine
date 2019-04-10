@@ -39,13 +39,11 @@ The dexon project comes with several wrappers/executables found in the `cmd` dir
 | Command    | Description |
 |:----------:|-------------|
 | **`gdex`** | Our main Ethereum CLI client. It is the entry point into the Ethereum network (main-, test- or private net), capable of running as a full node (default), archive node (retaining all historical state) or a light node (retrieving data live). It can be used by other processes as a gateway into the Ethereum network via JSON RPC endpoints exposed on top of HTTP, WebSocket and/or IPC transports. `gdex --help`<!-- and the [CLI Wiki page](https://github.com/dexon-foundation/dexon/wiki/Command-Line-Options) for command line options -->. |
+| `nodekey` | Utility to generate key pair for operating a node. |
 | `abigen` | Source code generator to convert Ethereum contract definitions into easy to use, compile-time type-safe Go packages. It operates on plain [Contract ABIs](https://solidity.readthedocs.io/en/develop/abi-spec.html) with expanded functionality if the contract bytecode is also available. However it also accepts Solidity source files, making development much more streamlined. Please see our [Native DApps](https://github.com/dexon-foundation/wiki/wiki/Dapp-Development) wiki page for details. |
 | `bootnode` | Stripped down version of our Ethereum client implementation that only takes part in the network node discovery protocol, but does not run any of the higher level application protocols. It can be used as a lightweight bootstrap node to aid in finding peers in private networks. |
 | `evm` | Developer utility version of the EVM (Ethereum Virtual Machine) that is capable of running bytecode snippets within a configurable environment and execution mode. Its purpose is to allow isolated, fine-grained debugging of EVM opcodes (e.g. `evm --code 60ff60ff --debug`). |
 | `rlpdump` | Developer utility tool to convert binary RLP <!-- ([Recursive Length Prefix](https://github.com/ethereum/wiki/wiki/RLP)) --> dumps (data encoding used by the DEXON protocol both network as well as consensus wise) to user friendlier hierarchical representation (e.g. `rlpdump --hex CE0183FFFFFFC4C304050583616263`). |
-| `swarm`    | Swarm daemon and tools. This is the entrypoint for the Swarm network. `swarm --help` for command line options and subcommands. See [Swarm README](https://github.com/dexon-foundation/dexon/tree/master/swarm) for more information. |
-| `puppeth`    | a CLI wizard that aids in creating a new Ethereum network. |
-<!-- | `gethrpctest` | Developer utility tool to support our [ethereum/rpc-test](https://github.com/ethereum/rpc-tests) test suite which validates baseline conformity to the [Ethereum JSON RPC](https://github.com/ethereum/wiki/wiki/JSON-RPC) specs. Please see the [test suite's readme](https://github.com/ethereum/rpc-tests/blob/master/README.md) for details. | -->
 
 ## Running gdex
 
@@ -54,7 +52,6 @@ Going through all the possible command line flags is out of scope here <!-- (ple
 enumerated a few common parameter combos to get you up to speed quickly on how you can run your
 own Gdex instance.
 
-<!--
 ### Full node on the main DEXON network
 
 By far the most common scenario is people wanting to simply interact with the DRXON network:
@@ -76,7 +73,6 @@ This command will:
    as well as Gdex's own [management APIs](https://github.com/dexon-foundation/wiki/wiki/Management-APIs)
    This tool is optional and if you leave it out you can always attach to an already running Geth instance
    with `gdex attach`.
--->
 
 ### Full node on the DEXON test network
 
@@ -123,15 +119,14 @@ $ gdex --your-favourite-flags dumpconfig
 
 *Note: This works only with gdex v1.6.0 and above.*
 
-<!--
 #### Docker quick start
 
 One of the quickest ways to get DEXON up and running on your machine is by using Docker:
 
 ```
-docker run -d --name dexon-node -v /Users/bob/ethereum:/root \
+docker run -d --name dexon-node -v /Users/bob/dexon:/root \
            -p 8545:8545 -p 30303:30303 \
-           dexonfoundation/client-go
+           dexonfoundation/dexon
 ```
 
 This will start gdex in fast-sync mode with a DB memory allowance of 1GB just as the above command does.  It will also create a persistent volume in your home directory for saving your blockchain as well as map the default ports. There is also an `alpine` tag available for a slim version of the image.
@@ -176,6 +171,8 @@ doing so! Hackers on the internet are actively trying to subvert Ethereum nodes 
 Further, all browser tabs can access locally running webservers, so malicious webpages could try to
 subvert locally available APIs!**
 
+
+<!--
 ### Operating a private network
 
 Maintaining your own private network is more involved as a lot of configurations taken for granted in
@@ -256,6 +253,7 @@ $ gdex --datadir=path/to/custom/data/folder --bootnodes=<bootnode-enode-url-from
 
 *Note: Since your network will be completely cut off from the main and test networks, you'll also
 need to configure a miner to process transactions and create new blocks for you.*
+-->
 
 ## Contribution
 
