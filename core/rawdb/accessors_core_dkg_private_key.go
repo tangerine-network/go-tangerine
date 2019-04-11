@@ -8,6 +8,11 @@ import (
 	"github.com/dexon-foundation/dexon/rlp"
 )
 
+type dkgPrivateKey struct {
+	PK    *coreDKG.PrivateKey
+	Reset uint64
+}
+
 func ReadCoreDKGPrivateKeyRLP(db DatabaseReader, round uint64) rlp.RawValue {
 	data, _ := db.Get(coreDKGPrivateKeyKey(round))
 	return data
@@ -21,24 +26,29 @@ func WriteCoreDKGPrivateKeyRLP(db DatabaseWriter, round uint64, rlp rlp.RawValue
 	return err
 }
 
-func HasCoreDKGPrivateKey(db DatabaseReader, round uint64) (bool, error) {
-	return db.Has(coreDKGPrivateKeyKey(round))
-}
-
-func ReadCoreDKGPrivateKey(db DatabaseReader, round uint64) *coreDKG.PrivateKey {
+func ReadCoreDKGPrivateKey(db DatabaseReader, round, reset uint64) *coreDKG.PrivateKey {
 	data := ReadCoreDKGPrivateKeyRLP(db, round)
 	if len(data) == 0 {
 		return nil
 	}
-	key := new(coreDKG.PrivateKey)
+	key := &dkgPrivateKey{
+		PK: new(coreDKG.PrivateKey),
+	}
 	if err := rlp.Decode(bytes.NewReader(data), key); err != nil {
 		log.Error("Invalid core DKG private key RLP", "round", round, "err", err)
 		return nil
 	}
-	return key
+	if key.Reset != reset {
+		return nil
+	}
+	return key.PK
 }
 
-func WriteCoreDKGPrivateKey(db DatabaseWriter, round uint64, key *coreDKG.PrivateKey) error {
+func WriteCoreDKGPrivateKey(db DatabaseWriter, round, reset uint64, pk *coreDKG.PrivateKey) error {
+	key := &dkgPrivateKey{
+		PK:    pk,
+		Reset: reset,
+	}
 	data, err := rlp.EncodeToBytes(key)
 	if err != nil {
 		log.Crit("Failed to RLP encode core DKG private key", "round", round, "err", err)

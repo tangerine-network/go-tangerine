@@ -69,27 +69,24 @@ func (d *DB) PutBlock(block coreTypes.Block) error {
 	return nil
 }
 
-func (d *DB) HasDKGPrivateKey(round uint64) (bool, error) {
-	return rawdb.HasCoreDKGPrivateKey(d.db, round)
-}
-
-func (d *DB) GetDKGPrivateKey(round uint64) (coreDKG.PrivateKey, error) {
-	key := rawdb.ReadCoreDKGPrivateKey(d.db, round)
+func (d *DB) GetDKGPrivateKey(round, reset uint64) (coreDKG.PrivateKey, error) {
+	key := rawdb.ReadCoreDKGPrivateKey(d.db, round, reset)
 	if key == nil {
 		return coreDKG.PrivateKey{}, coreDb.ErrDKGPrivateKeyDoesNotExist
 	}
 	return *key, nil
 }
 
-func (d *DB) PutDKGPrivateKey(round uint64, key coreDKG.PrivateKey) error {
-	has, err := d.HasDKGPrivateKey(round)
-	if err != nil {
-		return err
-	}
-	if has {
+func (d *DB) PutDKGPrivateKey(round, reset uint64, key coreDKG.PrivateKey) error {
+	_, err := d.GetDKGPrivateKey(round, reset)
+	if err == nil {
 		return coreDb.ErrDKGPrivateKeyExists
 	}
-	return rawdb.WriteCoreDKGPrivateKey(d.db, round, &key)
+	if err != coreDb.ErrDKGPrivateKeyDoesNotExist {
+		return err
+	}
+
+	return rawdb.WriteCoreDKGPrivateKey(d.db, round, reset, &key)
 }
 
 func (d *DB) PutCompactionChainTipInfo(hash coreCommon.Hash, height uint64) error {
