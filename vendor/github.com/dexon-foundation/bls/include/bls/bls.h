@@ -8,6 +8,14 @@
 */
 #include <mcl/bn.h>
 
+#ifdef BLS_SWAP_G
+	/*
+		error if BLS_SWAP_G is inconsistently used between library and exe
+	*/
+	#undef MCLBN_COMPILED_TIME_VAR
+	#define MCLBN_COMPILED_TIME_VAR ((MCLBN_FR_UNIT_SIZE) * 10 + (MCLBN_FP_UNIT_SIZE) + 100)
+#endif
+
 #ifdef _MSC_VER
 	#ifdef BLS_DONT_EXPORT
 		#define BLS_DLL_API
@@ -21,7 +29,9 @@
 	#ifndef BLS_NO_AUTOLINK
 		#if MCLBN_FP_UNIT_SIZE == 4
 			#pragma comment(lib, "bls256.lib")
-		#elif MCLBN_FP_UNIT_SIZE == 6
+		#elif (MCLBN_FP_UNIT_SIZE == 6) && (MCLBN_FR_UNIT_SIZE == 4)
+			#pragma comment(lib, "bls384_256.lib")
+		#elif (MCLBN_FP_UNIT_SIZE == 6) && (MCLBN_FR_UNIT_SIZE == 6)
 			#pragma comment(lib, "bls384.lib")
 		#endif
 	#endif
@@ -46,11 +56,19 @@ typedef struct {
 } blsSecretKey;
 
 typedef struct {
+#ifdef BLS_SWAP_G
+	mclBnG1 v;
+#else
 	mclBnG2 v;
+#endif
 } blsPublicKey;
 
 typedef struct {
+#ifdef BLS_SWAP_G
+	mclBnG2 v;
+#else
 	mclBnG1 v;
+#endif
 } blsSignature;
 
 /*
@@ -68,9 +86,13 @@ BLS_DLL_API int blsInit(int curve, int compiledTimeVar);
 
 BLS_DLL_API void blsIdSetInt(blsId *id, int x);
 
-// return 0 if success
-// mask buf with (1 << (bitLen(r) - 1)) - 1 if buf >= r
+// sec = buf & (1 << bitLen(r)) - 1
+// if (sec >= r) sec &= (1 << (bitLen(r) - 1)) - 1
+// always return 0
 BLS_DLL_API int blsSecretKeySetLittleEndian(blsSecretKey *sec, const void *buf, mclSize bufSize);
+// return 0 if success (bufSize <= 64) else -1
+// set (buf mod r) to sec
+BLS_DLL_API int blsSecretKeySetLittleEndianMod(blsSecretKey *sec, const void *buf, mclSize bufSize);
 
 BLS_DLL_API void blsGetPublicKey(blsPublicKey *pub, const blsSecretKey *sec);
 
@@ -126,6 +148,15 @@ BLS_DLL_API int blsPublicKeyIsValidOrder(const blsPublicKey *pub);
 #ifndef BLS_MINIMUM_API
 
 /*
+	verify X == sY by checking e(X, sQ) = e(Y, Q)
+	@param X [in]
+	@param Y [in]
+	@param pub [in] pub = sQ
+	@return 1 if e(X, pub) = e(Y, Q) else 0
+*/
+BLS_DLL_API int blsVerifyPairing(const blsSignature *X, const blsSignature *Y, const blsPublicKey *pub);
+
+/*
 	sign the hash
 	use the low (bitSize of r) - 1 bit of h
 	return 0 if success else -1
@@ -162,8 +193,13 @@ BLS_DLL_API int blsGetG1ByteSize(void);
 // return bytes for serialized Fr
 BLS_DLL_API int blsGetFrByteSize(void);
 
+#ifdef BLS_SWAP_G
+// get a generator of G1
+BLS_DLL_API void blsGetGeneratorOfG1(blsPublicKey *pub);
+#else
 // get a generator of G2
 BLS_DLL_API void blsGetGeneratorOfG2(blsPublicKey *pub);
+#endif
 
 // return 0 if success
 BLS_DLL_API int blsIdSetDecStr(blsId *id, const char *buf, mclSize bufSize);
@@ -184,6 +220,15 @@ BLS_DLL_API int blsHashToSecretKey(blsSecretKey *sec, const void *buf, mclSize b
 	return 0 if success else -1
 */
 BLS_DLL_API int blsSecretKeySetByCSPRNG(blsSecretKey *sec);
+/*
+	set user-defined random function for setByCSPRNG
+	@param self [in] user-defined pointer
+	@param readFunc [in] user-defined function,
+	which writes random bufSize bytes to buf and returns bufSize if success else returns 0
+	@note if self == 0 and readFunc == 0 then set default random function
+	@note not threadsafe
+*/
+BLS_DLL_API void blsSetRandFunc(void *self, unsigned int (*readFunc)(void *self, void *buf, unsigned int bufSize));
 #endif
 
 BLS_DLL_API void blsGetPop(blsSignature *sig, const blsSecretKey *sec);

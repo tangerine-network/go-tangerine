@@ -121,20 +121,22 @@ public:
 	static void (*add)(FpDblT& z, const FpDblT& x, const FpDblT& y);
 	static void (*sub)(FpDblT& z, const FpDblT& x, const FpDblT& y);
 	static void (*mod)(Fp& z, const FpDblT& xy);
+	static void (*addPre)(FpDblT& z, const FpDblT& x, const FpDblT& y);
+	static void (*subPre)(FpDblT& z, const FpDblT& x, const FpDblT& y);
 	static void addC(FpDblT& z, const FpDblT& x, const FpDblT& y) { Fp::op_.fpDbl_add(z.v_, x.v_, y.v_, Fp::op_.p); }
 	static void subC(FpDblT& z, const FpDblT& x, const FpDblT& y) { Fp::op_.fpDbl_sub(z.v_, x.v_, y.v_, Fp::op_.p); }
 	static void modC(Fp& z, const FpDblT& xy) { Fp::op_.fpDbl_mod(z.v_, xy.v_, Fp::op_.p); }
+	static void addPreC(FpDblT& z, const FpDblT& x, const FpDblT& y) { Fp::op_.fpDbl_addPre(z.v_, x.v_, y.v_); }
+	static void subPreC(FpDblT& z, const FpDblT& x, const FpDblT& y) { Fp::op_.fpDbl_subPre(z.v_, x.v_, y.v_); }
 #else
 	static void add(FpDblT& z, const FpDblT& x, const FpDblT& y) { Fp::op_.fpDbl_add(z.v_, x.v_, y.v_, Fp::op_.p); }
 	static void sub(FpDblT& z, const FpDblT& x, const FpDblT& y) { Fp::op_.fpDbl_sub(z.v_, x.v_, y.v_, Fp::op_.p); }
 	static void mod(Fp& z, const FpDblT& xy) { Fp::op_.fpDbl_mod(z.v_, xy.v_, Fp::op_.p); }
+	static void addPre(FpDblT& z, const FpDblT& x, const FpDblT& y) { Fp::op_.fpDbl_addPre(z.v_, x.v_, y.v_); }
+	static void subPre(FpDblT& z, const FpDblT& x, const FpDblT& y) { Fp::op_.fpDbl_subPre(z.v_, x.v_, y.v_); }
 #endif
-	static void addPreC(FpDblT& z, const FpDblT& x, const FpDblT& y) { Fp::op_.fpDbl_addPre(z.v_, x.v_, y.v_); }
-	static void subPreC(FpDblT& z, const FpDblT& x, const FpDblT& y) { Fp::op_.fpDbl_subPre(z.v_, x.v_, y.v_); }
 	static void mulPreC(FpDblT& xy, const Fp& x, const Fp& y) { Fp::op_.fpDbl_mulPre(xy.v_, x.v_, y.v_); }
 	static void sqrPreC(FpDblT& xx, const Fp& x) { Fp::op_.fpDbl_sqrPre(xx.v_, x.v_); }
-	static void (*addPre)(FpDblT& z, const FpDblT& x, const FpDblT& y);
-	static void (*subPre)(FpDblT& z, const FpDblT& x, const FpDblT& y);
 	/*
 		mul(z, x, y) = mulPre(xy, x, y) + mod(z, xy)
 	*/
@@ -149,30 +151,24 @@ public:
 	{
 		const mcl::fp::Op& op = Fp::getOp();
 #ifdef MCL_XBYAK_DIRECT_CALL
-		add = (void (*)(FpDblT&, const FpDblT&, const FpDblT&))op.fpDbl_addA_;
+		add = fp::func_ptr_cast<void (*)(FpDblT&, const FpDblT&, const FpDblT&)>(op.fpDbl_addA_);
 		if (add == 0) add = addC;
-		sub = (void (*)(FpDblT&, const FpDblT&, const FpDblT&))op.fpDbl_subA_;
+		sub = fp::func_ptr_cast<void (*)(FpDblT&, const FpDblT&, const FpDblT&)>(op.fpDbl_subA_);
 		if (sub == 0) sub = subC;
-		mod = (void (*)(Fp&, const FpDblT&))op.fpDbl_modA_;
+		mod = fp::func_ptr_cast<void (*)(Fp&, const FpDblT&)>(op.fpDbl_modA_);
 		if (mod == 0) mod = modC;
+		addPre = fp::func_ptr_cast<void (*)(FpDblT&, const FpDblT&, const FpDblT&)>(op.fpDbl_addPre);
+		if (addPre == 0) addPre = addPreC;
+		subPre = fp::func_ptr_cast<void (*)(FpDblT&, const FpDblT&, const FpDblT&)>(op.fpDbl_subPre);
+		if (subPre == 0) subPre = subPreC;
 #endif
-		if (op.fpDbl_addPreA_) {
-			addPre = (void (*)(FpDblT&, const FpDblT&, const FpDblT&))op.fpDbl_addPreA_;
-		} else {
-			addPre = addPreC;
-		}
-		if (op.fpDbl_subPreA_) {
-			subPre = (void (*)(FpDblT&, const FpDblT&, const FpDblT&))op.fpDbl_subPreA_;
-		} else {
-			subPre = subPreC;
-		}
 		if (op.fpDbl_mulPreA_) {
-			mulPre = (void (*)(FpDblT&, const Fp&, const Fp&))op.fpDbl_mulPreA_;
+			mulPre = fp::func_ptr_cast<void (*)(FpDblT&, const Fp&, const Fp&)>(op.fpDbl_mulPreA_);
 		} else {
 			mulPre = mulPreC;
 		}
 		if (op.fpDbl_sqrPreA_) {
-			sqrPre = (void (*)(FpDblT&, const Fp&))op.fpDbl_sqrPreA_;
+			sqrPre = fp::func_ptr_cast<void (*)(FpDblT&, const Fp&)>(op.fpDbl_sqrPreA_);
 		} else {
 			sqrPre = sqrPreC;
 		}
@@ -185,9 +181,9 @@ public:
 template<class Fp> void (*FpDblT<Fp>::add)(FpDblT&, const FpDblT&, const FpDblT&);
 template<class Fp> void (*FpDblT<Fp>::sub)(FpDblT&, const FpDblT&, const FpDblT&);
 template<class Fp> void (*FpDblT<Fp>::mod)(Fp&, const FpDblT&);
-#endif
 template<class Fp> void (*FpDblT<Fp>::addPre)(FpDblT&, const FpDblT&, const FpDblT&);
 template<class Fp> void (*FpDblT<Fp>::subPre)(FpDblT&, const FpDblT&, const FpDblT&);
+#endif
 template<class Fp> void (*FpDblT<Fp>::mulPre)(FpDblT&, const Fp&, const Fp&);
 template<class Fp> void (*FpDblT<Fp>::sqrPre)(FpDblT&, const Fp&);
 
@@ -206,7 +202,6 @@ class Fp2T : public fp::Serializable<Fp2T<_Fp>,
 	typedef fp::Unit Unit;
 	typedef FpDblT<Fp> FpDbl;
 	typedef Fp2DblT<Fp> Fp2Dbl;
-	static uint32_t xi_a_;
 	static const size_t gN = 5;
 	/*
 		g = xi^((p - 1) / 6)
@@ -245,11 +240,19 @@ public:
 		a = a_;
 		b = b_;
 	}
+#ifdef MCL_XBYAK_DIRECT_CALL
 	static void (*add)(Fp2T& z, const Fp2T& x, const Fp2T& y);
 	static void (*sub)(Fp2T& z, const Fp2T& x, const Fp2T& y);
 	static void (*neg)(Fp2T& y, const Fp2T& x);
 	static void (*mul)(Fp2T& z, const Fp2T& x, const Fp2T& y);
 	static void (*sqr)(Fp2T& y, const Fp2T& x);
+#else
+	static void add(Fp2T& z, const Fp2T& x, const Fp2T& y) { addC(z, x, y); }
+	static void sub(Fp2T& z, const Fp2T& x, const Fp2T& y) { subC(z, x, y); }
+	static void neg(Fp2T& y, const Fp2T& x) { negC(y, x); }
+	static void mul(Fp2T& z, const Fp2T& x, const Fp2T& y) { mulC(z, x, y); }
+	static void sqr(Fp2T& y, const Fp2T& x) { sqrC(y, x); }
+#endif
 	static void (*mul_xi)(Fp2T& y, const Fp2T& x);
 	static void addPre(Fp2T& z, const Fp2T& x, const Fp2T& y) { Fp::addPre(z.a, x.a, y.a); Fp::addPre(z.b, x.b, y.b); }
 	static void inv(Fp2T& y, const Fp2T& x) { Fp::op_.fp2_inv(y.a.v_, x.a.v_); }
@@ -377,51 +380,38 @@ public:
 		}
 	}
 
-	static uint32_t get_xi_a() { return xi_a_; }
-	static void init(uint32_t xi_a)
+	static uint32_t get_xi_a() { return Fp::getOp().xi_a; }
+	static void init()
 	{
 //		assert(Fp::maxSize <= 256);
-		xi_a_ = xi_a;
 		mcl::fp::Op& op = Fp::op_;
-		add = (void (*)(Fp2T& z, const Fp2T& x, const Fp2T& y))op.fp2_addA_;
-		if (add == 0) add = fp2_addC;
-		sub = (void (*)(Fp2T& z, const Fp2T& x, const Fp2T& y))op.fp2_subA_;
-		if (sub == 0) sub = fp2_subC;
-		neg = (void (*)(Fp2T& y, const Fp2T& x))op.fp2_negA_;
-		if (neg == 0) neg = fp2_negC;
-		mul = (void (*)(Fp2T& z, const Fp2T& x, const Fp2T& y))op.fp2_mulA_;
-		if (mul == 0) {
-			if (op.isFastMod) {
-				mul = fp2_mulC;
-			} else if (!op.isFullBit) {
-				if (0 && sizeof(Fp) * 8 == op.N * fp::UnitBitSize && op.fp2_mulNF) {
-					mul = fp2_mulNFW;
-				} else {
-					mul = fp2_mulC;
-				}
-			} else {
-				mul = fp2_mulC;
-			}
-		}
-		sqr = (void (*)(Fp2T& y, const Fp2T& x))op.fp2_sqrA_;
-		if (sqr == 0) sqr = fp2_sqrC;
+		assert(op.xi_a);
+		mul_xi = 0;
+#ifdef MCL_XBYAK_DIRECT_CALL
+		add = fp::func_ptr_cast<void (*)(Fp2T& z, const Fp2T& x, const Fp2T& y)>(op.fp2_addA_);
+		if (add == 0) add = addC;
+		sub = fp::func_ptr_cast<void (*)(Fp2T& z, const Fp2T& x, const Fp2T& y)>(op.fp2_subA_);
+		if (sub == 0) sub = subC;
+		neg = fp::func_ptr_cast<void (*)(Fp2T& y, const Fp2T& x)>(op.fp2_negA_);
+		if (neg == 0) neg = negC;
+		mul = fp::func_ptr_cast<void (*)(Fp2T& z, const Fp2T& x, const Fp2T& y)>(op.fp2_mulA_);
+		if (mul == 0) mul = mulC;
+		sqr = fp::func_ptr_cast<void (*)(Fp2T& y, const Fp2T& x)>(op.fp2_sqrA_);
+		if (sqr == 0) sqr = sqrC;
+		mul_xi = fp::func_ptr_cast<void (*)(Fp2T&, const Fp2T&)>(op.fp2_mul_xiA_);
+#endif
 		op.fp2_inv = fp2_invW;
-		if (xi_a == 1) {
-			/*
-				current fp_generator.hpp generates mul_xi for xi_a = 1
-			*/
-			if (op.fp2_mul_xiA_) {
-				mul_xi = (void (*)(Fp2T&, const Fp2T&))op.fp2_mul_xiA_;
+		if (mul_xi == 0) {
+			if (op.xi_a == 1) {
+				mul_xi = fp2_mul_xi_1_1iC;
 			} else {
-				mul_xi = fp2_mul_xi_1_1i;
+				mul_xi = fp2_mul_xiC;
 			}
-		} else {
-			mul_xi = fp2_mul_xiC;
 		}
 		FpDblT<Fp>::init();
 		Fp2DblT<Fp>::init();
 		// call init before Fp2::pow because FpDbl is used in Fp2T
-		const Fp2T xi(xi_a, 1);
+		const Fp2T xi(op.xi_a, 1);
 		const mpz_class& p = Fp::getOp().mp;
 		Fp2T::pow(g[0], xi, (p - 1) / 6); // g = xi^((p-1)/6)
 		for (size_t i = 1; i < gN; i++) {
@@ -490,17 +480,17 @@ private:
 		default Fp2T operator
 		Fp2T = Fp[i]/(i^2 + 1)
 	*/
-	static void fp2_addC(Fp2T& z, const Fp2T& x, const Fp2T& y)
+	static void addC(Fp2T& z, const Fp2T& x, const Fp2T& y)
 	{
 		Fp::add(z.a, x.a, y.a);
 		Fp::add(z.b, x.b, y.b);
 	}
-	static void fp2_subC(Fp2T& z, const Fp2T& x, const Fp2T& y)
+	static void subC(Fp2T& z, const Fp2T& x, const Fp2T& y)
 	{
 		Fp::sub(z.a, x.a, y.a);
 		Fp::sub(z.b, x.b, y.b);
 	}
-	static void fp2_negC(Fp2T& y, const Fp2T& x)
+	static void negC(Fp2T& y, const Fp2T& x)
 	{
 		Fp::neg(y.a, x.a);
 		Fp::neg(y.b, x.b);
@@ -531,13 +521,13 @@ private:
 		Fp::sub(pz[1], t1, ac);
 		pz[1] -= bd;
 	}
-#endif
 	static void fp2_mulNFW(Fp2T& z, const Fp2T& x, const Fp2T& y)
 	{
 		const fp::Op& op = Fp::op_;
 		op.fp2_mulNF((Unit*)&z, (const Unit*)&x, (const Unit*)&y, op.p);
 	}
-	static void fp2_mulC(Fp2T& z, const Fp2T& x, const Fp2T& y)
+#endif
+	static void mulC(Fp2T& z, const Fp2T& x, const Fp2T& y)
 	{
 		Fp2Dbl d;
 		Fp2Dbl::mulPre(d, x, y);
@@ -548,7 +538,7 @@ private:
 		x = a + bi, i^2 = -1
 		y = x^2 = (a + bi)^2 = (a + b)(a - b) + 2abi
 	*/
-	static void fp2_sqrC(Fp2T& y, const Fp2T& x)
+	static void sqrC(Fp2T& y, const Fp2T& x)
 	{
 		const Fp& a = x.a;
 		const Fp& b = x.b;
@@ -583,9 +573,9 @@ private:
 		const Fp& a = x.a;
 		const Fp& b = x.b;
 		Fp t;
-		Fp::mulUnit(t, a, xi_a_);
+		Fp::mulUnit(t, a, Fp::getOp().xi_a);
 		t -= b;
-		Fp::mulUnit(y.b, b, xi_a_);
+		Fp::mulUnit(y.b, b, Fp::getOp().xi_a);
 		y.b += a;
 		y.a = t;
 	}
@@ -593,7 +583,7 @@ private:
 		xi = 1 + i ; xi_a = 1
 		y = (a + bi)xi = (a - b) + (a + b)i
 	*/
-	static void fp2_mul_xi_1_1i(Fp2T& y, const Fp2T& x)
+	static void fp2_mul_xi_1_1iC(Fp2T& y, const Fp2T& x)
 	{
 		const Fp& a = x.a;
 		const Fp& b = x.b;
@@ -623,11 +613,13 @@ private:
 	}
 };
 
+#ifdef MCL_XBYAK_DIRECT_CALL
 template<class Fp_> void (*Fp2T<Fp_>::add)(Fp2T& z, const Fp2T& x, const Fp2T& y);
 template<class Fp_> void (*Fp2T<Fp_>::sub)(Fp2T& z, const Fp2T& x, const Fp2T& y);
 template<class Fp_> void (*Fp2T<Fp_>::neg)(Fp2T& y, const Fp2T& x);
 template<class Fp_> void (*Fp2T<Fp_>::mul)(Fp2T& z, const Fp2T& x, const Fp2T& y);
 template<class Fp_> void (*Fp2T<Fp_>::sqr)(Fp2T& y, const Fp2T& x);
+#endif
 template<class Fp_> void (*Fp2T<Fp_>::mul_xi)(Fp2T& y, const Fp2T& x);
 
 template<class Fp>
@@ -697,7 +689,7 @@ struct Fp2DblT {
  	{
 		const mcl::fp::Op& op = Fp::getOp();
 		if (op.fp2Dbl_mulPreA_) {
-			mulPre = (void (*)(Fp2DblT&, const Fp2&, const Fp2&))op.fp2Dbl_mulPreA_;
+			mulPre = fp::func_ptr_cast<void (*)(Fp2DblT&, const Fp2&, const Fp2&)>(op.fp2Dbl_mulPreA_);
 		} else {
 			if (op.isFullBit) {
 				mulPre = fp2Dbl_mulPreW<true>;
@@ -706,7 +698,7 @@ struct Fp2DblT {
 			}
 		}
 		if (op.fp2Dbl_sqrPreA_) {
-			sqrPre = (void (*)(Fp2DblT&, const Fp2&))op.fp2Dbl_sqrPreA_;
+			sqrPre = fp::func_ptr_cast<void (*)(Fp2DblT&, const Fp2&)>(op.fp2Dbl_sqrPreA_);
 		} else {
 			if (op.isFullBit) {
 				sqrPre = fp2Dbl_sqrPreW<true>;
@@ -769,11 +761,12 @@ struct Fp2DblT {
 template<class Fp> void (*Fp2DblT<Fp>::mulPre)(Fp2DblT&, const Fp2T<Fp>&, const Fp2T<Fp>&);
 template<class Fp> void (*Fp2DblT<Fp>::sqrPre)(Fp2DblT&, const Fp2T<Fp>&);
 
-template<class Fp> uint32_t Fp2T<Fp>::xi_a_;
 template<class Fp> Fp2T<Fp> Fp2T<Fp>::g[Fp2T<Fp>::gN];
 template<class Fp> Fp2T<Fp> Fp2T<Fp>::g2[Fp2T<Fp>::gN];
 template<class Fp> Fp2T<Fp> Fp2T<Fp>::g3[Fp2T<Fp>::gN];
 
+template<class Fp>
+struct Fp6DblT;
 /*
 	Fp6T = Fp2[v] / (v^3 - xi)
 	x = a + b v + c v^2
@@ -784,6 +777,7 @@ struct Fp6T : public fp::Serializable<Fp6T<_Fp>,
 	typedef _Fp Fp;
 	typedef Fp2T<Fp> Fp2;
 	typedef Fp2DblT<Fp> Fp2Dbl;
+	typedef Fp6DblT<Fp> Fp6Dbl;
 	typedef Fp BaseFp;
 	Fp2 a, b, c;
 	Fp6T() { }
@@ -914,91 +908,7 @@ struct Fp6T : public fp::Serializable<Fp6T<_Fp>,
 		y.b += t1; // c^2 xi + 2ab
 		y.c -= t1; // b^2 + 2ac
 	}
-	/*
-		x = a + bv + cv^2, y = d + ev + fv^2, v^3 = xi
-		xy = (ad + (bf + ce)xi) + ((ae + bd) + cf xi)v + ((af + cd) + be)v^2
-		bf + ce = (b + c)(e + f) - be - cf
-		ae + bd = (a + b)(e + d) - ad - be
-		af + cd = (a + c)(d + f) - ad - cf
-	*/
-	static void mul(Fp6T& z, const Fp6T& x, const Fp6T& y)
-	{
-//clk.begin();
-		const Fp2& a = x.a;
-		const Fp2& b = x.b;
-		const Fp2& c = x.c;
-		const Fp2& d = y.a;
-		const Fp2& e = y.b;
-		const Fp2& f = y.c;
-#if 1
-		Fp2Dbl AD, BE, CF;
-		Fp2Dbl::mulPre(AD, a, d);
-		Fp2Dbl::mulPre(BE, b, e);
-		Fp2Dbl::mulPre(CF, c, f);
-
-		Fp2 t1, t2, t3, t4;
-		Fp2::add(t1, b, c);
-		Fp2::add(t2, e, f);
-		Fp2Dbl T1;
-		Fp2Dbl::mulPre(T1, t1, t2);
-		Fp2Dbl::sub(T1, T1, BE);
-		Fp2Dbl::sub(T1, T1, CF);
-		Fp2Dbl::mul_xi(T1, T1);
-
-		Fp2::add(t2, a, b);
-		Fp2::add(t3, e, d);
-		Fp2Dbl T2;
-		Fp2Dbl::mulPre(T2, t2, t3);
-		Fp2Dbl::sub(T2, T2, AD);
-		Fp2Dbl::sub(T2, T2, BE);
-
-		Fp2::add(t3, a, c);
-		Fp2::add(t4, d, f);
-		Fp2Dbl T3;
-		Fp2Dbl::mulPre(T3, t3, t4);
-		Fp2Dbl::sub(T3, T3, AD);
-		Fp2Dbl::sub(T3, T3, CF);
-
-		Fp2Dbl::add(AD, AD, T1);
-		Fp2Dbl::mod(z.a, AD);
-		Fp2Dbl::mul_xi(CF, CF);
-		Fp2Dbl::add(CF, CF, T2);
-		Fp2Dbl::mod(z.b, CF);
-		Fp2Dbl::add(T3, T3, BE);
-		Fp2Dbl::mod(z.c, T3);
-#else
-		Fp2 ad, be, cf;
-		Fp2::mul(ad, a, d);
-		Fp2::mul(be, b, e);
-		Fp2::mul(cf, c, f);
-
-		Fp2 t1, t2, t3, t4;
-		Fp2::add(t1, b, c);
-		Fp2::add(t2, e, f);
-		t1 *= t2;
-		t1 -= be;
-		t1 -= cf;
-		Fp2::mul_xi(t1, t1);
-
-		Fp2::add(t2, a, b);
-		Fp2::add(t3, e, d);
-		t2 *= t3;
-		t2 -= ad;
-		t2 -= be;
-
-		Fp2::add(t3, a, c);
-		Fp2::add(t4, d, f);
-		t3 *= t4;
-		t3 -= ad;
-		t3 -= cf;
-
-		Fp2::add(z.a, ad, t1);
-		Fp2::mul_xi(z.b, cf);
-		z.b += t2;
-		Fp2::add(z.c, t3, be);
-#endif
-//clk.end();
-	}
+	static inline void mul(Fp6T& z, const Fp6T& x, const Fp6T& y);
 	/*
 		x = a + bv + cv^2, v^3 = xi
 		y = 1/x = p/q where
@@ -1040,6 +950,94 @@ struct Fp6T : public fp::Serializable<Fp6T<_Fp>,
 	}
 };
 
+template<class Fp>
+struct Fp6DblT {
+	typedef Fp2T<Fp> Fp2;
+	typedef Fp6T<Fp> Fp6;
+	typedef Fp2DblT<Fp> Fp2Dbl;
+	typedef Fp6DblT<Fp> Fp6Dbl;
+	typedef fp::Unit Unit;
+	Fp2Dbl a, b, c;
+	static void add(Fp6Dbl& z, const Fp6Dbl& x, const Fp6Dbl& y)
+	{
+		Fp2Dbl::add(z.a, x.a, y.a);
+		Fp2Dbl::add(z.b, x.b, y.b);
+		Fp2Dbl::add(z.c, x.c, y.c);
+	}
+	static void sub(Fp6Dbl& z, const Fp6Dbl& x, const Fp6Dbl& y)
+	{
+		Fp2Dbl::sub(z.a, x.a, y.a);
+		Fp2Dbl::sub(z.b, x.b, y.b);
+		Fp2Dbl::sub(z.c, x.c, y.c);
+	}
+	/*
+		x = a + bv + cv^2, y = d + ev + fv^2, v^3 = xi
+		xy = (ad + (bf + ce)xi) + ((ae + bd) + cf xi)v + ((af + cd) + be)v^2
+		bf + ce = (b + c)(e + f) - be - cf
+		ae + bd = (a + b)(e + d) - ad - be
+		af + cd = (a + c)(d + f) - ad - cf
+	*/
+	static void mulPre(Fp6DblT& z, const Fp6& x, const Fp6& y)
+	{
+//clk.begin();
+		const Fp2& a = x.a;
+		const Fp2& b = x.b;
+		const Fp2& c = x.c;
+		const Fp2& d = y.a;
+		const Fp2& e = y.b;
+		const Fp2& f = y.c;
+		Fp2Dbl& za = z.a;
+		Fp2Dbl& zb = z.b;
+		Fp2Dbl& zc = z.c;
+		Fp2Dbl BE;
+		Fp2Dbl::mulPre(za, a, d);
+		Fp2Dbl::mulPre(BE, b, e);
+		Fp2Dbl::mulPre(zb, c, f);
+
+		Fp2 t1, t2, t3, t4;
+		Fp2::add(t1, b, c);
+		Fp2::add(t2, e, f);
+		Fp2Dbl T1;
+		Fp2Dbl::mulPre(T1, t1, t2);
+		Fp2Dbl::sub(T1, T1, BE);
+		Fp2Dbl::sub(T1, T1, zb);
+		Fp2Dbl::mul_xi(T1, T1);
+
+		Fp2::add(t2, a, b);
+		Fp2::add(t3, e, d);
+		Fp2Dbl T2;
+		Fp2Dbl::mulPre(T2, t2, t3);
+		Fp2Dbl::sub(T2, T2, za);
+		Fp2Dbl::sub(T2, T2, BE);
+
+		Fp2::add(t3, a, c);
+		Fp2::add(t4, d, f);
+		Fp2Dbl::mulPre(zc, t3, t4);
+		Fp2Dbl::sub(zc, zc, za);
+		Fp2Dbl::sub(zc, zc, zb);
+
+		Fp2Dbl::add(za, za, T1);
+		Fp2Dbl::mul_xi(zb, zb);
+		Fp2Dbl::add(zb, zb, T2);
+		Fp2Dbl::add(zc, zc, BE);
+//clk.end();
+	}
+	static void mod(Fp6& y, const Fp6Dbl& x)
+	{
+		Fp2Dbl::mod(y.a, x.a);
+		Fp2Dbl::mod(y.b, x.b);
+		Fp2Dbl::mod(y.c, x.c);
+	}
+};
+
+template<class Fp>
+inline void Fp6T<Fp>::mul(Fp6T<Fp>& z, const Fp6T<Fp>& x, const Fp6T<Fp>& y)
+{
+	Fp6DblT<Fp> Z;
+	Fp6DblT<Fp>::mulPre(Z, x, y);
+	Fp6DblT<Fp>::mod(z, Z);
+}
+
 /*
 	Fp12T = Fp6[w] / (w^2 - v)
 	x = a + b w
@@ -1049,6 +1047,8 @@ struct Fp12T : public fp::Serializable<Fp12T<Fp>,
 	fp::Operator<Fp12T<Fp> > > {
 	typedef Fp2T<Fp> Fp2;
 	typedef Fp6T<Fp> Fp6;
+	typedef Fp2DblT<Fp> Fp2Dbl;
+	typedef Fp6DblT<Fp> Fp6Dbl;
 	typedef Fp BaseFp;
 	Fp6 a, b;
 	Fp12T() {}
@@ -1115,6 +1115,14 @@ struct Fp12T : public fp::Serializable<Fp12T<Fp>,
 		Fp2::add(z.b, x.a, y.b);
 		Fp2::add(z.a, t, y.a);
 	}
+	static void mulVadd(Fp6Dbl& z, const Fp6Dbl& x, const Fp6Dbl& y)
+	{
+		Fp2Dbl t;
+		Fp2Dbl::mul_xi(t, x.c);
+		Fp2Dbl::add(z.c, x.b, y.c);
+		Fp2Dbl::add(z.b, x.a, y.b);
+		Fp2Dbl::add(z.a, t, y.a);
+	}
 	/*
 		x = a + bw, y = c + dw, w^2 = v
 		z = xy = (a + bw)(c + dw) = (ac + bdv) + (ad + bc)w
@@ -1124,19 +1132,33 @@ struct Fp12T : public fp::Serializable<Fp12T<Fp>,
 	*/
 	static void mul(Fp12T& z, const Fp12T& x, const Fp12T& y)
 	{
+		// 4.7Kclk -> 4.55Kclk
 		const Fp6& a = x.a;
 		const Fp6& b = x.b;
 		const Fp6& c = y.a;
 		const Fp6& d = y.b;
-		Fp6 t1, t2, ac, bd;
+		Fp6 t1, t2;
 		Fp6::add(t1, a, b);
 		Fp6::add(t2, c, d);
+#if 1
+		Fp6Dbl T, AC, BD;
+		Fp6Dbl::mulPre(AC, a, c);
+		Fp6Dbl::mulPre(BD, b, d);
+		mulVadd(T, BD, AC);
+		Fp6Dbl::mod(z.a, T);
+		Fp6Dbl::mulPre(T, t1, t2); // (a + b)(c + d)
+		Fp6Dbl::sub(T, T, AC);
+		Fp6Dbl::sub(T, T, BD);
+		Fp6Dbl::mod(z.b, T);
+#else
+		Fp6 ac, bd;
 		t1 *= t2; // (a + b)(c + d)
 		Fp6::mul(ac, a, c);
 		Fp6::mul(bd, b, d);
 		mulVadd(z.a, bd, ac);
 		t1 -= ac;
 		Fp6::sub(z.b, t1, bd);
+#endif
 	}
 	/*
 		x = a + bw, w^2 = v

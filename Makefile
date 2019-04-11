@@ -41,13 +41,15 @@ lint: ## Run linters.
 	build/env.sh go run build/ci.go lint
 
 libbls:
-	make -C vendor/github.com/dexon-foundation/bls lib/libbls384.a
+	make -C vendor/github.com/dexon-foundation/bls MCL_USE_OPENSSL=0 lib/libbls384.a
 
-clean:
-	./build/clean_go_build_cache.sh
-	rm -fr build/_workspace/pkg/ $(GOBIN)/*
+clean-cgo:
 	make -C vendor/github.com/dexon-foundation/bls clean
 	make -C vendor/github.com/dexon-foundation/mcl clean
+
+clean: clean-cgo
+	./build/clean_go_build_cache.sh
+	rm -fr build/_workspace/pkg/ $(GOBIN)/*
 
 # The devtools target installs tools required for 'go generate'.
 # You need to put $GOBIN (or $GOPATH/bin) in your PATH to use 'go generate'.

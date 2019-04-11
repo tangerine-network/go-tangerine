@@ -1,0 +1,39 @@
+sudo: true
+dist: xenial
+services:
+- docker
+env:
+  global:
+  - IMAGE_TAG=dexonfoundation/bls-go-alpine
+  - DOCKER_USER=spiderpowadeploy
+  - secure: mqNCngWukyjE3UARxaPjqS0xgC1dsnWfmPhpH2mq7nR6S2cGfJ3xBfyiTS//Clz//7sAL+Tp62r3fxyMjDogrSHZUUssCAwf17RM6vnALqaVbc3wXcTNudiDB5cVKe9C9gZqn1Ivd+qbmtuCezSrOG5Xih1gh4bPTyiFvU1sp9C2icMHkJZkjsP0QqCbHlQrMeECSIPlEGIOXUUSp+WmrZAdi2rHezKeZxuaT73RX1+N/+1RfWXo2MR4ydQU3eALl5s5UA9JweQO+MYIVr8EEpGNqJRYUyURx/5G/Sy2v6Z3imUvXZv1J5aplW/UDls92Olla1JHuvFW6ptRO+PHITNwvEkhxPFj+HcOpqEuSISsdk9rkHUrM0wEYPv6A4vQPUjMHrLQs2tQShVCelM1HtNvDDjttKMmVyRLusFP9eS7uvmmXu2l6efJjsMSFkY5WKbu2U0MQ1j708KH9k2WunU6sjJ+b74PkkZVtkQMIqgTokC0IOqbbrnwh4I9PpVpHAQrewRimMH+lDHk+HlMUCWk7/IcIFUl+mh6RzW2vkZTTr2ctSBI6QzK5smdPmqQpp2lqkGv/hQCBp5ICzFSkU6Djqe3hG8ta3+/Zhi10fPU2HcHDi+gR79CG8dvy+iOeTS2csXZx+YoN2BVkfu9AnrjZ9Kjkf9BMay4CehBUWE=
+language: cpp
+compiler:
+- gcc
+- clang
+addons:
+  apt:
+    packages:
+    - libgmp-dev
+install:
+- git clone --depth 1 https://github.com/dexon-foundation/mcl.git $TRAVIS_BUILD_DIR/../mcl
+script:
+- make -j3
+- make test_ci DISABLE_THREAD_TEST=1
+- make test_go
+- env LD_LIBRARY_PATH=../mcl/lib bin/bls_c384_test.exe
+- make clean && make -C ../mcl clean
+- make -j3 MCL_USE_OPENSSL=0
+- make test_ci DISABLE_THREAD_TEST=1 MCL_USE_OPENSSL=0
+- docker build --tag "$IMAGE_TAG" . -f images/bls-go-alpine/Dockerfile --no-cache
+before_deploy:
+- echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+- git_commit="$(git rev-parse --short HEAD)"
+- docker tag "$IMAGE_TAG" "${IMAGE_TAG}:${git_commit}"
+- docker tag "$IMAGE_TAG" "${IMAGE_TAG}:latest"
+deploy:
+  provider: script
+  script: docker push "${IMAGE_TAG}:latest" && docker push "${IMAGE_TAG}:${git_commit}"
+  on:
+    branch: dev
+    condition: "$CC = gcc"

@@ -70,8 +70,6 @@ inline void dumpUnit(Unit x)
 
 bool isEnableJIT(); // 1st call is not threadsafe
 
-void getRandVal(Unit *out, RandGen& rg, const Unit *in, size_t bitSize);
-
 uint32_t sha256(void *out, uint32_t maxOutSize, const void *msg, uint32_t msgSize);
 uint32_t sha512(void *out, uint32_t maxOutSize, const void *msg, uint32_t msgSize);
 
@@ -112,10 +110,14 @@ public:
 		}
 		printf("\n");
 	}
-	static inline void init(bool *pb, const mpz_class& _p, fp::Mode mode = fp::FP_AUTO)
+	/*
+		xi_a is used for Fp2::mul_xi(), where xi = xi_a + i and i^2 = -1
+		if xi_a = 0 then asm functions for Fp2 are not generated.
+	*/
+	static inline void init(bool *pb, int xi_a, const mpz_class& p, fp::Mode mode = fp::FP_AUTO)
 	{
 		assert(maxBitSize <= MCL_MAX_BIT_SIZE);
-		*pb = op_.init(_p, maxBitSize, mode);
+		*pb = op_.init(p, maxBitSize, xi_a, mode);
 		if (!*pb) return;
 		{ // set oneRep
 			FpT& one = *reinterpret_cast<FpT*>(op_.oneRep);
@@ -130,18 +132,22 @@ public:
 		}
 		inv(inv2_, 2);
 #ifdef MCL_XBYAK_DIRECT_CALL
-		add = (void (*)(FpT& z, const FpT& x, const FpT& y))op_.fp_addA_;
+		add = fp::func_ptr_cast<void (*)(FpT& z, const FpT& x, const FpT& y)>(op_.fp_addA_);
 		if (add == 0) add = addC;
-		sub = (void (*)(FpT& z, const FpT& x, const FpT& y))op_.fp_subA_;
+		sub = fp::func_ptr_cast<void (*)(FpT& z, const FpT& x, const FpT& y)>(op_.fp_subA_);
 		if (sub == 0) sub = subC;
-		neg = (void (*)(FpT& y, const FpT& x))op_.fp_negA_;
+		neg = fp::func_ptr_cast<void (*)(FpT& y, const FpT& x)>(op_.fp_negA_);
 		if (neg == 0) neg = negC;
-		mul = (void (*)(FpT& z, const FpT& x, const FpT& y))op_.fp_mulA_;
+		mul = fp::func_ptr_cast<void (*)(FpT& z, const FpT& x, const FpT& y)>(op_.fp_mulA_);
 		if (mul == 0) mul = mulC;
-		sqr = (void (*)(FpT& y, const FpT& x))op_.fp_sqrA_;
+		sqr = fp::func_ptr_cast<void (*)(FpT& y, const FpT& x)>(op_.fp_sqrA_);
 		if (sqr == 0) sqr = sqrC;
 #endif
 		*pb = true;
+	}
+	static inline void init(bool *pb, const mpz_class& p, fp::Mode mode = fp::FP_AUTO)
+	{
+		init(pb, 0, p, mode);
 	}
 	static inline void init(bool *pb, const char *mstr, fp::Mode mode = fp::FP_AUTO)
 	{
@@ -296,10 +302,13 @@ public:
 		}
 		cybozu::write(pb, os, buf + sizeof(buf) - len, len);
 	}
+	/*
+		mode = Mod : set x mod p if sizeof(S) * n <= 64 else error
+	*/
 	template<class S>
-	void setArray(bool *pb, const S *x, size_t n)
+	void setArray(bool *pb, const S *x, size_t n, mcl::fp::MaskMode mode = fp::NoMask)
 	{
-		*pb = fp::copyAndMask(v_, x, sizeof(S) * n, op_, fp::NoMask);
+		*pb = fp::copyAndMask(v_, x, sizeof(S) * n, op_, mode);
 		toMont();
 	}
 	/*
@@ -331,12 +340,21 @@ public:
 			b.p = &v_[0];
 		}
 	}
-	void setByCSPRNG(fp::RandGen rg = fp::RandGen())
+	void setByCSPRNG(bool *pb, fp::RandGen rg = fp::RandGen())
 	{
 		if (rg.isZero()) rg = fp::RandGen::get();
-		fp::getRandVal(v_, rg, op_.p, op_.bitSize);
-		toMont();
+		rg.read(pb, v_, op_.N * sizeof(Unit)); // byte size
+		if (!pb) return;
+		setArrayMask(v_, op_.N);
 	}
+#ifndef CYBOZU_DONT_USE_EXCEPTION
+	void setByCSPRNG(fp::RandGen rg = fp::RandGen())
+	{
+		bool b;
+		setByCSPRNG(&b, rg);
+		if (!b) throw cybozu::Exception("setByCSPRNG");
+	}
+#endif
 	void setRand(fp::RandGen rg = fp::RandGen()) // old api
 	{
 		setByCSPRNG(rg);
@@ -522,17 +540,25 @@ public:
 	}
 #endif
 #ifndef CYBOZU_DONT_USE_EXCEPTION
-	static inline void init(const mpz_class& _p, fp::Mode mode = fp::FP_AUTO)
+	static inline void init(int xi_a, const mpz_class& p, fp::Mode mode = fp::FP_AUTO)
 	{
 		bool b;
-		init(&b, _p, mode);
+		init(&b, xi_a, p, mode);
 		if (!b) throw cybozu::Exception("Fp:init");
+	}
+	static inline void init(int xi_a, const std::string& mstr, fp::Mode mode = fp::FP_AUTO)
+	{
+		mpz_class p;
+		gmp::setStr(p, mstr);
+		init(xi_a, p, mode);
+	}
+	static inline void init(const mpz_class& p, fp::Mode mode = fp::FP_AUTO)
+	{
+		init(0, p, mode);
 	}
 	static inline void init(const std::string& mstr, fp::Mode mode = fp::FP_AUTO)
 	{
-		bool b;
-		init(&b, mstr.c_str(), mode);
-		if (!b) throw cybozu::Exception("Fp:init");
+		init(0, mstr, mode);
 	}
 	template<class OutputStream>
 	void save(OutputStream& os, int ioMode = IoSerialize) const
@@ -562,7 +588,7 @@ public:
 	{
 		bool b;
 		setMpz(&b, x);
-		if (!b) throw cybozu::Exception("Fp:setMpz:neg");
+		if (!b) throw cybozu::Exception("Fp:setMpz");
 	}
 	uint64_t getUint64() const
 	{
