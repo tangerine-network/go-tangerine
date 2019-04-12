@@ -84,6 +84,11 @@ func (n *DexconNetwork) BroadcastAgreementResult(result *types.AgreementResult) 
 }
 
 // ReceiveChan returns a channel to receive messages from DEXON network.
-func (n *DexconNetwork) ReceiveChan() <-chan interface{} {
+func (n *DexconNetwork) ReceiveChan() <-chan types.Msg {
 	return n.pm.ReceiveChan()
+}
+
+// ReportBadPeerChan returns a channel to receive messages from DEXON network.
+func (n *DexconNetwork) ReportBadPeerChan() chan<- interface{} {
+	return n.pm.ReportBadPeerChan()
 }

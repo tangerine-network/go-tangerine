@@ -271,7 +271,7 @@ func TestRecvCoreBlocks(t *testing.T) {
 	ch := pm.ReceiveChan()
 	select {
 	case msg := <-ch:
-		rb := msg.(*coreTypes.Block)
+		rb := msg.Payload.(*coreTypes.Block)
 		if !reflect.DeepEqual(rb, &block) {
 			t.Errorf("block mismatch")
 		}
@@ -416,7 +416,7 @@ func TestRecvVotes(t *testing.T) {
 
 	select {
 	case msg := <-ch:
-		rvote := msg.(*coreTypes.Vote)
+		rvote := msg.Payload.(*coreTypes.Vote)
 		if !reflect.DeepEqual(rvote, &vote) {
 			t.Errorf("vote mismatch")
 		}
@@ -557,7 +557,7 @@ func TestRecvDKGPrivateShare(t *testing.T) {
 	ch := pm.ReceiveChan()
 	select {
 	case msg := <-ch:
-		rps := msg.(*dkgTypes.PrivateShare)
+		rps := msg.Payload.(*dkgTypes.PrivateShare)
 		if !reflect.DeepEqual(rps, &privateShare) {
 			t.Errorf("vote mismatch")
 		}
@@ -657,7 +657,7 @@ func TestRecvAgreement(t *testing.T) {
 	ch := pm.ReceiveChan()
 	select {
 	case msg := <-ch:
-		a := msg.(*coreTypes.AgreementResult)
+		a := msg.Payload.(*coreTypes.AgreementResult)
 		if !reflect.DeepEqual(a, &agreement) {
 			t.Errorf("agreement mismatch")
 		}
