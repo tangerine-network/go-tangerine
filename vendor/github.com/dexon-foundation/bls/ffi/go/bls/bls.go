@@ -11,7 +11,7 @@ package bls
 #cgo !bn256,!bn384,!bn384_256 LDFLAGS:${SRCDIR}/../../../lib/libbls384.a
 #cgo CFLAGS:-I${SRCDIR}/../../../include -I${SRCDIR}/../../../../mcl/include
 #cgo LDFLAGS:${SRCDIR}/../../../../mcl/lib/libmcl.a -lgmpxx -lgmp
-#cgo linux LDFLAGS:-static
+#cgo static LDFLAGS:-static
 typedef unsigned int (*ReadRandFunc)(void *, void *, unsigned int);
 int wrapReadRandCgo(void *self, void *buf, unsigned int n);
 #include <bls/bls.h>

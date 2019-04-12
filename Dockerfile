@@ -9,7 +9,7 @@ RUN cd /dexon && build/env.sh go build -o build/bin/bootnode ./cmd/bootnode
 # Pull Gdex into a second stage deploy alpine container
 FROM alpine:latest
 
-RUN apk add --no-cache ca-certificates curl
+RUN apk add --no-cache ca-certificates curl libstdc++ gmp
 COPY --from=builder /dexon/build/bin/gdex /usr/local/bin/
 COPY --from=builder /dexon/build/bin/bootnode /usr/local/bin/
 

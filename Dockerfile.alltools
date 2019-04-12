@@ -9,6 +9,8 @@ RUN cd /dexon && make clean && DOCKER=alpine make all
 # Pull all binaries into a second stage deploy alpine container
 FROM alpine:latest
 
+RUN apk add --no-cache gmp
+
 COPY --from=builder /dexon/build/bin/* /usr/local/bin/
 
 EXPOSE 8545 8546 30303 30303/udp

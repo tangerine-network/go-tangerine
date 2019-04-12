@@ -207,8 +207,9 @@ func main() {
 
 func doInstall(cmdline []string) {
 	var (
-		arch = flag.String("arch", "", "Architecture to cross build for")
-		cc   = flag.String("cc", "", "C compiler to cross build with")
+		arch   = flag.String("arch", "", "Architecture to cross build for")
+		cc     = flag.String("cc", "", "C compiler to cross build with")
+		static = flag.Bool("static", false, "Build static binaries")
 	)
 	flag.CommandLine.Parse(cmdline)
 	env := build.Env()
@@ -235,7 +236,7 @@ func doInstall(cmdline []string) {
 	packages = build.ExpandPackagesNoVendor(packages)
 
 	if *arch == "" || *arch == runtime.GOARCH {
-		goinstall := goTool("install", buildFlags(env)...)
+		goinstall := goTool("install", buildFlags(env, *static)...)
 		goinstall.Args = append(goinstall.Args, "-v")
 		goinstall.Args = append(goinstall.Args, packages...)
 		build.MustRun(goinstall)
@@ -249,7 +250,7 @@ func doInstall(cmdline []string) {
 		}
 	}
 	// Seems we are cross compiling, work around forbidden GOBIN
-	goinstall := goToolArch(*arch, *cc, "install", buildFlags(env)...)
+	goinstall := goToolArch(*arch, *cc, "install", buildFlags(env, *static)...)
 	goinstall.Args = append(goinstall.Args, "-v")
 	goinstall.Args = append(goinstall.Args, []string{"-buildmode", "archive"}...)
 	goinstall.Args = append(goinstall.Args, packages...)
@@ -263,7 +264,7 @@ func doInstall(cmdline []string) {
 			}
 			for name := range pkgs {
 				if name == "main" {
-					gobuild := goToolArch(*arch, *cc, "build", buildFlags(env)...)
+					gobuild := goToolArch(*arch, *cc, "build", buildFlags(env, *static)...)
 					gobuild.Args = append(gobuild.Args, "-v")
 					gobuild.Args = append(gobuild.Args, []string{"-o", executablePath(cmd.Name())}...)
 					gobuild.Args = append(gobuild.Args, "."+string(filepath.Separator)+filepath.Join("cmd", cmd.Name()))
@@ -275,7 +276,7 @@ func doInstall(cmdline []string) {
 	}
 }
 
-func buildFlags(env build.Environment) (flags []string) {
+func buildFlags(env build.Environment, static bool) (flags []string) {
 	var ld []string
 	if env.Commit != "" {
 		ld = append(ld, "-X", "main.gitCommit="+env.Commit)
@@ -286,6 +287,9 @@ func buildFlags(env build.Environment) (flags []string) {
 
 	if len(ld) > 0 {
 		flags = append(flags, "-ldflags", strings.Join(ld, " "))
+	}
+	if static {
+		flags = append(flags, "-tags", "static")
 	}
 	return flags
 }
@@ -342,7 +346,7 @@ func doTest(cmdline []string) {
 	// Run the actual tests.
 	// Test a single package at a time. CI builders are slow
 	// and some tests run into timeouts under load.
-	gotest := goTool("test", buildFlags(env)...)
+	gotest := goTool("test", buildFlags(env, false)...)
 	gotest.Args = append(gotest.Args, "-p", "1", "-timeout", "5m")
 	if *coverage {
 		gotest.Args = append(gotest.Args, "-covermode=atomic", "-cover")
@@ -351,7 +355,7 @@ func doTest(cmdline []string) {
 	gotest.Args = append(gotest.Args, packages...)
 	build.MustRun(gotest)
 
-	gotestForLegacyEvm := goTool("test", buildFlags(env)...)
+	gotestForLegacyEvm := goTool("test", buildFlags(env, false)...)
 	gotestForLegacyEvm.Args = append(gotestForLegacyEvm.Args, "-p", "1", "-timeout", "10m")
 	if *coverage {
 		gotestForLegacyEvm.Args = append(gotestForLegacyEvm.Args, "-covermode=atomic", "-cover")
@@ -1033,7 +1037,7 @@ func doXgo(cmdline []string) {
 	build.MustRun(gogetxgo)
 
 	// If all tools building is requested, build everything the builder wants
-	args := append(buildFlags(env), flag.Args()...)
+	args := append(buildFlags(env, false), flag.Args()...)
 
 	if *alltools {
 		args = append(args, []string{"--dest", GOBIN}...)
