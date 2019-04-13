@@ -10,7 +10,7 @@ tarAndUpload()
 
 endpoint=http://127.0.0.1:8545
 
-timeout=700
+timeout=300
 
 echo "Wait for recovery"
 cmd="PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig go run build/testtool/testtool.go waitForRecovery $endpoint $timeout"
