@@ -55,3 +55,7 @@ profile.cov
 test/Dexon.*
 test/*.log
 dex/transactions.rlp
+
+# consensus
+vendor/github.com/dexon-foundation/mcl/lib/*.dylib
+vendor/github.com/dexon-foundation/bls/lib/*.dylib

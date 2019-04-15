@@ -102,6 +102,9 @@ type dkgReceiver interface {
 
 	// ProposeDKGFinalize propose a DKGFinalize message.
 	ProposeDKGFinalize(final *typesDKG.Finalize)
+
+	// ProposeDKGSuccess propose a DKGSuccess message.
+	ProposeDKGSuccess(final *typesDKG.Success)
 }
 
 type dkgProtocol struct {
@@ -487,10 +490,13 @@ func (d *dkgProtocol) processPrivateShare(
 		if _, exist := d.antiComplaintReceived[prvShare.ReceiverID]; !exist {
 			d.antiComplaintReceived[prvShare.ReceiverID] =
 				make(map[types.NodeID]struct{})
-			d.recv.ProposeDKGAntiNackComplaint(prvShare)
 		}
-		d.antiComplaintReceived[prvShare.ReceiverID][prvShare.ProposerID] =
-			struct{}{}
+		if _, exist :=
+			d.antiComplaintReceived[prvShare.ReceiverID][prvShare.ProposerID]; !exist {
+			d.recv.ProposeDKGAntiNackComplaint(prvShare)
+			d.antiComplaintReceived[prvShare.ReceiverID][prvShare.ProposerID] =
+				struct{}{}
+		}
 	}
 	return nil
 }
@@ -505,6 +511,14 @@ func (d *dkgProtocol) proposeMPKReady() {
 
 func (d *dkgProtocol) proposeFinalize() {
 	d.recv.ProposeDKGFinalize(&typesDKG.Finalize{
+		ProposerID: d.ID,
+		Round:      d.round,
+		Reset:      d.reset,
+	})
+}
+
+func (d *dkgProtocol) proposeSuccess() {
+	d.recv.ProposeDKGSuccess(&typesDKG.Success{
 		ProposerID: d.ID,
 		Round:      d.round,
 		Reset:      d.reset,

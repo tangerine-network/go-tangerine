@@ -78,6 +78,8 @@ const (
 	dkgReadysCountLoc
 	dkgFinalizedLoc
 	dkgFinalizedsCountLoc
+	dkgSuccessLoc
+	dkgSuccessesCountLoc
 	ownerLoc
 	minStakeLoc
 	lockupPeriodLoc
@@ -766,6 +768,37 @@ func (s *GovernanceState) ResetDKGFinalizedsCount() {
 	s.setStateBigInt(big.NewInt(dkgFinalizedsCountLoc), big.NewInt(0))
 }
 
+// mapping(address => bool) public dkgSuccesses;
+func (s *GovernanceState) DKGSuccess(addr common.Address) bool {
+	mapLoc := s.getMapLoc(big.NewInt(dkgSuccessLoc), addr.Bytes())
+	return s.getStateBigInt(mapLoc).Cmp(big.NewInt(0)) != 0
+}
+func (s *GovernanceState) PutDKGSuccess(addr common.Address, success bool) {
+	mapLoc := s.getMapLoc(big.NewInt(dkgSuccessLoc), addr.Bytes())
+	res := big.NewInt(0)
+	if success {
+		res = big.NewInt(1)
+	}
+	s.setStateBigInt(mapLoc, res)
+}
+func (s *GovernanceState) ClearDKGSuccesses(dkgSet map[coreTypes.NodeID]struct{}) {
+	for id := range dkgSet {
+		s.PutDKGSuccess(IdToAddress(id), false)
+	}
+}
+
+// uint256 public dkgSuccessesCount;
+func (s *GovernanceState) DKGSuccessesCount() *big.Int {
+	return s.getStateBigInt(big.NewInt(dkgSuccessesCountLoc))
+}
+func (s *GovernanceState) IncDKGSuccessesCount() {
+	s.setStateBigInt(big.NewInt(dkgSuccessesCountLoc),
+		new(big.Int).Add(s.getStateBigInt(big.NewInt(dkgSuccessesCountLoc)), big.NewInt(1)))
+}
+func (s *GovernanceState) ResetDKGSuccessesCount() {
+	s.setStateBigInt(big.NewInt(dkgSuccessesCountLoc), big.NewInt(0))
+}
+
 // address public owner;
 func (s *GovernanceState) Owner() common.Address {
 	val := s.getState(common.BigToHash(big.NewInt(ownerLoc)))
@@ -1355,6 +1388,8 @@ func (g *GovernanceContract) clearDKG() {
 	g.state.ResetDKGMPKReadysCount()
 	g.state.ClearDKGFinalizeds(dkgSet)
 	g.state.ResetDKGFinalizedsCount()
+	g.state.ClearDKGSuccesses(dkgSet)
+	g.state.ResetDKGSuccessesCount()
 }
 
 func (g *GovernanceContract) fineFailStopDKG(threshold int) {
@@ -1621,6 +1656,40 @@ func (g *GovernanceContract) addDKGFinalize(finalize []byte) ([]byte, error) {
 		tsigThreshold := coreUtils.GetDKGThreshold(&coreTypes.Config{
 			NotarySetSize: uint32(g.configNotarySetSize(g.evm.Round).Uint64())})
 		g.fineFailStopDKG(tsigThreshold)
+	}
+
+	return g.useGas(GovernanceActionGasCost)
+}
+
+func (g *GovernanceContract) addDKGSuccess(success []byte) ([]byte, error) {
+	caller := g.contract.Caller()
+
+	var dkgSuccess dkgTypes.Success
+	if err := rlp.DecodeBytes(success, &dkgSuccess); err != nil {
+		return nil, errExecutionReverted
+	}
+	round := big.NewInt(int64(dkgSuccess.Round))
+	if round.Uint64() != g.evm.Round.Uint64()+1 {
+		return nil, errExecutionReverted
+	}
+
+	if dkgSuccess.Reset != g.state.DKGResetCount(round).Uint64() {
+		return nil, errExecutionReverted
+	}
+
+	// DKGFInalize must belongs to someone in DKG set.
+	if !g.inNotarySet(round, dkgSuccess.ProposerID) {
+		return nil, errExecutionReverted
+	}
+
+	verified, _ := coreUtils.VerifyDKGSuccessSignature(&dkgSuccess)
+	if !verified {
+		return nil, errExecutionReverted
+	}
+
+	if !g.state.DKGSuccess(caller) {
+		g.state.PutDKGSuccess(caller, true)
+		g.state.IncDKGSuccessesCount()
 	}
 
 	return g.useGas(GovernanceActionGasCost)
@@ -1972,9 +2041,9 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 	}
 
 	// Extend the the current round.
-	// target = (80 + 100 * DKGResetCount)%
+	// target = (85 + 100 * DKGResetCount)%
 	target := new(big.Int).Add(
-		big.NewInt(80),
+		big.NewInt(85),
 		new(big.Int).Mul(big.NewInt(100), resetCount))
 
 	roundHeight := g.state.RoundHeight(round)
@@ -1989,37 +2058,42 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 	targetBlockNum.Quo(targetBlockNum, big.NewInt(100))
 	targetBlockNum.Add(targetBlockNum, roundHeight)
 
-	// Check if current block over 80% of current round.
+	// Check if current block over 85%of current round.
 	blockHeight := g.evm.Context.BlockNumber
 	if blockHeight.Cmp(targetBlockNum) < 0 {
 		return nil, errExecutionReverted
 	}
 
-	// Check if next DKG did not success.
-	// Calculate 2f + 1
-	threshold := 2*g.configNotarySetSize(g.evm.Round).Uint64()/3 + 1
 	tsigThreshold := coreUtils.GetDKGThreshold(&coreTypes.Config{
-		NotarySetSize: uint32(g.configNotarySetSize(g.evm.Round).Uint64())})
+		NotarySetSize: uint32(g.configNotarySetSize(nextRound).Uint64())})
+	// Check if next DKG has not enough of success.
+	if g.state.DKGSuccessesCount().Uint64() >=
+		uint64(coreUtils.GetDKGValidThreshold(&coreTypes.Config{
+			NotarySetSize: uint32(g.configNotarySetSize(nextRound).Uint64()),
+		})) {
+		// Check if next DKG did not success.
+		// Calculate 2f + 1
+		threshold := 2*g.configNotarySetSize(nextRound).Uint64()/3 + 1
 
-	// If 2f + 1 of DKG set is finalized, check if DKG succeeded.
-	if g.state.DKGFinalizedsCount().Uint64() >= threshold {
-		gpk, err := g.coreDKGUtils.NewGroupPublicKey(&g.state, nextRound, tsigThreshold)
-		if gpk, ok := gpk.(*dkgTypes.GroupPublicKey); ok {
-			nextRound := new(big.Int).Add(g.evm.Round, big.NewInt(1))
-			if len(gpk.QualifyNodeIDs) < coreUtils.GetDKGValidThreshold(&coreTypes.Config{
-				NotarySetSize: uint32(g.configNotarySetSize(nextRound).Uint64())}) {
-				err = dkgTypes.ErrNotReachThreshold
+		// If 2f + 1 of DKG set is finalized, check if DKG succeeded.
+		if g.state.DKGFinalizedsCount().Uint64() >= threshold {
+			gpk, err := g.coreDKGUtils.NewGroupPublicKey(&g.state, nextRound, tsigThreshold)
+			if gpk, ok := gpk.(*dkgTypes.GroupPublicKey); ok {
+				if len(gpk.QualifyNodeIDs) < coreUtils.GetDKGValidThreshold(&coreTypes.Config{
+					NotarySetSize: uint32(g.configNotarySetSize(nextRound).Uint64())}) {
+					err = dkgTypes.ErrNotReachThreshold
+				}
 			}
-		}
 
-		// DKG success.
-		if err == nil {
-			return nil, errExecutionReverted
-		}
-		switch err {
-		case dkgTypes.ErrNotReachThreshold, dkgTypes.ErrInvalidThreshold:
-		default:
-			return nil, errExecutionReverted
+			// DKG success.
+			if err == nil {
+				return nil, errExecutionReverted
+			}
+			switch err {
+			case dkgTypes.ErrNotReachThreshold, dkgTypes.ErrInvalidThreshold:
+			default:
+				return nil, errExecutionReverted
+			}
 		}
 	}
 
@@ -2044,7 +2118,9 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 		prevCRS = crypto.Keccak256Hash(prevCRS[:])
 	}
 
-	dkgGPK, err := g.coreDKGUtils.NewGroupPublicKey(state, round, tsigThreshold)
+	dkgGPK, err := g.coreDKGUtils.NewGroupPublicKey(state, round,
+		coreUtils.GetDKGThreshold(&coreTypes.Config{
+			NotarySetSize: uint32(g.configNotarySetSize(round).Uint64())}))
 	if err != nil {
 		return nil, errExecutionReverted
 	}
@@ -2056,19 +2132,17 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 		return nil, errExecutionReverted
 	}
 
-	newRound := new(big.Int).Add(g.evm.Round, big.NewInt(1))
-
 	// Clear DKG states for next round.
 	g.clearDKG()
-	g.state.SetDKGRound(newRound)
+	g.state.SetDKGRound(nextRound)
 
 	// Save new CRS into state and increase round.
 	newCRS := crypto.Keccak256(newSignedCRS)
 	crs := common.BytesToHash(newCRS)
 
 	g.state.SetCRS(crs)
-	g.state.SetCRSRound(newRound)
-	g.state.emitCRSProposed(newRound, crs)
+	g.state.SetCRSRound(nextRound)
+	g.state.emitCRSProposed(nextRound, crs)
 
 	// Increase reset count.
 	g.state.IncDKGResetCount(nextRound)
@@ -2122,6 +2196,12 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return g.addDKGFinalize(Finalize)
+	case "addDKGSuccess":
+		var Success []byte
+		if err := method.Inputs.Unpack(&Success, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.addDKGSuccess(Success)
 	case "nodesLength":
 		res, err := method.Outputs.Pack(g.state.LenNodes())
 		if err != nil {
@@ -2259,6 +2339,24 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		return res, nil
 	case "dkgFinalizedsCount":
 		count := g.state.DKGFinalizedsCount()
+		res, err := method.Outputs.Pack(count)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgSuccesses":
+		addr := common.Address{}
+		if err := method.Inputs.Unpack(&addr, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		finalized := g.state.DKGSuccess(addr)
+		res, err := method.Outputs.Pack(finalized)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "dkgSuccessesCount":
+		count := g.state.DKGSuccessesCount()
 		res, err := method.Outputs.Pack(count)
 		if err != nil {
 			return nil, errExecutionReverted
@@ -2617,6 +2715,21 @@ func PackAddDKGComplaint(complaint *dkgTypes.Complaint) ([]byte, error) {
 
 func PackAddDKGFinalize(final *dkgTypes.Finalize) ([]byte, error) {
 	method := GovernanceABI.Name2Method["addDKGFinalize"]
+	encoded, err := rlp.EncodeToBytes(final)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err := method.Inputs.Pack(encoded)
+	if err != nil {
+		return nil, err
+	}
+	data := append(method.Id(), res...)
+	return data, nil
+}
+
+func PackAddDKGSuccess(final *dkgTypes.Success) ([]byte, error) {
+	method := GovernanceABI.Name2Method["addDKGSuccess"]
 	encoded, err := rlp.EncodeToBytes(final)
 	if err != nil {
 		return nil, err

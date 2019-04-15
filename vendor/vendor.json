@@ -141,16 +141,16 @@
 		{
 			"checksumSHA1": "In6vBHYUsX7DUIGiFN2hQggBgvI=",
 			"path": "github.com/dexon-foundation/dexon-consensus/common",
-			"revision": "2d26246247e2f7e616cc3d13b9d61308580e7d67",
-			"revisionTime": "2019-04-13T15:07:46Z",
+			"revision": "e9a1d3bca8353ee206d262ab1fad2d7e3e0b24a5",
+			"revisionTime": "2019-04-15T04:12:22Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "6anh4sqNQZY5ZD+cZoTIB+N4PRc=",
+			"checksumSHA1": "1RGs5z/8Kq82E69C8aRUAZT3U24=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core",
-			"revision": "2d26246247e2f7e616cc3d13b9d61308580e7d67",
-			"revisionTime": "2019-04-13T15:07:46Z",
+			"revision": "e9a1d3bca8353ee206d262ab1fad2d7e3e0b24a5",
+			"revisionTime": "2019-04-15T04:12:22Z",
 			"version": "master",
 			"versionExact": "master"
 		},
@@ -165,64 +165,64 @@
 		{
 			"checksumSHA1": "tQSbYCu5P00lUhKsx3IbBZCuSLY=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/crypto",
-			"revision": "2d26246247e2f7e616cc3d13b9d61308580e7d67",
-			"revisionTime": "2019-04-13T15:07:46Z",
+			"revision": "e9a1d3bca8353ee206d262ab1fad2d7e3e0b24a5",
+			"revisionTime": "2019-04-15T04:12:22Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "4besQaa0rm8jRUAJjpEaLZ/ZOYs=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/crypto/dkg",
-			"revision": "2d26246247e2f7e616cc3d13b9d61308580e7d67",
-			"revisionTime": "2019-04-13T15:07:46Z",
+			"revision": "e9a1d3bca8353ee206d262ab1fad2d7e3e0b24a5",
+			"revisionTime": "2019-04-15T04:12:22Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "BhLKK8RveoLaeXc9UyUKMwQqchU=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa",
-			"revision": "2d26246247e2f7e616cc3d13b9d61308580e7d67",
-			"revisionTime": "2019-04-13T15:07:46Z",
+			"revision": "e9a1d3bca8353ee206d262ab1fad2d7e3e0b24a5",
+			"revisionTime": "2019-04-15T04:12:22Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "3Ludp/1V4dMBZH/c1oIVjHj0CqY=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/db",
-			"revision": "2d26246247e2f7e616cc3d13b9d61308580e7d67",
-			"revisionTime": "2019-04-13T15:07:46Z",
+			"revision": "e9a1d3bca8353ee206d262ab1fad2d7e3e0b24a5",
+			"revisionTime": "2019-04-15T04:12:22Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "sO5twEFTdLvkMuQo+I3vyzm9T3o=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/syncer",
-			"revision": "2d26246247e2f7e616cc3d13b9d61308580e7d67",
-			"revisionTime": "2019-04-13T15:07:46Z",
+			"revision": "e9a1d3bca8353ee206d262ab1fad2d7e3e0b24a5",
+			"revisionTime": "2019-04-15T04:12:22Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "0BY+E0E2cM7IHIMqunXwoolDS5Y=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/types",
-			"revision": "2d26246247e2f7e616cc3d13b9d61308580e7d67",
-			"revisionTime": "2019-04-13T15:07:46Z",
+			"revision": "e9a1d3bca8353ee206d262ab1fad2d7e3e0b24a5",
+			"revisionTime": "2019-04-15T04:12:22Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "lbG7yqVgzo2CV/CQPYjG78xp5jg=",
+			"checksumSHA1": "yEPSfn48GaJmDbd2OFY+QRhjJ0w=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/types/dkg",
-			"revision": "2d26246247e2f7e616cc3d13b9d61308580e7d67",
-			"revisionTime": "2019-04-13T15:07:46Z",
+			"revision": "e9a1d3bca8353ee206d262ab1fad2d7e3e0b24a5",
+			"revisionTime": "2019-04-15T04:12:22Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "C2r/uE8K53WIIA0FYYHIfR2xhng=",
+			"checksumSHA1": "7Ib134BAyLF1M/kREou4Zm7UUS4=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/utils",
-			"revision": "2d26246247e2f7e616cc3d13b9d61308580e7d67",
-			"revisionTime": "2019-04-13T15:07:46Z",
+			"revision": "e9a1d3bca8353ee206d262ab1fad2d7e3e0b24a5",
+			"revisionTime": "2019-04-15T04:12:22Z",
 			"version": "master",
 			"versionExact": "master"
 		},

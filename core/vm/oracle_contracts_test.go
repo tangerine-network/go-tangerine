@@ -984,6 +984,8 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 			g.s.ResetDKGMPKReadysCount()
 			g.s.ClearDKGFinalizeds(dkgSet)
 			g.s.ResetDKGFinalizedsCount()
+			g.s.ClearDKGSuccesses(dkgSet)
+			g.s.ResetDKGSuccessesCount()
 			g.s.SetDKGRound(big.NewInt(int64(round)))
 		}
 
@@ -1033,6 +1035,9 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 				// Prepare Finalized.
 				g.s.PutDKGFinalized(addr, true)
 				g.s.IncDKGFinalizedsCount()
+				// Prepare Success.
+				g.s.PutDKGSuccess(addr, true)
+				g.s.IncDKGSuccessesCount()
 			}
 			i += 1
 		}
@@ -1048,6 +1053,10 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 			g.Require().Equal(int64(dkgSetSize), g.s.DKGFinalizedsCount().Int64())
 			for _, addr := range addrs[round] {
 				g.Require().True(g.s.DKGFinalized(addr))
+			}
+			g.Require().Equal(int64(dkgSetSize), g.s.DKGSuccessesCount().Int64())
+			for _, addr := range addrs[round] {
+				g.Require().True(g.s.DKGSuccess(addr))
 			}
 		}
 
@@ -1088,7 +1097,7 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 		g.s.IncDKGFinalizedsCount()
 
 		g.context.BlockNumber = big.NewInt(
-			roundHeight*int64(round) + roundHeight*int64(r) + roundHeight*80/100)
+			roundHeight*int64(round) + roundHeight*int64(r) + roundHeight*85/100)
 		_, addr := newPrefundAccount(g.stateDB)
 		newCRS := randomBytes(common.HashLength, common.HashLength)
 		input, err := GovernanceABI.ABI.Pack("resetDKG", newCRS)
@@ -1113,6 +1122,11 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 		g.Require().Equal(int64(0), g.s.DKGFinalizedsCount().Int64())
 		for _, addr := range addrs[round+1] {
 			g.Require().False(g.s.DKGFinalized(addr))
+		}
+		// Test if Success is purged.
+		g.Require().Equal(int64(0), g.s.DKGSuccessesCount().Int64())
+		for _, addr := range addrs[round+1] {
+			g.Require().False(g.s.DKGSuccess(addr))
 		}
 
 		g.Require().Equal(int64(r+1), g.s.DKGResetCount(roundPlusOne).Int64())

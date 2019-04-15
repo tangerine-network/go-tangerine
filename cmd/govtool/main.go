@@ -90,6 +90,16 @@ func decodeInput(ctx *cli.Context) error {
 			utils.Fatalf("%s", err)
 		}
 		fmt.Println(finalize)
+	case "addDKGSuccess":
+		var Success []byte
+		if err := method.Inputs.Unpack(&Success, arguments); err != nil {
+			utils.Fatalf("%s", err)
+		}
+		var success dkgTypes.Success
+		if err := rlp.DecodeBytes(Success, &success); err != nil {
+			utils.Fatalf("%s", err)
+		}
+		fmt.Println(success)
 	case "report":
 		args := struct {
 			Type *big.Int

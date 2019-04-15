@@ -310,6 +310,15 @@ func (g *Governance) IsDKGFinal(round uint64) bool {
 	return count >= threshold
 }
 
+func (g *Governance) IsDKGSuccess(round uint64) bool {
+	s := g.GetStateForDKGAtRound(round)
+	if s == nil {
+		return false
+	}
+	return s.DKGSuccessesCount().Uint64() >=
+		uint64(coreUtils.GetDKGValidThreshold(g.Configuration(round)))
+}
+
 func (g *Governance) MinGasPrice(round uint64) *big.Int {
 	return g.GetStateForConfigAtRound(round).MinGasPrice()
 }

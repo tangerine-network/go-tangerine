@@ -496,6 +496,16 @@ func (recv *consensusDKGReceiver) ProposeDKGFinalize(final *typesDKG.Finalize) {
 	recv.gov.AddDKGFinalize(final)
 }
 
+// ProposeDKGSuccess propose a DKGSuccess message.
+func (recv *consensusDKGReceiver) ProposeDKGSuccess(success *typesDKG.Success) {
+	if err := recv.signer.SignDKGSuccess(success); err != nil {
+		recv.logger.Error("Failed to sign DKG successize", "error", err)
+		return
+	}
+	recv.logger.Debug("Calling Governance.AddDKGSuccess", "success", success)
+	recv.gov.AddDKGSuccess(success)
+}
+
 // Consensus implements DEXON Consensus algorithm.
 type Consensus struct {
 	// Node Info.
@@ -818,6 +828,12 @@ func (con *Consensus) prepare(initBlock *types.Block) (err error) {
 					"reset", e.Reset)
 				return false
 			}
+			if !con.gov.IsDKGSuccess(nextRound) {
+				con.logger.Error("Next DKG is not success, reset it",
+					"round", e.Round,
+					"reset", e.Reset)
+				return false
+			}
 			gpk, err := typesDKG.NewGroupPublicKey(
 				nextRound,
 				con.gov.DKGMasterPublicKeys(nextRound),
@@ -1132,6 +1148,10 @@ func (con *Consensus) generateBlockRandomness(blocks []*types.Block) {
 					"block", block,
 					"result", result)
 				con.network.BroadcastAgreementResult(result)
+				if err := con.deliverFinalizedBlocks(); err != nil {
+					con.logger.Error("Failed to deliver finalized block",
+						"error", err)
+				}
 			}
 		}(block)
 	}

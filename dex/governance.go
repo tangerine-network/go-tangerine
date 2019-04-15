@@ -177,6 +177,20 @@ func (d *DexconGovernance) AddDKGFinalize(final *dkgTypes.Finalize) {
 	}
 }
 
+// AddDKGSuccess adds a DKG success message.
+func (d *DexconGovernance) AddDKGSuccess(success *dkgTypes.Success) {
+	data, err := vm.PackAddDKGSuccess(success)
+	if err != nil {
+		log.Error("Failed to pack addDKGSuccess input", "err", err)
+		return
+	}
+
+	err = d.sendGovTx(context.Background(), data)
+	if err != nil {
+		log.Error("Failed to send addDKGSuccess tx", "err", err)
+	}
+}
+
 // ReportForkVote reports a node for forking votes.
 func (d *DexconGovernance) ReportForkVote(vote1, vote2 *coreTypes.Vote) {
 	data, err := vm.PackReportForkVote(vote1, vote2)
