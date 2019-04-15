@@ -83,7 +83,8 @@ const (
 	maxPullPeers     = 3
 	maxPullVotePeers = 1
 
-	pullVoteRateLimit = 10 * time.Second
+	pullVoteRateLimit  = 3 * time.Second
+	pullBlockRateLimit = 3 * time.Second
 
 	maxAgreementResultBroadcast = 3
 	maxFinalizedBlockBroadcast  = 3
@@ -103,13 +104,14 @@ type ProtocolManager struct {
 	fastSync  uint32 // Flag whether fast sync is enabled (gets disabled if we already have blocks)
 	acceptTxs uint32 // Flag whether we're considered synchronised (enables transaction processing)
 
-	txpool       txPool
-	gov          governance
-	blockchain   *core.BlockChain
-	chainconfig  *params.ChainConfig
-	cache        *cache
-	nextPullVote *sync.Map
-	maxPeers     int
+	txpool        txPool
+	gov           governance
+	blockchain    *core.BlockChain
+	chainconfig   *params.ChainConfig
+	cache         *cache
+	nextPullVote  *sync.Map
+	nextPullBlock *sync.Map
+	maxPeers      int
 
 	downloader *downloader.Downloader
 	fetcher    *fetcher.Fetcher
@@ -171,6 +173,7 @@ func NewProtocolManager(
 		blockchain:         blockchain,
 		cache:              newCache(5120, dexDB.NewDatabase(chaindb)),
 		nextPullVote:       &sync.Map{},
+		nextPullBlock:      &sync.Map{},
 		chainconfig:        config,
 		whitelist:          whitelist,
 		newPeerCh:          make(chan *peer),
@@ -258,6 +261,7 @@ func (pm *ProtocolManager) removePeer(id string) {
 	log.Debug("Removing Ethereum peer", "peer", id)
 
 	pm.nextPullVote.Delete(peer.ID())
+	pm.nextPullBlock.Delete(peer.ID())
 
 	// Unregister the peer from the downloader and Ethereum peer set
 	pm.downloader.UnregisterPeer(id)
@@ -927,6 +931,14 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if atomic.LoadInt32(&pm.receiveCoreMessage) == 0 {
 			break
 		}
+		next, ok := pm.nextPullBlock.Load(p.ID())
+		if ok {
+			nextTime := next.(time.Time)
+			if nextTime.After(time.Now()) {
+				break
+			}
+		}
+		pm.nextPullBlock.Store(p.ID(), time.Now().Add(pullBlockRateLimit))
 		var hashes coreCommon.Hashes
 		if err := msg.Decode(&hashes); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
