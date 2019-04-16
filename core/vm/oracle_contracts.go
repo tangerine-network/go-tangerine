@@ -2042,6 +2042,14 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 	round := g.evm.Round
 	nextRound := new(big.Int).Add(round, big.NewInt(1))
 
+	// If no one call addDKGMasterPublicKey, DKG of previous round will not be
+	// cleared.
+	if g.state.DKGRound().Cmp(round) == 0 {
+		// Clear DKG states for next round.
+		g.clearDKG()
+		g.state.SetDKGRound(nextRound)
+	}
+
 	resetCount := g.state.DKGResetCount(nextRound)
 
 	// Just restart DEXON if failed at round 0.
