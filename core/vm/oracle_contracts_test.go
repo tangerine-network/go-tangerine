@@ -253,9 +253,15 @@ func (g *OracleContractsTestSuite) call(
 }
 
 func (g *OracleContractsTestSuite) TestTransferOwnership() {
+	input, err := GovernanceABI.ABI.Pack("transferOwnership", common.Address{})
+	g.Require().NoError(err)
+	// Call with owner but invalid new owner.
+	_, err = g.call(GovernanceContractAddress, g.config.Owner, input, big.NewInt(0))
+	g.Require().NotNil(err)
+
 	_, addr := newPrefundAccount(g.stateDB)
 
-	input, err := GovernanceABI.ABI.Pack("transferOwnership", addr)
+	input, err = GovernanceABI.ABI.Pack("transferOwnership", addr)
 	g.Require().NoError(err)
 
 	// Call with non-owner.
@@ -280,6 +286,12 @@ func (g *OracleContractsTestSuite) TestTransferNodeOwnership() {
 	g.Require().NoError(err)
 
 	offset := g.s.NodesOffsetByAddress(addr)
+
+	// Call with not valid new owner.
+	input, err = GovernanceABI.ABI.Pack("transferNodeOwnership", common.Address{})
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
+	g.Require().NotNil(err)
 
 	_, newAddr := newPrefundAccount(g.stateDB)
 	newNodeKeyAddr := crypto.PubkeyToAddress(privKey.PublicKey)

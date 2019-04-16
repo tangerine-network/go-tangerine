@@ -2605,11 +2605,17 @@ func (g *GovernanceContract) transferOwnership(newOwner common.Address) ([]byte,
 	if g.contract.Caller() != g.state.Owner() {
 		return nil, errExecutionReverted
 	}
+	if newOwner == (common.Address{}) {
+		return nil, errExecutionReverted
+	}
 	g.state.SetOwner(newOwner)
 	return nil, nil
 }
 
 func (g *GovernanceContract) transferNodeOwnership(newOwner common.Address) ([]byte, error) {
+	if newOwner == (common.Address{}) {
+		return nil, errExecutionReverted
+	}
 	caller := g.contract.Caller()
 
 	offset := g.state.NodesOffsetByAddress(caller)
