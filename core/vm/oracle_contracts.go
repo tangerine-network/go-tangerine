@@ -1107,7 +1107,7 @@ func (s *GovernanceState) emitConfigurationChangedEvent() {
 	})
 }
 
-// event CRSProposed(uint256 round, bytes32 crs);
+// event CRSProposed(uint256 indexed Round, bytes32 CRS);
 func (s *GovernanceState) emitCRSProposed(round *big.Int, crs common.Hash) {
 	s.StateDB.AddLog(&types.Log{
 		Address: GovernanceContractAddress,
@@ -1180,28 +1180,37 @@ func (s *GovernanceState) emitNodeRemoved(nodeAddr common.Address) {
 	})
 }
 
-// event ForkReported(address indexed NodeAddress, address indexed Type, bytes Arg1, bytes Arg2);
+// event Reported(address indexed NodeAddress, uint256 Type, bytes Arg1, bytes Arg2);
 func (s *GovernanceState) emitReported(nodeAddr common.Address, reportType *big.Int, arg1, arg2 []byte) {
 
-	t, err := abi.NewType("bytes", nil)
+	t1, err := abi.NewType("uint256", nil)
+	if err != nil {
+		panic(err)
+	}
+	t2, err := abi.NewType("bytes", nil)
 	if err != nil {
 		panic(err)
 	}
 
 	arg := abi.Arguments{
 		abi.Argument{
+			Name:    "ReportType",
+			Type:    t1,
+			Indexed: false,
+		},
+		abi.Argument{
 			Name:    "Arg1",
-			Type:    t,
+			Type:    t2,
 			Indexed: false,
 		},
 		abi.Argument{
 			Name:    "Arg2",
-			Type:    t,
+			Type:    t2,
 			Indexed: false,
 		},
 	}
 
-	data, err := arg.Pack(arg1, arg2)
+	data, err := arg.Pack(reportType, arg1, arg2)
 	if err != nil {
 		panic(err)
 	}
