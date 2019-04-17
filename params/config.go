@@ -26,7 +26,7 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0x8e679e17117699f969f039a1ff04b32a0e14dfd7460d927a5759904cf7307e7a")
+	MainnetGenesisHash = common.HexToHash("0x55772f24c3d63f069523aad99039edf295e9e9c4a6854a6f4419d0d0f75c2d0b")
 	TestnetGenesisHash = common.HexToHash("0x7d8700a7a731162880adff4f21398a901c0b75d907bec8f4eac51460f94cb846")
 	TaipeiGenesisHash  = common.HexToHash("0x5929cb70fe4ba22dce821b2efca737a1874a0f5a34f3ffb9a1e157516622e20b")
 	YilanGenesisHash   = common.HexToHash("0xdcdafc044c24d728c6149ecfada746d8de6e59fc5d18063caf7950badc1df12e")
@@ -56,7 +56,7 @@ var (
 		PetersburgBlock:     big.NewInt(0),
 		Dexcon: &DexconConfig{
 			GenesisCRSText:    "In DEXON, we trust.",
-			Owner:             common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
+			Owner:             common.HexToAddress("0x2D9f82B399113De36c718BEf361528a856208057"),
 			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			LockupPeriod:      86400 * 1000,
 			MiningVelocity:    0.1875,
@@ -79,19 +79,10 @@ var (
 			},
 		},
 		Recovery: &RecoveryConfig{
-			Contract:     common.HexToAddress("0xcb4bb8ae26b2ebe5a1e2e8d5236020f33ffb2294"),
+			Contract:     common.HexToAddress("0x55bca9AcEE38cfB111cE290f5ce9a6bD3699D790"),
 			Timeout:      120,
 			Confirmation: 5,
 		},
-	}
-
-	// MainnetTrustedCheckpoint contains the light client trusted checkpoint for the main network.
-	MainnetTrustedCheckpoint = &TrustedCheckpoint{
-		Name:         "mainnet",
-		SectionIndex: 227,
-		SectionHead:  common.HexToHash("0xa2e0b25d72c2fc6e35a7f853cdacb193b4b4f95c606accf7f8fa8415283582c7"),
-		CHTRoot:      common.HexToHash("0xf69bdd4053b95b61a27b106a0e86103d791edd8574950dc96aa351ab9b9f1aa0"),
-		BloomRoot:    common.HexToHash("0xec1b454d4c6322c78ccedf76ac922a8698c3cac4d98748a84af4995b7bd3d744"),
 	}
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Taiwan test network.
@@ -109,7 +100,7 @@ var (
 		PetersburgBlock:     big.NewInt(0),
 		Dexcon: &DexconConfig{
 			GenesisCRSText:    "In DEXON, we trust.",
-			Owner:             common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
+			Owner:             common.HexToAddress("0xBF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
 			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			LockupPeriod:      86400 * 1000,
 			MiningVelocity:    0.1875,
@@ -153,7 +144,7 @@ var (
 		PetersburgBlock:     big.NewInt(0),
 		Dexcon: &DexconConfig{
 			GenesisCRSText:    "In DEXON, we trust.",
-			Owner:             common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
+			Owner:             common.HexToAddress("0xBF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
 			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			LockupPeriod:      3600 * 2 * 1000,
 			MiningVelocity:    0.1875,
@@ -182,15 +173,6 @@ var (
 		},
 	}
 
-	// TestnetTrustedCheckpoint contains the light client trusted checkpoint for the Ropsten test network.
-	TestnetTrustedCheckpoint = &TrustedCheckpoint{
-		Name:         "testnet",
-		SectionIndex: 161,
-		SectionHead:  common.HexToHash("0x5378afa734e1feafb34bcca1534c4d96952b754579b96a4afb23d5301ecececc"),
-		CHTRoot:      common.HexToHash("0x1cf2b071e7443a62914362486b613ff30f60cea0d9c268ed8c545f876a3ee60c"),
-		BloomRoot:    common.HexToHash("0x5ac25c84bd18a9cbe878d4609a80220f57f85037a112644532412ba0d498a31b"),
-	}
-
 	// YilanChainConfig contains the chain parameters to run a node on the Yilan test network.
 	YilanChainConfig = &ChainConfig{
 		ChainID:             big.NewInt(240),
@@ -205,7 +187,7 @@ var (
 		ConstantinopleBlock: big.NewInt(0),
 		Dexcon: &DexconConfig{
 			GenesisCRSText:    "In DEXON, we trust, at Yilan",
-			Owner:             common.HexToAddress("BF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
+			Owner:             common.HexToAddress("0xBF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
 			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			LockupPeriod:      86400 * 3 * 1000,
 			MiningVelocity:    0.1875,
@@ -232,6 +214,24 @@ var (
 			Timeout:      120,
 			Confirmation: 1,
 		},
+	}
+
+	// MainnetTrustedCheckpoint contains the light client trusted checkpoint for the main network.
+	MainnetTrustedCheckpoint = &TrustedCheckpoint{
+		Name:         "mainnet",
+		SectionIndex: 227,
+		SectionHead:  common.HexToHash("0xa2e0b25d72c2fc6e35a7f853cdacb193b4b4f95c606accf7f8fa8415283582c7"),
+		CHTRoot:      common.HexToHash("0xf69bdd4053b95b61a27b106a0e86103d791edd8574950dc96aa351ab9b9f1aa0"),
+		BloomRoot:    common.HexToHash("0xec1b454d4c6322c78ccedf76ac922a8698c3cac4d98748a84af4995b7bd3d744"),
+	}
+
+	// TestnetTrustedCheckpoint contains the light client trusted checkpoint for the Ropsten test network.
+	TestnetTrustedCheckpoint = &TrustedCheckpoint{
+		Name:         "testnet",
+		SectionIndex: 161,
+		SectionHead:  common.HexToHash("0x5378afa734e1feafb34bcca1534c4d96952b754579b96a4afb23d5301ecececc"),
+		CHTRoot:      common.HexToHash("0x1cf2b071e7443a62914362486b613ff30f60cea0d9c268ed8c545f876a3ee60c"),
+		BloomRoot:    common.HexToHash("0x5ac25c84bd18a9cbe878d4609a80220f57f85037a112644532412ba0d498a31b"),
 	}
 
 	// AllEthashProtocolChanges contains every protocol change (EIPs) introduced
