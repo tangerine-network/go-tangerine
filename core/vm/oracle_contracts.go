@@ -528,23 +528,21 @@ func (s *GovernanceState) DeleteNodesOffsetByNodeKeyAddress(addr common.Address)
 	s.setStateBigInt(loc, big.NewInt(0))
 }
 
-func (s *GovernanceState) PutNodeOffsets(n *nodeInfo, offset *big.Int) error {
+func (s *GovernanceState) PutNodeOffsets(n *nodeInfo, offset *big.Int) {
 	address, err := publicKeyToNodeKeyAddress(n.PublicKey)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	s.PutNodesOffsetByNodeKeyAddress(address, offset)
 	s.PutNodesOffsetByAddress(n.Owner, offset)
-	return nil
 }
-func (s *GovernanceState) DeleteNodeOffsets(n *nodeInfo) error {
+func (s *GovernanceState) DeleteNodeOffsets(n *nodeInfo) {
 	address, err := publicKeyToNodeKeyAddress(n.PublicKey)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	s.DeleteNodesOffsetByNodeKeyAddress(address)
 	s.DeleteNodesOffsetByAddress(n.Owner)
-	return nil
 }
 
 func (s *GovernanceState) GetNodeByID(id coreTypes.NodeID) (*nodeInfo, error) {
@@ -990,9 +988,7 @@ func (s *GovernanceState) Register(
 		UnstakedAt: big.NewInt(0),
 	}
 	s.PushNode(node)
-	if err := s.PutNodeOffsets(node, offset); err != nil {
-		panic(err)
-	}
+	s.PutNodeOffsets(node, offset)
 
 	if staked.Cmp(big.NewInt(0)) == 0 {
 		return
@@ -1759,9 +1755,7 @@ func (g *GovernanceContract) register(
 		UnstakedAt: big.NewInt(0),
 	}
 	g.state.PushNode(node)
-	if err := g.state.PutNodeOffsets(node, offset); err != nil {
-		return nil, errExecutionReverted
-	}
+	g.state.PutNodeOffsets(node, offset)
 	g.state.emitNodeAdded(caller)
 
 	if value.Cmp(big.NewInt(0)) > 0 {
@@ -1870,9 +1864,7 @@ func (g *GovernanceContract) withdraw() ([]byte, error) {
 		if offset.Cmp(lastIndex) != 0 {
 			lastNode := g.state.Node(lastIndex)
 			g.state.UpdateNode(offset, lastNode)
-			if err := g.state.PutNodeOffsets(lastNode, offset); err != nil {
-				panic(err)
-			}
+			g.state.PutNodeOffsets(lastNode, offset)
 		}
 		g.state.DeleteNodeOffsets(node)
 		g.state.PopLastNode()
