@@ -1827,6 +1827,9 @@ func (g *GovernanceContract) unstake(amount *big.Int) ([]byte, error) {
 }
 
 func (g *GovernanceContract) withdraw() ([]byte, error) {
+	if !g.withdrawable() {
+		return nil, errExecutionReverted
+	}
 	caller := g.contract.Caller()
 
 	offset := g.state.NodesOffsetByAddress(caller)
@@ -1835,21 +1838,6 @@ func (g *GovernanceContract) withdraw() ([]byte, error) {
 	}
 
 	node := g.state.Node(offset)
-
-	// Can not withdraw if there are unpaied fine.
-	if node.Fined.Cmp(big.NewInt(0)) > 0 {
-		return nil, errExecutionReverted
-	}
-
-	// Can not withdraw if there are no pending withdrawal.
-	if node.Unstaked.Cmp(big.NewInt(0)) == 0 {
-		return nil, errExecutionReverted
-	}
-
-	unlockTime := new(big.Int).Add(node.UnstakedAt, g.state.LockupPeriod())
-	if g.evm.Time.Cmp(unlockTime) <= 0 {
-		return nil, errExecutionReverted
-	}
 
 	amount := node.Unstaked
 	node.Unstaked = big.NewInt(0)
@@ -1878,6 +1866,30 @@ func (g *GovernanceContract) withdraw() ([]byte, error) {
 	g.state.emitWithdrawn(caller, amount)
 
 	return g.useGas(GovernanceActionGasCost)
+}
+
+func (g *GovernanceContract) withdrawable() bool {
+	caller := g.contract.Caller()
+
+	offset := g.state.NodesOffsetByAddress(caller)
+	if offset.Cmp(big.NewInt(0)) < 0 {
+		return false
+	}
+
+	node := g.state.Node(offset)
+
+	// Can not withdraw if there are unpaied fine.
+	if node.Fined.Cmp(big.NewInt(0)) > 0 {
+		return false
+	}
+
+	// Can not withdraw if there are no pending withdrawal.
+	if node.Unstaked.Cmp(big.NewInt(0)) == 0 {
+		return false
+	}
+
+	unlockTime := new(big.Int).Add(node.UnstakedAt, g.state.LockupPeriod())
+	return g.evm.Time.Cmp(unlockTime) > 0
 }
 
 func (g *GovernanceContract) payFine(nodeAddr common.Address) ([]byte, error) {
@@ -2290,6 +2302,12 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		return g.updateConfiguration(&cfg)
 	case "withdraw":
 		return g.withdraw()
+	case "withdrawable":
+		res, err := method.Outputs.Pack(g.withdrawable())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 
 	// --------------------------------
 	// Solidity auto generated methods.

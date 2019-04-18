@@ -411,13 +411,26 @@ func (g *OracleContractsTestSuite) TestStakingMechanism() {
 	g.Require().Equal(0, len(g.s.QualifiedNodes()))
 	g.Require().Equal(amount.String(), g.s.TotalStaked().String())
 
+	var ok bool
 	// Withdraw immediately should fail.
+	input, err = GovernanceABI.ABI.Pack("withdrawable")
+	g.Require().NoError(err)
+	output, err := g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+	GovernanceABI.ABI.Unpack(&ok, "withdrawable", output)
+	g.Require().False(ok)
 	input, err = GovernanceABI.ABI.Pack("withdraw")
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
 	g.Require().Error(err)
 
 	// Wait for lockup time than withdraw.
+	input, err = GovernanceABI.ABI.Pack("withdrawable")
+	g.Require().NoError(err)
+	output, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+	GovernanceABI.ABI.Unpack(&ok, "withdrawable", output)
+	g.Require().False(ok)
 	time.Sleep(time.Second * 2)
 	input, err = GovernanceABI.ABI.Pack("withdraw")
 	g.Require().NoError(err)
@@ -434,6 +447,12 @@ func (g *OracleContractsTestSuite) TestStakingMechanism() {
 	g.Require().NoError(err)
 
 	time.Sleep(time.Second * 2)
+	input, err = GovernanceABI.ABI.Pack("withdrawable")
+	g.Require().NoError(err)
+	output, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+	GovernanceABI.ABI.Unpack(&ok, "withdrawable", output)
+	g.Require().True(ok)
 	input, err = GovernanceABI.ABI.Pack("withdraw")
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))

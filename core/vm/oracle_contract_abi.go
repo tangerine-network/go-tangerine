@@ -1136,6 +1136,20 @@ const GovernanceABIJSON = `
     "type": "function"
   },
   {
+    "constant": true,
+    "inputs": [],
+    "name": "withdrawable",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "constant": false,
     "inputs": [
       {
