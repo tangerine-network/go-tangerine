@@ -25,8 +25,8 @@ import (
 
 	"github.com/dexon-foundation/dexon/common/math"
 	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/crypto/secp256k1"
 	"github.com/dexon-foundation/dexon/p2p/enode"
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 )
 
 // node represents a host on the network.

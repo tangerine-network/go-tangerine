@@ -38,8 +38,8 @@ import (
 	"github.com/dexon-foundation/dexon/common/bitutil"
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/crypto/ecies"
-	"github.com/dexon-foundation/dexon/crypto/secp256k1"
 	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/ethereum/go-ethereum/crypto/secp256k1"
 	"github.com/golang/snappy"
 	"golang.org/x/crypto/sha3"
 )
