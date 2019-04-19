@@ -848,7 +848,7 @@ func (d *Downloader) findAncestor(p *peerConnection, remoteHeader *types.Header)
 				default:
 					known = d.lightchain.HasHeader(h, n)
 				}
-				if known {
+				if n <= localHeight && known {
 					number, hash = n, h
 					break
 				}
@@ -919,7 +919,7 @@ func (d *Downloader) findAncestor(p *peerConnection, remoteHeader *types.Header)
 				default:
 					known = d.lightchain.HasHeader(h, n)
 				}
-				if !known {
+				if !known || n > localHeight {
 					end = check
 					break
 				}
