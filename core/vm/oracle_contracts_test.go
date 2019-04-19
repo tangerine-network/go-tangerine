@@ -277,15 +277,12 @@ func (g *OracleContractsTestSuite) TestTransferOwnership() {
 func (g *OracleContractsTestSuite) TestTransferNodeOwnership() {
 	privKey, addr := newPrefundAccount(g.stateDB)
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
-	nodeKeyAddr := crypto.PubkeyToAddress(privKey.PublicKey)
 
 	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6))
 	input, err := GovernanceABI.ABI.Pack("register", pk, "Test1", "test1@dexon.org", "Taipei", "https://dexon.org")
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, addr, input, amount)
 	g.Require().NoError(err)
-
-	offset := g.s.NodesOffsetByAddress(addr)
 
 	// Call with not valid new owner.
 	input, err = GovernanceABI.ABI.Pack("transferNodeOwnership", common.Address{})
@@ -294,7 +291,6 @@ func (g *OracleContractsTestSuite) TestTransferNodeOwnership() {
 	g.Require().NotNil(err)
 
 	_, newAddr := newPrefundAccount(g.stateDB)
-	newNodeKeyAddr := crypto.PubkeyToAddress(privKey.PublicKey)
 
 	input, err = GovernanceABI.ABI.Pack("transferNodeOwnership", newAddr)
 	g.Require().NoError(err)
@@ -307,10 +303,9 @@ func (g *OracleContractsTestSuite) TestTransferNodeOwnership() {
 	// Call with owner.
 	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
 	g.Require().NoError(err)
-	g.Require().Equal(uint64(0), g.s.NodesOffsetByAddress(addr).Uint64())
-	g.Require().Equal(uint64(0), g.s.NodesOffsetByNodeKeyAddress(nodeKeyAddr).Uint64())
-	g.Require().Equal(offset.Uint64(), g.s.NodesOffsetByAddress(newAddr).Uint64())
-	g.Require().Equal(offset.Uint64(), g.s.NodesOffsetByNodeKeyAddress(newNodeKeyAddr).Uint64())
+	g.Require().Equal(-1, int(g.s.NodesOffsetByAddress(addr).Int64()))
+	g.Require().Equal(0, int(g.s.NodesOffsetByNodeKeyAddress(addr).Int64()))
+	g.Require().Equal(0, int(g.s.NodesOffsetByAddress(newAddr).Int64()))
 
 	// New node for duplication test.
 	privKey2, addr2 := newPrefundAccount(g.stateDB)
@@ -337,8 +332,6 @@ func (g *OracleContractsTestSuite) TestReplaceNodePublicKey() {
 	_, err = g.call(GovernanceContractAddress, addr, input, amount)
 	g.Require().NoError(err)
 
-	offset := g.s.NodesOffsetByAddress(addr)
-
 	privKey2, addr2 := newPrefundAccount(g.stateDB)
 	pk2 := crypto.FromECDSAPub(&privKey2.PublicKey)
 
@@ -353,7 +346,10 @@ func (g *OracleContractsTestSuite) TestReplaceNodePublicKey() {
 	// Call with owner.
 	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
 	g.Require().NoError(err)
-	g.Require().Equal(offset.Uint64(), g.s.NodesOffsetByNodeKeyAddress(addr2).Uint64())
+
+	g.Require().Equal(-1, int(g.s.NodesOffsetByNodeKeyAddress(addr).Int64()))
+	g.Require().Equal(0, int(g.s.NodesOffsetByAddress(addr).Int64()))
+	g.Require().Equal(0, int(g.s.NodesOffsetByNodeKeyAddress(addr2).Int64()))
 }
 
 func (g *OracleContractsTestSuite) TestStakingMechanism() {
