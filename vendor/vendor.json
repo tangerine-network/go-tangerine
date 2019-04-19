@@ -141,16 +141,16 @@
 		{
 			"checksumSHA1": "In6vBHYUsX7DUIGiFN2hQggBgvI=",
 			"path": "github.com/dexon-foundation/dexon-consensus/common",
-			"revision": "ccba7be9105c01eba0617e5ec0a791436200a132",
-			"revisionTime": "2019-04-15T10:50:35Z",
+			"revision": "6ab10aadc24193b1366bb1f048b92c1a6aec4861",
+			"revisionTime": "2019-04-19T04:03:31Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "Uc+4k6fJSR3wZ4R4gZBnoBrZHq8=",
+			"checksumSHA1": "m2MgY+DBrYg0nQykXcGbfhbZi0s=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core",
-			"revision": "ccba7be9105c01eba0617e5ec0a791436200a132",
-			"revisionTime": "2019-04-15T10:50:35Z",
+			"revision": "6ab10aadc24193b1366bb1f048b92c1a6aec4861",
+			"revisionTime": "2019-04-19T04:03:31Z",
 			"version": "master",
 			"versionExact": "master"
 		},
@@ -165,64 +165,64 @@
 		{
 			"checksumSHA1": "tQSbYCu5P00lUhKsx3IbBZCuSLY=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/crypto",
-			"revision": "ccba7be9105c01eba0617e5ec0a791436200a132",
-			"revisionTime": "2019-04-15T10:50:35Z",
+			"revision": "6ab10aadc24193b1366bb1f048b92c1a6aec4861",
+			"revisionTime": "2019-04-19T04:03:31Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "4besQaa0rm8jRUAJjpEaLZ/ZOYs=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/crypto/dkg",
-			"revision": "ccba7be9105c01eba0617e5ec0a791436200a132",
-			"revisionTime": "2019-04-15T10:50:35Z",
+			"revision": "6ab10aadc24193b1366bb1f048b92c1a6aec4861",
+			"revisionTime": "2019-04-19T04:03:31Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "BhLKK8RveoLaeXc9UyUKMwQqchU=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa",
-			"revision": "ccba7be9105c01eba0617e5ec0a791436200a132",
-			"revisionTime": "2019-04-15T10:50:35Z",
+			"revision": "6ab10aadc24193b1366bb1f048b92c1a6aec4861",
+			"revisionTime": "2019-04-19T04:03:31Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "3Ludp/1V4dMBZH/c1oIVjHj0CqY=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/db",
-			"revision": "ccba7be9105c01eba0617e5ec0a791436200a132",
-			"revisionTime": "2019-04-15T10:50:35Z",
+			"revision": "6ab10aadc24193b1366bb1f048b92c1a6aec4861",
+			"revisionTime": "2019-04-19T04:03:31Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "sO5twEFTdLvkMuQo+I3vyzm9T3o=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/syncer",
-			"revision": "ccba7be9105c01eba0617e5ec0a791436200a132",
-			"revisionTime": "2019-04-15T10:50:35Z",
+			"revision": "6ab10aadc24193b1366bb1f048b92c1a6aec4861",
+			"revisionTime": "2019-04-19T04:03:31Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "0BY+E0E2cM7IHIMqunXwoolDS5Y=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/types",
-			"revision": "ccba7be9105c01eba0617e5ec0a791436200a132",
-			"revisionTime": "2019-04-15T10:50:35Z",
+			"revision": "6ab10aadc24193b1366bb1f048b92c1a6aec4861",
+			"revisionTime": "2019-04-19T04:03:31Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "yEPSfn48GaJmDbd2OFY+QRhjJ0w=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/types/dkg",
-			"revision": "ccba7be9105c01eba0617e5ec0a791436200a132",
-			"revisionTime": "2019-04-15T10:50:35Z",
+			"revision": "6ab10aadc24193b1366bb1f048b92c1a6aec4861",
+			"revisionTime": "2019-04-19T04:03:31Z",
 			"version": "master",
 			"versionExact": "master"
 		},
 		{
-			"checksumSHA1": "7Ib134BAyLF1M/kREou4Zm7UUS4=",
+			"checksumSHA1": "51hQ5Wl/n9A5cu8t2yNIqfUuIR8=",
 			"path": "github.com/dexon-foundation/dexon-consensus/core/utils",
-			"revision": "ccba7be9105c01eba0617e5ec0a791436200a132",
-			"revisionTime": "2019-04-15T10:50:35Z",
+			"revision": "6ab10aadc24193b1366bb1f048b92c1a6aec4861",
+			"revisionTime": "2019-04-19T04:03:31Z",
 			"version": "master",
 			"versionExact": "master"
 		},
