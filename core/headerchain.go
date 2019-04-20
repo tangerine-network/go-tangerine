@@ -411,6 +411,11 @@ func (hc *HeaderChain) ValidateDexonHeaderChain(chain []*types.HeaderWithGovStat
 		}
 	}
 
+	// If the last TSig pass the verification, we don't need to verify others.
+	verifyTSig := false
+	if err := hc.verifyDexonHeader(chain[len(chain)-1].Header, gov, verifierCache, true); err != nil {
+		verifyTSig = true
+	}
 	// Iterate over the headers and ensure they all check out
 	for i, header := range chain {
 		// If the chain is terminating, stop processing blocks
@@ -426,7 +431,7 @@ func (hc *HeaderChain) ValidateDexonHeaderChain(chain []*types.HeaderWithGovStat
 			}
 		}
 
-		if err := hc.verifyDexonHeader(header.Header, gov, verifierCache); err != nil {
+		if err := hc.verifyDexonHeader(header.Header, gov, verifierCache, verifyTSig); err != nil {
 			return i, err
 		}
 
@@ -467,7 +472,7 @@ func (hc *HeaderChain) VerifyDexonHeader(header *types.Header,
 		return consensus.ErrUnknownAncestor
 	}
 
-	if err := hc.verifyDexonHeader(header, gov, verifierCache); err != nil {
+	if err := hc.verifyDexonHeader(header, gov, verifierCache, true); err != nil {
 		return err
 	}
 
@@ -494,7 +499,7 @@ func (hc *HeaderChain) VerifyDexonHeader(header *types.Header,
 
 func (hc *HeaderChain) verifyDexonHeader(header *types.Header,
 	gov dexcon.GovernanceStateFetcher,
-	verifierCache *dexCore.TSigVerifierCache) error {
+	verifierCache *dexCore.TSigVerifierCache, verifyTSig bool) error {
 
 	// If the header is a banned one, straight out abort
 	if BadHashes[header.Hash()] {
@@ -513,9 +518,11 @@ func (hc *HeaderChain) verifyDexonHeader(header *types.Header,
 			header.Number.Uint64(), err)
 	}
 
-	if err := hc.verifyTSig(&coreBlock, verifierCache); err != nil {
-		log.Debug("verify header sig fail, number=%d, err=%v",
-			header.Number.Uint64(), err)
+	if verifyTSig {
+		if err := hc.verifyTSig(&coreBlock, verifierCache); err != nil {
+			log.Debug("verify header sig fail, number=%d, err=%v",
+				header.Number.Uint64(), err)
+		}
 	}
 
 	gs := gov.GetStateForConfigAtRound(header.Round)
