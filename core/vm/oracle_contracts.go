@@ -1706,6 +1706,18 @@ func (g *GovernanceContract) updateConfiguration(cfg *rawConfigStruct) ([]byte, 
 		return nil, errExecutionReverted
 	}
 
+	// Sanity checks.
+	if cfg.MinStake.Cmp(big.NewInt(0)) <= 0 ||
+		cfg.LockupPeriod.Cmp(big.NewInt(0)) <= 0 ||
+		cfg.BlockGasLimit.Cmp(big.NewInt(0)) <= 0 ||
+		cfg.MinGasPrice.Cmp(big.NewInt(0)) <= 0 ||
+		cfg.LambdaBA.Cmp(big.NewInt(0)) <= 0 ||
+		cfg.LambdaDKG.Cmp(big.NewInt(0)) <= 0 ||
+		cfg.RoundLength.Cmp(big.NewInt(0)) <= 0 ||
+		cfg.MinBlockInterval.Cmp(big.NewInt(0)) <= 0 {
+		return nil, errExecutionReverted
+	}
+
 	g.state.UpdateConfigurationRaw(cfg)
 	g.state.emitConfigurationChangedEvent()
 
