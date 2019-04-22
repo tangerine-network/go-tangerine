@@ -36,6 +36,7 @@ import (
 	"github.com/dexon-foundation/dexon/consensus/dexcon"
 	"github.com/dexon-foundation/dexon/core/rawdb"
 	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/dexon-foundation/dexon/core/vm"
 	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/dexon-foundation/dexon/ethdb"
 	"github.com/dexon-foundation/dexon/log"
@@ -396,6 +397,71 @@ func (hc *HeaderChain) WriteDexonHeader(header *types.HeaderWithGovState) (statu
 
 type Wh2Callback func(*types.HeaderWithGovState) error
 
+type headerVerifierCache struct {
+	verifierCache  *dexCore.TSigVerifierCache
+	gov            dexcon.GovernanceStateFetcher
+	stateCache     *lru.Cache
+	nodeOwnerCache *lru.Cache
+	configCache    *lru.Cache
+}
+
+func newHeaderVerifierCache(
+	verifierCache *dexCore.TSigVerifierCache,
+	gov dexcon.GovernanceStateFetcher) *headerVerifierCache {
+	stateCache, _ := lru.New(5)
+	nodeOwnerCache, _ := lru.New(5)
+	configCache, _ := lru.New(5)
+	return &headerVerifierCache{
+		verifierCache:  verifierCache,
+		gov:            gov,
+		stateCache:     stateCache,
+		nodeOwnerCache: nodeOwnerCache,
+		configCache:    configCache,
+	}
+}
+
+func (c *headerVerifierCache) state(round uint64) *vm.GovernanceState {
+	if state, exist := c.stateCache.Get(round); exist {
+		return state.(*vm.GovernanceState)
+	}
+	state := c.gov.GetStateForConfigAtRound(round)
+	c.stateCache.Add(round, state)
+	return state
+}
+
+func (c *headerVerifierCache) getNodeOwnerByID(round uint64, ID coreTypes.NodeID) (
+	common.Address, error) {
+	nodeOwner, exist := c.nodeOwnerCache.Get(round)
+	if !exist {
+		nodeOwner = make(map[coreTypes.NodeID]interface{})
+		c.nodeOwnerCache.Add(round, nodeOwner)
+	}
+	nodeOwnerMap := nodeOwner.(map[coreTypes.NodeID]interface{})
+	if owner, exist := nodeOwnerMap[ID]; exist {
+		if addr, ok := owner.(common.Address); ok {
+			return addr, nil
+		}
+		return common.Address{}, owner.(error)
+	}
+	node, err := c.state(round).GetNodeByID(ID)
+	if err != nil {
+		nodeOwnerMap[ID] = err
+		return common.Address{}, err
+	}
+	nodeOwnerMap[ID] = node.Owner
+	return node.Owner, nil
+
+}
+
+func (c *headerVerifierCache) configuration(round uint64) *params.DexconConfig {
+	if cfg, exist := c.configCache.Get(round); exist {
+		return cfg.(*params.DexconConfig)
+	}
+	cfg := c.state(round).Configuration()
+	c.configCache.Add(round, cfg)
+	return cfg
+}
+
 func (hc *HeaderChain) ValidateDexonHeaderChain(chain []*types.HeaderWithGovState,
 	gov dexcon.GovernanceStateFetcher,
 	verifierCache *dexCore.TSigVerifierCache, validator Validator) (int, error) {
@@ -412,8 +478,9 @@ func (hc *HeaderChain) ValidateDexonHeaderChain(chain []*types.HeaderWithGovStat
 	}
 
 	// If the last TSig pass the verification, we don't need to verify others.
+	cache := newHeaderVerifierCache(verifierCache, gov)
 	verifyTSig := false
-	if err := hc.verifyDexonHeader(chain[len(chain)-1].Header, gov, verifierCache, true); err != nil {
+	if err := hc.verifyDexonHeader(chain[len(chain)-1].Header, gov, cache, true); err != nil {
 		verifyTSig = true
 	}
 	// Iterate over the headers and ensure they all check out
@@ -431,7 +498,7 @@ func (hc *HeaderChain) ValidateDexonHeaderChain(chain []*types.HeaderWithGovStat
 			}
 		}
 
-		if err := hc.verifyDexonHeader(header.Header, gov, verifierCache, verifyTSig); err != nil {
+		if err := hc.verifyDexonHeader(header.Header, gov, cache, verifyTSig); err != nil {
 			return i, err
 		}
 
@@ -471,8 +538,8 @@ func (hc *HeaderChain) VerifyDexonHeader(header *types.Header,
 	if parent := hc.GetHeader(header.ParentHash, header.Number.Uint64()-1); parent == nil {
 		return consensus.ErrUnknownAncestor
 	}
-
-	if err := hc.verifyDexonHeader(header, gov, verifierCache, true); err != nil {
+	cache := newHeaderVerifierCache(verifierCache, gov)
+	if err := hc.verifyDexonHeader(header, gov, cache, true); err != nil {
 		return err
 	}
 
@@ -499,7 +566,7 @@ func (hc *HeaderChain) VerifyDexonHeader(header *types.Header,
 
 func (hc *HeaderChain) verifyDexonHeader(header *types.Header,
 	gov dexcon.GovernanceStateFetcher,
-	verifierCache *dexCore.TSigVerifierCache, verifyTSig bool) error {
+	cache *headerVerifierCache, verifyTSig bool) error {
 
 	// If the header is a banned one, straight out abort
 	if BadHashes[header.Hash()] {
@@ -519,25 +586,23 @@ func (hc *HeaderChain) verifyDexonHeader(header *types.Header,
 	}
 
 	if verifyTSig {
-		if err := hc.verifyTSig(&coreBlock, verifierCache); err != nil {
+		if err := hc.verifyTSig(&coreBlock, cache.verifierCache); err != nil {
 			log.Debug("verify header sig fail, number=%d, err=%v",
 				header.Number.Uint64(), err)
 		}
 	}
-
-	gs := gov.GetStateForConfigAtRound(header.Round)
 
 	if coreBlock.IsEmpty() {
 		if header.Coinbase != (common.Address{}) {
 			return fmt.Errorf("coinbase should be nil for empty block")
 		}
 	} else {
-		node, err := gs.GetNodeByID(coreBlock.ProposerID)
+		owner, err := cache.getNodeOwnerByID(header.Round, coreBlock.ProposerID)
 		if err != nil {
 			return err
 		}
 
-		if header.Coinbase != node.Owner {
+		if header.Coinbase != owner {
 			return fmt.Errorf("coinbase mismatch")
 		}
 	}
@@ -558,7 +623,7 @@ func (hc *HeaderChain) verifyDexonHeader(header *types.Header,
 		return fmt.Errorf("round mismatch")
 	}
 
-	config := gs.Configuration()
+	config := cache.configuration(header.Round)
 	if header.GasLimit != config.BlockGasLimit {
 		return fmt.Errorf("block gas limit mismatch")
 	}
