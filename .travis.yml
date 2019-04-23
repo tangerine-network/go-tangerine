@@ -59,14 +59,17 @@ matrix:
       git:
         submodules: false
       script:
+        - cd build
+        - ./setup_recovery_env.sh
+        - cd ..
         - make gdex
         - cd test
-        - ./run_test.sh --ignore-log
+        - ./run_test.sh --smoke-test
         - cd ..
         - ./build/fullnode-test.sh
         - pkill -15 -f gdex
         - cd test
-        - ./run_test.sh --continue --ignore-log
+        - ./run_test.sh --continue --smoke-test
         - cd ..
         - ./build/recovery-test.sh
 

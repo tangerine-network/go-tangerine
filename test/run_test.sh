@@ -8,14 +8,14 @@ BOOTNODE="../build/bin/bootnode"
 
 
 CONTINUE=false
-IGNORELOG=false
+SMOKETEST=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --continue)
     CONTINUE=true
     ;;
-    --ignore-log)
-    IGNORELOG=true
+    --smoke-test)
+    SMOKETEST=true
     ;;
   esac
   shift
@@ -43,6 +43,17 @@ fi
 
 rm -f log-latest
 ln -s $logsdir log-latest
+
+
+# the recovery contract address 0x80859F3d0D781c2c4126962cab0c977b37820e78 is deployed using keystore/monkey.key
+if $SMOKETEST; then
+  if [ `uname` == "Darwin" ]; then
+    sed -i '' 's/"contract":.*,/"contract": "0x80859F3d0D781c2c4126962cab0c977b37820e78",/g' genesis.json
+  else
+    sed -i 's/"contract":.*,/"contract": "0x80859F3d0D781c2c4126962cab0c977b37820e78",/g' genesis.json
+  fi
+fi
+
 
 python << __FILE__
 import re
@@ -76,6 +87,13 @@ $GDEX \
 
 NUM_NODES=$(cat ${GENESIS} | grep 'DEXON Test Node' | wc -l)
 
+RECOVERY_FLAGS="--recovery.network-rpc=https://rinkeby.infura.io"
+
+if $SMOKETEST; then
+  RECOVERY_FLAGS="--recovery.network-rpc=http://127.0.0.1:8645"
+fi
+
+
 # Nodes
 for i in $(seq 0 $(($NUM_NODES - 1))); do
   datadir=$PWD/Dexon.$i
@@ -91,7 +109,7 @@ for i in $(seq 0 $(($NUM_NODES - 1))); do
     --gcmode=archive \
     --datadir=$datadir --nodekey=keystore/test$i.key \
     --port=$((30305 + $i)) \
-    --recovery.network-rpc="https://rinkeby.infura.io" \
+    ${RECOVERY_FLAGS} \
     --rpc --rpcapi=eth,net,web3,debug \
     --rpcaddr=0.0.0.0 --rpcport=$((8547 + $i * 2)) \
     --ws --wsapi=eth,net,web3,debug \
@@ -101,6 +119,6 @@ for i in $(seq 0 $(($NUM_NODES - 1))); do
     > $logsdir/gdex.$i.log 2>&1 &
 done
 
-if ! $IGNORELOG; then
+if ! $SMOKETEST; then
   tail -f $logsdir/gdex.*.log
 fi
