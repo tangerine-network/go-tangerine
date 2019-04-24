@@ -372,6 +372,7 @@ func (hc *HeaderChain) WriteDexonHeader(header *types.HeaderWithGovState) (statu
 
 	// Store the govState
 	if govState := header.GovState; govState != nil {
+		rawdb.WriteGovState(hc.chainDb, header.Hash(), header.GovState)
 		batch := hc.chainDb.NewBatch()
 		for _, node := range govState.Proof {
 			batch.Put(crypto.Keccak256(node), node)

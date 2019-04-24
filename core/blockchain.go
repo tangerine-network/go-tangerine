@@ -117,6 +117,7 @@ type BlockChain struct {
 	mu      sync.RWMutex // global mutex for locking chain operations
 	chainmu sync.RWMutex // blockchain insertion lock
 	procmu  sync.RWMutex // block processor lock
+	govmu   sync.RWMutex // gov state lock
 
 	checkpoint       int          // checkpoint counts towards the new checkpoint
 	currentBlock     atomic.Value // Current head of the block chain
@@ -983,7 +984,7 @@ func (bc *BlockChain) WriteBlockWithoutState(block *types.Block, td *big.Int) (e
 }
 
 // WriteBlockWithState writes the block and all associated state to the database.
-func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.Receipt, state *state.StateDB) (status WriteStatus, err error) {
+func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.Receipt, statedb *state.StateDB) (status WriteStatus, err error) {
 	bc.wg.Add(1)
 	defer bc.wg.Done()
 
@@ -1006,7 +1007,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	}
 	rawdb.WriteBlock(bc.db, block)
 
-	root, err := state.Commit(bc.chainConfig.IsEIP158(block.Number()))
+	root, err := statedb.Commit(bc.chainConfig.IsEIP158(block.Number()))
 	if err != nil {
 		return NonStatTy, err
 	}
@@ -1016,6 +1017,33 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 		bc.storeRoundHeight(block.Round(), block.NumberU64())
 	}
 	height, _ := bc.GetRoundHeight(block.Round())
+
+	// Write gov state into disk
+	if height == block.NumberU64() {
+		// spawn a goroutine to write gov state
+		go func() {
+			retry := 3
+			n := 0
+			for n < retry {
+				// get gov state from state db
+				tt := time.Now()
+				log.Debug("Write gov state", "n", n, "t", tt)
+				govState, err := state.GetGovState(statedb, block.Header(),
+					vm.GovernanceContractAddress)
+				log.Debug("Get gov state finished", "n", n, "elapsed", time.Since(tt))
+				if err == nil {
+					bc.govmu.Lock()
+					rawdb.WriteGovState(bc.db, block.Hash(), govState)
+					bc.govmu.Unlock()
+					log.Debug("Write gov state finished", "n", n, "elapsed", time.Since(tt))
+					break
+				} else {
+					log.Warn("Get gov state fail", "n", n, "err", err)
+				}
+				n++
+			}
+		}()
+	}
 
 	// If we're running an archive node or the block is snapshot height, always flush
 	if bc.cacheConfig.Disabled || height == block.NumberU64() {
@@ -1101,7 +1129,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 		}
 		// Write the positional metadata for transaction/receipt lookups and preimages
 		rawdb.WriteTxLookupEntries(batch, block)
-		rawdb.WritePreimages(batch, state.Preimages())
+		rawdb.WritePreimages(batch, statedb.Preimages())
 
 		status = CanonStatTy
 	} else {
@@ -1889,6 +1917,16 @@ func (bc *BlockChain) GetGovStateByHash(hash common.Hash) (*types.GovState, erro
 	if header == nil {
 		return nil, fmt.Errorf("header not found")
 	}
+
+	// Get gov state from disk first.
+	bc.govmu.Lock()
+	if govState := rawdb.ReadGovState(bc.db, header.Hash()); govState != nil {
+		bc.govmu.Unlock()
+		log.Debug("Read gov state from db success")
+		return govState, nil
+	}
+	bc.govmu.Unlock()
+
 	statedb, err := bc.StateAt(header.Root)
 	if err != nil {
 		return nil, err
@@ -1901,6 +1939,16 @@ func (bc *BlockChain) GetGovStateByNumber(number uint64) (*types.GovState, error
 	if header == nil {
 		return nil, fmt.Errorf("header not found")
 	}
+
+	// Get gov state from disk first.
+	bc.govmu.Lock()
+	if govState := rawdb.ReadGovState(bc.db, header.Hash()); govState != nil {
+		bc.govmu.Unlock()
+		log.Debug("Read gov state from db success")
+		return govState, nil
+	}
+	bc.govmu.Unlock()
+
 	statedb, err := bc.StateAt(header.Root)
 	if err != nil {
 		return nil, err

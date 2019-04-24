@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"math/big"
+	"time"
 
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/core/types"
@@ -381,4 +382,50 @@ func FindCommonAncestor(db DatabaseReader, a, b *types.Header) *types.Header {
 		}
 	}
 	return a
+}
+
+// ReadGovStateRLP retrieves
+func ReadGovStateRLP(db DatabaseReader, hash common.Hash) rlp.RawValue {
+	data, _ := db.Get(govStateKey(hash))
+	return data
+}
+
+// WriteGovStateRLP
+func WriteGovStateRLP(db DatabaseWriter, hash common.Hash, rlp rlp.RawValue) {
+	if err := db.Put(govStateKey(hash), rlp); err != nil {
+		log.Crit("Failed to store gov state", "err", err)
+	}
+}
+
+// ReadGovState
+func ReadGovState(db DatabaseReader, hash common.Hash) *types.GovState {
+	data := ReadGovStateRLP(db, hash)
+	if len(data) == 0 {
+		return nil
+	}
+	govState := new(types.GovState)
+	if err := rlp.Decode(bytes.NewReader(data), govState); err != nil {
+		log.Error("Invalid gov state RLP", "hash", hash, "err", err)
+		return nil
+	}
+	return govState
+}
+
+// WriteGovState
+func WriteGovState(db DatabaseWriter, hash common.Hash, govState *types.GovState) {
+	t := time.Now()
+	log.Debug("Rawdb WriteGovState", "t", t)
+	data, err := rlp.EncodeToBytes(govState)
+	if err != nil {
+		log.Crit("Failed to RLP encode gov state", "err", err)
+	}
+	log.Debug("Rawdb WriteGovState", "len", len(data), "elapsed", time.Since(t))
+	WriteGovStateRLP(db, hash, data)
+}
+
+// DeleteGovState
+func DeleteGovState(db DatabaseDeleter, hash common.Hash) {
+	if err := db.Delete(govStateKey(hash)); err != nil {
+		log.Crit("Failed to delete gov satate", "err", err)
+	}
 }

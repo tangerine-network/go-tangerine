@@ -588,7 +588,10 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 
 			for _, header := range headers {
 				if _, exist := snapshotHeight[header.Number.Uint64()]; exist {
+					tt := time.Now()
+					log.Debug("Handler get gov state by hash", "t", tt)
 					s, err := pm.blockchain.GetGovStateByHash(header.Hash())
+					log.Debug("Handler get gov state by hash", "elapsed", time.Since(tt))
 					if err != nil {
 						log.Warn("Get gov state by hash fail", "number", header.Number.Uint64(), "err", err)
 						return p.SendBlockHeaders(query.Flag, []*types.HeaderWithGovState{})
