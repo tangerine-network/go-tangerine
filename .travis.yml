@@ -5,6 +5,7 @@ branches:
   only:
   - dev
   - master
+  - /^release\/[\d+\.]+$/
 matrix:
   include:
     - os: linux
