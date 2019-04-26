@@ -119,7 +119,7 @@ matrix:
         - go run build/ci.go purge -store dexon-prod-builds -days 14
 before_install:
 - openssl aes-256-cbc -K $encrypted_556a2b2ff7f6_key -iv $encrypted_556a2b2ff7f6_iv
-  -in .ci/dexon-prod-b62a1de183ff.json.enc -out ./dexon-prod-b62a1de183ff.json -d
+  -in .ci/dexon-prod-3d1adb575af2.json.enc -out ./dexon-prod-3d1adb575af2.json -d
 notifications:
   slack:
     secure: A97rF68wXOO74Q+kriJdNpXpIQOruGnrRWaAfvqkpWM3Xyd6Qc8ba22n/GdzCWeJt1ZPP2Zqx8gSGmkUjKTq4PUWshbvLZA0KL/OoBnMxrdGLn/tissny9l1iaSm/K2rV9J2IYKu5MESjWh4K7mYfQJ7UvefBeTsiNgtu8FewEbQCmnlE4NgWUo5zADRAGTkCky3wP7OIxl0pEg9wZi2ws9GnmMzb5MsuJHCY2l2RVpmFnvvhiZWlq3k6wNy2FDKmePFU/sBTOGs1XQbfW3dbJHmi+e32Z5vrq3Th6DxmEC/St0Nf0CXvGDe8xYqyGqrNTzOmHuKQdORUZSYLgX4cz4caPEwGoxz1wdLnVNAz6vIH6zcSX0FJx+oZYhbQmrXJXBOLnDdjoectwC+S/f7yFUdmNfa7pD3ZqdCmrvnr4HomRx8YrOd2cG+A1+K81VnlImbo0Ot5Ppj8rE+Jgqb1Bl0Ngm9RNHMN8JJrGy6vWmaCQz/+LwijiZiBLV5lQBeFxE9JGcGiVgaH03MpXo6qdxS2VLRbsb9bf03YZWP6CdSqGuN88egZZvJVTGdKGH3NkDcyHhtJWNREEo5MTz3pzJCWtC5EsplTgFohRF1qr5ZWkDCODTAH2fLgxRXeMvCr4WVca9P2hvm+3LUxgMxiZEyhjWH4EcZnAbbG/FL4fo=
