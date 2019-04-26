@@ -961,6 +961,24 @@ const GovernanceABIJSON = `
     "constant": false,
     "inputs": [
       {
+        "name": "OldOwner",
+        "type": "address"
+      },
+      {
+        "name": "NewOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferNodeOwnershipByFoundation",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
         "name": "NewPublicKey",
         "type": "bytes"
       }

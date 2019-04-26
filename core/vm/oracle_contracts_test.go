@@ -322,6 +322,40 @@ func (g *OracleContractsTestSuite) TestTransferNodeOwnership() {
 	g.Require().Error(err)
 }
 
+func (g *OracleContractsTestSuite) TestTransferNodeOwnershipByFoundation() {
+	privKey, addr := newPrefundAccount(g.stateDB)
+	pk := crypto.FromECDSAPub(&privKey.PublicKey)
+
+	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6))
+	input, err := GovernanceABI.ABI.Pack("register", pk, "Test1", "test1@dexon.org", "Taipei", "https://dexon.org")
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, addr, input, amount)
+	g.Require().NoError(err)
+
+	_, newAddr := newPrefundAccount(g.stateDB)
+
+	// Call with not valid new owner.
+	input, err = GovernanceABI.ABI.Pack("transferNodeOwnershipByFoundation", common.Address{}, newAddr)
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
+	g.Require().NotNil(err)
+
+	input, err = GovernanceABI.ABI.Pack("transferNodeOwnershipByFoundation", addr, newAddr)
+	g.Require().NoError(err)
+
+	// Call with gov owner.
+	_, noneOwner := newPrefundAccount(g.stateDB)
+	_, err = g.call(GovernanceContractAddress, noneOwner, input, big.NewInt(0))
+	g.Require().Error(err)
+
+	// Call with gov owner.
+	_, err = g.call(GovernanceContractAddress, g.config.Owner, input, big.NewInt(0))
+	g.Require().NoError(err)
+	g.Require().Equal(-1, int(g.s.NodesOffsetByAddress(addr).Int64()))
+	g.Require().Equal(0, int(g.s.NodesOffsetByNodeKeyAddress(addr).Int64()))
+	g.Require().Equal(0, int(g.s.NodesOffsetByAddress(newAddr).Int64()))
+}
+
 func (g *OracleContractsTestSuite) TestReplaceNodePublicKey() {
 	privKey, addr := newPrefundAccount(g.stateDB)
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)

@@ -2300,6 +2300,15 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return g.transferNodeOwnership(newOwner)
+	case "transferNodeOwnershipByFoundation":
+		args := struct {
+			OldOwner common.Address
+			NewOwner common.Address
+		}{}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.transferNodeOwnershipByFoundation(args.OldOwner, args.NewOwner)
 	case "unstake":
 		amount := new(big.Int)
 		if err := method.Inputs.Unpack(&amount, arguments); err != nil {
@@ -2675,6 +2684,38 @@ func (g *GovernanceContract) transferNodeOwnership(newOwner common.Address) ([]b
 	g.state.UpdateNode(offset, node)
 
 	g.state.emitNodeOwnershipTransfered(caller, newOwner)
+
+	return nil, nil
+}
+
+func (g *GovernanceContract) transferNodeOwnershipByFoundation(oldOwner, newOwner common.Address) ([]byte, error) {
+	// Only owner can update configuration.
+	if g.contract.Caller() != g.state.Owner() {
+		return nil, errExecutionReverted
+	}
+
+	if newOwner == (common.Address{}) {
+		return nil, errExecutionReverted
+	}
+
+	offset := g.state.NodesOffsetByAddress(oldOwner)
+	if offset.Cmp(big.NewInt(0)) < 0 {
+		return nil, errExecutionReverted
+	}
+
+	newOffset := g.state.NodesOffsetByAddress(newOwner)
+	if newOffset.Cmp(big.NewInt(0)) >= 0 {
+		return nil, errExecutionReverted
+	}
+
+	node := g.state.Node(offset)
+	g.state.DeleteNodeOffsets(node)
+
+	node.Owner = newOwner
+	g.state.PutNodeOffsets(node, offset)
+	g.state.UpdateNode(offset, node)
+
+	g.state.emitNodeOwnershipTransfered(oldOwner, newOwner)
 
 	return nil, nil
 }
