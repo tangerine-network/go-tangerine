@@ -25,6 +25,7 @@ func init() {
 	app.Commands = []cli.Command{
 		commandGenerate,
 		commandInspect,
+		commandPK2Addr,
 	}
 }
 
@@ -81,6 +82,32 @@ var commandInspect = cli.Command{
 		fmt.Printf("Node Address: %s\n", address.String())
 		fmt.Printf("Public Key: 0x%s\n",
 			hex.EncodeToString(crypto.FromECDSAPub(&privKey.PublicKey)))
+		return nil
+	},
+}
+
+var commandPK2Addr = cli.Command{
+	Name:        "pk2addr",
+	Usage:       "public key to address",
+	ArgsUsage:   "publickey",
+	Description: `Convert public key to address`,
+	Action: func(ctx *cli.Context) error {
+		pk := ctx.Args().First()
+		if pk[1] == 'x' {
+			pk = pk[2:]
+		}
+		pkhex, err := hex.DecodeString(pk)
+		if err != nil {
+			panic(err)
+		}
+		key, err := crypto.UnmarshalPubkey(pkhex)
+		if err != nil {
+			panic(err)
+		}
+
+		address := crypto.PubkeyToAddress(*key)
+
+		fmt.Printf("Node Address: %s\n", address.String())
 		return nil
 	},
 }
