@@ -27,6 +27,7 @@ import (
 	"time"
 
 	"github.com/dexon-foundation/dexon/accounts/abi"
+	"github.com/dexon-foundation/dexon/cmd/zoo/client"
 	"github.com/dexon-foundation/dexon/common"
 	"github.com/dexon-foundation/dexon/crypto"
 )
@@ -44,12 +45,12 @@ func init() {
 func (m *Monkey) DistributeBanana(contract common.Address) {
 	fmt.Println("Distributing Banana to random accounts ...")
 	address := crypto.PubkeyToAddress(m.source.PublicKey)
-	nonce, err := m.client.PendingNonceAt(context.Background(), address)
+	nonce, err := m.PendingNonceAt(context.Background(), address)
 	if err != nil {
 		panic(err)
 	}
 
-	ctxs := make([]*transferContext, len(m.keys))
+	ctxs := make([]*client.TransferContext, len(m.keys))
 	amount := new(big.Int)
 	amount.SetString("10000000000000000", 10)
 	for i, key := range m.keys {
@@ -58,22 +59,22 @@ func (m *Monkey) DistributeBanana(contract common.Address) {
 		if err != nil {
 			panic(err)
 		}
-		ctxs[i] = &transferContext{
+		ctxs[i] = &client.TransferContext{
 			Key:       m.source,
 			ToAddress: contract,
 			Data:      input,
 			Nonce:     nonce,
 			Gas:       100000,
 		}
-		nonce += 1
+		nonce++
 	}
-	m.batchTransfer(ctxs)
+	m.BatchTransfer(ctxs)
 	time.Sleep(20 * time.Second)
 }
 
 func (m *Monkey) Feed() uint64 {
 	fmt.Println("Deploying contract ...")
-	contract := m.deploy(m.source, bananaContract, nil, new(big.Int), math.MaxUint64)
+	contract := m.Deploy(m.source, bananaContract, nil, new(big.Int), math.MaxUint64)
 	fmt.Println("  Contract deployed: ", contract.String())
 	m.DistributeBanana(contract)
 
@@ -83,7 +84,7 @@ func (m *Monkey) Feed() uint64 {
 loop:
 	for {
 		fmt.Println("nonce", nonce)
-		ctxs := make([]*transferContext, len(m.keys))
+		ctxs := make([]*client.TransferContext, len(m.keys))
 		for i, key := range m.keys {
 			to := crypto.PubkeyToAddress(m.keys[rand.Int()%len(m.keys)].PublicKey)
 			input, err := bananaABI.Pack("transfer", to, big.NewInt(rand.Int63n(100)+1))
@@ -91,7 +92,7 @@ loop:
 				panic(err)
 			}
 
-			ctx := &transferContext{
+			ctx := &client.TransferContext{
 				Key:       key,
 				ToAddress: contract,
 				Data:      input,
@@ -101,11 +102,11 @@ loop:
 			if config.Batch {
 				ctxs[i] = ctx
 			} else {
-				m.transfer(ctx)
+				m.Transfer(ctx)
 			}
 		}
 		if config.Batch {
-			m.batchTransfer(ctxs)
+			m.BatchTransfer(ctxs)
 		}
 
 		if m.timer != nil {
@@ -116,7 +117,7 @@ loop:
 			}
 		}
 
-		nonce += 1
+		nonce++
 		time.Sleep(time.Duration(config.Sleep) * time.Millisecond)
 	}
 
