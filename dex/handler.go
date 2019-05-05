@@ -36,6 +36,7 @@ package dex
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1388,4 +1389,82 @@ func (pm *ProtocolManager) NodeInfo() *NodeInfo {
 		Config:  pm.blockchain.Config(),
 		Head:    currentBlock.Hash(),
 	}
+}
+
+type NotaryInfo struct {
+	Round        uint64            `json:"round"`
+	IsNotary     bool              `json:"is_notary"`
+	Nodes        []*NotaryNodeInfo `json:"nodes"`
+	IsNextNotary bool              `json:"is_next_notary"`
+	Next         []*NotaryNodeInfo `json:"next"`
+}
+
+type NotaryNodeInfo struct {
+	ID     enode.ID `json:"id"`
+	Number uint64   `json:"number"`
+}
+
+func (pm *ProtocolManager) NotaryInfo() (*NotaryInfo, error) {
+	current := pm.blockchain.CurrentBlock()
+	pubkeys, err := pm.gov.NotarySet(current.Round())
+	if err != nil {
+		return nil, err
+	}
+
+	info := &NotaryInfo{
+		Round: current.Round(),
+	}
+
+	currentNodes, in, err := pm.buildNotaryNodeInfo(pubkeys)
+	if err != nil {
+		return nil, err
+	}
+
+	info.Nodes = currentNodes
+	info.IsNotary = in
+
+	if crsRound := pm.gov.CRSRound(); crsRound != current.Round() {
+		pubkeys, err := pm.gov.NotarySet(crsRound)
+		if err != nil {
+			return nil, err
+		}
+
+		nextNodes, in, err := pm.buildNotaryNodeInfo(pubkeys)
+		if err != nil {
+			return nil, err
+		}
+		info.Next = nextNodes
+		info.IsNextNotary = in
+	}
+	return info, nil
+}
+
+func (pm *ProtocolManager) buildNotaryNodeInfo(
+	pubkeys map[string]struct{}) ([]*NotaryNodeInfo, bool, error) {
+
+	nodes := []*NotaryNodeInfo{}
+	for pubkey := range pubkeys {
+		b, err := hex.DecodeString(pubkey)
+		if err != nil {
+			return nil, false, err
+		}
+		pubkey, err := crypto.UnmarshalPubkey(b)
+		if err != nil {
+			return nil, false, err
+		}
+		nodes = append(nodes, &NotaryNodeInfo{ID: enode.PubkeyToIDV4(pubkey)})
+	}
+
+	var in bool
+	for _, n := range nodes {
+		if p := pm.peers.Peer(n.ID.String()); p != nil {
+			_, number := p.Head()
+			n.Number = number
+		}
+		if n.ID == pm.srvr.Self().ID() {
+			n.Number = pm.blockchain.CurrentBlock().NumberU64()
+			in = true
+		}
+	}
+	return nodes, in, nil
 }

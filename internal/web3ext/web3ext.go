@@ -229,6 +229,10 @@ web3._extend({
 			name: 'isProposing',
 			getter: 'admin_isProposing'
 		}),
+		new web3._extend.Property({
+			name: 'notaryInfo',
+			getter: 'admin_notaryInfo'
+		}),
 	]
 });
 `

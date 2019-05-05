@@ -139,6 +139,10 @@ func (api *PrivateAdminAPI) IsProposing() bool {
 	return api.dex.IsProposing()
 }
 
+func (api *PrivateAdminAPI) NotaryInfo() (*NotaryInfo, error) {
+	return api.dex.protocolManager.NotaryInfo()
+}
+
 // PublicDebugAPI is the collection of Ethereum full node APIs exposed
 // over the public debugging endpoint.
 type PublicDebugAPI struct {
