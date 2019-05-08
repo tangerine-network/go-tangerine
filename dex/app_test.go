@@ -2310,7 +2310,7 @@ func newDexon(masterKey *ecdsa.PrivateKey, accountNum int) (*Dexon, []*ecdsa.Pri
 		}
 
 		genesis.Alloc[crypto.PubkeyToAddress(key.PublicKey)] = core.GenesisAccount{
-			Balance: math.BigPow(10, 18),
+			Balance: math.BigPow(10, 20),
 			Staked:  big.NewInt(0),
 		}
 		accounts = append(accounts, key)
