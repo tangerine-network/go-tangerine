@@ -612,10 +612,18 @@ func (g *OracleContractsTestSuite) TestFine() {
 	g.Require().NotNil(err)
 
 	// Pay the fine.
+	govBalance := g.stateDB.GetBalance(GovernanceContractAddress)
+	ownerBalance := g.stateDB.GetBalance(g.config.Owner)
+
 	input, err = GovernanceABI.ABI.Pack("payFine", addr)
 	g.Require().NoError(err)
 	_, err = g.call(GovernanceContractAddress, finePayer, input, amount)
 	g.Require().NoError(err)
+
+	g.Require().Equal(g.stateDB.GetBalance(GovernanceContractAddress).String(),
+		govBalance.String())
+	g.Require().Equal(g.stateDB.GetBalance(g.config.Owner).String(),
+		new(big.Int).Add(ownerBalance, amount).String())
 
 	// Qualified.
 	g.Require().Equal(1, len(g.s.QualifiedNodes()))
