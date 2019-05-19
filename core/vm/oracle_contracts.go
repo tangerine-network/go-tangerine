@@ -2730,12 +2730,17 @@ func (g *GovernanceContract) replaceNodePublicKey(newPublicKey []byte) ([]byte, 
 		return nil, errExecutionReverted
 	}
 
-	node := g.state.Node(offset)
-
-	_, err := publicKeyToNodeKeyAddress(newPublicKey)
+	newNodeKeyAddr, err := publicKeyToNodeKeyAddress(newPublicKey)
 	if err != nil {
 		return nil, errExecutionReverted
 	}
+
+	newNodeKeyOffset := g.state.NodesOffsetByNodeKeyAddress(newNodeKeyAddr)
+	if newNodeKeyOffset.Cmp(big.NewInt(0)) >= 0 {
+		return nil, errExecutionReverted
+	}
+
+	node := g.state.Node(offset)
 
 	g.state.DeleteNodeOffsets(node)
 

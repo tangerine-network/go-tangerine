@@ -384,6 +384,22 @@ func (g *OracleContractsTestSuite) TestReplaceNodePublicKey() {
 	g.Require().Equal(-1, int(g.s.NodesOffsetByNodeKeyAddress(addr).Int64()))
 	g.Require().Equal(0, int(g.s.NodesOffsetByAddress(addr).Int64()))
 	g.Require().Equal(0, int(g.s.NodesOffsetByNodeKeyAddress(addr2).Int64()))
+
+	// Duplicate NodeKey.
+	_, addr3 := newPrefundAccount(g.stateDB)
+	pk3 := crypto.FromECDSAPub(&privKey.PublicKey)
+	input, err = GovernanceABI.ABI.Pack("register", pk3, "Test2", "test2@dexon.org", "Taipei", "https://dexon.org")
+	g.Require().NoError(err)
+
+	_, err = g.call(GovernanceContractAddress, addr3, input, amount)
+	g.Require().NoError(err)
+
+	input, err = GovernanceABI.ABI.Pack("replaceNodePublicKey", pk2)
+	g.Require().NoError(err)
+
+	// Duplicate nodekey
+	_, err = g.call(GovernanceContractAddress, addr3, input, big.NewInt(0))
+	g.Require().Error(err)
 }
 
 func (g *OracleContractsTestSuite) TestStakingMechanism() {
