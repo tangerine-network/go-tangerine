@@ -25,7 +25,7 @@ import (
 
 	"github.com/dexon-foundation/dexon/cmd/utils"
 	"github.com/dexon-foundation/dexon/consensus/ethash"
-	"github.com/dexon-foundation/dexon/eth"
+	"github.com/dexon-foundation/dexon/dex"
 	"github.com/dexon-foundation/dexon/params"
 	"gopkg.in/urfave/cli.v1"
 )
@@ -113,8 +113,8 @@ func version(ctx *cli.Context) error {
 		fmt.Println("Git Commit:", gitCommit)
 	}
 	fmt.Println("Architecture:", runtime.GOARCH)
-	fmt.Println("Protocol Versions:", eth.ProtocolVersions)
-	fmt.Println("Network Id:", eth.DefaultConfig.NetworkId)
+	fmt.Println("Protocol Versions:", dex.ProtocolVersions)
+	fmt.Println("Network Id:", dex.DefaultConfig.NetworkId)
 	fmt.Println("Go Version:", runtime.Version())
 	fmt.Println("Operating System:", runtime.GOOS)
 	fmt.Printf("GOPATH=%s\n", os.Getenv("GOPATH"))
