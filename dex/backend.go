@@ -21,30 +21,30 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dexon-foundation/dexon-consensus/core/syncer"
-	"github.com/dexon-foundation/dexon/accounts"
-	"github.com/dexon-foundation/dexon/consensus"
-	"github.com/dexon-foundation/dexon/consensus/dexcon"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/core/bloombits"
-	"github.com/dexon-foundation/dexon/core/rawdb"
-	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/dex/downloader"
-	"github.com/dexon-foundation/dexon/eth/filters"
-	"github.com/dexon-foundation/dexon/eth/gasprice"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/event"
-	"github.com/dexon-foundation/dexon/indexer"
-	"github.com/dexon-foundation/dexon/internal/ethapi"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/node"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/params"
-	"github.com/dexon-foundation/dexon/rpc"
+	"github.com/byzantine-lab/dexon-consensus/core/syncer"
+	"github.com/tangerine-network/go-tangerine/accounts"
+	"github.com/tangerine-network/go-tangerine/consensus"
+	"github.com/tangerine-network/go-tangerine/consensus/dexcon"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/core/bloombits"
+	"github.com/tangerine-network/go-tangerine/core/rawdb"
+	"github.com/tangerine-network/go-tangerine/core/vm"
+	"github.com/tangerine-network/go-tangerine/dex/downloader"
+	"github.com/tangerine-network/go-tangerine/eth/filters"
+	"github.com/tangerine-network/go-tangerine/eth/gasprice"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/event"
+	"github.com/tangerine-network/go-tangerine/indexer"
+	"github.com/tangerine-network/go-tangerine/internal/ethapi"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/node"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/params"
+	"github.com/tangerine-network/go-tangerine/rpc"
 )
 
-// Dexon implements the DEXON fullnode service.
-type Dexon struct {
+// Tangerine implements the DEXON fullnode service.
+type Tangerine struct {
 	config      *Config
 	chainConfig *params.ChainConfig
 
@@ -68,7 +68,7 @@ type Dexon struct {
 
 	APIBackend *DexAPIBackend
 
-	// Dexon consensus.
+	// Tangerine consensus.
 	app        *DexconApp
 	governance *DexconGovernance
 	network    *DexconNetwork
@@ -81,7 +81,7 @@ type Dexon struct {
 	indexer indexer.Indexer
 }
 
-func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
+func New(ctx *node.ServiceContext, config *Config) (*Tangerine, error) {
 	// Consensus.
 	chainDb, err := CreateDB(ctx, config, "chaindata")
 	if err != nil {
@@ -104,7 +104,7 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	}
 	engine := dexcon.New()
 
-	dex := &Dexon{
+	dex := &Tangerine{
 		config:         config,
 		chainDb:        chainDb,
 		chainConfig:    chainConfig,
@@ -190,11 +190,11 @@ func New(ctx *node.ServiceContext, config *Config) (*Dexon, error) {
 	return dex, nil
 }
 
-func (s *Dexon) Protocols() []p2p.Protocol {
+func (s *Tangerine) Protocols() []p2p.Protocol {
 	return s.protocolManager.SubProtocols
 }
 
-func (s *Dexon) APIs() []rpc.API {
+func (s *Tangerine) APIs() []rpc.API {
 	apis := ethapi.GetAPIs(s.APIBackend)
 
 	// Append any APIs exposed explicitly by the consensus engine
@@ -234,7 +234,7 @@ func (s *Dexon) APIs() []rpc.API {
 	}...)
 }
 
-func (s *Dexon) Start(srvr *p2p.Server) error {
+func (s *Tangerine) Start(srvr *p2p.Server) error {
 	// Start the bloom bits servicing goroutines
 	s.startBloomHandlers(params.BloomBitsBlocks)
 
@@ -271,7 +271,7 @@ func (s *Dexon) Start(srvr *p2p.Server) error {
 	return nil
 }
 
-func (s *Dexon) Stop() error {
+func (s *Tangerine) Stop() error {
 	s.bloomIndexer.Close()
 	s.blockchain.Stop()
 	s.engine.Close()
@@ -288,11 +288,11 @@ func (s *Dexon) Stop() error {
 	return nil
 }
 
-func (s *Dexon) IsCoreSyncing() bool {
+func (s *Tangerine) IsCoreSyncing() bool {
 	return s.bp.IsCoreSyncing()
 }
 
-func (s *Dexon) IsProposing() bool {
+func (s *Tangerine) IsProposing() bool {
 	return s.bp.IsProposing()
 }
 
@@ -308,12 +308,12 @@ func CreateDB(ctx *node.ServiceContext, config *Config, name string) (ethdb.Data
 	return db, nil
 }
 
-func (d *Dexon) AccountManager() *accounts.Manager { return d.accountManager }
-func (d *Dexon) BlockChain() *core.BlockChain      { return d.blockchain }
-func (d *Dexon) TxPool() *core.TxPool              { return d.txPool }
-func (d *Dexon) DexVersion() int                   { return int(d.protocolManager.SubProtocols[0].Version) }
-func (d *Dexon) EventMux() *event.TypeMux          { return d.eventMux }
-func (d *Dexon) Engine() consensus.Engine          { return d.engine }
-func (d *Dexon) ChainDb() ethdb.Database           { return d.chainDb }
-func (d *Dexon) Downloader() ethapi.Downloader     { return d.protocolManager.downloader }
-func (d *Dexon) NetVersion() uint64                { return d.networkID }
+func (d *Tangerine) AccountManager() *accounts.Manager { return d.accountManager }
+func (d *Tangerine) BlockChain() *core.BlockChain      { return d.blockchain }
+func (d *Tangerine) TxPool() *core.TxPool              { return d.txPool }
+func (d *Tangerine) DexVersion() int                   { return int(d.protocolManager.SubProtocols[0].Version) }
+func (d *Tangerine) EventMux() *event.TypeMux          { return d.eventMux }
+func (d *Tangerine) Engine() consensus.Engine          { return d.engine }
+func (d *Tangerine) ChainDb() ethdb.Database           { return d.chainDb }
+func (d *Tangerine) Downloader() ethapi.Downloader     { return d.protocolManager.downloader }
+func (d *Tangerine) NetVersion() uint64                { return d.networkID }

@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common"
+	"github.com/tangerine-network/go-tangerine/common"
 )
 
 func TestWhisperBasic(t *testing.T) {

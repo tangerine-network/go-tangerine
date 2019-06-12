@@ -35,12 +35,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/node"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/rpc"
 	"github.com/docker/docker/pkg/reexec"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/node"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/rpc"
 	"golang.org/x/net/websocket"
 )
 

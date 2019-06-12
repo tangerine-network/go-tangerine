@@ -17,9 +17,9 @@
 package localstore
 
 import (
-	"github.com/dexon-foundation/dexon/swarm/shed"
-	"github.com/dexon-foundation/dexon/swarm/storage"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/tangerine-network/go-tangerine/swarm/shed"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 // ModePut enumerates different Putter modes.

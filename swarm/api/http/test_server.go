@@ -23,9 +23,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/swarm/api"
-	"github.com/dexon-foundation/dexon/swarm/storage"
-	"github.com/dexon-foundation/dexon/swarm/storage/feed"
+	"github.com/tangerine-network/go-tangerine/swarm/api"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/feed"
 )
 
 type TestServer interface {

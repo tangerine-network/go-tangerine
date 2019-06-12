@@ -27,17 +27,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/hexutil"
-	"github.com/dexon-foundation/dexon/common/math"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/params"
-	"github.com/dexon-foundation/dexon/rlp"
-	"github.com/dexon-foundation/dexon/tests"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/common/math"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/core/vm"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/params"
+	"github.com/tangerine-network/go-tangerine/rlp"
+	"github.com/tangerine-network/go-tangerine/tests"
 )
 
 // To generate a new callTracer test, copy paste the makeTest method below into

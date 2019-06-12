@@ -22,7 +22,7 @@ import (
 	mrand "math/rand"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/tangerine-network/go-tangerine/crypto"
 )
 
 func TestEnvelopeOpenAcceptsOnlyOneKeyTypeInFilter(t *testing.T) {

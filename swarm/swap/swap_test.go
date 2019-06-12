@@ -25,12 +25,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/protocols"
-	"github.com/dexon-foundation/dexon/p2p/simulations/adapters"
-	"github.com/dexon-foundation/dexon/swarm/state"
 	colorable "github.com/mattn/go-colorable"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/protocols"
+	"github.com/tangerine-network/go-tangerine/p2p/simulations/adapters"
+	"github.com/tangerine-network/go-tangerine/swarm/state"
 )
 
 var (

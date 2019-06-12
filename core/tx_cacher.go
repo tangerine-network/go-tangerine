@@ -19,7 +19,7 @@ package core
 import (
 	"runtime"
 
-	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/tangerine-network/go-tangerine/core/types"
 )
 
 // senderCacher is a concurrent transaction sender recoverer and cacher.

@@ -23,13 +23,13 @@ import (
 	"net"
 	"sync"
 
-	"github.com/dexon-foundation/dexon/event"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/node"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/p2p/simulations/pipes"
-	"github.com/dexon-foundation/dexon/rpc"
+	"github.com/tangerine-network/go-tangerine/event"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/node"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/simulations/pipes"
+	"github.com/tangerine-network/go-tangerine/rpc"
 )
 
 // SimAdapter is a NodeAdapter which creates in-memory simulation nodes and

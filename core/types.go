@@ -17,10 +17,10 @@
 package core
 
 import (
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/state"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/core/vm"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/state"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/core/vm"
 )
 
 // Validator is an interface which defines the standard for block validation. It

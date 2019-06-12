@@ -19,7 +19,7 @@ package vm
 import (
 	"math/big"
 
-	"github.com/dexon-foundation/dexon/common/math"
+	"github.com/tangerine-network/go-tangerine/common/math"
 )
 
 func memorySha3(stack *Stack) *big.Int {

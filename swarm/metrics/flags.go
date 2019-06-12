@@ -19,10 +19,10 @@ package metrics
 import (
 	"time"
 
-	"github.com/dexon-foundation/dexon/cmd/utils"
-	gethmetrics "github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/metrics/influxdb"
-	"github.com/dexon-foundation/dexon/swarm/log"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
+	gethmetrics "github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/metrics/influxdb"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
 	cli "gopkg.in/urfave/cli.v1"
 )
 

@@ -19,9 +19,9 @@ package core
 import (
 	"container/list"
 
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/event"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/event"
 )
 
 // Implement our EthTest Manager

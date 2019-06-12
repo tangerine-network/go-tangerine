@@ -19,9 +19,9 @@ package protocols
 import (
 	"testing"
 
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/simulations/adapters"
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/simulations/adapters"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 //dummy Balance implementation

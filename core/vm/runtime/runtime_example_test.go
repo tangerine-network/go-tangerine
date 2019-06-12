@@ -19,8 +19,8 @@ package runtime_test
 import (
 	"fmt"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/vm/runtime"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/vm/runtime"
 )
 
 func ExampleExecute() {

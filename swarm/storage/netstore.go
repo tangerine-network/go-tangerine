@@ -24,9 +24,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/swarm/log"
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
 )
 
 type (

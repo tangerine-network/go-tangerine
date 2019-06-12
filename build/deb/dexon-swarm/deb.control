@@ -5,8 +5,8 @@ Maintainer: {{.Author}}
 Build-Depends: debhelper (>= 8.0.0), golang-1.10
 Standards-Version: 3.9.5
 Homepage: https://ethereum.org
-Vcs-Git: git://github.com/dexon-foundation/dexon.git
-Vcs-Browser: https://github.com/dexon-foundation/dexon
+Vcs-Git: git://github.com/tangerine-network/go-tangerine.git
+Vcs-Browser: https://github.com/tangerine-network/go-tangerine
 
 {{range .Executables}}
 Package: {{$.ExeName .}}

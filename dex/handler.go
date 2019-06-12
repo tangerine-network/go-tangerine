@@ -45,28 +45,28 @@ import (
 	"sync/atomic"
 	"time"
 
-	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
-	dexCore "github.com/dexon-foundation/dexon-consensus/core"
-	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
-	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
+	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
+	dexCore "github.com/byzantine-lab/dexon-consensus/core"
+	coreCrypto "github.com/byzantine-lab/dexon-consensus/core/crypto"
+	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
+	dkgTypes "github.com/byzantine-lab/dexon-consensus/core/types/dkg"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/consensus"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/crypto"
-	dexDB "github.com/dexon-foundation/dexon/dex/db"
-	"github.com/dexon-foundation/dexon/dex/downloader"
-	"github.com/dexon-foundation/dexon/dex/fetcher"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/event"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/params"
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/consensus"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	dexDB "github.com/tangerine-network/go-tangerine/dex/db"
+	"github.com/tangerine-network/go-tangerine/dex/downloader"
+	"github.com/tangerine-network/go-tangerine/dex/fetcher"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/event"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/params"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 const (
@@ -234,7 +234,7 @@ func NewProtocolManager(
 	manager.downloader = downloader.New(mode, chaindb, manager.eventMux, blockchain, nil, manager.removePeer)
 
 	validator := func(header *types.Header) error {
-		return blockchain.VerifyDexonHeader(header)
+		return blockchain.VerifyTangerineHeader(header)
 	}
 	heighter := func() uint64 {
 		return blockchain.CurrentBlock().NumberU64()
@@ -246,7 +246,7 @@ func NewProtocolManager(
 			return 0, nil
 		}
 		atomic.StoreUint32(&manager.acceptTxs, 1) // Mark initial sync done on any fetcher import
-		return manager.blockchain.InsertDexonChain(blocks)
+		return manager.blockchain.InsertTangerineChain(blocks)
 	}
 	manager.fetcher = fetcher.New(blockchain.GetBlockByHash, validator, manager.BroadcastBlock, heighter, inserter, manager.removePeer)
 

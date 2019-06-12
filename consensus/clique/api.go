@@ -17,10 +17,10 @@
 package clique
 
 import (
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/consensus"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/rpc"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/consensus"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/rpc"
 )
 
 // API is a user facing RPC API to allow controlling the signer and voting

@@ -27,16 +27,16 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/core/rawdb"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/internal/debug"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/node"
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/core/rawdb"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/internal/debug"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/node"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 const (

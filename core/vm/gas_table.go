@@ -17,9 +17,9 @@
 package vm
 
 import (
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/math"
-	"github.com/dexon-foundation/dexon/params"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/math"
+	"github.com/tangerine-network/go-tangerine/params"
 )
 
 // memoryGasCosts calculates the quadratic gas for memory expansion. It does so

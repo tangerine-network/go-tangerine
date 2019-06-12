@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/hexutil"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/rlp"
-	"github.com/dexon-foundation/dexon/swarm/storage"
-	whisper "github.com/dexon-foundation/dexon/whisper/whisperv6"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/rlp"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
+	whisper "github.com/tangerine-network/go-tangerine/whisper/whisperv6"
 )
 
 const (

@@ -20,17 +20,17 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/dexon-foundation/dexon/swarm/log"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
 )
 
 /*
 http roundtripper to register for bzz url scheme
-see https://github.com/dexon-foundation/dexon/issues/2040
+see https://github.com/tangerine-network/go-tangerine/issues/2040
 Usage:
 
 import (
- "github.com/dexon-foundation/dexon/common/httpclient"
- "github.com/dexon-foundation/dexon/swarm/api/http"
+ "github.com/tangerine-network/go-tangerine/common/httpclient"
+ "github.com/tangerine-network/go-tangerine/swarm/api/http"
 )
 client := httpclient.New()
 // for (private) swarm proxy running locally

@@ -24,9 +24,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/node"
-	"github.com/dexon-foundation/dexon/p2p/simulations/adapters"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/node"
+	"github.com/tangerine-network/go-tangerine/p2p/simulations/adapters"
 )
 
 func TestSimulationWithHTTPServer(t *testing.T) {

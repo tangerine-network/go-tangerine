@@ -26,15 +26,15 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dexon-foundation/dexon/accounts"
-	"github.com/dexon-foundation/dexon/accounts/keystore"
-	"github.com/dexon-foundation/dexon/accounts/usbwallet"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/rpc"
+	"github.com/tangerine-network/go-tangerine/accounts"
+	"github.com/tangerine-network/go-tangerine/accounts/keystore"
+	"github.com/tangerine-network/go-tangerine/accounts/usbwallet"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/rpc"
 )
 
 const (

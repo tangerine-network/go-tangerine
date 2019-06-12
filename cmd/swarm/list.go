@@ -22,8 +22,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/dexon-foundation/dexon/cmd/utils"
-	swarm "github.com/dexon-foundation/dexon/swarm/api/client"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
+	swarm "github.com/tangerine-network/go-tangerine/swarm/api/client"
 	"gopkg.in/urfave/cli.v1"
 )
 

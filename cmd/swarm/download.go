@@ -21,10 +21,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/cmd/utils"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/swarm/api"
-	swarm "github.com/dexon-foundation/dexon/swarm/api/client"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/swarm/api"
+	swarm "github.com/tangerine-network/go-tangerine/swarm/api/client"
 	"gopkg.in/urfave/cli.v1"
 )
 

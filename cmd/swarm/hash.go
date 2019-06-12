@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dexon-foundation/dexon/cmd/utils"
-	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 	"gopkg.in/urfave/cli.v1"
 )
 

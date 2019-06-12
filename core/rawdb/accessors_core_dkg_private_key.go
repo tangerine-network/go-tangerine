@@ -3,9 +3,9 @@ package rawdb
 import (
 	"bytes"
 
-	coreDKG "github.com/dexon-foundation/dexon-consensus/core/crypto/dkg"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/rlp"
+	coreDKG "github.com/byzantine-lab/dexon-consensus/core/crypto/dkg"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 type dkgPrivateKey struct {

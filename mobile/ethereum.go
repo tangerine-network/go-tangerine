@@ -21,8 +21,8 @@ package geth
 import (
 	"errors"
 
-	ethereum "github.com/dexon-foundation/dexon"
-	"github.com/dexon-foundation/dexon/common"
+	ethereum "github.com/tangerine-network/go-tangerine"
+	"github.com/tangerine-network/go-tangerine/common"
 )
 
 // Subscription represents an event subscription where events are

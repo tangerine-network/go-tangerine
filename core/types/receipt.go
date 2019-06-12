@@ -22,9 +22,9 @@ import (
 	"io"
 	"unsafe"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/hexutil"
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 //go:generate gencodec -type Receipt -field-override receiptMarshaling -out gen_receipt_json.go

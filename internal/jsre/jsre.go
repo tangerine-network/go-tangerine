@@ -26,9 +26,9 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/internal/jsre/deps"
 	"github.com/robertkrimen/otto"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/internal/jsre/deps"
 )
 
 var (

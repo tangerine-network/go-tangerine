@@ -10,21 +10,21 @@ import (
 	"testing"
 	"time"
 
-	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
-	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
-	coreEcdsa "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/math"
-	"github.com/dexon-foundation/dexon/consensus/dexcon"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/core/rawdb"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/event"
-	"github.com/dexon-foundation/dexon/rlp"
+	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
+	coreCrypto "github.com/byzantine-lab/dexon-consensus/core/crypto"
+	coreEcdsa "github.com/byzantine-lab/dexon-consensus/core/crypto/ecdsa"
+	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/math"
+	"github.com/tangerine-network/go-tangerine/consensus/dexcon"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/core/rawdb"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/core/vm"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/event"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 type singnal int
@@ -2213,13 +2213,13 @@ func (f TxFactory) New(app App, center *ProductCenter, stopTimeMu *sync.RWMutex,
 	return &f
 }
 
-func TestDexonApp(t *testing.T) {
+func TestTangerineApp(t *testing.T) {
 	masterKey, err := crypto.GenerateKey()
 	if err != nil {
 		t.Fatalf("Generate key fail: %v", err)
 	}
 
-	dex, keys, err := newDexon(masterKey, 15)
+	dex, keys, err := newTangerine(masterKey, 15)
 	if err != nil {
 		t.Fatalf("New dexon fail: %v", err)
 	}
@@ -2292,7 +2292,7 @@ func TestDexonApp(t *testing.T) {
 	}
 }
 
-func newDexon(masterKey *ecdsa.PrivateKey, accountNum int) (*Dexon, []*ecdsa.PrivateKey, error) {
+func newTangerine(masterKey *ecdsa.PrivateKey, accountNum int) (*Tangerine, []*ecdsa.PrivateKey, error) {
 	db := ethdb.NewMemDatabase()
 
 	genesis := core.DefaultTestnetGenesisBlock()
@@ -2330,7 +2330,7 @@ func newDexon(masterKey *ecdsa.PrivateKey, accountNum int) (*Dexon, []*ecdsa.Pri
 
 	engine := dexcon.New()
 
-	dex := &Dexon{
+	dex := &Tangerine{
 		chainDb:     db,
 		chainConfig: chainConfig,
 		networkID:   config.NetworkId,

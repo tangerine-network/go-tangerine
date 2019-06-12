@@ -25,9 +25,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dexon-foundation/dexon/accounts"
-	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/pborman/uuid"
+	"github.com/tangerine-network/go-tangerine/accounts"
+	"github.com/tangerine-network/go-tangerine/crypto"
 	"golang.org/x/crypto/pbkdf2"
 )
 

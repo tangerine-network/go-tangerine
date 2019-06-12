@@ -27,9 +27,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	ch "github.com/dexon-foundation/dexon/swarm/chunk"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	ch "github.com/tangerine-network/go-tangerine/swarm/chunk"
 )
 
 var sourcePeerID = enode.HexID("99d8594b52298567d2ca3f4c441a5ba0140ee9245e26460d01102a52773c73b9")

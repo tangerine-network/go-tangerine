@@ -24,10 +24,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/protocols"
-	"github.com/dexon-foundation/dexon/rlp"
-	"github.com/dexon-foundation/dexon/swarm/log"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/protocols"
+	"github.com/tangerine-network/go-tangerine/rlp"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
 )
 
 const (

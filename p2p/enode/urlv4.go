@@ -26,9 +26,9 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/dexon-foundation/dexon/common/math"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/p2p/enr"
+	"github.com/tangerine-network/go-tangerine/common/math"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/p2p/enr"
 )
 
 var incompleteNodeURL = regexp.MustCompile("(?i)^(?:enode://)?([0-9a-f]+)$")

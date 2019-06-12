@@ -7,8 +7,8 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
 )
 
 var _ = (*txdataMarshaling)(nil)

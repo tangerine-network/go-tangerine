@@ -26,8 +26,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common/bitutil"
-	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/tangerine-network/go-tangerine/common/bitutil"
+	"github.com/tangerine-network/go-tangerine/crypto"
 )
 
 // bloomIndexes represents the bit indexes inside the bloom filter that belong

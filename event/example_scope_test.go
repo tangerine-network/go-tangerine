@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/dexon-foundation/dexon/event"
+	"github.com/tangerine-network/go-tangerine/event"
 )
 
 // This example demonstrates how SubscriptionScope can be used to control the lifetime of

@@ -24,9 +24,9 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/swarm/api"
-	swarm "github.com/dexon-foundation/dexon/swarm/api/client"
-	swarmhttp "github.com/dexon-foundation/dexon/swarm/api/http"
+	"github.com/tangerine-network/go-tangerine/swarm/api"
+	swarm "github.com/tangerine-network/go-tangerine/swarm/api/client"
+	swarmhttp "github.com/tangerine-network/go-tangerine/swarm/api/http"
 )
 
 // TestManifestChange tests manifest add, update and remove

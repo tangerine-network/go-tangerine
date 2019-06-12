@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/dexon-foundation/dexon/accounts/keystore"
-	"github.com/dexon-foundation/dexon/cmd/utils"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/tangerine-network/go-tangerine/accounts/keystore"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/crypto"
 	"gopkg.in/urfave/cli.v1"
 )
 

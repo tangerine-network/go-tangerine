@@ -21,9 +21,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 const (

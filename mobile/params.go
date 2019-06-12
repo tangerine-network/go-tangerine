@@ -21,9 +21,9 @@ package geth
 import (
 	"encoding/json"
 
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/p2p/discv5"
-	"github.com/dexon-foundation/dexon/params"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/p2p/discv5"
+	"github.com/tangerine-network/go-tangerine/params"
 )
 
 // MainnetGenesis returns the JSON spec to use for the main Ethereum network. It

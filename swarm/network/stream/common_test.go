@@ -30,17 +30,17 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/p2p/simulations/adapters"
-	p2ptest "github.com/dexon-foundation/dexon/p2p/testing"
-	"github.com/dexon-foundation/dexon/swarm/network"
-	"github.com/dexon-foundation/dexon/swarm/network/simulation"
-	"github.com/dexon-foundation/dexon/swarm/state"
-	"github.com/dexon-foundation/dexon/swarm/storage"
-	mockmem "github.com/dexon-foundation/dexon/swarm/storage/mock/mem"
-	"github.com/dexon-foundation/dexon/swarm/testutil"
 	colorable "github.com/mattn/go-colorable"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/simulations/adapters"
+	p2ptest "github.com/tangerine-network/go-tangerine/p2p/testing"
+	"github.com/tangerine-network/go-tangerine/swarm/network"
+	"github.com/tangerine-network/go-tangerine/swarm/network/simulation"
+	"github.com/tangerine-network/go-tangerine/swarm/state"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
+	mockmem "github.com/tangerine-network/go-tangerine/swarm/storage/mock/mem"
+	"github.com/tangerine-network/go-tangerine/swarm/testutil"
 )
 
 var (

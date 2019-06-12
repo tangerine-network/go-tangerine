@@ -22,10 +22,10 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/dexon-foundation/dexon/accounts/keystore"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/tangerine-network/go-tangerine/accounts/keystore"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/crypto"
 )
 
 // NewTransactor is a utility method to easily create a transaction signer from

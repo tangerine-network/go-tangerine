@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/dexon-foundation/dexon/params"
+	"github.com/tangerine-network/go-tangerine/params"
 )
 
 // Forks table defines supported forks and their chain config.

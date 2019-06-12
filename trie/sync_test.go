@@ -20,8 +20,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/ethdb"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/ethdb"
 )
 
 // makeTestTrie create a sample test trie to test node-wise reconstruction.

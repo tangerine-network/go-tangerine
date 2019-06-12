@@ -26,21 +26,21 @@ import (
 	"sort"
 	"sync/atomic"
 
-	"github.com/dexon-foundation/dexon/accounts/abi"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/params"
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/accounts/abi"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/params"
+	"github.com/tangerine-network/go-tangerine/rlp"
 
-	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
-	dexCore "github.com/dexon-foundation/dexon-consensus/core"
-	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
-	coreUtils "github.com/dexon-foundation/dexon-consensus/core/utils"
+	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
+	dexCore "github.com/byzantine-lab/dexon-consensus/core"
+	coreCrypto "github.com/byzantine-lab/dexon-consensus/core/crypto"
+	coreUtils "github.com/byzantine-lab/dexon-consensus/core/utils"
 
-	"github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
-	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
+	"github.com/byzantine-lab/dexon-consensus/core/crypto/ecdsa"
+	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
+	dkgTypes "github.com/byzantine-lab/dexon-consensus/core/types/dkg"
 )
 
 type Bytes32 [32]byte

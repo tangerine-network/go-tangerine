@@ -20,7 +20,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/dexon-foundation/dexon/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
 )
 
 // Simulation provides a framework for running actions in a simulated network

@@ -7,12 +7,12 @@ import (
 	"math/big"
 	"strings"
 
-	ethereum "github.com/dexon-foundation/dexon"
-	"github.com/dexon-foundation/dexon/accounts/abi"
-	"github.com/dexon-foundation/dexon/accounts/abi/bind"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/event"
+	ethereum "github.com/tangerine-network/go-tangerine"
+	"github.com/tangerine-network/go-tangerine/accounts/abi"
+	"github.com/tangerine-network/go-tangerine/accounts/abi/bind"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/event"
 )
 
 // ChequebookABI is the input ABI used to generate the binding from.

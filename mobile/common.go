@@ -24,7 +24,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/common"
+	"github.com/tangerine-network/go-tangerine/common"
 )
 
 // Hash represents the 32 byte Keccak256 hash of arbitrary data.

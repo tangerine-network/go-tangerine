@@ -16,7 +16,7 @@
 
 package feed
 
-import "github.com/dexon-foundation/dexon/common/hexutil"
+import "github.com/tangerine-network/go-tangerine/common/hexutil"
 
 type binarySerializer interface {
 	binaryPut(serializedData []byte) error

@@ -1,3 +1,3 @@
 #!/bin/bash
 
-govendor fetch github.com/dexon-foundation/dexon-consensus/...@master
+govendor fetch github.com/byzantine-lab/dexon-consensus/...@master

@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
 )
 
 // KV mocks a key value store

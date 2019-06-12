@@ -3,9 +3,9 @@ package rawdb
 import (
 	"bytes"
 
-	coreDb "github.com/dexon-foundation/dexon-consensus/core/db"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/rlp"
+	coreDb "github.com/byzantine-lab/dexon-consensus/core/db"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 func ReadCoreDKGProtocolRLP(db DatabaseReader) rlp.RawValue {

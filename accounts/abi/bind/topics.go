@@ -22,9 +22,9 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/dexon-foundation/dexon/accounts/abi"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/tangerine-network/go-tangerine/accounts/abi"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/crypto"
 )
 
 // makeTopics converts a filter query argument list into a filter topic set.

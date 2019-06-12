@@ -22,10 +22,10 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/swarm/testutil"
 	"github.com/pborman/uuid"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/swarm/testutil"
 
 	cli "gopkg.in/urfave/cli.v1"
 )

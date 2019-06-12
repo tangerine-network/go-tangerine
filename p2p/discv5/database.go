@@ -28,15 +28,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/rlp"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/errors"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/storage"
 	"github.com/syndtr/goleveldb/leveldb/util"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 var (

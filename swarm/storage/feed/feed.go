@@ -20,9 +20,9 @@ import (
 	"hash"
 	"unsafe"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/hexutil"
-	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 // Feed represents a particular user's stream of updates on a topic

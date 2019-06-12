@@ -26,8 +26,8 @@ import (
 
 	"bazil.org/fuse"
 	"bazil.org/fuse/fs"
-	"github.com/dexon-foundation/dexon/swarm/log"
-	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 	"golang.org/x/net/context"
 )
 

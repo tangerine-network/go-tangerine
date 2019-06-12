@@ -19,8 +19,8 @@ package state
 import (
 	"testing"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/ethdb"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/ethdb"
 )
 
 var addr = common.BytesToAddress([]byte("test"))

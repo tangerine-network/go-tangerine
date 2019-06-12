@@ -28,10 +28,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/rpc"
-	"github.com/dexon-foundation/dexon/swarm/api"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/rpc"
+	"github.com/tangerine-network/go-tangerine/swarm/api"
 )
 
 // TestNewSwarm validates Swarm fields in repsect to the provided configuration.

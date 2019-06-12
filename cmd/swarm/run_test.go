@@ -32,16 +32,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/accounts"
-	"github.com/dexon-foundation/dexon/accounts/keystore"
-	"github.com/dexon-foundation/dexon/internal/cmdtest"
-	"github.com/dexon-foundation/dexon/node"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/rpc"
-	"github.com/dexon-foundation/dexon/swarm"
-	"github.com/dexon-foundation/dexon/swarm/api"
-	swarmhttp "github.com/dexon-foundation/dexon/swarm/api/http"
 	"github.com/docker/docker/pkg/reexec"
+	"github.com/tangerine-network/go-tangerine/accounts"
+	"github.com/tangerine-network/go-tangerine/accounts/keystore"
+	"github.com/tangerine-network/go-tangerine/internal/cmdtest"
+	"github.com/tangerine-network/go-tangerine/node"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/rpc"
+	"github.com/tangerine-network/go-tangerine/swarm"
+	"github.com/tangerine-network/go-tangerine/swarm/api"
+	swarmhttp "github.com/tangerine-network/go-tangerine/swarm/api/http"
 )
 
 var loglevel = flag.Int("loglevel", 3, "verbosity of logs")

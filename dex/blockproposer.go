@@ -7,15 +7,15 @@ import (
 	"sync/atomic"
 	"time"
 
-	dexCore "github.com/dexon-foundation/dexon-consensus/core"
-	coreEcdsa "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
-	"github.com/dexon-foundation/dexon-consensus/core/syncer"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+	dexCore "github.com/byzantine-lab/dexon-consensus/core"
+	coreEcdsa "github.com/byzantine-lab/dexon-consensus/core/crypto/ecdsa"
+	"github.com/byzantine-lab/dexon-consensus/core/syncer"
+	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
 
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/dex/db"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/dex/db"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 var (
@@ -27,7 +27,7 @@ type blockProposer struct {
 	running   int32
 	syncing   int32
 	proposing int32
-	dex       *Dexon
+	dex       *Tangerine
 	watchCat  *syncer.WatchCat
 	dMoment   time.Time
 
@@ -35,7 +35,7 @@ type blockProposer struct {
 	stopCh chan struct{}
 }
 
-func NewBlockProposer(dex *Dexon, watchCat *syncer.WatchCat, dMoment time.Time) *blockProposer {
+func NewBlockProposer(dex *Tangerine, watchCat *syncer.WatchCat, dMoment time.Time) *blockProposer {
 	return &blockProposer{
 		dex:      dex,
 		watchCat: watchCat,

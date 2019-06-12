@@ -25,11 +25,11 @@ import (
 	"io/ioutil"
 	"math/big"
 
-	"github.com/dexon-foundation/dexon/accounts/abi/bind"
-	"github.com/dexon-foundation/dexon/accounts/abi/bind/backends"
-	"github.com/dexon-foundation/dexon/contracts/chequebook/contract"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/tangerine-network/go-tangerine/accounts/abi/bind"
+	"github.com/tangerine-network/go-tangerine/accounts/abi/bind/backends"
+	"github.com/tangerine-network/go-tangerine/contracts/chequebook/contract"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/crypto"
 )
 
 var (

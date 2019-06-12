@@ -22,12 +22,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/rawdb"
-	"github.com/dexon-foundation/dexon/core/state"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/trie"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/rawdb"
+	"github.com/tangerine-network/go-tangerine/core/state"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/trie"
 	"golang.org/x/crypto/sha3"
 )
 

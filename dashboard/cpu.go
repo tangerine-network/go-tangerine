@@ -21,7 +21,7 @@ package dashboard
 import (
 	"syscall"
 
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // getProcessCPUTime retrieves the process' CPU time since program startup.

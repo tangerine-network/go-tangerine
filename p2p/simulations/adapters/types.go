@@ -25,12 +25,12 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/node"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/rpc"
 	"github.com/docker/docker/pkg/reexec"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/node"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/rpc"
 )
 
 // Node represents a node in a simulation network which is created by a

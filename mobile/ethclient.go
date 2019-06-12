@@ -21,8 +21,8 @@ package geth
 import (
 	"math/big"
 
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/ethclient"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/ethclient"
 )
 
 // EthereumClient provides access to the Ethereum APIs.

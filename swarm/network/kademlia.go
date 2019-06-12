@@ -24,10 +24,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/swarm/log"
-	"github.com/dexon-foundation/dexon/swarm/pot"
-	sv "github.com/dexon-foundation/dexon/swarm/version"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
+	"github.com/tangerine-network/go-tangerine/swarm/pot"
+	sv "github.com/tangerine-network/go-tangerine/swarm/version"
 )
 
 /*

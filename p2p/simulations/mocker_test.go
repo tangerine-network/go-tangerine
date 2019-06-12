@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
 )
 
 func TestMocker(t *testing.T) {

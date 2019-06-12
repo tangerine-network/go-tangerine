@@ -28,28 +28,28 @@ import (
 	"sync/atomic"
 	"time"
 
-	dexCore "github.com/dexon-foundation/dexon-consensus/core"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
-	"github.com/hashicorp/golang-lru"
+	dexCore "github.com/byzantine-lab/dexon-consensus/core"
+	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
+	lru "github.com/hashicorp/golang-lru"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/math"
-	"github.com/dexon-foundation/dexon/common/mclock"
-	"github.com/dexon-foundation/dexon/common/prque"
-	"github.com/dexon-foundation/dexon/consensus"
-	"github.com/dexon-foundation/dexon/consensus/dexcon"
-	"github.com/dexon-foundation/dexon/core/rawdb"
-	"github.com/dexon-foundation/dexon/core/state"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/event"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/params"
-	"github.com/dexon-foundation/dexon/rlp"
-	"github.com/dexon-foundation/dexon/trie"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/math"
+	"github.com/tangerine-network/go-tangerine/common/mclock"
+	"github.com/tangerine-network/go-tangerine/common/prque"
+	"github.com/tangerine-network/go-tangerine/consensus"
+	"github.com/tangerine-network/go-tangerine/consensus/dexcon"
+	"github.com/tangerine-network/go-tangerine/core/rawdb"
+	"github.com/tangerine-network/go-tangerine/core/state"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/core/vm"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/event"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/params"
+	"github.com/tangerine-network/go-tangerine/rlp"
+	"github.com/tangerine-network/go-tangerine/trie"
 )
 
 var (
@@ -1484,22 +1484,22 @@ func (bc *BlockChain) insertSidechain(block *types.Block, it *insertIterator) (i
 	return 0, nil, nil, nil
 }
 
-// InsertDexonChain attempts to insert the given batch of blocks in to the canonical
+// InsertTangerineChain attempts to insert the given batch of blocks in to the canonical
 // chain or, otherwise, create a fork. If an error is returned it will return
 // the index number of the failing block as well an error describing what went
 // wrong.
 //
 // After insertion is done, all accumulated events will be fired.
-func (bc *BlockChain) InsertDexonChain(chain types.Blocks) (int, error) {
-	n, events, logs, err := bc.insertDexonChain(chain)
+func (bc *BlockChain) InsertTangerineChain(chain types.Blocks) (int, error) {
+	n, events, logs, err := bc.insertTangerineChain(chain)
 	bc.PostChainEvents(events, logs)
 	return n, err
 }
 
-// insertDexoonChain will execute the actual chain insertion and event aggregation. The
+// insertTangerineChain will execute the actual chain insertion and event aggregation. The
 // only reason this method exists as a separate one is to make locking cleaner
 // with deferred statements.
-func (bc *BlockChain) insertDexonChain(chain types.Blocks) (int, []interface{}, []*types.Log, error) {
+func (bc *BlockChain) insertTangerineChain(chain types.Blocks) (int, []interface{}, []*types.Log, error) {
 	// Sanity check that we have something meaningful to import
 	if len(chain) == 0 {
 		return 0, nil, nil, nil
@@ -1550,8 +1550,8 @@ func (bc *BlockChain) insertDexonChain(chain types.Blocks) (int, []interface{}, 
 		// Wait for the block's verification to complete
 		bstart := time.Now()
 
-		// VerifyDexonHeader will verify tsig, witness and ensure dexon header is correct.
-		err := bc.hc.VerifyDexonHeader(block.Header(), bc.gov, bc.verifierCache, bc.Validator())
+		// VerifyTangerineHeader will verify tsig, witness and ensure dexon header is correct.
+		err := bc.hc.VerifyTangerineHeader(block.Header(), bc.gov, bc.verifierCache, bc.Validator())
 		if err == nil {
 			err = bc.Validator().ValidateBody(block)
 		}
@@ -1605,7 +1605,7 @@ func (bc *BlockChain) insertDexonChain(chain types.Blocks) (int, []interface{}, 
 			}
 			// Import all the pruned blocks to make the state available
 			bc.chainmu.Unlock()
-			_, evs, logs, err := bc.insertDexonChain(winner)
+			_, evs, logs, err := bc.insertTangerineChain(winner)
 			bc.chainmu.Lock()
 			events, coalescedLogs = evs, logs
 
@@ -1697,8 +1697,8 @@ func (bc *BlockChain) insertDexonChain(chain types.Blocks) (int, []interface{}, 
 	return 0, events, coalescedLogs, nil
 }
 
-func (bc *BlockChain) VerifyDexonHeader(header *types.Header) error {
-	return bc.hc.VerifyDexonHeader(header, bc.gov, bc.verifierCache, bc.Validator())
+func (bc *BlockChain) VerifyTangerineHeader(header *types.Header) error {
+	return bc.hc.VerifyTangerineHeader(header, bc.gov, bc.verifierCache, bc.Validator())
 }
 
 func (bc *BlockChain) ProcessBlock(block *types.Block, witness *coreTypes.Witness) (*common.Hash, error) {
@@ -2200,10 +2200,10 @@ func (bc *BlockChain) InsertHeaderChain(chain []*types.Header, checkFreq int) (i
 	return bc.hc.InsertHeaderChain(chain, whFunc, start)
 }
 
-func (bc *BlockChain) InsertDexonHeaderChain(chain []*types.HeaderWithGovState,
+func (bc *BlockChain) InsertTangerineHeaderChain(chain []*types.HeaderWithGovState,
 	gov dexcon.GovernanceStateFetcher, verifierCache *dexCore.TSigVerifierCache) (int, error) {
 	start := time.Now()
-	if i, err := bc.hc.ValidateDexonHeaderChain(chain, gov, verifierCache, bc.Validator()); err != nil {
+	if i, err := bc.hc.ValidateTangerineHeaderChain(chain, gov, verifierCache, bc.Validator()); err != nil {
 		return i, err
 	}
 
@@ -2216,7 +2216,7 @@ func (bc *BlockChain) InsertDexonHeaderChain(chain []*types.HeaderWithGovState,
 	whFunc := func(header *types.HeaderWithGovState) error {
 		bc.mu.Lock()
 		defer bc.mu.Unlock()
-		status, err := bc.hc.WriteDexonHeader(header)
+		status, err := bc.hc.WriteTangerineHeader(header)
 		if status == SideStatTy {
 			log.Debug("Inserted forked block header", "number", header.Number, "hash", header.Hash, "diff", header.Difficulty,
 				"gas", header.GasUsed)
@@ -2225,7 +2225,7 @@ func (bc *BlockChain) InsertDexonHeaderChain(chain []*types.HeaderWithGovState,
 		return err
 	}
 
-	return bc.hc.InsertDexonHeaderChain(chain, whFunc, start)
+	return bc.hc.InsertTangerineHeaderChain(chain, whFunc, start)
 }
 
 // writeHeader writes a header into the local chain, given that its parent is

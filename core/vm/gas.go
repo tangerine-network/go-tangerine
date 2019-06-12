@@ -19,7 +19,7 @@ package vm
 import (
 	"math/big"
 
-	"github.com/dexon-foundation/dexon/params"
+	"github.com/tangerine-network/go-tangerine/params"
 )
 
 // Gas costs

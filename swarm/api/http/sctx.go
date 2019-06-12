@@ -3,8 +3,8 @@ package http
 import (
 	"context"
 
-	"github.com/dexon-foundation/dexon/swarm/api"
-	"github.com/dexon-foundation/dexon/swarm/sctx"
+	"github.com/tangerine-network/go-tangerine/swarm/api"
+	"github.com/tangerine-network/go-tangerine/swarm/sctx"
 )
 
 type uriKey struct{}

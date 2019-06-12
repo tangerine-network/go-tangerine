@@ -21,11 +21,11 @@ import (
 
 	"encoding/json"
 
-	"github.com/dexon-foundation/dexon/accounts"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/hexutil"
-	"github.com/dexon-foundation/dexon/internal/ethapi"
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/accounts"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/internal/ethapi"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 type AuditLogger struct {

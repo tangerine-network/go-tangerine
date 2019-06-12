@@ -1,9 +1,9 @@
 package state
 
 import (
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/trie"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/trie"
 )
 
 func GetGovState(statedb *StateDB, header *types.Header,

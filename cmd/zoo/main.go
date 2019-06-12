@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 
-	"github.com/dexon-foundation/dexon/cmd/zoo/monkey"
-	"github.com/dexon-foundation/dexon/cmd/zoo/utils"
+	"github.com/tangerine-network/go-tangerine/cmd/zoo/monkey"
+	"github.com/tangerine-network/go-tangerine/cmd/zoo/utils"
 )
 
 var key = flag.String("key", "", "private key path")

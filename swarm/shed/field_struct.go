@@ -17,8 +17,8 @@
 package shed
 
 import (
-	"github.com/dexon-foundation/dexon/rlp"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 // StructField is a helper to store complex structure by

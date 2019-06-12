@@ -40,18 +40,18 @@ import (
 	"sync"
 	"time"
 
+	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
+	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
+	dkgTypes "github.com/byzantine-lab/dexon-consensus/core/types/dkg"
 	mapset "github.com/deckarep/golang-set"
-	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
-	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 var (

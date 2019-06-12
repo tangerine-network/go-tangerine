@@ -21,13 +21,13 @@ import (
 	"os"
 	"sort"
 
-	"github.com/dexon-foundation/dexon/cmd/utils"
-	gethmetrics "github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/metrics/influxdb"
-	swarmmetrics "github.com/dexon-foundation/dexon/swarm/metrics"
-	"github.com/dexon-foundation/dexon/swarm/tracing"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
+	gethmetrics "github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/metrics/influxdb"
+	swarmmetrics "github.com/tangerine-network/go-tangerine/swarm/metrics"
+	"github.com/tangerine-network/go-tangerine/swarm/tracing"
 
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/log"
 
 	cli "gopkg.in/urfave/cli.v1"
 )

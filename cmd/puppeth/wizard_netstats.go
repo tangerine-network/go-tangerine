@@ -23,9 +23,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/log"
 	"github.com/olekukonko/tablewriter"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // networkStats verifies the status of network components and generates a protip

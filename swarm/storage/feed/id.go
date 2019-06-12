@@ -21,10 +21,10 @@ import (
 	"hash"
 	"strconv"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/swarm/storage/feed/lookup"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/feed/lookup"
 
-	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 // ID uniquely identifies an update on the network.

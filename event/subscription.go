@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common/mclock"
+	"github.com/tangerine-network/go-tangerine/common/mclock"
 )
 
 // Subscription represents a stream of events. The carrier of the events is typically a

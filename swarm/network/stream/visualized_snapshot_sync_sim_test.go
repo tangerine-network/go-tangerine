@@ -28,17 +28,17 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/node"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/p2p/protocols"
-	"github.com/dexon-foundation/dexon/p2p/simulations"
-	"github.com/dexon-foundation/dexon/p2p/simulations/adapters"
-	"github.com/dexon-foundation/dexon/rlp"
-	"github.com/dexon-foundation/dexon/swarm/log"
-	"github.com/dexon-foundation/dexon/swarm/network/simulation"
-	"github.com/dexon-foundation/dexon/swarm/state"
-	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/node"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/protocols"
+	"github.com/tangerine-network/go-tangerine/p2p/simulations"
+	"github.com/tangerine-network/go-tangerine/p2p/simulations/adapters"
+	"github.com/tangerine-network/go-tangerine/rlp"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
+	"github.com/tangerine-network/go-tangerine/swarm/network/simulation"
+	"github.com/tangerine-network/go-tangerine/swarm/state"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 /*

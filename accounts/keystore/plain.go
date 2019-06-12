@@ -22,7 +22,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dexon-foundation/dexon/common"
+	"github.com/tangerine-network/go-tangerine/common"
 )
 
 type keyStorePlain struct {

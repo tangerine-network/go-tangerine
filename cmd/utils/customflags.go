@@ -27,7 +27,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/common/math"
+	"github.com/tangerine-network/go-tangerine/common/math"
 	"gopkg.in/urfave/cli.v1"
 )
 

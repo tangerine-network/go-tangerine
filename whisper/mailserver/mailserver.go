@@ -21,14 +21,14 @@ import (
 	"encoding/binary"
 	"fmt"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/rlp"
-	whisper "github.com/dexon-foundation/dexon/whisper/whisperv6"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/opt"
 	"github.com/syndtr/goleveldb/leveldb/util"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/rlp"
+	whisper "github.com/tangerine-network/go-tangerine/whisper/whisperv6"
 )
 
 // WMailServer represents the state data of the mailserver.

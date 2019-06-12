@@ -30,7 +30,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/params"
+	"github.com/tangerine-network/go-tangerine/params"
 )
 
 var (

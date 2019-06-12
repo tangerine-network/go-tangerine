@@ -21,12 +21,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/accounts/abi"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/state"
-	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/params"
+	"github.com/tangerine-network/go-tangerine/accounts/abi"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/state"
+	"github.com/tangerine-network/go-tangerine/core/vm"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/params"
 )
 
 func TestDefaults(t *testing.T) {

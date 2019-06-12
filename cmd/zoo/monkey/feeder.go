@@ -26,10 +26,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dexon-foundation/dexon/accounts/abi"
-	"github.com/dexon-foundation/dexon/cmd/zoo/client"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/tangerine-network/go-tangerine/accounts/abi"
+	"github.com/tangerine-network/go-tangerine/cmd/zoo/client"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/crypto"
 )
 
 var bananaABI abi.ABI

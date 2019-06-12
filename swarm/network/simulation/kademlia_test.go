@@ -22,9 +22,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/node"
-	"github.com/dexon-foundation/dexon/p2p/simulations/adapters"
-	"github.com/dexon-foundation/dexon/swarm/network"
+	"github.com/tangerine-network/go-tangerine/node"
+	"github.com/tangerine-network/go-tangerine/p2p/simulations/adapters"
+	"github.com/tangerine-network/go-tangerine/swarm/network"
 )
 
 func TestWaitTillHealthy(t *testing.T) {

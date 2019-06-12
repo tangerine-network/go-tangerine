@@ -26,7 +26,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 var (

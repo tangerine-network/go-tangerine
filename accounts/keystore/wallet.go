@@ -19,9 +19,9 @@ package keystore
 import (
 	"math/big"
 
-	ethereum "github.com/dexon-foundation/dexon"
-	"github.com/dexon-foundation/dexon/accounts"
-	"github.com/dexon-foundation/dexon/core/types"
+	ethereum "github.com/tangerine-network/go-tangerine"
+	"github.com/tangerine-network/go-tangerine/accounts"
+	"github.com/tangerine-network/go-tangerine/core/types"
 )
 
 // keystoreWallet implements the accounts.Wallet interface for the original

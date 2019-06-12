@@ -29,11 +29,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/swarm/log"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/iterator"
 	"github.com/syndtr/goleveldb/leveldb/opt"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
 )
 
 const (

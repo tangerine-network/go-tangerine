@@ -25,9 +25,9 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/swarm/storage"
-	"github.com/dexon-foundation/dexon/swarm/storage/mock"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/mock"
 )
 
 // MockStore creates NodeStore instances from provided GlobalStorer,

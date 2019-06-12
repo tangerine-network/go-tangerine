@@ -26,8 +26,8 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // nodeDockerfile is the Dockerfile required to run an Ethereum node.
@@ -40,11 +40,11 @@ ADD genesis.json /genesis.json
 	ADD signer.pass /signer.pass
 {{end}}
 RUN \
-  echo 'gdex --cache 512 init /genesis.json' > gdex.sh && \{{if .Unlock}}
-	echo 'mkdir -p /root/.ethereum/keystore/ && cp /signer.json /root/.ethereum/keystore/' >> gdex.sh && \{{end}}
-	echo $'exec gdex --networkid {{.NetworkID}} --cache 512 --port {{.Port}} --nat extip:{{.IP}} --maxpeers {{.Peers}} {{.LightFlag}} --ethstats \'{{.Ethstats}}\' {{if .Bootnodes}}--bootnodes {{.Bootnodes}}{{end}} {{if .Etherbase}}--miner.etherbase {{.Etherbase}} --mine --miner.threads 1{{end}} {{if .Unlock}}--unlock 0 --password /signer.pass --mine{{end}} --miner.gastarget {{.GasTarget}} --miner.gaslimit {{.GasLimit}} --miner.gasprice {{.GasPrice}}' >> gdex.sh
+  echo 'gtan --cache 512 init /genesis.json' > gtan.sh && \{{if .Unlock}}
+	echo 'mkdir -p /root/.ethereum/keystore/ && cp /signer.json /root/.ethereum/keystore/' >> gtan.sh && \{{end}}
+	echo $'exec gtan --networkid {{.NetworkID}} --cache 512 --port {{.Port}} --nat extip:{{.IP}} --maxpeers {{.Peers}} {{.LightFlag}} --ethstats \'{{.Ethstats}}\' {{if .Bootnodes}}--bootnodes {{.Bootnodes}}{{end}} {{if .Etherbase}}--miner.etherbase {{.Etherbase}} --mine --miner.threads 1{{end}} {{if .Unlock}}--unlock 0 --password /signer.pass --mine{{end}} --miner.gastarget {{.GasTarget}} --miner.gaslimit {{.GasLimit}} --miner.gasprice {{.GasPrice}}' >> gtan.sh
 
-ENTRYPOINT ["/bin/sh", "gdex.sh"]
+ENTRYPOINT ["/bin/sh", "gtan.sh"]
 `
 
 // nodeComposefile is the docker-compose.yml file required to deploy and maintain
@@ -229,7 +229,7 @@ func checkNode(client *sshClient, network string, boot bool) (*nodeInfos, error)
 
 	// Container available, retrieve its node ID and its genesis json
 	var out []byte
-	if out, err = client.Run(fmt.Sprintf("docker exec %s_%s_1 gdex --exec admin.nodeInfo.id --cache=16 attach", network, kind)); err != nil {
+	if out, err = client.Run(fmt.Sprintf("docker exec %s_%s_1 gtan --exec admin.nodeInfo.id --cache=16 attach", network, kind)); err != nil {
 		return nil, ErrServiceUnreachable
 	}
 	enode := bytes.Trim(bytes.TrimSpace(out), "\"")

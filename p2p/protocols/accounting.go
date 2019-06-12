@@ -19,7 +19,7 @@ package protocols
 import (
 	"time"
 
-	"github.com/dexon-foundation/dexon/metrics"
+	"github.com/tangerine-network/go-tangerine/metrics"
 )
 
 // define some metrics

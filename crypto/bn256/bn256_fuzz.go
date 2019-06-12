@@ -10,8 +10,8 @@ import (
 	"bytes"
 	"math/big"
 
-	cloudflare "github.com/dexon-foundation/dexon/crypto/bn256/cloudflare"
-	google "github.com/dexon-foundation/dexon/crypto/bn256/google"
+	cloudflare "github.com/tangerine-network/go-tangerine/crypto/bn256/cloudflare"
+	google "github.com/tangerine-network/go-tangerine/crypto/bn256/google"
 )
 
 // FuzzAdd fuzzez bn256 addition between the Google and Cloudflare libraries.

@@ -29,11 +29,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/swarm/api"
-	"github.com/dexon-foundation/dexon/swarm/storage"
-	"github.com/dexon-foundation/dexon/swarm/testutil"
 	colorable "github.com/mattn/go-colorable"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/swarm/api"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/swarm/testutil"
 )
 
 var (

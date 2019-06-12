@@ -23,22 +23,22 @@ import (
 	"sync/atomic"
 	"time"
 
-	dexCore "github.com/dexon-foundation/dexon-consensus/core"
+	dexCore "github.com/byzantine-lab/dexon-consensus/core"
 
-	ethereum "github.com/dexon-foundation/dexon"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/consensus/dexcon"
-	"github.com/dexon-foundation/dexon/core/rawdb"
-	"github.com/dexon-foundation/dexon/core/state"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/event"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/params"
-	"github.com/dexon-foundation/dexon/trie"
+	ethereum "github.com/tangerine-network/go-tangerine"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/consensus/dexcon"
+	"github.com/tangerine-network/go-tangerine/core/rawdb"
+	"github.com/tangerine-network/go-tangerine/core/state"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/core/vm"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/event"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/params"
+	"github.com/tangerine-network/go-tangerine/trie"
 )
 
 var (
@@ -178,8 +178,8 @@ type LightChain interface {
 
 	GetGovStateByNumber(number uint64) (*types.GovState, error)
 
-	// InsertDexonHeaderChain inserts a batch of headers into the local chain.
-	InsertDexonHeaderChain([]*types.HeaderWithGovState,
+	// InsertTangerineHeaderChain inserts a batch of headers into the local chain.
+	InsertTangerineHeaderChain([]*types.HeaderWithGovState,
 		dexcon.GovernanceStateFetcher, *dexCore.TSigVerifierCache) (int, error)
 
 	// Rollback removes a few recently added elements from the local chain.
@@ -208,8 +208,8 @@ type BlockChain interface {
 	// FastSyncCommitHead directly commits the head block to a certain entity.
 	FastSyncCommitHead(common.Hash) error
 
-	// InsertDexonChain inserts a batch of blocks into the local chain.
-	InsertDexonChain(types.Blocks) (int, error)
+	// InsertTangerineChain inserts a batch of blocks into the local chain.
+	InsertTangerineChain(types.Blocks) (int, error)
 
 	// InsertReceiptChain inserts a batch of receipts into the local chain.
 	InsertReceiptChain(types.Blocks, []types.Receipts) (int, error)
@@ -1503,7 +1503,7 @@ func (d *Downloader) processHeaders(origin uint64, pivot uint64, number uint64) 
 						}
 					}
 
-					if n, err := d.lightchain.InsertDexonHeaderChain(chunk, d.gov, d.verifierCache); err != nil {
+					if n, err := d.lightchain.InsertTangerineHeaderChain(chunk, d.gov, d.verifierCache); err != nil {
 						// If some headers were inserted, add them too to the rollback list
 						if n > 0 {
 							for _, h := range chunk[:n] {
@@ -1595,7 +1595,7 @@ func (d *Downloader) importBlockResults(results []*fetchResult) error {
 	for i, result := range results {
 		blocks[i] = types.NewBlockWithHeader(result.Header).WithBody(result.Transactions, result.Uncles)
 	}
-	if index, err := d.blockchain.InsertDexonChain(blocks); err != nil {
+	if index, err := d.blockchain.InsertTangerineChain(blocks); err != nil {
 		if index < len(results) {
 			log.Debug("Downloaded item processing failed", "number", results[index].Header.Number, "hash", results[index].Header.Hash(), "err", err)
 		} else {

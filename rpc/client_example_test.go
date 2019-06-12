@@ -22,7 +22,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/dexon-foundation/dexon/rpc"
+	"github.com/tangerine-network/go-tangerine/rpc"
 )
 
 // In this example, our client wishes to track the latest 'block number'

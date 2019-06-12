@@ -2,7 +2,7 @@ FROM alpine:3.7
 
 RUN \
   apk add --update go git make gcc musl-dev linux-headers ca-certificates && \
-  git clone --depth 1 https://github.com/dexon-foundation/dexon && \
+  git clone --depth 1 https://github.com/tangerine-network/go-tangerine && \
   (cd go-ethereum && make geth) && \
   cp go-ethereum/build/bin/geth /geth && \
   apk del go git make gcc musl-dev linux-headers && \

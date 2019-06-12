@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/log"
 	jaeger "github.com/uber/jaeger-client-go"
 	jaegercfg "github.com/uber/jaeger-client-go/config"
 	cli "gopkg.in/urfave/cli.v1"

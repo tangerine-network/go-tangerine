@@ -23,10 +23,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dexon-foundation/dexon/cmd/utils"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/rpc"
-	"github.com/dexon-foundation/dexon/swarm/fuse"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/rpc"
+	"github.com/tangerine-network/go-tangerine/swarm/fuse"
 	"gopkg.in/urfave/cli.v1"
 )
 

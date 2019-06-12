@@ -27,8 +27,8 @@ import (
 	"io/ioutil"
 	"sync"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/swarm/storage/mock"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/mock"
 )
 
 // GlobalStore stores all chunk data and also keys and node addresses relations.

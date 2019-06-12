@@ -19,7 +19,7 @@ package intervals
 import (
 	"testing"
 
-	"github.com/dexon-foundation/dexon/swarm/state"
+	"github.com/tangerine-network/go-tangerine/swarm/state"
 )
 
 // TestInmemoryStore tests basic functionality of InmemoryStore.

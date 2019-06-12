@@ -19,7 +19,7 @@ package netutil
 import (
 	"time"
 
-	"github.com/dexon-foundation/dexon/common/mclock"
+	"github.com/tangerine-network/go-tangerine/common/mclock"
 )
 
 // IPTracker predicts the external endpoint, i.e. IP address and port, of the local host

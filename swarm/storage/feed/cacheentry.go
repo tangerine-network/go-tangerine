@@ -21,7 +21,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 const (

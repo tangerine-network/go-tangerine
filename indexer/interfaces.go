@@ -10,10 +10,10 @@ type NewIndexerFunc = func(ReadOnlyBlockChain, Config) Indexer
 // core.Blockhain, passed by initialization function, to receiving latest block
 // event or other information query and interaction.
 type Indexer interface {
-	// Start is called by dex.Dexon if config is set.
+	// Start is called by dex.Tangerine if config is set.
 	Start() error
 
-	// Stop is called by dex.Dexon if config is set and procedure is
+	// Stop is called by dex.Tangerine if config is set and procedure is
 	// terminating.
 	Stop() error
 }

@@ -20,7 +20,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/dexon-foundation/dexon/common"
+	"github.com/tangerine-network/go-tangerine/common"
 )
 
 const Version = "1.0"

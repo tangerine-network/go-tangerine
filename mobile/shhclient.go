@@ -19,8 +19,8 @@
 package geth
 
 import (
-	"github.com/dexon-foundation/dexon/whisper/shhclient"
-	whisper "github.com/dexon-foundation/dexon/whisper/whisperv6"
+	"github.com/tangerine-network/go-tangerine/whisper/shhclient"
+	whisper "github.com/tangerine-network/go-tangerine/whisper/whisperv6"
 )
 
 // WhisperClient provides access to the Ethereum APIs.

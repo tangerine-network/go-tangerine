@@ -19,8 +19,8 @@ package miner
 import (
 	"testing"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/types"
 )
 
 // noopChainRetriever is an implementation of headerRetriever that always

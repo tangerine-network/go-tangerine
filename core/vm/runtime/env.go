@@ -17,9 +17,9 @@
 package runtime
 
 import (
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/core/vm"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/core/vm"
 )
 
 func NewEnv(cfg *Config) *vm.EVM {

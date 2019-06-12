@@ -21,7 +21,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 // TestDB_pullIndex validates the ordering of keys in pull index.

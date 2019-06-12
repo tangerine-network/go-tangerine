@@ -22,9 +22,9 @@ import (
 	"math/big"
 	"sort"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // nonceHeap is a heap.Interface implementation over 64bit unsigned integers for

@@ -20,8 +20,8 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/types"
 )
 
 // senderFromServer is a types.Signer that remembers the sender address returned by the RPC

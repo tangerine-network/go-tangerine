@@ -81,7 +81,7 @@ func Env() Environment {
 
 // LocalEnv returns build environment metadata gathered from git.
 func LocalEnv() Environment {
-	env := applyEnvFlags(Environment{Name: "local", Repo: "dexon-foundation/dexon"})
+	env := applyEnvFlags(Environment{Name: "local", Repo: "tangerine-network/go-tangerine"})
 
 	head := readGitFile("HEAD")
 	if splits := strings.Split(head, " "); len(splits) == 2 {

@@ -25,7 +25,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 func manifest(paths ...string) (manifestReader storage.LazySectionReader) {

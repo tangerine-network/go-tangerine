@@ -27,7 +27,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/p2p/simulations"
+	"github.com/tangerine-network/go-tangerine/p2p/simulations"
 )
 
 // TestSnapshotCreate is a high level e2e test that tests for snapshot generation.

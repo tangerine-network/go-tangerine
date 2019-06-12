@@ -30,10 +30,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
-	swarmapi "github.com/dexon-foundation/dexon/swarm/api/client"
-	"github.com/dexon-foundation/dexon/swarm/testutil"
 	"github.com/mattn/go-colorable"
+	"github.com/tangerine-network/go-tangerine/log"
+	swarmapi "github.com/tangerine-network/go-tangerine/swarm/api/client"
+	"github.com/tangerine-network/go-tangerine/swarm/testutil"
 )
 
 func init() {

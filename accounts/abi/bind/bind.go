@@ -17,7 +17,7 @@
 // Package bind generates Ethereum contract Go bindings.
 //
 // Detailed usage document and tutorial available on the go-ethereum Wiki page:
-// https://github.com/dexon-foundation/dexon/wiki/Native-DApps:-Go-bindings-to-Ethereum-contracts
+// https://github.com/tangerine-network/go-tangerine/wiki/Native-DApps:-Go-bindings-to-Ethereum-contracts
 package bind
 
 import (
@@ -29,7 +29,7 @@ import (
 	"text/template"
 	"unicode"
 
-	"github.com/dexon-foundation/dexon/accounts/abi"
+	"github.com/tangerine-network/go-tangerine/accounts/abi"
 )
 
 // Lang is a target programming language selector to generate bindings for.

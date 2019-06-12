@@ -23,9 +23,9 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/cmd/utils"
-	"github.com/dexon-foundation/dexon/swarm/api"
-	"github.com/dexon-foundation/dexon/swarm/api/client"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
+	"github.com/tangerine-network/go-tangerine/swarm/api"
+	"github.com/tangerine-network/go-tangerine/swarm/api/client"
 	"gopkg.in/urfave/cli.v1"
 )
 

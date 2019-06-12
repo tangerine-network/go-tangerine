@@ -28,9 +28,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
-	ch "github.com/dexon-foundation/dexon/swarm/chunk"
 	"github.com/mattn/go-colorable"
+	"github.com/tangerine-network/go-tangerine/log"
+	ch "github.com/tangerine-network/go-tangerine/swarm/chunk"
 )
 
 var (

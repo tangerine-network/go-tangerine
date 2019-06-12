@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/p2p/simulations"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/p2p/simulations"
 )
 
 // Package defaults.

@@ -28,15 +28,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/node"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/p2p/simulations/adapters"
-	"github.com/dexon-foundation/dexon/swarm/api"
-	"github.com/dexon-foundation/dexon/swarm/network/simulation"
-	"github.com/dexon-foundation/dexon/swarm/storage"
 	colorable "github.com/mattn/go-colorable"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/node"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/simulations/adapters"
+	"github.com/tangerine-network/go-tangerine/swarm/api"
+	"github.com/tangerine-network/go-tangerine/swarm/network/simulation"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 var (

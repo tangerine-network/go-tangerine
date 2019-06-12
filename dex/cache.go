@@ -20,9 +20,9 @@ package dex
 import (
 	"sync"
 
-	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
-	coreDb "github.com/dexon-foundation/dexon-consensus/core/db"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
+	coreDb "github.com/byzantine-lab/dexon-consensus/core/db"
+	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
 )
 
 type voteKey struct {

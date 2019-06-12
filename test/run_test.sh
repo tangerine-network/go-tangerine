@@ -1,9 +1,9 @@
 #!/bin/bash
 
-BOOTNODE_FLAGS="--bootnodes enode://0478aa13c91aa0db8e93b668313b7eb0532fbdb24f64772375373b14dbe326c238ad09ab4469f6442c9a9753f1275aeec2e531912c14a958ed1feb4ae7e227ef@127.0.0.1:30301"
+BOOTNODE_FLAGS="--bootnodes enode://b0dacdaceb9ce26f89406e8048d279d3aa81c770e967db7e2556e416ca446de0e9327dbdf85eb56c421eeabbc843ceb8f373e7a26dc31d48178620e48cb095c4@127.0.0.1:30301"
 GENESIS="genesis.json"
 
-GDEX="../build/bin/gdex"
+GDEX="../build/bin/gtan"
 BOOTNODE="../build/bin/bootnode"
 
 
@@ -31,7 +31,7 @@ fi
 $BOOTNODE -nodekey keystore/bootnode.key --verbosity=9 > bootnode.log 2>&1 &
 
 # Kill all previous instances.
-pkill -9 -f gdex
+pkill -9 -f gtan
 
 logsdir=$PWD/log-$(date '+%Y-%m-%d-%H:%M:%S')
 mkdir $logsdir
@@ -68,7 +68,7 @@ with open('$GENESIS', 'w') as f:
 __FILE__
 
 # A standalone RPC server for accepting RPC requests.
-datadir=$PWD/Dexon.rpc
+datadir=$PWD/Tangerine.rpc
 if ! $CONTINUE; then
   rm -rf $datadir
   $GDEX --datadir=$datadir init ${GENESIS}
@@ -76,6 +76,7 @@ fi
 $GDEX \
   ${BOOTNODE_FLAGS} \
   --verbosity=3 \
+  --nat=none \
   --gcmode=archive \
   --datadir=$datadir --nodekey=keystore/rpc.key \
   --rpc --rpcapi=eth,net,web3,debug \
@@ -83,9 +84,9 @@ $GDEX \
   --ws --wsapi=eth,net,web3,debug \
   --wsaddr=0.0.0.0 --wsport=8546  \
   --wsorigins='*' --rpcvhosts='*' --rpccorsdomain="*" \
-  > $logsdir/gdex.rpc.log 2>&1 &
+  > $logsdir/gtan.rpc.log 2>&1 &
 
-NUM_NODES=$(cat ${GENESIS} | grep 'DEXON Test Node' | wc -l)
+NUM_NODES=$(cat ${GENESIS} | grep 'Tangerine Test Node' | wc -l)
 
 RECOVERY_FLAGS="--recovery.network-rpc=https://rinkeby.infura.io"
 
@@ -96,7 +97,7 @@ fi
 
 # Nodes
 for i in $(seq 0 $(($NUM_NODES - 1))); do
-  datadir=$PWD/Dexon.$i
+  datadir=$PWD/Tangerine.$i
 
   if ! $CONTINUE; then
     rm -rf $datadir
@@ -106,6 +107,7 @@ for i in $(seq 0 $(($NUM_NODES - 1))); do
     ${BOOTNODE_FLAGS} \
     --bp \
     --verbosity=4 \
+    --nat=none \
     --gcmode=archive \
     --datadir=$datadir --nodekey=keystore/test$i.key \
     --port=$((30305 + $i)) \
@@ -116,9 +118,9 @@ for i in $(seq 0 $(($NUM_NODES - 1))); do
     --wsaddr=0.0.0.0 --wsport=$((8548 + $i * 2)) \
     --wsorigins='*' --rpcvhosts='*' --rpccorsdomain="*" \
     --pprof --pprofaddr=localhost --pprofport=$((6060 + $i)) \
-    > $logsdir/gdex.$i.log 2>&1 &
+    > $logsdir/gtan.$i.log 2>&1 &
 done
 
 if ! $SMOKETEST; then
-  tail -f $logsdir/gdex.*.log
+  tail -f $logsdir/gtan.*.log
 fi

@@ -3,8 +3,8 @@ package indexer
 import (
 	"plugin"
 
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/dex/downloader"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/dex/downloader"
 )
 
 // Config is data sources related configs struct.

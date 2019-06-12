@@ -20,8 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/dexon-foundation/dexon/accounts/keystore"
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/accounts/keystore"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // deployFaucet queries the user for various input on deploying a faucet, after

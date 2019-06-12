@@ -23,9 +23,9 @@ import (
 	"errors"
 	"time"
 
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/protocols"
-	"github.com/dexon-foundation/dexon/swarm/log"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/protocols"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
 )
 
 // Generic ping protocol implementation for

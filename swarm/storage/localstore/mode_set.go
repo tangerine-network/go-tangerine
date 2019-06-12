@@ -17,8 +17,8 @@
 package localstore
 
 import (
-	"github.com/dexon-foundation/dexon/swarm/storage"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 // ModeSet enumerates different Setter modes.

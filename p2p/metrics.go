@@ -25,11 +25,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dexon-foundation/dexon/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
 
-	"github.com/dexon-foundation/dexon/event"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/metrics"
+	"github.com/tangerine-network/go-tangerine/event"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/metrics"
 )
 
 const (

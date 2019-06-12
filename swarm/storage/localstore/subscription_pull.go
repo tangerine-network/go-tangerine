@@ -23,9 +23,9 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/swarm/shed"
-	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/swarm/shed"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 // SubscribePull returns a channel that provides chunk addresses and stored times from pull syncing index.

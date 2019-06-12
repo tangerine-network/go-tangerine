@@ -22,13 +22,13 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/internal/ethapi"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/signer/core"
-	"github.com/dexon-foundation/dexon/signer/rules/deps"
-	"github.com/dexon-foundation/dexon/signer/storage"
 	"github.com/robertkrimen/otto"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/internal/ethapi"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/signer/core"
+	"github.com/tangerine-network/go-tangerine/signer/rules/deps"
+	"github.com/tangerine-network/go-tangerine/signer/storage"
 )
 
 var (

@@ -18,7 +18,7 @@ package stream
 import (
 	"testing"
 
-	p2ptest "github.com/dexon-foundation/dexon/p2p/testing"
+	p2ptest "github.com/tangerine-network/go-tangerine/p2p/testing"
 )
 
 // This test checks the default behavior of the server, that is

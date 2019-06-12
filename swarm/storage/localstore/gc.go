@@ -92,9 +92,9 @@ package localstore
 import (
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/swarm/shed"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/swarm/shed"
 )
 
 var (

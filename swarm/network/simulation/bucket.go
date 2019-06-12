@@ -16,7 +16,7 @@
 
 package simulation
 
-import "github.com/dexon-foundation/dexon/p2p/enode"
+import "github.com/tangerine-network/go-tangerine/p2p/enode"
 
 // BucketKey is the type that should be used for keys in simulation buckets.
 type BucketKey string

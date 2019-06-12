@@ -8,9 +8,9 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/crypto"
 )
 
 const genesisFile = "genesis.json"
@@ -18,9 +18,8 @@ const genesisFile = "genesis.json"
 var preFundAmount *big.Int = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e8))
 
 var preFundAddresss = []string{
-	"0x2a9D669e4791845EED01D4c0ffF3B927cC94A884",
-	"0x1245A8672FA881Cf858eF01D34c42B55D9b263fF",
-	"0xe0F859340353854693F537ea337106a33E9FeAB0",
+	"0x0D54AF942d6bF13870F5CA65D470954f21D3cBE5", // Owner
+	"0xAA2fe8D6024682aF0540F8BA776b549bB50251ab", // Monkey
 }
 
 func main() {
@@ -54,10 +53,10 @@ func main() {
 			Staked:    new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			PublicKey: crypto.FromECDSAPub(&privKey.PublicKey),
 			NodeInfo: core.NodeInfo{
-				Name:     fmt.Sprintf("DEXON Test Node %d", i),
-				Email:    fmt.Sprintf("dexon%d@dexon.org", i),
+				Name:     fmt.Sprintf("Tangerine Test Node %d", i),
+				Email:    fmt.Sprintf("tangerine%dtangerine-network.io", i),
 				Location: "Taipei, Taiwan",
-				Url:      "https://dexon.org",
+				Url:      "https://tangerine-network.io",
 			},
 		}
 		fmt.Printf("Created account %s\n", address.String())

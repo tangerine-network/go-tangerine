@@ -20,10 +20,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/trie"
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/trie"
 )
 
 // Trie cache generation limit after which to evict trie nodes from memory.

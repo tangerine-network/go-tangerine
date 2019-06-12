@@ -19,8 +19,8 @@ package les
 import (
 	"time"
 
-	"github.com/dexon-foundation/dexon/common/bitutil"
-	"github.com/dexon-foundation/dexon/light"
+	"github.com/tangerine-network/go-tangerine/common/bitutil"
+	"github.com/tangerine-network/go-tangerine/light"
 )
 
 const (

@@ -25,16 +25,16 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/p2p/protocols"
-	"github.com/dexon-foundation/dexon/rpc"
-	"github.com/dexon-foundation/dexon/swarm/log"
-	"github.com/dexon-foundation/dexon/swarm/network"
-	"github.com/dexon-foundation/dexon/swarm/network/stream/intervals"
-	"github.com/dexon-foundation/dexon/swarm/state"
-	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/protocols"
+	"github.com/tangerine-network/go-tangerine/rpc"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
+	"github.com/tangerine-network/go-tangerine/swarm/network"
+	"github.com/tangerine-network/go-tangerine/swarm/network/stream/intervals"
+	"github.com/tangerine-network/go-tangerine/swarm/state"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 const (

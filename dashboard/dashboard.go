@@ -34,13 +34,13 @@ import (
 
 	"io"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/params"
-	"github.com/dexon-foundation/dexon/rpc"
 	"github.com/elastic/gosigar"
 	"github.com/mohae/deepcopy"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/params"
+	"github.com/tangerine-network/go-tangerine/rpc"
 	"golang.org/x/net/websocket"
 )
 

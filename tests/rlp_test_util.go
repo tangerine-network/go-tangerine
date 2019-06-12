@@ -24,7 +24,7 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 // RLPTest is the JSON structure of a single RLP test.

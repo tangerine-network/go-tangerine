@@ -41,23 +41,23 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/accounts"
-	"github.com/dexon-foundation/dexon/accounts/keystore"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/eth"
-	"github.com/dexon-foundation/dexon/eth/downloader"
-	"github.com/dexon-foundation/dexon/ethclient"
-	"github.com/dexon-foundation/dexon/ethstats"
-	"github.com/dexon-foundation/dexon/les"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/node"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/discv5"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/p2p/nat"
-	"github.com/dexon-foundation/dexon/params"
+	"github.com/tangerine-network/go-tangerine/accounts"
+	"github.com/tangerine-network/go-tangerine/accounts/keystore"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/eth"
+	"github.com/tangerine-network/go-tangerine/eth/downloader"
+	"github.com/tangerine-network/go-tangerine/ethclient"
+	"github.com/tangerine-network/go-tangerine/ethstats"
+	"github.com/tangerine-network/go-tangerine/les"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/node"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/discv5"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/nat"
+	"github.com/tangerine-network/go-tangerine/params"
 	"golang.org/x/net/websocket"
 )
 
@@ -215,7 +215,7 @@ type faucet struct {
 func newFaucet(genesis *core.Genesis, port int, enodes []*discv5.Node, network uint64, stats string, ks *keystore.KeyStore, index []byte) (*faucet, error) {
 	// Assemble the raw devp2p protocol stack
 	stack, err := node.New(&node.Config{
-		Name:    "gdex",
+		Name:    "gtan",
 		Version: params.VersionWithMeta,
 		DataDir: filepath.Join(os.Getenv("HOME"), ".faucet"),
 		P2P: p2p.Config{
@@ -449,7 +449,7 @@ func (f *faucet) apiHandler(conn *websocket.Conn) {
 		case *noauthFlag:
 			username, avatar, address, err = authNoAuth(msg.URL)
 		default:
-			err = errors.New("Something funky happened, please open an issue at https://github.com/dexon-foundation/dexon/issues")
+			err = errors.New("Something funky happened, please open an issue at https://github.com/tangerine-network/go-tangerine/issues")
 		}
 		if err != nil {
 			if err = sendError(conn, err); err != nil {

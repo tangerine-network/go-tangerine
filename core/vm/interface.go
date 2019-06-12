@@ -19,8 +19,8 @@ package vm
 import (
 	"math/big"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/types"
 )
 
 // StateDB is an EVM database for full state querying.

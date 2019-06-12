@@ -21,8 +21,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/internal/cmdtest"
 	"github.com/docker/docker/pkg/reexec"
+	"github.com/tangerine-network/go-tangerine/internal/cmdtest"
 )
 
 func init() {

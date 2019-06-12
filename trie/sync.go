@@ -20,9 +20,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/prque"
-	"github.com/dexon-foundation/dexon/ethdb"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/prque"
+	"github.com/tangerine-network/go-tangerine/ethdb"
 )
 
 // ErrNotRequested is returned by the trie sync when it's requested to process a

@@ -11,16 +11,16 @@ import (
 	"strings"
 	"time"
 
-	dexCore "github.com/dexon-foundation/dexon-consensus/core"
+	dexCore "github.com/byzantine-lab/dexon-consensus/core"
 
-	"github.com/dexon-foundation/dexon"
-	"github.com/dexon-foundation/dexon/accounts/abi"
-	"github.com/dexon-foundation/dexon/cmd/zoo/monkey"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/ethclient"
-	"github.com/dexon-foundation/dexon/internal/build"
+	ethereum "github.com/tangerine-network/go-tangerine"
+	"github.com/tangerine-network/go-tangerine/accounts/abi"
+	"github.com/tangerine-network/go-tangerine/cmd/zoo/monkey"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/core/vm"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/ethclient"
+	"github.com/tangerine-network/go-tangerine/internal/build"
 )
 
 func main() {

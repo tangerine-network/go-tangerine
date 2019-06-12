@@ -25,9 +25,9 @@ import (
 	"sync"
 
 	"github.com/davecgh/go-spew/spew"
-	"github.com/dexon-foundation/dexon/common/hexutil"
-	"github.com/dexon-foundation/dexon/internal/ethapi"
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/internal/ethapi"
+	"github.com/tangerine-network/go-tangerine/log"
 	"golang.org/x/crypto/ssh/terminal"
 )
 

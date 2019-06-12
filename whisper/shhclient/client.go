@@ -19,10 +19,10 @@ package shhclient
 import (
 	"context"
 
-	"github.com/dexon-foundation/dexon"
-	"github.com/dexon-foundation/dexon/common/hexutil"
-	"github.com/dexon-foundation/dexon/rpc"
-	whisper "github.com/dexon-foundation/dexon/whisper/whisperv6"
+	ethereum "github.com/tangerine-network/go-tangerine"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/rpc"
+	whisper "github.com/tangerine-network/go-tangerine/whisper/whisperv6"
 )
 
 // Client defines typed wrappers for the Whisper v6 RPC API.

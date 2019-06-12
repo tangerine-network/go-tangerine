@@ -5,7 +5,7 @@ package whisperv6
 import (
 	"encoding/json"
 
-	"github.com/dexon-foundation/dexon/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
 )
 
 var _ = (*criteriaOverride)(nil)

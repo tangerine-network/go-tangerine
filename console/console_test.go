@@ -26,12 +26,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/consensus/ethash"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/eth"
-	"github.com/dexon-foundation/dexon/internal/jsre"
-	"github.com/dexon-foundation/dexon/node"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/consensus/ethash"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/eth"
+	"github.com/tangerine-network/go-tangerine/internal/jsre"
+	"github.com/tangerine-network/go-tangerine/node"
 )
 
 const (

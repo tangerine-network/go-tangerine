@@ -23,12 +23,12 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/hexutil"
-	math2 "github.com/dexon-foundation/dexon/common/math"
-	"github.com/dexon-foundation/dexon/consensus/ethash"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/params"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
+	math2 "github.com/tangerine-network/go-tangerine/common/math"
+	"github.com/tangerine-network/go-tangerine/consensus/ethash"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/params"
 )
 
 // alethGenesisSpec represents the genesis specification format used by the

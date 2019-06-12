@@ -1,8 +1,8 @@
 package log
 
 import (
-	l "github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/metrics"
+	l "github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/metrics"
 )
 
 const (

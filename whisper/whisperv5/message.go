@@ -27,10 +27,10 @@ import (
 	"errors"
 	"strconv"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/crypto/ecies"
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/crypto/ecies"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // MessageParams specifies the exact way a message should be wrapped into an Envelope.

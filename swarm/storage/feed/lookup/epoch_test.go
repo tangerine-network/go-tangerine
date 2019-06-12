@@ -3,7 +3,7 @@ package lookup_test
 import (
 	"testing"
 
-	"github.com/dexon-foundation/dexon/swarm/storage/feed/lookup"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/feed/lookup"
 )
 
 func TestMarshallers(t *testing.T) {

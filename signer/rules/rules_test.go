@@ -22,13 +22,13 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/accounts"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/hexutil"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/internal/ethapi"
-	"github.com/dexon-foundation/dexon/signer/core"
-	"github.com/dexon-foundation/dexon/signer/storage"
+	"github.com/tangerine-network/go-tangerine/accounts"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/internal/ethapi"
+	"github.com/tangerine-network/go-tangerine/signer/core"
+	"github.com/tangerine-network/go-tangerine/signer/storage"
 )
 
 const JS = `

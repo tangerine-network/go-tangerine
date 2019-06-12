@@ -26,9 +26,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/accounts"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/event"
+	"github.com/tangerine-network/go-tangerine/accounts"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/event"
 )
 
 var testSigData = make([]byte, 32)

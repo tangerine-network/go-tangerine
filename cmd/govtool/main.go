@@ -6,11 +6,11 @@ import (
 	"math/big"
 	"os"
 
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
-	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
-	"github.com/dexon-foundation/dexon/cmd/utils"
-	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/rlp"
+	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
+	dkgTypes "github.com/byzantine-lab/dexon-consensus/core/types/dkg"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
+	"github.com/tangerine-network/go-tangerine/core/vm"
+	"github.com/tangerine-network/go-tangerine/rlp"
 	"gopkg.in/urfave/cli.v1"
 )
 

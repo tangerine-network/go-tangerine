@@ -26,9 +26,9 @@ import (
 	"sort"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
 	"github.com/mohae/deepcopy"
 	"github.com/rjeczalik/notify"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 var emptyChunk = json.RawMessage("[]")

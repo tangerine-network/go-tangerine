@@ -21,7 +21,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 func TestParseURI(t *testing.T) {

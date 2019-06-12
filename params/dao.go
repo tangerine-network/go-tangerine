@@ -19,7 +19,7 @@ package params
 import (
 	"math/big"
 
-	"github.com/dexon-foundation/dexon/common"
+	"github.com/tangerine-network/go-tangerine/common"
 )
 
 // DAOForkBlockExtra is the block header extra-data field to set for the DAO fork

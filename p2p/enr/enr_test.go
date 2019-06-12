@@ -24,9 +24,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/rlp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 var rnd = rand.New(rand.NewSource(time.Now().UnixNano()))

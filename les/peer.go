@@ -24,13 +24,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/eth"
-	"github.com/dexon-foundation/dexon/les/flowcontrol"
-	"github.com/dexon-foundation/dexon/light"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/eth"
+	"github.com/tangerine-network/go-tangerine/les/flowcontrol"
+	"github.com/tangerine-network/go-tangerine/light"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 var (

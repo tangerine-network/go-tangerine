@@ -34,11 +34,11 @@ import (
 	"io/ioutil"
 	"sync"
 
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/rlp"
-	"github.com/dexon-foundation/dexon/swarm/log"
-	"github.com/dexon-foundation/dexon/swarm/storage/mock"
 	"github.com/syndtr/goleveldb/leveldb"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/rlp"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/mock"
 )
 
 const (

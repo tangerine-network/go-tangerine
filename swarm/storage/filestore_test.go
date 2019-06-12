@@ -24,7 +24,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/swarm/testutil"
+	"github.com/tangerine-network/go-tangerine/swarm/testutil"
 )
 
 const testDataSize = 0x0001000

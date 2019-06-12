@@ -58,25 +58,25 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dexon-foundation/dexon/internal/build"
-	"github.com/dexon-foundation/dexon/params"
-	sv "github.com/dexon-foundation/dexon/swarm/version"
+	"github.com/tangerine-network/go-tangerine/internal/build"
+	"github.com/tangerine-network/go-tangerine/params"
+	sv "github.com/tangerine-network/go-tangerine/swarm/version"
 )
 
 var (
-	// Files that end up in the gdex*.zip archive.
-	gdexArchiveFiles = []string{
+	// Files that end up in the gtan*.zip archive.
+	gtanArchiveFiles = []string{
 		"COPYING",
-		executablePath("gdex"),
+		executablePath("gtan"),
 	}
 
-	// Files that end up in the gdex-alltools*.zip archive.
+	// Files that end up in the gtan-alltools*.zip archive.
 	allToolsArchiveFiles = []string{
 		"COPYING",
 		executablePath("abigen"),
 		executablePath("bootnode"),
 		executablePath("evm"),
-		executablePath("gdex"),
+		executablePath("gtan"),
 		executablePath("puppeth"),
 		executablePath("rlpdump"),
 		executablePath("wnode"),
@@ -92,23 +92,23 @@ var (
 	debExecutables = []debExecutable{
 		{
 			BinaryName:  "abigen",
-			Description: "Source code generator to convert Dexon contract definitions into easy to use, compile-time type-safe Go packages.",
+			Description: "Source code generator to convert Tangerine contract definitions into easy to use, compile-time type-safe Go packages.",
 		},
 		{
 			BinaryName:  "bootnode",
-			Description: "Dexon bootnode.",
+			Description: "Tangerine bootnode.",
 		},
 		{
 			BinaryName:  "evm",
-			Description: "Developer utility version of the EVM (Dexon Virtual Machine) that is capable of running bytecode snippets within a configurable environment and execution mode.",
+			Description: "Developer utility version of the EVM (Tangerine Virtual Machine) that is capable of running bytecode snippets within a configurable environment and execution mode.",
 		},
 		{
-			BinaryName:  "gdex",
-			Description: "Dexon CLI client.",
+			BinaryName:  "gtan",
+			Description: "Tangerine CLI client.",
 		},
 		{
 			BinaryName:  "puppeth",
-			Description: "Dexon private network manager.",
+			Description: "Tangerine private network manager.",
 		},
 		{
 			BinaryName:  "rlpdump",
@@ -116,7 +116,7 @@ var (
 		},
 		{
 			BinaryName:  "wnode",
-			Description: "Dexon Whisper diagnostic tool",
+			Description: "Tangerine Whisper diagnostic tool",
 		},
 	}
 
@@ -125,11 +125,11 @@ var (
 		{
 			BinaryName:  "swarm",
 			PackageName: "dexon-swarm",
-			Description: "Dexon Swarm daemon and tools",
+			Description: "Tangerine Swarm daemon and tools",
 		},
 	}
 
-	debDexon = debPackage{
+	debTangerine = debPackage{
 		Name:        "dexon",
 		Version:     params.Version,
 		Executables: debExecutables,
@@ -144,7 +144,7 @@ var (
 	// Debian meta packages to build and push to Ubuntu PPA
 	debPackages = []debPackage{
 		debSwarm,
-		debDexon,
+		debTangerine,
 	}
 
 	// Packages to be cross-compiled by the xgo command
@@ -422,15 +422,15 @@ func doArchive(cmdline []string) {
 	var (
 		env = build.Env()
 
-		basegdex = archiveBasename(*arch, params.ArchiveVersion(env.Commit))
-		gdex     = "gdex-" + basegdex + ext
-		alltools = "gdex-alltools-" + basegdex + ext
+		basegtan = archiveBasename(*arch, params.ArchiveVersion(env.Commit))
+		gtan     = "gtan-" + basegtan + ext
+		alltools = "gtan-alltools-" + basegtan + ext
 
 		baseswarm = archiveBasename(*arch, sv.ArchiveVersion(env.Commit))
 		swarm     = "swarm-" + baseswarm + ext
 	)
 	maybeSkipArchive(env)
-	if err := build.WriteArchive(gdex, gdexArchiveFiles); err != nil {
+	if err := build.WriteArchive(gtan, gtanArchiveFiles); err != nil {
 		log.Fatal(err)
 	}
 	if err := build.WriteArchive(alltools, allToolsArchiveFiles); err != nil {
@@ -439,7 +439,7 @@ func doArchive(cmdline []string) {
 	if err := build.WriteArchive(swarm, swarmArchiveFiles); err != nil {
 		log.Fatal(err)
 	}
-	for _, archive := range []string{gdex, alltools, swarm} {
+	for _, archive := range []string{gtan, alltools, swarm} {
 		if err := archiveUpload(archive, *upload, *signer); err != nil {
 			log.Fatal(err)
 		}
@@ -584,7 +584,7 @@ func makeWorkdir(wdflag string) string {
 	if wdflag != "" {
 		err = os.MkdirAll(wdflag, 0744)
 	} else {
-		wdflag, err = ioutil.TempDir("", "gdex-build-")
+		wdflag, err = ioutil.TempDir("", "gtan-build-")
 	}
 	if err != nil {
 		log.Fatal(err)
@@ -638,7 +638,7 @@ func (d debExecutable) Package() string {
 func newDebMetadata(distro, author string, env build.Environment, t time.Time, name string, version string, exes []debExecutable) debMetadata {
 	if author == "" {
 		// No signing key, use default author.
-		author = "Dexon Builds <fjl@dexon.org>"
+		author = "Tangerine Builds <fjl@dexon.org>"
 	}
 	return debMetadata{
 		PackageName: name,
@@ -752,28 +752,28 @@ func doWindowsInstaller(cmdline []string) {
 	var (
 		devTools []string
 		allTools []string
-		gdexTool string
+		gtanTool string
 	)
 	for _, file := range allToolsArchiveFiles {
 		if file == "COPYING" { // license, copied later
 			continue
 		}
 		allTools = append(allTools, filepath.Base(file))
-		if filepath.Base(file) == "gdex.exe" {
-			gdexTool = file
+		if filepath.Base(file) == "gtan.exe" {
+			gtanTool = file
 		} else {
 			devTools = append(devTools, file)
 		}
 	}
 
 	// Render NSIS scripts: Installer NSIS contains two installer sections,
-	// first section contains the gdex binary, second section holds the dev tools.
+	// first section contains the gtan binary, second section holds the dev tools.
 	templateData := map[string]interface{}{
 		"License":  "COPYING",
-		"Gdex":     gdexTool,
+		"Gdex":     gtanTool,
 		"DevTools": devTools,
 	}
-	build.Render("build/nsis.gdex.nsi", filepath.Join(*workdir, "gdex.nsi"), 0644, nil)
+	build.Render("build/nsis.gtan.nsi", filepath.Join(*workdir, "gtan.nsi"), 0644, nil)
 	build.Render("build/nsis.install.nsh", filepath.Join(*workdir, "install.nsh"), 0644, templateData)
 	build.Render("build/nsis.uninstall.nsh", filepath.Join(*workdir, "uninstall.nsh"), 0644, allTools)
 	build.Render("build/nsis.pathupdate.nsh", filepath.Join(*workdir, "PathUpdate.nsh"), 0644, nil)
@@ -788,14 +788,14 @@ func doWindowsInstaller(cmdline []string) {
 	if env.Commit != "" {
 		version[2] += "-" + env.Commit[:8]
 	}
-	installer, _ := filepath.Abs("gdex-" + archiveBasename(*arch, params.ArchiveVersion(env.Commit)) + ".exe")
+	installer, _ := filepath.Abs("gtan-" + archiveBasename(*arch, params.ArchiveVersion(env.Commit)) + ".exe")
 	build.MustRunCommand("makensis.exe",
 		"/DOUTPUTFILE="+installer,
 		"/DMAJORVERSION="+version[0],
 		"/DMINORVERSION="+version[1],
 		"/DBUILDVERSION="+version[2],
 		"/DARCH="+*arch,
-		filepath.Join(*workdir, "gdex.nsi"),
+		filepath.Join(*workdir, "gtan.nsi"),
 	)
 
 	// Sign and publish installer.
@@ -826,11 +826,11 @@ func doAndroidArchive(cmdline []string) {
 	// Build the Android archive and Maven resources
 	build.MustRun(goTool("get", "golang.org/x/mobile/cmd/gomobile", "golang.org/x/mobile/cmd/gobind"))
 	build.MustRun(gomobileTool("init", "--ndk", os.Getenv("ANDROID_NDK")))
-	build.MustRun(gomobileTool("bind", "-ldflags", "-s -w", "--target", "android", "--javapkg", "org.dexon", "-v", "github.com/dexon-foundation/dexon/mobile"))
+	build.MustRun(gomobileTool("bind", "-ldflags", "-s -w", "--target", "android", "--javapkg", "org.dexon", "-v", "github.com/tangerine-network/go-tangerine/mobile"))
 
 	if *local {
 		// If we're building locally, copy bundle to build dir and skip Maven
-		os.Rename("gdex.aar", filepath.Join(GOBIN, "gdex.aar"))
+		os.Rename("gtan.aar", filepath.Join(GOBIN, "gtan.aar"))
 		return
 	}
 	meta := newMavenMetadata(env)
@@ -840,8 +840,8 @@ func doAndroidArchive(cmdline []string) {
 	maybeSkipArchive(env)
 
 	// Sign and upload the archive to Azure
-	archive := "gdex-" + archiveBasename("android", params.ArchiveVersion(env.Commit)) + ".aar"
-	os.Rename("gdex.aar", archive)
+	archive := "gtan-" + archiveBasename("android", params.ArchiveVersion(env.Commit)) + ".aar"
+	os.Rename("gtan.aar", archive)
 
 	if err := archiveUpload(archive, *upload, *signer); err != nil {
 		log.Fatal(err)
@@ -926,7 +926,7 @@ func newMavenMetadata(env build.Environment) mavenMetadata {
 	}
 	return mavenMetadata{
 		Version:      version,
-		Package:      "gdex-" + version,
+		Package:      "gtan-" + version,
 		Develop:      isUnstableBuild(env),
 		Contributors: contribs,
 	}
@@ -947,7 +947,7 @@ func doXCodeFramework(cmdline []string) {
 	// Build the iOS XCode framework
 	build.MustRun(goTool("get", "golang.org/x/mobile/cmd/gomobile", "golang.org/x/mobile/cmd/gobind"))
 	build.MustRun(gomobileTool("init"))
-	bind := gomobileTool("bind", "-ldflags", "-s -w", "--target", "ios", "--tags", "ios", "-v", "github.com/dexon-foundation/dexon/mobile")
+	bind := gomobileTool("bind", "-ldflags", "-s -w", "--target", "ios", "--tags", "ios", "-v", "github.com/tangerine-network/go-tangerine/mobile")
 
 	if *local {
 		// If we're building locally, use the build folder and stop afterwards
@@ -955,7 +955,7 @@ func doXCodeFramework(cmdline []string) {
 		build.MustRun(bind)
 		return
 	}
-	archive := "gdex-" + archiveBasename("ios", params.ArchiveVersion(env.Commit))
+	archive := "gtan-" + archiveBasename("ios", params.ArchiveVersion(env.Commit))
 	if err := os.Mkdir(archive, os.ModePerm); err != nil {
 		log.Fatal(err)
 	}

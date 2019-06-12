@@ -18,7 +18,7 @@
 package vm
 
 // The governance ABI is generated from:
-// https://github.com/dexon-foundation/governance-abi
+// https://github.com/tangerine-network/governance-abi
 
 const GovernanceABIJSON = `
 [

@@ -24,19 +24,19 @@ import (
 	"testing"
 	"time"
 
-	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
-	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
-	"github.com/dexon-foundation/dexon-consensus/core/crypto/dkg"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
-	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
+	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
+	coreCrypto "github.com/byzantine-lab/dexon-consensus/core/crypto"
+	"github.com/byzantine-lab/dexon-consensus/core/crypto/dkg"
+	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
+	dkgTypes "github.com/byzantine-lab/dexon-consensus/core/types/dkg"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/dex/downloader"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/dex/downloader"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 func init() {

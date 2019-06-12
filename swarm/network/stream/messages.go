@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/swarm/log"
-	bv "github.com/dexon-foundation/dexon/swarm/network/bitvector"
-	"github.com/dexon-foundation/dexon/swarm/spancontext"
-	"github.com/dexon-foundation/dexon/swarm/storage"
 	"github.com/opentracing/opentracing-go"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
+	bv "github.com/tangerine-network/go-tangerine/swarm/network/bitvector"
+	"github.com/tangerine-network/go-tangerine/swarm/spancontext"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 var syncBatchTimeout = 30 * time.Second

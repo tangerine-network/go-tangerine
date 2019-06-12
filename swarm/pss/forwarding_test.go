@@ -6,13 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/p2p/protocols"
-	"github.com/dexon-foundation/dexon/swarm/network"
-	"github.com/dexon-foundation/dexon/swarm/pot"
-	whisper "github.com/dexon-foundation/dexon/whisper/whisperv6"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/protocols"
+	"github.com/tangerine-network/go-tangerine/swarm/network"
+	"github.com/tangerine-network/go-tangerine/swarm/pot"
+	whisper "github.com/tangerine-network/go-tangerine/whisper/whisperv6"
 )
 
 type testCase struct {

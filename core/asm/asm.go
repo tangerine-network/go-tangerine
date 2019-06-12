@@ -21,7 +21,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/dexon-foundation/dexon/core/vm"
+	"github.com/tangerine-network/go-tangerine/core/vm"
 )
 
 // Iterator for disassembled EVM instructions

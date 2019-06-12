@@ -23,9 +23,9 @@ import (
 	"io/ioutil"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/log"
 	"github.com/mattn/go-colorable"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 func TestEncryption(t *testing.T) {

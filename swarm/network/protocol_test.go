@@ -23,11 +23,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/p2p/protocols"
-	p2ptest "github.com/dexon-foundation/dexon/p2p/testing"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/protocols"
+	p2ptest "github.com/tangerine-network/go-tangerine/p2p/testing"
 )
 
 const (

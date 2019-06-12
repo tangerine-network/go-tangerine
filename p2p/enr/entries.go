@@ -21,7 +21,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 // Entry is implemented by known node record entry types.

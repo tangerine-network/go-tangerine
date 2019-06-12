@@ -21,7 +21,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common/mclock"
+	"github.com/tangerine-network/go-tangerine/common/mclock"
 )
 
 const fcTimeConst = time.Millisecond

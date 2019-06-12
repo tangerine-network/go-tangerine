@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"sync"
 
-	"github.com/dexon-foundation/dexon/metrics"
+	"github.com/tangerine-network/go-tangerine/metrics"
 )
 
 type exp struct {

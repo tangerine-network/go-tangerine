@@ -21,7 +21,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/common"
+	"github.com/tangerine-network/go-tangerine/common"
 )
 
 // precompiledTest defines the input/output pairs for precompiled contract tests.

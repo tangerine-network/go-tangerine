@@ -21,9 +21,9 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/swarm/log"
-	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 const (

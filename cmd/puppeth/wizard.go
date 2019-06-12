@@ -31,9 +31,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/log"
 	"golang.org/x/crypto/ssh/terminal"
 )
 

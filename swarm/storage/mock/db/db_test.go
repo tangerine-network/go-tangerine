@@ -23,7 +23,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/swarm/storage/mock/test"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/mock/test"
 )
 
 // TestDBStore is running a test.MockStore tests

@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 // TestDB_SubscribePush uploads some chunks before and after

@@ -22,8 +22,8 @@ package node
 import (
 	"reflect"
 
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/rpc"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/rpc"
 )
 
 // NoopService is a trivial implementation of the Service interface.

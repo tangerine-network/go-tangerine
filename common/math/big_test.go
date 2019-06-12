@@ -22,7 +22,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/common"
+	"github.com/tangerine-network/go-tangerine/common"
 )
 
 func TestHexOrDecimal256(t *testing.T) {

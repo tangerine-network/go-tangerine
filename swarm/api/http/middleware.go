@@ -7,12 +7,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/swarm/api"
-	"github.com/dexon-foundation/dexon/swarm/log"
-	"github.com/dexon-foundation/dexon/swarm/sctx"
-	"github.com/dexon-foundation/dexon/swarm/spancontext"
 	"github.com/pborman/uuid"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/swarm/api"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
+	"github.com/tangerine-network/go-tangerine/swarm/sctx"
+	"github.com/tangerine-network/go-tangerine/swarm/spancontext"
 )
 
 // Adapt chains h (main request handler) main handler to adapters (middleware handlers)

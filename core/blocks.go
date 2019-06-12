@@ -16,7 +16,7 @@
 
 package core
 
-import "github.com/dexon-foundation/dexon/common"
+import "github.com/tangerine-network/go-tangerine/common"
 
 // BadHashes represent a set of manually tracked bad hashes (usually hard forks)
 var BadHashes = map[common.Hash]bool{

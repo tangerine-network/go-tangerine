@@ -19,7 +19,7 @@ package event_test
 import (
 	"fmt"
 
-	"github.com/dexon-foundation/dexon/event"
+	"github.com/tangerine-network/go-tangerine/event"
 )
 
 func ExampleFeed_acknowledgedEvents() {

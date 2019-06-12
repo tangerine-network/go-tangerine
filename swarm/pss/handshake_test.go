@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/swarm/log"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
 )
 
 // asymmetrical key exchange between two directly connected peers

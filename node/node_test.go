@@ -24,9 +24,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/rpc"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/rpc"
 )
 
 var (

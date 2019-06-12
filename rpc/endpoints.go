@@ -19,7 +19,7 @@ package rpc
 import (
 	"net"
 
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // StartHTTPEndpoint starts the HTTP RPC endpoint, configured with cors/vhosts/modules

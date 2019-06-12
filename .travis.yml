@@ -1,5 +1,5 @@
 language: go
-go_import_path: github.com/dexon-foundation/dexon
+go_import_path: github.com/tangerine-network/go-tangerine
 sudo: false
 branches:
   only:
@@ -63,12 +63,12 @@ matrix:
         - cd build
         - ./setup_recovery_env.sh
         - cd ..
-        - make gdex
+        - make gtan
         - cd test
         - ./run_test.sh --smoke-test
         - cd ..
         - ./build/fullnode-test.sh
-        - pkill -15 -f gdex
+        - pkill -15 -f gtan
         - cd test
         - ./run_test.sh --continue --smoke-test
         - cd ..

@@ -28,7 +28,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common"
+	"github.com/tangerine-network/go-tangerine/common"
 )
 
 // In this test, nodes try to randomly resolve each other.

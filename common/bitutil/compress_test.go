@@ -21,7 +21,7 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
 )
 
 // Tests that data bitset encoding and decoding works and is bijective.

@@ -6,8 +6,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
 )
 
 func TestPeerSetBuildAndForgetConn(t *testing.T) {

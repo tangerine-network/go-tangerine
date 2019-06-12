@@ -18,14 +18,14 @@
 package db
 
 import (
-	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
-	coreDKG "github.com/dexon-foundation/dexon-consensus/core/crypto/dkg"
-	coreDb "github.com/dexon-foundation/dexon-consensus/core/db"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
+	coreDKG "github.com/byzantine-lab/dexon-consensus/core/crypto/dkg"
+	coreDb "github.com/byzantine-lab/dexon-consensus/core/db"
+	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/rawdb"
-	"github.com/dexon-foundation/dexon/ethdb"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/rawdb"
+	"github.com/tangerine-network/go-tangerine/ethdb"
 )
 
 // DB implement dexon-consensus BlockDatabase interface.

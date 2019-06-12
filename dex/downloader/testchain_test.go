@@ -21,18 +21,18 @@ import (
 	"fmt"
 	"math/big"
 
-	dexCore "github.com/dexon-foundation/dexon-consensus/core"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+	dexCore "github.com/byzantine-lab/dexon-consensus/core"
+	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/consensus/dexcon"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/core/state"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/params"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/consensus/dexcon"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/core/state"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/core/vm"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/params"
 )
 
 // Test chain parameters.
@@ -161,13 +161,13 @@ func (tc *testChain) generate(n int, seed byte, parent *types.Block, nodes *dexc
 	round := uint64(0)
 	roundInterval := int(100)
 
-	addTx := func(block *core.DexonBlockGen, node *dexcon.Node, data []byte) {
+	addTx := func(block *core.TangerineBlockGen, node *dexcon.Node, data []byte) {
 		nonce := block.TxNonce(node.Address())
 		tx := node.CreateGovTx(nonce, data)
 		block.AddTx(tx)
 	}
 
-	blocks, receipts := core.GenerateDexonChain(params.TestnetChainConfig, parent, engine, testDB, n, func(i int, block *core.DexonBlockGen) {
+	blocks, receipts := core.GenerateTangerineChain(params.TestnetChainConfig, parent, engine, testDB, n, func(i int, block *core.TangerineBlockGen) {
 		block.SetCoinbase(common.Address{seed})
 		block.SetPosition(coreTypes.Position{
 			Round:  round,

@@ -23,11 +23,11 @@ package ens
 import (
 	"strings"
 
-	"github.com/dexon-foundation/dexon/accounts/abi/bind"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/contracts/ens/contract"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/tangerine-network/go-tangerine/accounts/abi/bind"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/contracts/ens/contract"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/crypto"
 )
 
 var (

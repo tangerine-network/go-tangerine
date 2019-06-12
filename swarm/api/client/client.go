@@ -37,12 +37,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/swarm/api"
-	"github.com/dexon-foundation/dexon/swarm/spancontext"
-	"github.com/dexon-foundation/dexon/swarm/storage/feed"
 	"github.com/pborman/uuid"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/swarm/api"
+	"github.com/tangerine-network/go-tangerine/swarm/spancontext"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/feed"
 )
 
 var (

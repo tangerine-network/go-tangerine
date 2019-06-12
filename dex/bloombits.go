@@ -20,13 +20,13 @@ import (
 	"context"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/bitutil"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/core/bloombits"
-	"github.com/dexon-foundation/dexon/core/rawdb"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/ethdb"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/bitutil"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/core/bloombits"
+	"github.com/tangerine-network/go-tangerine/core/rawdb"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/ethdb"
 )
 
 const (
@@ -49,7 +49,7 @@ const (
 
 // startBloomHandlers starts a batch of goroutines to accept bloom bit database
 // retrievals from possibly a range of filters and serving the data to satisfy.
-func (dex *Dexon) startBloomHandlers(sectionSize uint64) {
+func (dex *Tangerine) startBloomHandlers(sectionSize uint64) {
 	for i := 0; i < bloomServiceThreads; i++ {
 		go func() {
 			for {

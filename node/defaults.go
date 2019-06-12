@@ -22,9 +22,9 @@ import (
 	"path/filepath"
 	"runtime"
 
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/nat"
-	"github.com/dexon-foundation/dexon/rpc"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/nat"
+	"github.com/tangerine-network/go-tangerine/rpc"
 )
 
 const (
@@ -57,11 +57,11 @@ func DefaultDataDir() string {
 	home := homeDir()
 	if home != "" {
 		if runtime.GOOS == "darwin" {
-			return filepath.Join(home, "Library", "Dexon")
+			return filepath.Join(home, "Library", "Tangerine")
 		} else if runtime.GOOS == "windows" {
-			return filepath.Join(home, "AppData", "Roaming", "Dexon")
+			return filepath.Join(home, "AppData", "Roaming", "Tangerine")
 		} else {
-			return filepath.Join(home, ".dexon")
+			return filepath.Join(home, ".tangerine")
 		}
 	}
 	// As we cannot guess a stable location, return empty and handle later

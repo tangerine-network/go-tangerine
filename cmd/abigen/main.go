@@ -24,8 +24,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/accounts/abi/bind"
-	"github.com/dexon-foundation/dexon/common/compiler"
+	"github.com/tangerine-network/go-tangerine/accounts/abi/bind"
+	"github.com/tangerine-network/go-tangerine/common/compiler"
 )
 
 var (

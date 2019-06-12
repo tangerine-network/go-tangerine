@@ -80,7 +80,7 @@ run_image() {
     --rm \
     --hostname "${name}" \
     --name     "${name}" \
-    --volume   "${ROOT}:/go/src/github.com/dexon-foundation/dexon" \
+    --volume   "${ROOT}:/go/src/github.com/tangerine-network/go-tangerine" \
     --volume   "/var/run/docker.sock:/var/run/docker.sock" \
     ${docker_args} \
     "${name}" \

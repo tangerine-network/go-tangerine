@@ -28,36 +28,36 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dexon-foundation/dexon/accounts"
-	"github.com/dexon-foundation/dexon/accounts/keystore"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/fdlimit"
-	"github.com/dexon-foundation/dexon/consensus"
-	"github.com/dexon-foundation/dexon/consensus/clique"
-	"github.com/dexon-foundation/dexon/consensus/ethash"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/core/state"
-	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/dashboard"
-	"github.com/dexon-foundation/dexon/dex"
-	"github.com/dexon-foundation/dexon/dex/downloader"
-	"github.com/dexon-foundation/dexon/eth"
-	"github.com/dexon-foundation/dexon/eth/gasprice"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/ethstats"
-	"github.com/dexon-foundation/dexon/les"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/metrics/influxdb"
-	"github.com/dexon-foundation/dexon/node"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/discv5"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/p2p/nat"
-	"github.com/dexon-foundation/dexon/p2p/netutil"
-	"github.com/dexon-foundation/dexon/params"
-	whisper "github.com/dexon-foundation/dexon/whisper/whisperv6"
+	"github.com/tangerine-network/go-tangerine/accounts"
+	"github.com/tangerine-network/go-tangerine/accounts/keystore"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/fdlimit"
+	"github.com/tangerine-network/go-tangerine/consensus"
+	"github.com/tangerine-network/go-tangerine/consensus/clique"
+	"github.com/tangerine-network/go-tangerine/consensus/ethash"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/core/state"
+	"github.com/tangerine-network/go-tangerine/core/vm"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/dashboard"
+	"github.com/tangerine-network/go-tangerine/dex"
+	"github.com/tangerine-network/go-tangerine/dex/downloader"
+	"github.com/tangerine-network/go-tangerine/eth"
+	"github.com/tangerine-network/go-tangerine/eth/gasprice"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/ethstats"
+	"github.com/tangerine-network/go-tangerine/les"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/metrics/influxdb"
+	"github.com/tangerine-network/go-tangerine/node"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/discv5"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/nat"
+	"github.com/tangerine-network/go-tangerine/p2p/netutil"
+	"github.com/tangerine-network/go-tangerine/params"
+	whisper "github.com/tangerine-network/go-tangerine/whisper/whisperv6"
 	cli "gopkg.in/urfave/cli.v1"
 )
 
@@ -616,7 +616,7 @@ var (
 	MetricsInfluxDBDatabaseFlag = cli.StringFlag{
 		Name:  "metrics.influxdb.database",
 		Usage: "InfluxDB database name to push reported metrics to",
-		Value: "gdex",
+		Value: "gtan",
 	}
 	MetricsInfluxDBUsernameFlag = cli.StringFlag{
 		Name:  "metrics.influxdb.username",
@@ -902,7 +902,7 @@ func MakeAddress(ks *keystore.KeyStore, account string) (accounts.Account, error
 	log.Warn("-------------------------------------------------------------------")
 	log.Warn("Referring to accounts by order in the keystore folder is dangerous!")
 	log.Warn("This functionality is deprecated and will be removed in the future!")
-	log.Warn("Please use explicit addresses! (can search via `gdex account list`)")
+	log.Warn("Please use explicit addresses! (can search via `gtan account list`)")
 	log.Warn("-------------------------------------------------------------------")
 
 	accs := ks.Accounts()
@@ -1351,7 +1351,7 @@ func SetDashboardConfig(ctx *cli.Context, cfg *dashboard.Config) {
 	cfg.Refresh = ctx.GlobalDuration(DashboardRefreshFlag.Name)
 }
 
-// RegisterDexService adds an Dexon client to the stack.
+// RegisterDexService adds an Tangerine client to the stack.
 func RegisterDexService(stack *node.Node, cfg *dex.Config) {
 	var err error
 	if cfg.SyncMode == downloader.LightSync {
@@ -1423,7 +1423,7 @@ func SetupMetrics(ctx *cli.Context) {
 
 			log.Info("Enabling metrics export to InfluxDB")
 
-			go influxdb.InfluxDBWithTags(metrics.DefaultRegistry, 10*time.Second, endpoint, database, username, password, "gdex.", tagsMap)
+			go influxdb.InfluxDBWithTags(metrics.DefaultRegistry, 10*time.Second, endpoint, database, username, password, "gtan.", tagsMap)
 		}
 	}
 }
@@ -1545,11 +1545,11 @@ func MakeConsolePreloads(ctx *cli.Context) []string {
 // This is a temporary function used for migrating old command/flags to the
 // new format.
 //
-// e.g. gdex account new --keystore /tmp/mykeystore --lightkdf
+// e.g. gtan account new --keystore /tmp/mykeystore --lightkdf
 //
 // is equivalent after calling this method with:
 //
-// gdex --keystore /tmp/mykeystore --lightkdf account new
+// gtan --keystore /tmp/mykeystore --lightkdf account new
 //
 // This allows the use of the existing configuration functionality.
 // When all flags are migrated this function can be removed and the existing

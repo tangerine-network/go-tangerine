@@ -34,7 +34,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // Handler is the global debugging handler.

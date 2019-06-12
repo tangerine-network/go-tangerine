@@ -19,7 +19,7 @@ package vm
 import (
 	"math/big"
 
-	"github.com/dexon-foundation/dexon/common"
+	"github.com/tangerine-network/go-tangerine/common"
 )
 
 // ContractRef is a reference to the contract's backing object

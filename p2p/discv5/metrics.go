@@ -1,6 +1,6 @@
 package discv5
 
-import "github.com/dexon-foundation/dexon/metrics"
+import "github.com/tangerine-network/go-tangerine/metrics"
 
 var (
 	ingressTrafficMeter = metrics.NewRegisteredMeter("discv5/InboundTraffic", nil)

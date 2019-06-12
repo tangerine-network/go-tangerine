@@ -21,9 +21,9 @@ import (
 	"hash"
 	"sync/atomic"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/math"
-	"github.com/dexon-foundation/dexon/params"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/math"
+	"github.com/tangerine-network/go-tangerine/params"
 )
 
 // Config are the configuration options for the Interpreter

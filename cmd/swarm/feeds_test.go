@@ -23,15 +23,15 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/common/hexutil"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/swarm/api"
-	swarm "github.com/dexon-foundation/dexon/swarm/api/client"
-	swarmhttp "github.com/dexon-foundation/dexon/swarm/api/http"
-	"github.com/dexon-foundation/dexon/swarm/storage/feed"
-	"github.com/dexon-foundation/dexon/swarm/storage/feed/lookup"
-	"github.com/dexon-foundation/dexon/swarm/testutil"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/swarm/api"
+	swarm "github.com/tangerine-network/go-tangerine/swarm/api/client"
+	swarmhttp "github.com/tangerine-network/go-tangerine/swarm/api/http"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/feed"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/feed/lookup"
+	"github.com/tangerine-network/go-tangerine/swarm/testutil"
 )
 
 func TestCLIFeedUpdate(t *testing.T) {

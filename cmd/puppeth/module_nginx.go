@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // nginxDockerfile is theis the Dockerfile required to build an nginx reverse-

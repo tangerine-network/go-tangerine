@@ -7,20 +7,20 @@ import (
 	"sync"
 	"time"
 
-	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
-	dexCore "github.com/dexon-foundation/dexon-consensus/core"
-	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
-	coreEcdsa "github.com/dexon-foundation/dexon-consensus/core/crypto/ecdsa"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
-	dkgTypes "github.com/dexon-foundation/dexon-consensus/core/types/dkg"
-	coreUtils "github.com/dexon-foundation/dexon-consensus/core/utils"
+	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
+	dexCore "github.com/byzantine-lab/dexon-consensus/core"
+	coreCrypto "github.com/byzantine-lab/dexon-consensus/core/crypto"
+	coreEcdsa "github.com/byzantine-lab/dexon-consensus/core/crypto/ecdsa"
+	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
+	dkgTypes "github.com/byzantine-lab/dexon-consensus/core/types/dkg"
+	coreUtils "github.com/byzantine-lab/dexon-consensus/core/utils"
 	"github.com/hashicorp/golang-lru/simplelru"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/state"
-	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/state"
+	"github.com/tangerine-network/go-tangerine/core/vm"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 const dkgCacheSize = 5

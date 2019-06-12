@@ -19,8 +19,8 @@ package trie
 import (
 	"testing"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/ethdb"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/ethdb"
 )
 
 // Tests that the trie database returns a missing trie node error if attempting

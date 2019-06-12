@@ -17,8 +17,8 @@
 package eth
 
 import (
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/p2p"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/p2p"
 )
 
 var (

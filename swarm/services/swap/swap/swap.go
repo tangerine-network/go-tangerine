@@ -22,7 +22,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/swarm/log"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
 )
 
 // SwAP Swarm Accounting Protocol with

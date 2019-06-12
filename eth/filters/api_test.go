@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/rpc"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/rpc"
 )
 
 func TestUnmarshalJSONNewFilterArgs(t *testing.T) {

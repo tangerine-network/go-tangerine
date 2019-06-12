@@ -19,7 +19,7 @@ package state
 import (
 	"math/big"
 
-	"github.com/dexon-foundation/dexon/common"
+	"github.com/tangerine-network/go-tangerine/common"
 )
 
 // journalEntry is a modification entry in the state change journal that can be

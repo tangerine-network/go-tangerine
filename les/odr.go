@@ -19,10 +19,10 @@ package les
 import (
 	"context"
 
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/light"
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/light"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // LesOdr implements light.OdrBackend

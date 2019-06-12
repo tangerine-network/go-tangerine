@@ -54,7 +54,7 @@ func TestBloom(t *testing.T) {
 import (
 	"testing"
 
-	"github.com/dexon-foundation/dexon/core/state"
+	"github.com/tangerine-network/go-tangerine/core/state"
 )
 
 func TestBloom9(t *testing.T) {

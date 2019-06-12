@@ -20,9 +20,9 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/rlp"
-	"github.com/dexon-foundation/dexon/trie"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/rlp"
+	"github.com/tangerine-network/go-tangerine/trie"
 )
 
 // NodeIterator is an iterator to traverse the entire state trie post-order,

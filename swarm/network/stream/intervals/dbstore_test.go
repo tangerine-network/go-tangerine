@@ -21,7 +21,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/swarm/state"
+	"github.com/tangerine-network/go-tangerine/swarm/state"
 )
 
 // TestDBStore tests basic functionality of DBStore.

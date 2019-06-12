@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	ch "github.com/dexon-foundation/dexon/swarm/chunk"
+	ch "github.com/tangerine-network/go-tangerine/swarm/chunk"
 )
 
 var (

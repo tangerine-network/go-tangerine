@@ -22,8 +22,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/common/math"
-	"github.com/dexon-foundation/dexon/core/vm"
+	"github.com/tangerine-network/go-tangerine/common/math"
+	"github.com/tangerine-network/go-tangerine/core/vm"
 )
 
 // Compiler contains information about the parsed source

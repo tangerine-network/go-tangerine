@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/dexon-foundation/dexon/cmd/evm/internal/compiler"
+	"github.com/tangerine-network/go-tangerine/cmd/evm/internal/compiler"
 
 	cli "gopkg.in/urfave/cli.v1"
 )

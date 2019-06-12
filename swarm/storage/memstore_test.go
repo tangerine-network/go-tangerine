@@ -20,7 +20,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/swarm/log"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
 )
 
 func newTestMemStore() *MemStore {

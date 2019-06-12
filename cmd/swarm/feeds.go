@@ -21,13 +21,13 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/hexutil"
-	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/crypto"
 
-	"github.com/dexon-foundation/dexon/cmd/utils"
-	swarm "github.com/dexon-foundation/dexon/swarm/api/client"
-	"github.com/dexon-foundation/dexon/swarm/storage/feed"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
+	swarm "github.com/tangerine-network/go-tangerine/swarm/api/client"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/feed"
 	"gopkg.in/urfave/cli.v1"
 )
 

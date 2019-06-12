@@ -26,7 +26,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/p2p/enr"
+	"github.com/tangerine-network/go-tangerine/p2p/enr"
 )
 
 // Node represents a host on the network.

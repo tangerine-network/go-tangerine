@@ -19,8 +19,8 @@ package api
 import (
 	"context"
 
-	"github.com/dexon-foundation/dexon/swarm/network"
-	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/swarm/network"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 type Inspector struct {

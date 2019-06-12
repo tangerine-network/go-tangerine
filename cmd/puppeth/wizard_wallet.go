@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // deployWallet creates a new web wallet based on some user input.

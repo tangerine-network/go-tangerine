@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/crypto"
 )
 
 // Event is an event potentially triggered by the EVM's LOG mechanism. The Event

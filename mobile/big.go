@@ -22,7 +22,7 @@ import (
 	"errors"
 	"math/big"
 
-	"github.com/dexon-foundation/dexon/common"
+	"github.com/tangerine-network/go-tangerine/common"
 )
 
 // A BigInt represents a signed multi-precision integer.

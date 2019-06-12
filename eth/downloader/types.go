@@ -19,7 +19,7 @@ package downloader
 import (
 	"fmt"
 
-	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/tangerine-network/go-tangerine/core/types"
 )
 
 // peerDropFn is a callback type for dropping a peer detected as malicious.

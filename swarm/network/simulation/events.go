@@ -20,8 +20,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/p2p/simulations"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/simulations"
 )
 
 // PeerEvent is the type of the channel returned by Simulation.PeerEvents.

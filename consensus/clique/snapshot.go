@@ -21,11 +21,11 @@ import (
 	"encoding/json"
 	"sort"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/params"
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/params"
 )
 
 // Vote represents a single vote that an authorized signer made to modify the

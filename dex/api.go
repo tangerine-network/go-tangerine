@@ -25,28 +25,28 @@ import (
 	"os"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/hexutil"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/core/rawdb"
-	"github.com/dexon-foundation/dexon/core/state"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/internal/ethapi"
-	"github.com/dexon-foundation/dexon/params"
-	"github.com/dexon-foundation/dexon/rlp"
-	"github.com/dexon-foundation/dexon/rpc"
-	"github.com/dexon-foundation/dexon/trie"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/core/rawdb"
+	"github.com/tangerine-network/go-tangerine/core/state"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/internal/ethapi"
+	"github.com/tangerine-network/go-tangerine/params"
+	"github.com/tangerine-network/go-tangerine/rlp"
+	"github.com/tangerine-network/go-tangerine/rpc"
+	"github.com/tangerine-network/go-tangerine/trie"
 )
 
 // PrivateAdminAPI is the collection of Ethereum full node-related APIs
 // exposed over the private admin endpoint.
 type PrivateAdminAPI struct {
-	dex *Dexon
+	dex *Tangerine
 }
 
 // NewPrivateAdminAPI creates a new API definition for the full node private
 // admin methods of the Ethereum service.
-func NewPrivateAdminAPI(dex *Dexon) *PrivateAdminAPI {
+func NewPrivateAdminAPI(dex *Tangerine) *PrivateAdminAPI {
 	return &PrivateAdminAPI{dex: dex}
 }
 
@@ -146,12 +146,12 @@ func (api *PrivateAdminAPI) NotaryInfo() (*NotaryInfo, error) {
 // PublicDebugAPI is the collection of Ethereum full node APIs exposed
 // over the public debugging endpoint.
 type PublicDebugAPI struct {
-	dex *Dexon
+	dex *Tangerine
 }
 
 // NewPublicDebugAPI creates a new API definition for the full node-
 // related public debug methods of the Ethereum service.
-func NewPublicDebugAPI(dex *Dexon) *PublicDebugAPI {
+func NewPublicDebugAPI(dex *Tangerine) *PublicDebugAPI {
 	return &PublicDebugAPI{dex: dex}
 }
 
@@ -177,12 +177,12 @@ func (api *PublicDebugAPI) DumpBlock(blockNr rpc.BlockNumber) (state.Dump, error
 // the private debugging endpoint.
 type PrivateDebugAPI struct {
 	config *params.ChainConfig
-	dex    *Dexon
+	dex    *Tangerine
 }
 
 // NewPrivateDebugAPI creates a new API definition for the full node-related
 // private debug methods of the Ethereum service.
-func NewPrivateDebugAPI(config *params.ChainConfig, dex *Dexon) *PrivateDebugAPI {
+func NewPrivateDebugAPI(config *params.ChainConfig, dex *Tangerine) *PrivateDebugAPI {
 	return &PrivateDebugAPI{config: config, dex: dex}
 }
 

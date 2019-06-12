@@ -2,19 +2,19 @@
 # with Go source code. If you know what GOPATH is then you probably
 # don't need to bother with make.
 
-.PHONY: gdex android ios gdex-cross swarm evm all test clean
-.PHONY: gdex-linux gdex-linux-386 gdex-linux-amd64 gdex-linux-mips64 gdex-linux-mips64le
-.PHONY: gdex-linux-arm gdex-linux-arm-5 gdex-linux-arm-6 gdex-linux-arm-7 gdex-linux-arm64
-.PHONY: gdex-darwin gdex-darwin-386 gdex-darwin-amd64
-.PHONY: gdex-windows gdex-windows-386 gdex-windows-amd64
+.PHONY: gtan android ios gtan-cross swarm evm all test clean
+.PHONY: gtan-linux gtan-linux-386 gtan-linux-amd64 gtan-linux-mips64 gtan-linux-mips64le
+.PHONY: gtan-linux-arm gtan-linux-arm-5 gtan-linux-arm-6 gtan-linux-arm-7 gtan-linux-arm64
+.PHONY: gtan-darwin gtan-darwin-386 gtan-darwin-amd64
+.PHONY: gtan-windows gtan-windows-386 gtan-windows-amd64
 
 GOBIN = $(shell pwd)/build/bin
 GO ?= latest
 
-gdex: libbls
-	build/env.sh go run build/ci.go install ./cmd/gdex
+gtan: libbls
+	build/env.sh go run build/ci.go install ./cmd/gtan
 	@echo "Done building."
-	@echo "Run \"$(GOBIN)/gdex\" to launch gdex."
+	@echo "Run \"$(GOBIN)/gtan\" to launch gtan."
 
 swarm: libbls
 	build/env.sh go run build/ci.go install ./cmd/swarm
@@ -27,7 +27,7 @@ all: libbls
 android:
 	build/env.sh go run build/ci.go aar --local
 	@echo "Done building."
-	@echo "Import \"$(GOBIN)/gdex.aar\" to use the library."
+	@echo "Import \"$(GOBIN)/gtan.aar\" to use the library."
 
 ios:
 	build/env.sh go run build/ci.go xcode --local
@@ -41,11 +41,11 @@ lint: ## Run linters.
 	build/env.sh go run build/ci.go lint
 
 libbls:
-	make -C vendor/github.com/dexon-foundation/bls MCL_USE_OPENSSL=0 lib/libbls384.a
+	make -C vendor/github.com/byzantine-lab/bls MCL_USE_OPENSSL=0 lib/libbls384.a
 
 clean-cgo:
-	make -C vendor/github.com/dexon-foundation/bls clean
-	make -C vendor/github.com/dexon-foundation/mcl clean
+	make -C vendor/github.com/byzantine-lab/bls clean
+	make -C vendor/github.com/byzantine-lab/mcl clean
 
 clean: clean-cgo
 	./build/clean_go_build_cache.sh
@@ -69,92 +69,92 @@ swarm-devtools:
 
 # Cross Compilation Targets (xgo)
 
-gdex-cross: gdex-linux gdex-darwin gdex-windows gdex-android gdex-ios
+gtan-cross: gtan-linux gtan-darwin gtan-windows gtan-android gtan-ios
 	@echo "Full cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-*
+	@ls -ld $(GOBIN)/gtan-*
 
-gdex-linux: gdex-linux-386 gdex-linux-amd64 gdex-linux-arm gdex-linux-mips64 gdex-linux-mips64le
+gtan-linux: gtan-linux-386 gtan-linux-amd64 gtan-linux-arm gtan-linux-mips64 gtan-linux-mips64le
 	@echo "Linux cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-linux-*
+	@ls -ld $(GOBIN)/gtan-linux-*
 
-gdex-linux-386:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/386 -v ./cmd/gdex
+gtan-linux-386:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/386 -v ./cmd/gtan
 	@echo "Linux 386 cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-linux-* | grep 386
+	@ls -ld $(GOBIN)/gtan-linux-* | grep 386
 
-gdex-linux-amd64:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/amd64 -v ./cmd/gdex
+gtan-linux-amd64:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/amd64 -v ./cmd/gtan
 	@echo "Linux amd64 cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-linux-* | grep amd64
+	@ls -ld $(GOBIN)/gtan-linux-* | grep amd64
 
-gdex-linux-arm: gdex-linux-arm-5 gdex-linux-arm-6 gdex-linux-arm-7 gdex-linux-arm64
+gtan-linux-arm: gtan-linux-arm-5 gtan-linux-arm-6 gtan-linux-arm-7 gtan-linux-arm64
 	@echo "Linux ARM cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-linux-* | grep arm
+	@ls -ld $(GOBIN)/gtan-linux-* | grep arm
 
-gdex-linux-arm-5:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/arm-5 -v ./cmd/gdex
+gtan-linux-arm-5:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/arm-5 -v ./cmd/gtan
 	@echo "Linux ARMv5 cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-linux-* | grep arm-5
+	@ls -ld $(GOBIN)/gtan-linux-* | grep arm-5
 
-gdex-linux-arm-6:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/arm-6 -v ./cmd/gdex
+gtan-linux-arm-6:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/arm-6 -v ./cmd/gtan
 	@echo "Linux ARMv6 cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-linux-* | grep arm-6
+	@ls -ld $(GOBIN)/gtan-linux-* | grep arm-6
 
-gdex-linux-arm-7:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/arm-7 -v ./cmd/gdex
+gtan-linux-arm-7:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/arm-7 -v ./cmd/gtan
 	@echo "Linux ARMv7 cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-linux-* | grep arm-7
+	@ls -ld $(GOBIN)/gtan-linux-* | grep arm-7
 
-gdex-linux-arm64:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/arm64 -v ./cmd/gdex
+gtan-linux-arm64:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/arm64 -v ./cmd/gtan
 	@echo "Linux ARM64 cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-linux-* | grep arm64
+	@ls -ld $(GOBIN)/gtan-linux-* | grep arm64
 
-gdex-linux-mips:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/mips --ldflags '-extldflags "-static"' -v ./cmd/gdex
+gtan-linux-mips:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/mips --ldflags '-extldflags "-static"' -v ./cmd/gtan
 	@echo "Linux MIPS cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-linux-* | grep mips
+	@ls -ld $(GOBIN)/gtan-linux-* | grep mips
 
-gdex-linux-mipsle:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/mipsle --ldflags '-extldflags "-static"' -v ./cmd/gdex
+gtan-linux-mipsle:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/mipsle --ldflags '-extldflags "-static"' -v ./cmd/gtan
 	@echo "Linux MIPSle cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-linux-* | grep mipsle
+	@ls -ld $(GOBIN)/gtan-linux-* | grep mipsle
 
-gdex-linux-mips64:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/mips64 --ldflags '-extldflags "-static"' -v ./cmd/gdex
+gtan-linux-mips64:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/mips64 --ldflags '-extldflags "-static"' -v ./cmd/gtan
 	@echo "Linux MIPS64 cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-linux-* | grep mips64
+	@ls -ld $(GOBIN)/gtan-linux-* | grep mips64
 
-gdex-linux-mips64le:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/mips64le --ldflags '-extldflags "-static"' -v ./cmd/gdex
+gtan-linux-mips64le:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=linux/mips64le --ldflags '-extldflags "-static"' -v ./cmd/gtan
 	@echo "Linux MIPS64le cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-linux-* | grep mips64le
+	@ls -ld $(GOBIN)/gtan-linux-* | grep mips64le
 
-gdex-darwin: gdex-darwin-386 gdex-darwin-amd64
+gtan-darwin: gtan-darwin-386 gtan-darwin-amd64
 	@echo "Darwin cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-darwin-*
+	@ls -ld $(GOBIN)/gtan-darwin-*
 
-gdex-darwin-386:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=darwin/386 -v ./cmd/gdex
+gtan-darwin-386:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=darwin/386 -v ./cmd/gtan
 	@echo "Darwin 386 cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-darwin-* | grep 386
+	@ls -ld $(GOBIN)/gtan-darwin-* | grep 386
 
-gdex-darwin-amd64:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=darwin/amd64 -v ./cmd/gdex
+gtan-darwin-amd64:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=darwin/amd64 -v ./cmd/gtan
 	@echo "Darwin amd64 cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-darwin-* | grep amd64
+	@ls -ld $(GOBIN)/gtan-darwin-* | grep amd64
 
-gdex-windows: gdex-windows-386 gdex-windows-amd64
+gtan-windows: gtan-windows-386 gtan-windows-amd64
 	@echo "Windows cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-windows-*
+	@ls -ld $(GOBIN)/gtan-windows-*
 
-gdex-windows-386:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=windows/386 -v ./cmd/gdex
+gtan-windows-386:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=windows/386 -v ./cmd/gtan
 	@echo "Windows 386 cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-windows-* | grep 386
+	@ls -ld $(GOBIN)/gtan-windows-* | grep 386
 
-gdex-windows-amd64:
-	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=windows/amd64 -v ./cmd/gdex
+gtan-windows-amd64:
+	build/env.sh go run build/ci.go xgo -- --go=$(GO) --targets=windows/amd64 -v ./cmd/gtan
 	@echo "Windows amd64 cross compilation done:"
-	@ls -ld $(GOBIN)/gdex-windows-* | grep amd64
+	@ls -ld $(GOBIN)/gtan-windows-* | grep amd64

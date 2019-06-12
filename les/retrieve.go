@@ -26,8 +26,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common/mclock"
-	"github.com/dexon-foundation/dexon/light"
+	"github.com/tangerine-network/go-tangerine/common/mclock"
+	"github.com/tangerine-network/go-tangerine/light"
 )
 
 var (

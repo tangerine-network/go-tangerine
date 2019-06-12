@@ -38,13 +38,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/rlp"
-	"github.com/dexon-foundation/dexon/swarm/spancontext"
-	"github.com/dexon-foundation/dexon/swarm/tracing"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/rlp"
+	"github.com/tangerine-network/go-tangerine/swarm/spancontext"
+	"github.com/tangerine-network/go-tangerine/swarm/tracing"
 )
 
 // error codes used by this  protocol scheme

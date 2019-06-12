@@ -23,15 +23,15 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/p2p/protocols"
-	"github.com/dexon-foundation/dexon/swarm/log"
-	pq "github.com/dexon-foundation/dexon/swarm/network/priorityqueue"
-	"github.com/dexon-foundation/dexon/swarm/network/stream/intervals"
-	"github.com/dexon-foundation/dexon/swarm/spancontext"
-	"github.com/dexon-foundation/dexon/swarm/state"
-	"github.com/dexon-foundation/dexon/swarm/storage"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/p2p/protocols"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
+	pq "github.com/tangerine-network/go-tangerine/swarm/network/priorityqueue"
+	"github.com/tangerine-network/go-tangerine/swarm/network/stream/intervals"
+	"github.com/tangerine-network/go-tangerine/swarm/spancontext"
+	"github.com/tangerine-network/go-tangerine/swarm/state"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 type notFoundError struct {

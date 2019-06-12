@@ -24,7 +24,7 @@ import (
 	"io"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/swarm/testutil"
+	"github.com/tangerine-network/go-tangerine/swarm/testutil"
 	"golang.org/x/crypto/sha3"
 )
 

@@ -34,8 +34,8 @@ import (
 	"sort"
 	"strconv"
 
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 type nodeInfo struct {

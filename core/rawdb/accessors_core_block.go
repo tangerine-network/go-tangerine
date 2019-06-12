@@ -3,11 +3,11 @@ package rawdb
 import (
 	"bytes"
 
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 func ReadCoreBlockRLP(db DatabaseReader, hash common.Hash) rlp.RawValue {

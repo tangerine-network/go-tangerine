@@ -22,10 +22,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/accounts"
-	"github.com/dexon-foundation/dexon/event"
-	"github.com/dexon-foundation/dexon/log"
 	"github.com/karalabe/hid"
+	"github.com/tangerine-network/go-tangerine/accounts"
+	"github.com/tangerine-network/go-tangerine/event"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // LedgerScheme is the protocol scheme prefixing account and wallet URLs.

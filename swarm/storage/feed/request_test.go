@@ -24,9 +24,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/swarm/storage"
-	"github.com/dexon-foundation/dexon/swarm/storage/feed/lookup"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/feed/lookup"
 )
 
 func areEqualJSON(s1, s2 string) (bool, error) {

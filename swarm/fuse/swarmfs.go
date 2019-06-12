@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/swarm/api"
+	"github.com/tangerine-network/go-tangerine/swarm/api"
 )
 
 const (

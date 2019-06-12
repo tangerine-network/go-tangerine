@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	ch "github.com/dexon-foundation/dexon/swarm/chunk"
-	"github.com/dexon-foundation/dexon/swarm/storage/encryption"
+	ch "github.com/tangerine-network/go-tangerine/swarm/chunk"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/encryption"
 	"golang.org/x/crypto/sha3"
 )
 

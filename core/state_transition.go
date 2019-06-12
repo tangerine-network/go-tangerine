@@ -23,11 +23,11 @@ import (
 	"math/big"
 	"sync/atomic"
 
-	dexCore "github.com/dexon-foundation/dexon-consensus/core"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/params"
+	dexCore "github.com/byzantine-lab/dexon-consensus/core"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/vm"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/params"
 )
 
 var legacyEvm = flag.Bool("legacy-evm", false, "make evm run origin logic")

@@ -24,8 +24,8 @@ import (
 	"net"
 	"sync"
 
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/p2p/enr"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/enr"
 )
 
 var nullNode *enode.Node

@@ -23,10 +23,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/swarm/shed"
-	"github.com/dexon-foundation/dexon/swarm/storage"
-	"github.com/dexon-foundation/dexon/swarm/storage/mock"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/swarm/shed"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/mock"
 )
 
 var (

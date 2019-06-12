@@ -17,8 +17,8 @@
 package core
 
 import (
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/types"
 )
 
 // NewTxsEvent is posted when a batch of transactions enter the transaction pool.

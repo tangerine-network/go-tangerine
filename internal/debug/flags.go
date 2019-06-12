@@ -24,12 +24,12 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/metrics/exp"
 	"github.com/fjl/memsize/memsizeui"
 	colorable "github.com/mattn/go-colorable"
 	"github.com/mattn/go-isatty"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/metrics/exp"
 	"gopkg.in/urfave/cli.v1"
 )
 

@@ -24,13 +24,13 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/hexutil"
-	"github.com/dexon-foundation/dexon/consensus/ethash"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/eth/downloader"
-	"github.com/dexon-foundation/dexon/eth/gasprice"
-	"github.com/dexon-foundation/dexon/params"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/consensus/ethash"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/eth/downloader"
+	"github.com/tangerine-network/go-tangerine/eth/gasprice"
+	"github.com/tangerine-network/go-tangerine/params"
 )
 
 // DefaultConfig contains default settings for use on the Ethereum main net.

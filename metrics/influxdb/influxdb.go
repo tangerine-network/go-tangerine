@@ -5,9 +5,9 @@ import (
 	uurl "net/url"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/metrics"
 	"github.com/influxdata/influxdb/client"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/metrics"
 )
 
 type reporter struct {

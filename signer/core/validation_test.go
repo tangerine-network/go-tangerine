@@ -21,8 +21,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
 )
 
 func hexAddr(a string) common.Address { return common.BytesToAddress(common.FromHex(a)) }

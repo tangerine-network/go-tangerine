@@ -3,7 +3,7 @@ package types
 import (
 	"math/big"
 
-	"github.com/dexon-foundation/dexon/common"
+	"github.com/tangerine-network/go-tangerine/common"
 )
 
 type GovState struct {

@@ -1,6 +1,6 @@
 #!/bin/bash -f
 
-cd vendor/github.com/dexon-foundation/
+cd vendor/github.com/tangerine-network/
 
 sudo apt-get update
 

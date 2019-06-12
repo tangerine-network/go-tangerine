@@ -19,8 +19,8 @@ package main
 import (
 	"os"
 
-	"github.com/dexon-foundation/dexon/cmd/utils"
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
+	"github.com/tangerine-network/go-tangerine/log"
 	cli "gopkg.in/urfave/cli.v1"
 )
 

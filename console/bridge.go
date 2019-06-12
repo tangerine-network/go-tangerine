@@ -23,10 +23,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dexon-foundation/dexon/accounts/usbwallet"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/rpc"
 	"github.com/robertkrimen/otto"
+	"github.com/tangerine-network/go-tangerine/accounts/usbwallet"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/rpc"
 )
 
 // bridge is a collection of JavaScript utility methods to bride the .js runtime

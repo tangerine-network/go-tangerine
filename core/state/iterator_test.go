@@ -20,8 +20,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/ethdb"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/ethdb"
 )
 
 // Tests that the node iterator indeed walks over the entire database contents.

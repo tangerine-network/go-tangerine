@@ -24,8 +24,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/cmd/utils"
-	"github.com/dexon-foundation/dexon/core/vm"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
+	"github.com/tangerine-network/go-tangerine/core/vm"
 )
 
 func TestState(t *testing.T) {

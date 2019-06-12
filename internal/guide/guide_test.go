@@ -30,8 +30,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/accounts/keystore"
-	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/tangerine-network/go-tangerine/accounts/keystore"
+	"github.com/tangerine-network/go-tangerine/core/types"
 )
 
 // Tests that the account management snippets work correctly.

@@ -23,8 +23,8 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common/mclock"
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/common/mclock"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 const (

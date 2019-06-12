@@ -20,8 +20,8 @@ package vm
 import (
 	"strings"
 
-	"github.com/dexon-foundation/dexon/accounts/abi"
-	"github.com/dexon-foundation/dexon/common"
+	"github.com/tangerine-network/go-tangerine/accounts/abi"
+	"github.com/tangerine-network/go-tangerine/common"
 )
 
 var GovernanceContractAddress = common.HexToAddress("63751838d6485578b23e8b051d40861ecc416794")

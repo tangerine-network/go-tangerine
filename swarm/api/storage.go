@@ -20,7 +20,7 @@ import (
 	"context"
 	"path"
 
-	"github.com/dexon-foundation/dexon/swarm/storage"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 type Response struct {

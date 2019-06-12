@@ -20,8 +20,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/crypto"
 )
 
 func TestConfig(t *testing.T) {

@@ -25,9 +25,9 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/swarm/bmt"
-	ch "github.com/dexon-foundation/dexon/swarm/chunk"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/swarm/bmt"
+	ch "github.com/tangerine-network/go-tangerine/swarm/chunk"
 	"golang.org/x/crypto/sha3"
 )
 

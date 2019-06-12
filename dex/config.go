@@ -25,12 +25,12 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/dex/downloader"
-	"github.com/dexon-foundation/dexon/eth/gasprice"
-	"github.com/dexon-foundation/dexon/indexer"
-	"github.com/dexon-foundation/dexon/params"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/dex/downloader"
+	"github.com/tangerine-network/go-tangerine/eth/gasprice"
+	"github.com/tangerine-network/go-tangerine/indexer"
+	"github.com/tangerine-network/go-tangerine/params"
 )
 
 // DefaultConfig contains default settings for use on the Ethereum main net.
@@ -125,7 +125,7 @@ type Config struct {
 	// RPCGasCap is the global gas cap for eth-call variants.
 	RPCGasCap *big.Int `toml:",omitempty"`
 
-	// Dexon options
+	// Tangerine options
 	DMoment int64
 
 	// Indexer config

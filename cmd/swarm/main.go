@@ -29,24 +29,24 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/dexon-foundation/dexon/accounts"
-	"github.com/dexon-foundation/dexon/accounts/keystore"
-	"github.com/dexon-foundation/dexon/cmd/utils"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/console"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/internal/debug"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/node"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/rpc"
-	"github.com/dexon-foundation/dexon/swarm"
-	bzzapi "github.com/dexon-foundation/dexon/swarm/api"
-	swarmmetrics "github.com/dexon-foundation/dexon/swarm/metrics"
-	"github.com/dexon-foundation/dexon/swarm/storage/mock"
-	mockrpc "github.com/dexon-foundation/dexon/swarm/storage/mock/rpc"
-	"github.com/dexon-foundation/dexon/swarm/tracing"
-	sv "github.com/dexon-foundation/dexon/swarm/version"
+	"github.com/tangerine-network/go-tangerine/accounts"
+	"github.com/tangerine-network/go-tangerine/accounts/keystore"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/console"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/internal/debug"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/node"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/rpc"
+	"github.com/tangerine-network/go-tangerine/swarm"
+	bzzapi "github.com/tangerine-network/go-tangerine/swarm/api"
+	swarmmetrics "github.com/tangerine-network/go-tangerine/swarm/metrics"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/mock"
+	mockrpc "github.com/tangerine-network/go-tangerine/swarm/storage/mock/rpc"
+	"github.com/tangerine-network/go-tangerine/swarm/tracing"
+	sv "github.com/tangerine-network/go-tangerine/swarm/version"
 
 	cli "gopkg.in/urfave/cli.v1"
 )
@@ -91,7 +91,7 @@ var defaultSubcommandHelp = cli.Command{
 
 var defaultNodeConfig = node.DefaultConfig
 
-// This init function sets defaults so cmd/swarm can run alongside gdex.
+// This init function sets defaults so cmd/swarm can run alongside gtan.
 func init() {
 	sv.GitCommit = gitCommit
 	defaultNodeConfig.Name = clientIdentifier
@@ -275,9 +275,9 @@ func bzzd(ctx *cli.Context) error {
 	//pss operates on ws
 	cfg.WSModules = append(cfg.WSModules, "pss")
 
-	//gdex only supports --datadir via command line
+	//gtan only supports --datadir via command line
 	//in order to be consistent within swarm, if we pass --datadir via environment variable
-	//or via config file, we get the same directory for gdex and swarm
+	//or via config file, we get the same directory for gtan and swarm
 	if _, err := os.Stat(bzzconfig.Path); err == nil {
 		cfg.DataDir = bzzconfig.Path
 	}

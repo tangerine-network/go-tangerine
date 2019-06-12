@@ -22,8 +22,8 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/dexon-foundation/dexon"
-	"github.com/dexon-foundation/dexon/common"
+	ethereum "github.com/tangerine-network/go-tangerine"
+	"github.com/tangerine-network/go-tangerine/common"
 )
 
 // Verify that Client implements the ethereum interfaces.

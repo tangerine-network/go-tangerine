@@ -21,11 +21,11 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/rpc"
-	"github.com/dexon-foundation/dexon/swarm/storage/mock"
-	"github.com/dexon-foundation/dexon/swarm/storage/mock/db"
-	"github.com/dexon-foundation/dexon/swarm/storage/mock/mem"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/rpc"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/mock"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/mock/db"
+	"github.com/tangerine-network/go-tangerine/swarm/storage/mock/mem"
 	cli "gopkg.in/urfave/cli.v1"
 )
 

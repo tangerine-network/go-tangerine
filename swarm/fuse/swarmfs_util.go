@@ -24,7 +24,7 @@ import (
 	"os/exec"
 	"runtime"
 
-	"github.com/dexon-foundation/dexon/swarm/log"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
 )
 
 func externalUnmount(mountPoint string) error {

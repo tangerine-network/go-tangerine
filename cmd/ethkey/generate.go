@@ -23,10 +23,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dexon-foundation/dexon/accounts/keystore"
-	"github.com/dexon-foundation/dexon/cmd/utils"
-	"github.com/dexon-foundation/dexon/crypto"
 	"github.com/pborman/uuid"
+	"github.com/tangerine-network/go-tangerine/accounts/keystore"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
+	"github.com/tangerine-network/go-tangerine/crypto"
 	"gopkg.in/urfave/cli.v1"
 )
 

@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dexon-foundation/dexon/cmd/utils"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
 	"gopkg.in/urfave/cli.v1"
 )
 

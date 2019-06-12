@@ -19,7 +19,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // ensureVirtualHost checks whether a reverse-proxy is running on the specified

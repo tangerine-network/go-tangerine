@@ -25,16 +25,16 @@ import (
 	"sync"
 	"time"
 
-	coreCommon "github.com/dexon-foundation/dexon-consensus/common"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
+	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/core"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/event"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/event"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 // DexconApp implements the DEXON consensus core application interface.

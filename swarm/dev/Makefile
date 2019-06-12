@@ -3,12 +3,12 @@
 default: build
 
 build:
-	go build -o bin/swarm    github.com/dexon-foundation/dexon/cmd/swarm
-	go build -o bin/geth     github.com/dexon-foundation/dexon/cmd/geth
-	go build -o bin/bootnode github.com/dexon-foundation/dexon/cmd/bootnode
+	go build -o bin/swarm    github.com/tangerine-network/go-tangerine/cmd/swarm
+	go build -o bin/geth     github.com/tangerine-network/go-tangerine/cmd/geth
+	go build -o bin/bootnode github.com/tangerine-network/go-tangerine/cmd/bootnode
 
 cluster: build
 	scripts/boot-cluster.sh
 
 test:
-	go test -v github.com/dexon-foundation/dexon/swarm/...
+	go test -v github.com/tangerine-network/go-tangerine/swarm/...

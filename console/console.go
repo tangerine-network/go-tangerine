@@ -28,12 +28,12 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/dexon-foundation/dexon/internal/jsre"
-	"github.com/dexon-foundation/dexon/internal/web3ext"
-	"github.com/dexon-foundation/dexon/rpc"
 	"github.com/mattn/go-colorable"
 	"github.com/peterh/liner"
 	"github.com/robertkrimen/otto"
+	"github.com/tangerine-network/go-tangerine/internal/jsre"
+	"github.com/tangerine-network/go-tangerine/internal/web3ext"
+	"github.com/tangerine-network/go-tangerine/rpc"
 )
 
 var (

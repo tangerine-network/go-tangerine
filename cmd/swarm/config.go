@@ -29,13 +29,13 @@ import (
 
 	cli "gopkg.in/urfave/cli.v1"
 
-	"github.com/dexon-foundation/dexon/cmd/utils"
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/node"
 	"github.com/naoina/toml"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/node"
 
-	bzzapi "github.com/dexon-foundation/dexon/swarm/api"
+	bzzapi "github.com/tangerine-network/go-tangerine/swarm/api"
 )
 
 var (
@@ -97,7 +97,7 @@ var tomlSettings = toml.Config{
 	MissingField: func(rt reflect.Type, field string) error {
 		link := ""
 		if unicode.IsUpper(rune(rt.Name()[0])) && rt.PkgPath() != "main" {
-			link = fmt.Sprintf(", check github.com/dexon-foundation/dexon/swarm/api/config.go for available fields")
+			link = fmt.Sprintf(", check github.com/tangerine-network/go-tangerine/swarm/api/config.go for available fields")
 		}
 		return fmt.Errorf("field '%s' is not defined in %s%s", field, rt.String(), link)
 	},
@@ -127,7 +127,7 @@ func initSwarmNode(config *bzzapi.Config, stack *node.Node, ctx *cli.Context) {
 	//at this point, all vars should be set in the Config
 	//get the account for the provided swarm account
 	prvkey := getAccount(config.BzzAccount, ctx, stack)
-	//set the resolved config path (gdex --datadir)
+	//set the resolved config path (gtan --datadir)
 	config.Path = expandPath(stack.InstanceDir())
 	//finally, initialize the configuration
 	config.Init(prvkey)

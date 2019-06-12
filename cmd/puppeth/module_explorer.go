@@ -25,7 +25,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // explorerDockerfile is the Dockerfile required to run a block explorer.

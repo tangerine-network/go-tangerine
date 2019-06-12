@@ -24,12 +24,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/metrics"
-	ch "github.com/dexon-foundation/dexon/swarm/chunk"
-	"github.com/dexon-foundation/dexon/swarm/log"
-	"github.com/dexon-foundation/dexon/swarm/spancontext"
 	opentracing "github.com/opentracing/opentracing-go"
 	olog "github.com/opentracing/opentracing-go/log"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	ch "github.com/tangerine-network/go-tangerine/swarm/chunk"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
+	"github.com/tangerine-network/go-tangerine/swarm/spancontext"
 )
 
 /*

@@ -24,12 +24,12 @@ import (
 	"net"
 	"time"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/p2p/nat"
-	"github.com/dexon-foundation/dexon/p2p/netutil"
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/p2p/nat"
+	"github.com/tangerine-network/go-tangerine/p2p/netutil"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 const Version = 4

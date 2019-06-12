@@ -19,7 +19,7 @@
 package fetcher
 
 import (
-	"github.com/dexon-foundation/dexon/metrics"
+	"github.com/tangerine-network/go-tangerine/metrics"
 )
 
 var (

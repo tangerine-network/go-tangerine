@@ -27,9 +27,9 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/dexon-foundation/dexon"
-	"github.com/dexon-foundation/dexon/cmd/zoo/client"
-	"github.com/dexon-foundation/dexon/crypto"
+	ethereum "github.com/tangerine-network/go-tangerine"
+	"github.com/tangerine-network/go-tangerine/cmd/zoo/client"
+	"github.com/tangerine-network/go-tangerine/crypto"
 )
 
 type ShutdownConfig struct {
@@ -82,7 +82,7 @@ func Shutdown(config *ShutdownConfig) {
 			panic(err)
 		}
 
-		gasLimit, err := cl.EstimateGas(context.Background(), dexon.CallMsg{})
+		gasLimit, err := cl.EstimateGas(context.Background(), ethereum.CallMsg{})
 		if err != nil {
 			panic(err)
 		}

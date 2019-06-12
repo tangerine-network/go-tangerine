@@ -7,7 +7,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/dexon-foundation/dexon/metrics"
+	"github.com/tangerine-network/go-tangerine/metrics"
 )
 
 // a regexp for extracting the unit from time.Duration.String

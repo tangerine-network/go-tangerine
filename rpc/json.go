@@ -26,7 +26,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 const (

@@ -20,7 +20,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
 )
 
 var (

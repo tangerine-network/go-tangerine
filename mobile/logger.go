@@ -19,7 +19,7 @@ package geth
 import (
 	"os"
 
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // SetVerbosity sets the global verbosity level (between 0 and 6 - see logger/verbosity.go).

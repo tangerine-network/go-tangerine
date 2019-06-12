@@ -19,8 +19,8 @@
 package whisperv6
 
 import (
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/common/hexutil"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/common/hexutil"
 )
 
 // TopicType represents a cryptographically secure, probabilistic partial

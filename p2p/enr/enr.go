@@ -40,7 +40,7 @@ import (
 	"io"
 	"sort"
 
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
 const SizeLimit = 300 // maximum encoded size of a node record in bytes

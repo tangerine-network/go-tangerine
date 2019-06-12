@@ -26,7 +26,7 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 type storedCredential struct {

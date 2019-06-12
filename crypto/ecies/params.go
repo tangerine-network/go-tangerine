@@ -42,7 +42,7 @@ import (
 	"fmt"
 	"hash"
 
-	ethcrypto "github.com/dexon-foundation/dexon/crypto"
+	ethcrypto "github.com/tangerine-network/go-tangerine/crypto"
 )
 
 var (

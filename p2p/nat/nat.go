@@ -25,8 +25,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/jackpal/go-nat-pmp"
+	natpmp "github.com/jackpal/go-nat-pmp"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // An implementation of nat.Interface can map local ports to ports

@@ -20,8 +20,8 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/dexon-foundation/dexon/node"
-	"github.com/dexon-foundation/dexon/p2p/simulations/adapters"
+	"github.com/tangerine-network/go-tangerine/node"
+	"github.com/tangerine-network/go-tangerine/p2p/simulations/adapters"
 )
 
 // TestServiceBucket tests all bucket functionality using subtests.

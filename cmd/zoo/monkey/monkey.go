@@ -29,8 +29,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/dexon-foundation/dexon/cmd/zoo/client"
-	"github.com/dexon-foundation/dexon/crypto"
+	"github.com/tangerine-network/go-tangerine/cmd/zoo/client"
+	"github.com/tangerine-network/go-tangerine/crypto"
 )
 
 var config *MonkeyConfig
@@ -110,7 +110,7 @@ func New(ep string, source *ecdsa.PrivateKey, num int, timeout time.Duration) *M
 }
 
 func (m *Monkey) Distribute() {
-	fmt.Println("Distributing DEX to random accounts ...")
+	fmt.Println("Distributing coins to random accounts ...")
 	address := crypto.PubkeyToAddress(m.source.PublicKey)
 	nonce, err := m.PendingNonceAt(context.Background(), address)
 	if err != nil {

@@ -20,9 +20,9 @@ import (
 	"context"
 	"time"
 
-	"github.com/dexon-foundation/dexon/core/rawdb"
-	"github.com/dexon-foundation/dexon/eth/downloader"
-	"github.com/dexon-foundation/dexon/light"
+	"github.com/tangerine-network/go-tangerine/core/rawdb"
+	"github.com/tangerine-network/go-tangerine/eth/downloader"
+	"github.com/tangerine-network/go-tangerine/light"
 )
 
 // syncer is responsible for periodically synchronising with the network, both

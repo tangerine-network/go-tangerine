@@ -25,7 +25,7 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // ethstatsDockerfile is the Dockerfile required to build an ethstats backend

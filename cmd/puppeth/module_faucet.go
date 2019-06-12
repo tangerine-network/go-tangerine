@@ -26,8 +26,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/log"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/log"
 )
 
 // faucetDockerfile is the Dockerfile required to build a faucet container to

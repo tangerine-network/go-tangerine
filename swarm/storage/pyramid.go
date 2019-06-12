@@ -25,8 +25,8 @@ import (
 	"sync"
 	"time"
 
-	ch "github.com/dexon-foundation/dexon/swarm/chunk"
-	"github.com/dexon-foundation/dexon/swarm/log"
+	ch "github.com/tangerine-network/go-tangerine/swarm/chunk"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
 )
 
 /*

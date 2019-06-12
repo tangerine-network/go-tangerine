@@ -19,7 +19,7 @@ package bloombits
 import (
 	"errors"
 
-	"github.com/dexon-foundation/dexon/core/types"
+	"github.com/tangerine-network/go-tangerine/core/types"
 )
 
 var (

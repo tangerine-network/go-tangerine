@@ -21,7 +21,7 @@ import (
 	"strings"
 	"unicode"
 
-	"github.com/dexon-foundation/dexon/eth/tracers/internal/tracers"
+	"github.com/tangerine-network/go-tangerine/eth/tracers/internal/tracers"
 )
 
 // all contains all the built in JavaScript tracers by name.

@@ -27,23 +27,23 @@ import (
 	"sync/atomic"
 	"time"
 
-	dexCore "github.com/dexon-foundation/dexon-consensus/core"
-	coreCrypto "github.com/dexon-foundation/dexon-consensus/core/crypto"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+	dexCore "github.com/byzantine-lab/dexon-consensus/core"
+	coreCrypto "github.com/byzantine-lab/dexon-consensus/core/crypto"
+	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
+	lru "github.com/hashicorp/golang-lru"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/consensus"
-	"github.com/dexon-foundation/dexon/consensus/dexcon"
-	"github.com/dexon-foundation/dexon/core/rawdb"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/params"
-	"github.com/dexon-foundation/dexon/rlp"
-	"github.com/dexon-foundation/dexon/trie"
-	"github.com/hashicorp/golang-lru"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/consensus"
+	"github.com/tangerine-network/go-tangerine/consensus/dexcon"
+	"github.com/tangerine-network/go-tangerine/core/rawdb"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/core/vm"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/params"
+	"github.com/tangerine-network/go-tangerine/rlp"
+	"github.com/tangerine-network/go-tangerine/trie"
 )
 
 const (
@@ -307,7 +307,7 @@ func (hc *HeaderChain) InsertHeaderChain(chain []*types.Header, writeHeader WhCa
 	return 0, nil
 }
 
-func (hc *HeaderChain) WriteDexonHeader(header *types.HeaderWithGovState) (status WriteStatus, err error) {
+func (hc *HeaderChain) WriteTangerineHeader(header *types.HeaderWithGovState) (status WriteStatus, err error) {
 	// Cache some values to prevent constant recalculation
 	var (
 		hash   = header.Hash()
@@ -463,7 +463,7 @@ func (c *headerVerifierCache) configuration(round uint64) *params.DexconConfig {
 	return cfg
 }
 
-func (hc *HeaderChain) ValidateDexonHeaderChain(chain []*types.HeaderWithGovState,
+func (hc *HeaderChain) ValidateTangerineHeaderChain(chain []*types.HeaderWithGovState,
 	gov dexcon.GovernanceStateFetcher,
 	verifierCache *dexCore.TSigVerifierCache, validator Validator) (int, error) {
 	// Do a sanity check that the provided chain is actually ordered and linked
@@ -481,7 +481,7 @@ func (hc *HeaderChain) ValidateDexonHeaderChain(chain []*types.HeaderWithGovStat
 	// If the last TSig pass the verification, we don't need to verify others.
 	cache := newHeaderVerifierCache(verifierCache, gov)
 	verifyTSig := false
-	if err := hc.verifyDexonHeader(chain[len(chain)-1].Header, gov, cache, true); err != nil {
+	if err := hc.verifyTangerineHeader(chain[len(chain)-1].Header, gov, cache, true); err != nil {
 		verifyTSig = true
 	}
 	// Iterate over the headers and ensure they all check out
@@ -499,7 +499,7 @@ func (hc *HeaderChain) ValidateDexonHeaderChain(chain []*types.HeaderWithGovStat
 			}
 		}
 
-		if err := hc.verifyDexonHeader(header.Header, gov, cache, verifyTSig); err != nil {
+		if err := hc.verifyTangerineHeader(header.Header, gov, cache, verifyTSig); err != nil {
 			return i, err
 		}
 
@@ -532,7 +532,7 @@ func (hc *HeaderChain) ValidateDexonHeaderChain(chain []*types.HeaderWithGovStat
 	return 0, nil
 }
 
-func (hc *HeaderChain) VerifyDexonHeader(header *types.Header,
+func (hc *HeaderChain) VerifyTangerineHeader(header *types.Header,
 	gov dexcon.GovernanceStateFetcher,
 	verifierCache *dexCore.TSigVerifierCache, validator Validator) error {
 
@@ -540,7 +540,7 @@ func (hc *HeaderChain) VerifyDexonHeader(header *types.Header,
 		return consensus.ErrUnknownAncestor
 	}
 	cache := newHeaderVerifierCache(verifierCache, gov)
-	if err := hc.verifyDexonHeader(header, gov, cache, true); err != nil {
+	if err := hc.verifyTangerineHeader(header, gov, cache, true); err != nil {
 		return err
 	}
 
@@ -565,7 +565,7 @@ func (hc *HeaderChain) VerifyDexonHeader(header *types.Header,
 	return nil
 }
 
-func (hc *HeaderChain) verifyDexonHeader(header *types.Header,
+func (hc *HeaderChain) verifyTangerineHeader(header *types.Header,
 	gov dexcon.GovernanceStateFetcher,
 	cache *headerVerifierCache, verifyTSig bool) error {
 
@@ -659,7 +659,7 @@ func (hc *HeaderChain) verifyTSig(coreBlock *coreTypes.Block,
 	return nil
 }
 
-// InsertDexonHeaderChain attempts to insert the given header chain in to the local
+// InsertTangerineHeaderChain attempts to insert the given header chain in to the local
 // chain, possibly creating a reorg. If an error is returned, it will return the
 // index number of the failing header as well an error describing what went wrong.
 //
@@ -667,7 +667,7 @@ func (hc *HeaderChain) verifyTSig(coreBlock *coreTypes.Block,
 // should be done or not. The reason behind the optional check is because some
 // of the header retrieval mechanisms already need to verfy nonces, as well as
 // because nonces can be verified sparsely, not needing to check each.
-func (hc *HeaderChain) InsertDexonHeaderChain(chain []*types.HeaderWithGovState, writeHeader Wh2Callback, start time.Time) (int, error) {
+func (hc *HeaderChain) InsertTangerineHeaderChain(chain []*types.HeaderWithGovState, writeHeader Wh2Callback, start time.Time) (int, error) {
 	// Collect some import statistics to report on
 	stats := struct{ processed, ignored int }{}
 	// All headers passed verification, import them into the database

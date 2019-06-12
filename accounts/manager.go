@@ -21,7 +21,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/dexon-foundation/dexon/event"
+	"github.com/tangerine-network/go-tangerine/event"
 )
 
 // Manager is an overarching account manager that can communicate with various

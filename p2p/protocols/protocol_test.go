@@ -24,12 +24,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/rlp"
+	"github.com/tangerine-network/go-tangerine/rlp"
 
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/p2p/simulations/adapters"
-	p2ptest "github.com/dexon-foundation/dexon/p2p/testing"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/simulations/adapters"
+	p2ptest "github.com/tangerine-network/go-tangerine/p2p/testing"
 )
 
 // handshake message type

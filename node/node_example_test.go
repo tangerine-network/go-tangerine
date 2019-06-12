@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/dexon-foundation/dexon/node"
-	"github.com/dexon-foundation/dexon/p2p"
-	"github.com/dexon-foundation/dexon/rpc"
+	"github.com/tangerine-network/go-tangerine/node"
+	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/rpc"
 )
 
 // SampleService is a trivial network service that can be attached to a node for

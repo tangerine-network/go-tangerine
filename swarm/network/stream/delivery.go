@@ -21,13 +21,13 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dexon-foundation/dexon/metrics"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/swarm/log"
-	"github.com/dexon-foundation/dexon/swarm/network"
-	"github.com/dexon-foundation/dexon/swarm/spancontext"
-	"github.com/dexon-foundation/dexon/swarm/storage"
 	opentracing "github.com/opentracing/opentracing-go"
+	"github.com/tangerine-network/go-tangerine/metrics"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/swarm/log"
+	"github.com/tangerine-network/go-tangerine/swarm/network"
+	"github.com/tangerine-network/go-tangerine/swarm/spancontext"
+	"github.com/tangerine-network/go-tangerine/swarm/storage"
 )
 
 const (

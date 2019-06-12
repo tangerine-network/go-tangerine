@@ -25,19 +25,19 @@ import (
 	"testing"
 	"time"
 
-	ethereum "github.com/dexon-foundation/dexon"
-	dexCore "github.com/dexon-foundation/dexon-consensus/core"
-	coreTypes "github.com/dexon-foundation/dexon-consensus/core/types"
+	dexCore "github.com/byzantine-lab/dexon-consensus/core"
+	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
+	ethereum "github.com/tangerine-network/go-tangerine"
 
-	"github.com/dexon-foundation/dexon/common"
-	"github.com/dexon-foundation/dexon/consensus/dexcon"
-	"github.com/dexon-foundation/dexon/core/state"
-	"github.com/dexon-foundation/dexon/core/types"
-	"github.com/dexon-foundation/dexon/core/vm"
-	"github.com/dexon-foundation/dexon/ethdb"
-	"github.com/dexon-foundation/dexon/event"
-	"github.com/dexon-foundation/dexon/rlp"
-	"github.com/dexon-foundation/dexon/trie"
+	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/consensus/dexcon"
+	"github.com/tangerine-network/go-tangerine/core/state"
+	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/core/vm"
+	"github.com/tangerine-network/go-tangerine/ethdb"
+	"github.com/tangerine-network/go-tangerine/event"
+	"github.com/tangerine-network/go-tangerine/rlp"
+	"github.com/tangerine-network/go-tangerine/trie"
 )
 
 // Reduce some of the parameters to make the tester faster.
@@ -213,13 +213,13 @@ func (dl *downloadTester) FastSyncCommitHead(hash common.Hash) error {
 	return fmt.Errorf("non existent block: %x", hash[:4])
 }
 
-// InsertDexonHeaderChain injects a new batch of headers into the simulated chain.
-func (dl *downloadTester) InsertDexonHeaderChain(headers []*types.HeaderWithGovState,
+// InsertTangerineHeaderChain injects a new batch of headers into the simulated chain.
+func (dl *downloadTester) InsertTangerineHeaderChain(headers []*types.HeaderWithGovState,
 	gov dexcon.GovernanceStateFetcher, verifierCache *dexCore.TSigVerifierCache) (i int, err error) {
 	dl.lock.Lock()
 	defer dl.lock.Unlock()
 
-	// Do a quick check, as the blockchain.InsertDexonHeaderChain doesn't insert anything in case of errors
+	// Do a quick check, as the blockchain.InsertTangerineHeaderChain doesn't insert anything in case of errors
 	if _, ok := dl.ownHeaders[headers[0].ParentHash]; !ok {
 		return 0, errors.New("unknown parent")
 	}
@@ -265,8 +265,8 @@ func (dl *downloadTester) InsertDexonHeaderChain(headers []*types.HeaderWithGovS
 	return len(headers), nil
 }
 
-// InsertDexonChain injects a new batch of blocks into the simulated chain.
-func (dl *downloadTester) InsertDexonChain(blocks types.Blocks) (i int, err error) {
+// InsertTangerineChain injects a new batch of blocks into the simulated chain.
+func (dl *downloadTester) InsertTangerineChain(blocks types.Blocks) (i int, err error) {
 	dl.lock.Lock()
 	defer dl.lock.Unlock()
 

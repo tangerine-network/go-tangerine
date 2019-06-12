@@ -19,9 +19,9 @@ package simulations
 import (
 	"testing"
 
-	"github.com/dexon-foundation/dexon/node"
-	"github.com/dexon-foundation/dexon/p2p/enode"
-	"github.com/dexon-foundation/dexon/p2p/simulations/adapters"
+	"github.com/tangerine-network/go-tangerine/node"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
+	"github.com/tangerine-network/go-tangerine/p2p/simulations/adapters"
 )
 
 func newTestNetwork(t *testing.T, nodeCount int) (*Network, []enode.ID) {

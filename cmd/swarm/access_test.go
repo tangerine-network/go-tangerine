@@ -31,12 +31,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/crypto"
-	"github.com/dexon-foundation/dexon/crypto/ecies"
-	"github.com/dexon-foundation/dexon/log"
-	"github.com/dexon-foundation/dexon/swarm/api"
-	swarmapi "github.com/dexon-foundation/dexon/swarm/api/client"
-	"github.com/dexon-foundation/dexon/swarm/testutil"
+	"github.com/tangerine-network/go-tangerine/crypto"
+	"github.com/tangerine-network/go-tangerine/crypto/ecies"
+	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/swarm/api"
+	swarmapi "github.com/tangerine-network/go-tangerine/swarm/api/client"
+	"github.com/tangerine-network/go-tangerine/swarm/testutil"
 	"golang.org/x/crypto/sha3"
 )
 

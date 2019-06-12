@@ -26,11 +26,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dexon-foundation/dexon/cmd/utils"
-	"github.com/dexon-foundation/dexon/rpc"
-	"github.com/dexon-foundation/dexon/swarm"
-	"github.com/dexon-foundation/dexon/swarm/api"
 	"github.com/docker/docker/pkg/reexec"
+	"github.com/tangerine-network/go-tangerine/cmd/utils"
+	"github.com/tangerine-network/go-tangerine/rpc"
+	"github.com/tangerine-network/go-tangerine/swarm"
+	"github.com/tangerine-network/go-tangerine/swarm/api"
 )
 
 func TestConfigDump(t *testing.T) {
@@ -473,7 +473,7 @@ func TestConfigValidate(t *testing.T) {
 	}{
 		{
 			cfg: &api.Config{EnsAPIs: []string{
-				"/data/testnet/gdex.ipc",
+				"/data/testnet/gtan.ipc",
 			}},
 		},
 		{
@@ -488,7 +488,7 @@ func TestConfigValidate(t *testing.T) {
 		},
 		{
 			cfg: &api.Config{EnsAPIs: []string{
-				"test:/data/testnet/gdex.ipc",
+				"test:/data/testnet/gtan.ipc",
 			}},
 		},
 		{
@@ -498,7 +498,7 @@ func TestConfigValidate(t *testing.T) {
 		},
 		{
 			cfg: &api.Config{EnsAPIs: []string{
-				"314159265dD8dbb310642f98f50C066173C1259b@/data/testnet/gdex.ipc",
+				"314159265dD8dbb310642f98f50C066173C1259b@/data/testnet/gtan.ipc",
 			}},
 		},
 		{
@@ -513,7 +513,7 @@ func TestConfigValidate(t *testing.T) {
 		},
 		{
 			cfg: &api.Config{EnsAPIs: []string{
-				"test:314159265dD8dbb310642f98f50C066173C1259b@/data/testnet/gdex.ipc",
+				"test:314159265dD8dbb310642f98f50C066173C1259b@/data/testnet/gtan.ipc",
 			}},
 		},
 		{
@@ -546,9 +546,9 @@ func TestConfigValidate(t *testing.T) {
 		},
 		{
 			cfg: &api.Config{EnsAPIs: []string{
-				"@/data/testnet/gdex.ipc",
+				"@/data/testnet/gtan.ipc",
 			}},
-			err: "invalid format [tld:][contract-addr@]url for ENS API endpoint configuration \"@/data/testnet/gdex.ipc\": missing contract address",
+			err: "invalid format [tld:][contract-addr@]url for ENS API endpoint configuration \"@/data/testnet/gtan.ipc\": missing contract address",
 		},
 	} {
 		err := validateConfig(c.cfg)

@@ -20,7 +20,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dexon-foundation/dexon/core/asm"
+	"github.com/tangerine-network/go-tangerine/core/asm"
 )
 
 func Compile(fn string, src []byte, debug bool) (string, error) {
