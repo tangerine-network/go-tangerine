@@ -1,4 +1,6 @@
-#!/bin/bash
+#!/bin/sh
+
+cd "$(dirname "$0")"
 
 BOOTNODE_FLAGS="--bootnodes enode://b0dacdaceb9ce26f89406e8048d279d3aa81c770e967db7e2556e416ca446de0e9327dbdf85eb56c421eeabbc843ceb8f373e7a26dc31d48178620e48cb095c4@127.0.0.1:30301"
 GENESIS="genesis.json"
@@ -45,16 +47,6 @@ rm -f log-latest
 ln -s $logsdir log-latest
 
 
-# the recovery contract address 0x80859F3d0D781c2c4126962cab0c977b37820e78 is deployed using keystore/monkey.key
-if $SMOKETEST; then
-  if [ `uname` == "Darwin" ]; then
-    sed -i '' 's/"contract":.*,/"contract": "0x80859F3d0D781c2c4126962cab0c977b37820e78",/g' genesis.json
-  else
-    sed -i 's/"contract":.*,/"contract": "0x80859F3d0D781c2c4126962cab0c977b37820e78",/g' genesis.json
-  fi
-fi
-
-
 python << __FILE__
 import re
 import time
@@ -64,6 +56,12 @@ with open('$GENESIS', 'r') as f:
 
 with open('$GENESIS', 'w') as f:
   dMoment = int(time.time()) + 15
+  data = re.sub('"dMoment": [0-9]+,', '"dMoment": %d,' % dMoment, data)
+
+  if '$SMOKETEST' == 'true':
+     # Recovery contract address deployed using keystore/monkey.key
+    data = re.sub('"contract":.*,', '"contract": "0x2Fc9806dDad6044C8158bA31D08b7d9495474A89",', data)
+
   f.write(re.sub('"dMoment": [0-9]+,', '"dMoment": %d,' % dMoment, data))
 __FILE__
 

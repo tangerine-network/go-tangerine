@@ -1,11 +1,12 @@
-#!/bin/bash
+#!/bin/sh
 
-tarAndUpload()
+fail()
 {
-  name=travis-fail-$(date +%s).tar.gz
-  tar -zcvf $name test
-  echo "Verify fail and upload $name"
-  PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig go run build/testtool/testtool.go upload $name dexon-prod-builds
+  # name=ci-fail-$(date +%s).tar.gz
+  # tar -zcvf $name test
+  # echo "Verify fail and upload $name"
+  # go run build/testtool/testtool.go upload $name dexon-prod-builds
+  echo
 }
 
 endpoint=http://127.0.0.1:8545
@@ -13,10 +14,7 @@ endpoint=http://127.0.0.1:8545
 timeout=300
 
 echo "Wait for recovery"
-cmd="PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig go run build/testtool/testtool.go waitForRecovery $endpoint $timeout"
-eval $cmd
-code=$?
-if [ $code == 1 ]; then
-  tarAndUpload
+if ! go run build/testtool/testtool.go waitForRecovery $endpoint $timeout; then
+  fail
   exit 1
 fi

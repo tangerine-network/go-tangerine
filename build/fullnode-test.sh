@@ -1,13 +1,14 @@
-#!/bin/bash
+#!/bin/sh
 
 sleep 10
 
-tarAndUpload()
+fail()
 {
-  name=travis-fail-$(date +%s).tar.gz
-  tar -zcvf $name test
-  echo "Verify fail and upload $name"
-  PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig go run build/testtool/testtool.go upload $name dexon-prod-builds
+  # name=ci-fail-$(date +%s).tar.gz
+  # tar -zcvf $name test
+  # echo "Verify fail and upload $name"
+  # go run build/testtool/testtool.go upload $name dexon-prod-builds
+  echo
 }
 
 endpoint=http://127.0.0.1:8545
@@ -19,33 +20,21 @@ echo "Start verify round $round"
     for index in 0 1 2 3
     do
     echo "Verify gov master public key round $round index $index"
-    cmd="PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig go run build/testtool/testtool.go verifyGovMPK $endpoint $round $index"
-    eval $cmd
-    code=$?
-
-    if [ $code == 1 ]; then
-      tarAndUpload
+    if ! go run build/testtool/testtool.go verifyGovMPK $endpoint $round $index; then
+      fail
       exit 1
     fi
     done
 
 echo "Start verify CRS"
-cmd="PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig go run build/testtool/testtool.go verifyGovCRS $endpoint $round"
-eval $cmd
-code=$?
-
-if [ $code == 1 ]; then
-  tarAndUpload
+if ! go run build/testtool/testtool.go verifyGovCRS $endpoint $round; then
+  fail
   exit 1
 fi
 
 if [ $round -lt 4 ]; then
-  cmd="PKG_CONFIG_PATH=/usr/local/opt/openssl/lib/pkgconfig go run build/testtool/testtool.go monkeyTest $endpoint"
-  eval $cmd
-  code=$?
-
-  if [ $code == 1 ]; then
-    tarAndUpload
+  if ! go run build/testtool/testtool.go monkeyTest $endpoint; then
+    fail
     exit 1
   fi
 

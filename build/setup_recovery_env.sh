@@ -1,13 +1,15 @@
-#!/bin/bash
+#!/bin/sh
+
+cd "$(dirname "$0")"
 
 accounts_opt="--account=0x`cat ../test/keystore/monkey.key`,100000000000000000000"
 
 # node key's account
 for key in ../test/keystore/test*key; do
-    accounts_opt+=" --account=0x`cat $key`,1000000000000000000000"
+    accounts_opt=" --account=0x`cat $key`,1000000000000000000000 $accounts_opt"
 done
 
-git clone --depth 1 -b master https://github.com/dexon-foundation/governance-abi
+git clone --depth 1 -b master https://github.com/lantw44m/dexon-governance-abi.git governance-abi
 
 # deploy contract
 cd governance-abi
