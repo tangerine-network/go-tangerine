@@ -41,7 +41,7 @@ type testFile struct {
 // TestCLISwarmFsDefaultIPCPath tests if the most basic fs command, i.e., list
 // can find and correctly connect to a running Swarm node on the default
 // IPCPath.
-func TestCLISwarmFsDefaultIPCPath(t *testing.T) {
+func disabledTestCLISwarmFsDefaultIPCPath(t *testing.T) {
 	cluster := newTestCluster(t, 1)
 	defer cluster.Shutdown()
 
@@ -64,7 +64,7 @@ func TestCLISwarmFsDefaultIPCPath(t *testing.T) {
 // and without any log messages in the log:
 // /Library/Filesystems/osxfuse.fs/Contents/Resources/load_osxfuse.
 // This is the reason for this file not being built on darwin architecture.
-func TestCLISwarmFs(t *testing.T) {
+func disabledTestCLISwarmFs(t *testing.T) {
 	cluster := newTestCluster(t, 3)
 	defer cluster.Shutdown()
 
