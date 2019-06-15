@@ -1,0 +1,39 @@
+image: "registry.gitlab.com/byzantine-lab/go-tangerine/ci-testbed:latest"
+
+before_script:
+  - mkdir -p /go/src/github.com/byzantine-lab
+  - ln -s /builds/byzantine-lab/go-tangerine /go/src/github.com/byzantine-lab
+  - cd /go/src/github.com/byzantine-lab/go-tangerine
+
+stages:
+  - lint
+  - test
+
+lint:
+  stage: lint
+  tags:
+    - golang
+  script:
+    - go run build/ci.go lint
+
+test:
+  stage: test
+  tags:
+    - golang
+  script:
+    - make libbls
+    - go run build/ci.go install
+    - go run build/ci.go test -coverage
+
+smoke:
+  stage: test
+  tags:
+    - golang
+  script:
+    - ./build/setup_recovery_env.sh
+    - make gtan
+    - ./test/run_test.sh --smoke-test
+    - ./build/fullnode-test.sh
+    - pkill -15 -f gtan
+    - ./test/run_test.sh --continue --smoke-test
+    - ./build/recovery-test.sh
