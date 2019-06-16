@@ -182,7 +182,7 @@ func (g *OracleContractsTestSuite) SetupTest() {
 	g.s = &GovernanceState{stateDB}
 
 	config := params.TestnetChainConfig.Dexcon
-	config.LockupPeriod = 1000
+	config.LockupPeriod = 1
 	config.NextHalvingSupply = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2.5e9))
 	config.LastHalvedAmount = new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.5e9))
 	config.MiningVelocity = 0.1875
