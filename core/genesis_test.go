@@ -105,26 +105,6 @@ func TestSetupGenesis(t *testing.T) {
 			wantConfig: params.TestnetChainConfig,
 		},
 		{
-			name: "custom block in DB, genesis == taipei",
-			fn: func(db ethdb.Database) (*params.ChainConfig, common.Hash, error) {
-				customg.MustCommit(db)
-				return SetupGenesisBlock(db, DefaultTaipeiGenesisBlock())
-			},
-			wantErr:    &GenesisMismatchError{Stored: customghash, New: params.TaipeiGenesisHash},
-			wantHash:   params.TaipeiGenesisHash,
-			wantConfig: params.TaipeiChainConfig,
-		},
-		{
-			name: "custom block in DB, genesis == yilan",
-			fn: func(db ethdb.Database) (*params.ChainConfig, common.Hash, error) {
-				customg.MustCommit(db)
-				return SetupGenesisBlock(db, DefaultYilanGenesisBlock())
-			},
-			wantErr:    &GenesisMismatchError{Stored: customghash, New: params.YilanGenesisHash},
-			wantHash:   params.YilanGenesisHash,
-			wantConfig: params.YilanChainConfig,
-		},
-		{
 			name: "compatible config in DB",
 			fn: func(db ethdb.Database) (*params.ChainConfig, common.Hash, error) {
 				oldcustomg.MustCommit(db)

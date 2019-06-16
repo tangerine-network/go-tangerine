@@ -31,7 +31,7 @@ GLOBAL OPTIONS:
    --loglevel value        log level to emit to the screen (default: 4)
    --keystore value        Directory for the keystore (default: "$HOME/.ethereum/keystore")
    --configdir value       Directory for clef configuration (default: "$HOME/.clef")
-   --networkid value       Network identifier (integer, 237=Mainnet, 238=Testnet) (default: 237)
+   --networkid value       Network identifier (integer, 373=Mainnet, 374=Testnet) (default: 373)
    --lightkdf              Reduce key-derivation RAM & CPU usage at some expense of KDF strength
    --nousb                 Disables monitoring for and managing USB hardware wallets
    --rpcaddr value         HTTP-RPC server listening interface (default: "localhost")

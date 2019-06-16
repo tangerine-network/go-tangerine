@@ -234,8 +234,6 @@ func (g *Genesis) configOrDefault(ghash common.Hash) *params.ChainConfig {
 		return params.MainnetChainConfig
 	case ghash == params.TestnetGenesisHash:
 		return params.TestnetChainConfig
-	case ghash == params.YilanGenesisHash:
-		return params.YilanChainConfig
 	default:
 		return params.AllEthashProtocolChanges
 	}
@@ -403,32 +401,6 @@ func DefaultTestnetGenesisBlock() *Genesis {
 		GasLimit:   40000000,
 		Difficulty: big.NewInt(1),
 		Alloc:      decodePrealloc(testnetAllocData),
-	}
-}
-
-// DefaultTaipeiGenesisBlock returns the Taipei network genesis block.
-func DefaultTaipeiGenesisBlock() *Genesis {
-	return &Genesis{
-		Config:     params.TaipeiChainConfig,
-		Timestamp:  params.TaipeiChainConfig.DMoment * 1000,
-		Nonce:      0x42,
-		ExtraData:  hexutil.MustDecode("0x3535353535353535353535353535353535353535353535353535353535353535"),
-		GasLimit:   40000000,
-		Difficulty: big.NewInt(1),
-		Alloc:      decodePrealloc(taipeiAllocData),
-	}
-}
-
-// DefaultYilanGenesisBlock returns the Yilan network genesis block.
-func DefaultYilanGenesisBlock() *Genesis {
-	return &Genesis{
-		Config:     params.YilanChainConfig,
-		Timestamp:  params.YilanChainConfig.DMoment * 1000,
-		Nonce:      0x42,
-		ExtraData:  hexutil.MustDecode("0x3535353535353535353535353535353535353535353535353535353535353535"),
-		GasLimit:   40000000,
-		Difficulty: big.NewInt(1),
-		Alloc:      decodePrealloc(yilanAllocData),
 	}
 }
 

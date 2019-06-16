@@ -1,6 +1,6 @@
 {
   "config": {
-    "chainId": 237,
+    "chainId": 373,
     "dMoment": 0,
     "homesteadBlock": 0,
     "daoForkBlock": 0,
@@ -13,7 +13,7 @@
     "constantinopleBlock": 0,
     "petersburgBlock": 0,
     "dexcon": {
-      "genesisCRSText": "In DEXON, we trust.",
+      "genesisCRSText": "OOOOoooooooooooooooooooooooooooo",
       "owner": "0x0D54AF942d6bF13870F5CA65D470954f21D3cBE5",
       "minStake": "0xd3c21bcecceda1000000",
       "lockupPeriod": 600000,

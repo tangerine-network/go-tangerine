@@ -27,9 +27,7 @@ import (
 // Genesis hashes to enforce below configs on.
 var (
 	MainnetGenesisHash = common.HexToHash("0x7108ec505c66c3735053746697442050175db51753b3f8c721294b3ba15fa598")
-	TestnetGenesisHash = common.HexToHash("0x7d8700a7a731162880adff4f21398a901c0b75d907bec8f4eac51460f94cb846")
-	TaipeiGenesisHash  = common.HexToHash("0x5929cb70fe4ba22dce821b2efca737a1874a0f5a34f3ffb9a1e157516622e20b")
-	YilanGenesisHash   = common.HexToHash("0xdcdafc044c24d728c6149ecfada746d8de6e59fc5d18063caf7950badc1df12e")
+	TestnetGenesisHash = common.HexToHash("0xa14765567d0e8b58a4090f9ade5804454aa53d50ef804b3ffd7ebe4904cd052d")
 )
 
 // TrustedCheckpoints associates each known checkpoint with the genesis hash of
@@ -42,7 +40,7 @@ var TrustedCheckpoints = map[common.Hash]*TrustedCheckpoint{
 var (
 	// MainnetChainConfig is the chain parameters to run a node on the main network.
 	MainnetChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(237),
+		ChainID:             big.NewInt(373),
 		DMoment:             1556150400,
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        big.NewInt(0),
@@ -87,8 +85,8 @@ var (
 
 	// TestnetChainConfig contains the chain parameters to run a node on the Taiwan test network.
 	TestnetChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(238),
-		DMoment:             1554694200,
+		ChainID:             big.NewInt(374),
+		DMoment:             1560677600,
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        nil,
 		DAOForkSupport:      true,
@@ -99,8 +97,8 @@ var (
 		ConstantinopleBlock: big.NewInt(0),
 		PetersburgBlock:     big.NewInt(0),
 		Dexcon: &DexconConfig{
-			GenesisCRSText:    "In DEXON, we trust.",
-			Owner:             common.HexToAddress("0xBF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
+			GenesisCRSText:    "OOOOoooooooooooooooooooooooooooo",
+			Owner:             common.HexToAddress("0x0D54AF942d6bF13870F5CA65D470954f21D3cBE5"),
 			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			LockupPeriod:      86400 * 1000,
 			MiningVelocity:    0.1875,
@@ -123,96 +121,9 @@ var (
 			},
 		},
 		Recovery: &RecoveryConfig{
-			Contract:     common.HexToAddress("0x4ebe3d13ab18b30d815711b7a33ef1226777b66d"),
+			Contract:     common.HexToAddress("0xf0cd256f2d12b6043e5fbd23a19f8fc47f6cd71b"),
 			Timeout:      120,
 			Confirmation: 5,
-		},
-	}
-
-	// TaipeiChainConfig contains the chain parameters to run a node on the Taipei test network.
-	TaipeiChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(239),
-		DMoment:             1554388800,
-		HomesteadBlock:      big.NewInt(0),
-		DAOForkBlock:        nil,
-		DAOForkSupport:      true,
-		EIP150Block:         big.NewInt(0),
-		EIP155Block:         big.NewInt(0),
-		EIP158Block:         big.NewInt(0),
-		ByzantiumBlock:      big.NewInt(0),
-		ConstantinopleBlock: big.NewInt(0),
-		PetersburgBlock:     big.NewInt(0),
-		Dexcon: &DexconConfig{
-			GenesisCRSText:    "In DEXON, we trust.",
-			Owner:             common.HexToAddress("0xBF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
-			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
-			LockupPeriod:      3600 * 2 * 1000,
-			MiningVelocity:    0.1875,
-			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.8e8)),
-			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.6e7)),
-			MinGasPrice:       new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1)),
-			BlockGasLimit:     21000 * 10000,
-			LambdaBA:          250,
-			LambdaDKG:         10000,
-			NotaryParamAlpha:  70.5,
-			NotaryParamBeta:   264,
-			RoundLength:       1200,
-			MinBlockInterval:  500,
-			FineValues: []*big.Int{
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(200)),
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1)),
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
-			},
-		},
-		Recovery: &RecoveryConfig{
-			Contract:     common.HexToAddress("0xac86ab80ab27007801f36f6622fbe0a9432291a2"),
-			Timeout:      120,
-			Confirmation: 1,
-		},
-	}
-
-	// YilanChainConfig contains the chain parameters to run a node on the Yilan test network.
-	YilanChainConfig = &ChainConfig{
-		ChainID:             big.NewInt(240),
-		DMoment:             1550802900,
-		HomesteadBlock:      big.NewInt(0),
-		DAOForkBlock:        nil,
-		DAOForkSupport:      true,
-		EIP150Block:         big.NewInt(0),
-		EIP155Block:         big.NewInt(0),
-		EIP158Block:         big.NewInt(0),
-		ByzantiumBlock:      big.NewInt(0),
-		ConstantinopleBlock: big.NewInt(0),
-		Dexcon: &DexconConfig{
-			GenesisCRSText:    "In DEXON, we trust, at Yilan",
-			Owner:             common.HexToAddress("0xBF8C48A620bacc46907f9B89732D25E47A2D7Cf7"),
-			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
-			LockupPeriod:      86400 * 3 * 1000,
-			MiningVelocity:    0.1875,
-			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2e7)),
-			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(4e6)),
-			MinGasPrice:       new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1)),
-			BlockGasLimit:     21000 * 5000,
-			LambdaBA:          250,
-			LambdaDKG:         10000,
-			NotaryParamAlpha:  70.5,
-			NotaryParamBeta:   264,
-			RoundLength:       1200,
-			MinBlockInterval:  500,
-			FineValues: []*big.Int{
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(200)),
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1)),
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
-			},
-		},
-		Recovery: &RecoveryConfig{
-			Contract:     common.HexToAddress("0x3828134ba7a0629fd52067b80fe696f400eb83dc"),
-			Timeout:      120,
-			Confirmation: 1,
 		},
 	}
 
