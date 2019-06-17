@@ -402,6 +402,30 @@ func (g *OracleContractsTestSuite) TestReplaceNodePublicKey() {
 	g.Require().Error(err)
 }
 
+func (g *OracleContractsTestSuite) TestUpdateNodeInfo() {
+	privKey, addr := newPrefundAccount(g.stateDB)
+	pk := crypto.FromECDSAPub(&privKey.PublicKey)
+
+	amount := new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6))
+	input, err := GovernanceABI.ABI.Pack("register", pk, "Test1", "test1@dexon.org", "Taipei", "https://dexon.org")
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, addr, input, amount)
+	g.Require().NoError(err)
+
+	input, err = GovernanceABI.ABI.Pack("updateNodeInfo", "New Name", "new@dexon.org", "New Location", "https://new.dexon.org")
+	g.Require().NoError(err)
+
+	_, err = g.call(GovernanceContractAddress, addr, input, big.NewInt(0))
+	g.Require().NoError(err)
+
+	offset := g.s.NodesOffsetByAddress(addr)
+	node := g.s.Node(offset)
+	g.Require().Equal("New Name", node.Name)
+	g.Require().Equal("new@dexon.org", node.Email)
+	g.Require().Equal("New Location", node.Location)
+	g.Require().Equal("https://new.dexon.org", node.Url)
+}
+
 func (g *OracleContractsTestSuite) TestStakingMechanism() {
 	privKey, addr := newPrefundAccount(g.stateDB)
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)

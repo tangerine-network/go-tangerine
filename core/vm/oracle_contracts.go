@@ -465,19 +465,48 @@ func (s *GovernanceState) UpdateNode(index *big.Int, n *nodeInfo) {
 	// Update set size.
 	s.CalNotarySetSize()
 }
-func (s *GovernanceState) PopLastNode() {
-	// Decrease length by 1.
-	arrayLength := s.LenNodes()
-	newArrayLength := new(big.Int).Sub(arrayLength, big.NewInt(1))
-	s.setStateBigInt(big.NewInt(nodesLoc), newArrayLength)
-
-	s.UpdateNode(newArrayLength, &nodeInfo{
+func (s *GovernanceState) EraseNode(index *big.Int) {
+	s.UpdateNode(index, &nodeInfo{
 		Staked:     big.NewInt(0),
 		Fined:      big.NewInt(0),
 		Unstaked:   big.NewInt(0),
 		UnstakedAt: big.NewInt(0),
 	})
 }
+func (s *GovernanceState) PopLastNode() {
+	// Decrease length by 1.
+	arrayLength := s.LenNodes()
+	newArrayLength := new(big.Int).Sub(arrayLength, big.NewInt(1))
+	s.setStateBigInt(big.NewInt(nodesLoc), newArrayLength)
+
+	s.EraseNode(newArrayLength)
+}
+func (s *GovernanceState) UpdateNodeInfo(index *big.Int, n *nodeInfo) {
+	arrayBaseLoc := s.getSlotLoc(big.NewInt(nodesLoc))
+	elementBaseLoc := new(big.Int).Add(arrayBaseLoc,
+		new(big.Int).Mul(index, big.NewInt(nodeStructSize)))
+
+	// Name.
+	loc := new(big.Int).Add(elementBaseLoc, big.NewInt(4))
+	s.eraseBytes(loc)
+	s.writeBytes(loc, []byte(n.Name))
+
+	// Email.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(5))
+	s.eraseBytes(loc)
+	s.writeBytes(loc, []byte(n.Email))
+
+	// Location.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(6))
+	s.eraseBytes(loc)
+	s.writeBytes(loc, []byte(n.Location))
+
+	// Url.
+	loc = new(big.Int).Add(elementBaseLoc, big.NewInt(7))
+	s.eraseBytes(loc)
+	s.writeBytes(loc, []byte(n.Url))
+}
+
 func (s *GovernanceState) Nodes() []*nodeInfo {
 	var nodes []*nodeInfo
 	for i := int64(0); i < int64(s.LenNodes().Uint64()); i++ {
@@ -1728,7 +1757,7 @@ func (g *GovernanceContract) register(
 	publicKey []byte, name, email, location, url string) ([]byte, error) {
 
 	// Reject invalid inputs.
-	if len(name) >= 32 || len(email) >= 32 || len(location) >= 32 || len(url) >= 128 {
+	if len(name) >= 64 || len(email) >= 128 || len(location) >= 64 || len(url) >= 128 {
 		return nil, errExecutionReverted
 	}
 
@@ -1834,6 +1863,31 @@ func (g *GovernanceContract) unstake(amount *big.Int) ([]byte, error) {
 
 	g.state.DecTotalStaked(amount)
 	g.state.emitUnstaked(caller, amount)
+
+	return g.useGas(GovernanceActionGasCost)
+}
+
+func (g *GovernanceContract) updateNodeInfo(
+	name, email, location, url string) ([]byte, error) {
+
+	caller := g.contract.Caller()
+
+	offset := g.state.NodesOffsetByAddress(caller)
+	if offset.Cmp(big.NewInt(0)) < 0 {
+		return nil, errExecutionReverted
+	}
+
+	// Reject invalid inputs.
+	if len(name) >= 64 || len(email) >= 128 || len(location) >= 64 || len(url) >= 128 {
+		return nil, errExecutionReverted
+	}
+
+	g.state.UpdateNodeInfo(offset, &nodeInfo{
+		Name:     name,
+		Email:    email,
+		Location: location,
+		Url:      url,
+	})
 
 	return g.useGas(GovernanceActionGasCost)
 }
@@ -2323,6 +2377,17 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return g.updateConfiguration(&cfg)
+	case "updateNodeInfo":
+		args := struct {
+			Name     string
+			Email    string
+			Location string
+			Url      string
+		}{}
+		if err := method.Inputs.Unpack(&args, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		return g.updateNodeInfo(args.Name, args.Email, args.Location, args.Url)
 	case "withdraw":
 		return g.withdraw()
 	case "withdrawable":
