@@ -43,7 +43,7 @@ func TestDefaultGenesisBlock(t *testing.T) {
 
 func TestSetupGenesis(t *testing.T) {
 	var (
-		customghash = common.HexToHash("0x1f619d2e0f8293d83dad154ef95f6e09dcfdbe92b7f06f658d5dece20e5132e4")
+		customghash = common.HexToHash("0x5434fb7e64d951dd3934beb7566e7c8f5e71fab0ed3f3c7fffe2253f68f5596b")
 		customg     = Genesis{
 			Config: &params.ChainConfig{HomesteadBlock: big.NewInt(3)},
 			Alloc: GenesisAlloc{

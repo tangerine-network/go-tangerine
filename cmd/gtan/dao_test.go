@@ -77,7 +77,7 @@ var daoProForkGenesis = `{
 	}
 }`
 
-var daoGenesisHash = common.HexToHash("0xa530369e97a85c4f3522bf5e89be851b00aac7c30080c4ca624ce7c4ff5c9a80")
+var daoGenesisHash = common.HexToHash("0x212688360e5160cae6fe6074a38b41cacddc65abdb65419e8783e250cebf65b1")
 var daoGenesisForkBlock = big.NewInt(314)
 
 // TestDAOForkBlockNewChain tests that the DAO hard-fork number and the nodes support/opposition is correctly
