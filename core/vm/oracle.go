@@ -24,8 +24,11 @@ import (
 	"github.com/tangerine-network/go-tangerine/common"
 )
 
-var GovernanceContractAddress = common.HexToAddress("63751838d6485578b23e8b051d40861ecc416794")
-var RandomContractAddress = common.HexToAddress("03C90084388Be8E088425DA9835F7f43F8a319c7")
+// Tangerine Network Governance
+var GovernanceContractAddress = common.HexToAddress("0x246fcde58581e2754f215a523c0718c4bfc8041f")
+
+// Tangerine Network Random
+var RandomContractAddress = common.HexToAddress("0xc327ff1025c5b3d2deb5e3f0f161b3f7e557579a")
 
 var GovernanceABI *OracleContractABI
 
