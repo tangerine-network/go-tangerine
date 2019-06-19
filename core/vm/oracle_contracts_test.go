@@ -161,7 +161,7 @@ func TestGovernanceState(t *testing.T) {
 	suite.Run(t, new(GovernanceStateTestSuite))
 }
 
-type OracleContractsTestSuite struct {
+type GovernanceContractTestSuite struct {
 	suite.Suite
 
 	context Context
@@ -171,7 +171,7 @@ type OracleContractsTestSuite struct {
 	s       *GovernanceState
 }
 
-func (g *OracleContractsTestSuite) SetupTest() {
+func (g *GovernanceContractTestSuite) SetupTest() {
 	memDB := ethdb.NewMemDatabase()
 	stateDB, err := state.New(common.Hash{}, state.NewDatabase(memDB))
 	if err != nil {
@@ -234,7 +234,7 @@ func (g *OracleContractsTestSuite) SetupTest() {
 
 }
 
-func (g *OracleContractsTestSuite) TearDownTest() {
+func (g *GovernanceContractTestSuite) TearDownTest() {
 	OracleContracts[GovernanceContractAddress] = func() OracleContract {
 		return &GovernanceContract{
 			coreDKGUtils: &defaultCoreDKGUtils{},
@@ -242,7 +242,7 @@ func (g *OracleContractsTestSuite) TearDownTest() {
 	}
 }
 
-func (g *OracleContractsTestSuite) call(
+func (g *GovernanceContractTestSuite) call(
 	contractAddr common.Address, caller common.Address, input []byte, value *big.Int) ([]byte, error) {
 
 	g.context.Time = big.NewInt(time.Now().UnixNano() / 1000000)
@@ -252,7 +252,7 @@ func (g *OracleContractsTestSuite) call(
 	return ret, err
 }
 
-func (g *OracleContractsTestSuite) TestTransferOwnership() {
+func (g *GovernanceContractTestSuite) TestTransferOwnership() {
 	input, err := GovernanceABI.ABI.Pack("transferOwnership", common.Address{})
 	g.Require().NoError(err)
 	// Call with owner but invalid new owner.
@@ -274,7 +274,7 @@ func (g *OracleContractsTestSuite) TestTransferOwnership() {
 	g.Require().Equal(addr, g.s.Owner())
 }
 
-func (g *OracleContractsTestSuite) TestTransferNodeOwnership() {
+func (g *GovernanceContractTestSuite) TestTransferNodeOwnership() {
 	privKey, addr := newPrefundAccount(g.stateDB)
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
 
@@ -322,7 +322,7 @@ func (g *OracleContractsTestSuite) TestTransferNodeOwnership() {
 	g.Require().Error(err)
 }
 
-func (g *OracleContractsTestSuite) TestTransferNodeOwnershipByFoundation() {
+func (g *GovernanceContractTestSuite) TestTransferNodeOwnershipByFoundation() {
 	privKey, addr := newPrefundAccount(g.stateDB)
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
 
@@ -356,7 +356,7 @@ func (g *OracleContractsTestSuite) TestTransferNodeOwnershipByFoundation() {
 	g.Require().Equal(0, int(g.s.NodesOffsetByAddress(newAddr).Int64()))
 }
 
-func (g *OracleContractsTestSuite) TestReplaceNodePublicKey() {
+func (g *GovernanceContractTestSuite) TestReplaceNodePublicKey() {
 	privKey, addr := newPrefundAccount(g.stateDB)
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
 
@@ -402,7 +402,7 @@ func (g *OracleContractsTestSuite) TestReplaceNodePublicKey() {
 	g.Require().Error(err)
 }
 
-func (g *OracleContractsTestSuite) TestUpdateNodeInfo() {
+func (g *GovernanceContractTestSuite) TestUpdateNodeInfo() {
 	privKey, addr := newPrefundAccount(g.stateDB)
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
 
@@ -426,7 +426,7 @@ func (g *OracleContractsTestSuite) TestUpdateNodeInfo() {
 	g.Require().Equal("https://new.dexon.org", node.Url)
 }
 
-func (g *OracleContractsTestSuite) TestStakingMechanism() {
+func (g *GovernanceContractTestSuite) TestStakingMechanism() {
 	privKey, addr := newPrefundAccount(g.stateDB)
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
 
@@ -604,7 +604,7 @@ func (g *OracleContractsTestSuite) TestStakingMechanism() {
 	g.Require().Equal(big.NewInt(1), g.stateDB.GetBalance(GovernanceContractAddress))
 }
 
-func (g *OracleContractsTestSuite) TestFine() {
+func (g *GovernanceContractTestSuite) TestFine() {
 	privKey, addr := newPrefundAccount(g.stateDB)
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
 
@@ -669,7 +669,7 @@ func (g *OracleContractsTestSuite) TestFine() {
 	g.Require().Equal(1, len(g.s.QualifiedNodes()))
 }
 
-func (g *OracleContractsTestSuite) TestUpdateConfiguration() {
+func (g *GovernanceContractTestSuite) TestUpdateConfiguration() {
 	_, addr := newPrefundAccount(g.stateDB)
 
 	input, err := GovernanceABI.ABI.Pack("updateConfiguration",
@@ -695,7 +695,7 @@ func (g *OracleContractsTestSuite) TestUpdateConfiguration() {
 	g.Require().NoError(err)
 }
 
-func (g *OracleContractsTestSuite) TestConfigurationReading() {
+func (g *GovernanceContractTestSuite) TestConfigurationReading() {
 	_, addr := newPrefundAccount(g.stateDB)
 
 	// CRS.
@@ -820,7 +820,7 @@ func (g *OracleContractsTestSuite) TestConfigurationReading() {
 	g.Require().Equal(g.config.MinGasPrice, value)
 }
 
-func (g *OracleContractsTestSuite) TestReportForkVote() {
+func (g *GovernanceContractTestSuite) TestReportForkVote() {
 	key, addr := newPrefundAccount(g.stateDB)
 	pkBytes := crypto.FromECDSAPub(&key.PublicKey)
 
@@ -886,7 +886,7 @@ func (g *OracleContractsTestSuite) TestReportForkVote() {
 	g.Require().True(value)
 }
 
-func (g *OracleContractsTestSuite) TestReportForkBlock() {
+func (g *GovernanceContractTestSuite) TestReportForkBlock() {
 	key, addr := newPrefundAccount(g.stateDB)
 	pkBytes := crypto.FromECDSAPub(&key.PublicKey)
 
@@ -963,7 +963,7 @@ func (g *OracleContractsTestSuite) TestReportForkBlock() {
 	g.Require().True(value)
 }
 
-func (g *OracleContractsTestSuite) TestMiscVariableReading() {
+func (g *GovernanceContractTestSuite) TestMiscVariableReading() {
 	privKey, addr := newPrefundAccount(g.stateDB)
 	pk := crypto.FromECDSAPub(&privKey.PublicKey)
 
@@ -1022,7 +1022,7 @@ func (g *OracleContractsTestSuite) TestMiscVariableReading() {
 	g.Require().NoError(err)
 }
 
-func (g *OracleContractsTestSuite) TestHalvingCondition() {
+func (g *GovernanceContractTestSuite) TestHalvingCondition() {
 	// TotalSupply 2.5B reached
 	g.s.MiningHalved()
 	g.Require().Equal(new(big.Int).Mul(big.NewInt(1e18), big.NewInt(3.25e9)).String(),
@@ -1058,7 +1058,7 @@ func (v *testTSigVerifierMock) VerifySignature(coreCommon.Hash, coreCrypto.Signa
 	return v.ret
 }
 
-func (g *OracleContractsTestSuite) TestResetDKG() {
+func (g *GovernanceContractTestSuite) TestResetDKG() {
 	for i := 0; i < 7; i++ {
 		privKey, addr := newPrefundAccount(g.stateDB)
 		pk := crypto.FromECDSAPub(&privKey.PublicKey)
@@ -1244,8 +1244,8 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 	}
 }
 
-func TestOracleContracts(t *testing.T) {
-	suite.Run(t, new(OracleContractsTestSuite))
+func TestGovernanceContract(t *testing.T) {
+	suite.Run(t, new(GovernanceContractTestSuite))
 }
 
 type RandomContractTestSuite struct {
