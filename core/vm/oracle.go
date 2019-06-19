@@ -25,6 +25,7 @@ import (
 )
 
 var GovernanceContractAddress = common.HexToAddress("63751838d6485578b23e8b051d40861ecc416794")
+var RandomContractAddress = common.HexToAddress("03C90084388Be8E088425DA9835F7f43F8a319c7")
 
 var GovernanceABI *OracleContractABI
 
@@ -43,6 +44,9 @@ var OracleContracts = map[common.Address]func() OracleContract{
 		return &GovernanceContract{
 			coreDKGUtils: &defaultCoreDKGUtils{},
 		}
+	},
+	RandomContractAddress: func() OracleContract {
+		return &RandomContract{}
 	},
 }
 

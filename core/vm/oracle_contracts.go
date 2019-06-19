@@ -19,6 +19,7 @@ package vm
 
 import (
 	"bytes"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"math"
@@ -2951,4 +2952,35 @@ func PackResetDKG(newSignedCRS []byte) ([]byte, error) {
 	}
 	data := append(method.Id(), res...)
 	return data, nil
+}
+
+// RandomContract provides access to on chain randomness.
+type RandomContract struct {
+	evm      *EVM
+	contract *Contract
+}
+
+func (*RandomContract) Run(evm *EVM, input []byte,
+	contract *Contract) (ret []byte, err error) {
+	nonce := evm.StateDB.GetNonce(evm.Origin)
+
+	cost := params.RandGas
+	if !contract.UseGas(cost) {
+		return nil, ErrOutOfGas
+	}
+
+	binaryOriginNonce := make([]byte, binary.MaxVarintLen64)
+	binary.PutUvarint(binaryOriginNonce, nonce)
+
+	binaryUsedIndex := make([]byte, binary.MaxVarintLen64)
+	binary.PutUvarint(binaryUsedIndex, evm.RandCallIndex)
+
+	evm.RandCallIndex += 1
+
+	ret = crypto.Keccak256(
+		evm.Randomness,
+		evm.Origin.Bytes(),
+		binaryOriginNonce,
+		binaryUsedIndex)
+	return
 }

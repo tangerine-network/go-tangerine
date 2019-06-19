@@ -17,7 +17,6 @@
 package vm
 
 import (
-	"encoding/binary"
 	"errors"
 	"fmt"
 	"math/big"
@@ -25,7 +24,6 @@ import (
 	"github.com/tangerine-network/go-tangerine/common"
 	"github.com/tangerine-network/go-tangerine/common/math"
 	"github.com/tangerine-network/go-tangerine/core/types"
-	"github.com/tangerine-network/go-tangerine/crypto"
 	"github.com/tangerine-network/go-tangerine/params"
 	"golang.org/x/crypto/sha3"
 )
@@ -407,28 +405,6 @@ func opSha3(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory 
 	stack.push(interpreter.intPool.get().SetBytes(interpreter.hasherBuf[:]))
 
 	interpreter.intPool.put(offset, size)
-	return nil, nil
-}
-
-func opRand(pc *uint64, interpreter *EVMInterpreter, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
-	evm := interpreter.evm
-
-	nonce := evm.StateDB.GetNonce(evm.Origin)
-	binaryOriginNonce := make([]byte, binary.MaxVarintLen64)
-	binary.PutUvarint(binaryOriginNonce, nonce)
-
-	binaryUsedIndex := make([]byte, binary.MaxVarintLen64)
-	binary.PutUvarint(binaryUsedIndex, evm.RandCallIndex)
-
-	evm.RandCallIndex += 1
-
-	hash := crypto.Keccak256(
-		evm.Randomness,
-		evm.Origin.Bytes(),
-		binaryOriginNonce,
-		binaryUsedIndex)
-
-	stack.push(interpreter.intPool.get().SetBytes(hash))
 	return nil, nil
 }
 

@@ -103,7 +103,7 @@ type Context struct {
 	Difficulty  *big.Int       // Provides information for DIFFICULTY
 	Round       *big.Int       // Current round number.
 
-	RandCallIndex uint64 // Number of times opRand is called
+	RandCallIndex uint64 // Number of times RandomContract is called
 }
 
 // EVM is the Ethereum Virtual Machine base object and provides

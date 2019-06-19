@@ -1247,3 +1247,51 @@ func (g *OracleContractsTestSuite) TestResetDKG() {
 func TestOracleContracts(t *testing.T) {
 	suite.Run(t, new(OracleContractsTestSuite))
 }
+
+type RandomContractTestSuite struct {
+	suite.Suite
+
+	context Context
+	stateDB *state.StateDB
+	config  *params.DexconConfig
+}
+
+func (r *RandomContractTestSuite) SetupTest() {
+	memDB := ethdb.NewMemDatabase()
+	stateDB, err := state.New(common.Hash{}, state.NewDatabase(memDB))
+	if err != nil {
+		panic(err)
+	}
+	r.stateDB = stateDB
+	r.context = Context{
+		CanTransfer: func(db StateDB, addr common.Address, amount *big.Int) bool {
+			return db.GetBalance(addr).Cmp(amount) >= 0
+		},
+		Transfer: func(db StateDB, sender common.Address, recipient common.Address, amount *big.Int) {
+			db.SubBalance(sender, amount)
+			db.AddBalance(recipient, amount)
+		},
+	}
+	r.config = params.TestnetChainConfig.Dexcon
+}
+
+func (r *RandomContractTestSuite) TestRun() {
+	evm := NewEVM(r.context, r.stateDB, params.TestChainConfig,
+		Config{IsBlockProposer: true})
+	contractAddr := RandomContractAddress
+	caller := r.config.Owner
+	randCallIndex := evm.RandCallIndex
+
+	ret, _, err := evm.Call(AccountRef(caller), contractAddr, nil, 64, big.NewInt(0))
+	r.Require().Nil(err)
+	r.Require().Equal(randCallIndex+1, evm.RandCallIndex)
+	r.Require().NotNil(ret)
+
+	_, _, err = evm.Call(AccountRef(caller), contractAddr, nil, 63, big.NewInt(0))
+	r.Require().Equal(err, ErrOutOfGas)
+	r.Require().Equal(randCallIndex+1, evm.RandCallIndex)
+}
+
+func TestRandomContract(t *testing.T) {
+	suite.Run(t, new(RandomContractTestSuite))
+}
