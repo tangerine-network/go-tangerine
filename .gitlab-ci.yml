@@ -8,6 +8,7 @@ before_script:
 stages:
   - lint
   - test
+  - docker
 
 lint:
   stage: lint
@@ -37,3 +38,20 @@ smoke:
     - pkill -15 -f gtan
     - ./test/run_test.sh --continue --smoke-test
     - ./build/recovery-test.sh
+
+
+docker:
+  only:
+    - master
+  stage: docker
+  image: docker:stable
+  services:
+    - docker:dind
+  variables:
+    IMAGE: byzantinelab/go-tangerine
+  tags:
+    - golang
+  script:
+    - docker login -u $CI_REGISTRY_USER -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+    - docker build -t $IMAGE:latest .
+    - docker push $IMAGE:latest
