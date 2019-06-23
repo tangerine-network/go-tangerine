@@ -21,8 +21,8 @@ import (
 	"fmt"
 	"math/big"
 
-	dexCore "github.com/byzantine-lab/dexon-consensus/core"
-	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
+	dexCore "github.com/tangerine-network/tangerine-consensus/core"
+	coreTypes "github.com/tangerine-network/tangerine-consensus/core/types"
 
 	"github.com/tangerine-network/go-tangerine/common"
 	"github.com/tangerine-network/go-tangerine/consensus/dexcon"

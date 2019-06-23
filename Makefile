@@ -41,11 +41,11 @@ lint: ## Run linters.
 	build/env.sh go run build/ci.go lint
 
 libbls:
-	make -C vendor/github.com/byzantine-lab/bls MCL_USE_OPENSSL=0 lib/libbls384.a
+	make -C vendor/github.com/tangerine-network/bls MCL_USE_OPENSSL=0 lib/libbls384.a
 
 clean-cgo:
-	make -C vendor/github.com/byzantine-lab/bls clean
-	make -C vendor/github.com/byzantine-lab/mcl clean
+	make -C vendor/github.com/tangerine-network/bls clean
+	make -C vendor/github.com/tangerine-network/mcl clean
 
 clean: clean-cgo
 	./build/clean_go_build_cache.sh

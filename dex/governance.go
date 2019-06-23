@@ -22,8 +22,8 @@ import (
 	"crypto/ecdsa"
 	"math/big"
 
-	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
-	dkgTypes "github.com/byzantine-lab/dexon-consensus/core/types/dkg"
+	coreTypes "github.com/tangerine-network/tangerine-consensus/core/types"
+	dkgTypes "github.com/tangerine-network/tangerine-consensus/core/types/dkg"
 
 	"github.com/tangerine-network/go-tangerine/common"
 	"github.com/tangerine-network/go-tangerine/core"

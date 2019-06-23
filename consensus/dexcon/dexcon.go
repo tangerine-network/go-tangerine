@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"math/big"
 
-	dexCore "github.com/byzantine-lab/dexon-consensus/core"
 	"github.com/tangerine-network/go-tangerine/common"
 	"github.com/tangerine-network/go-tangerine/consensus"
 	"github.com/tangerine-network/go-tangerine/core/state"
@@ -29,6 +28,7 @@ import (
 	"github.com/tangerine-network/go-tangerine/core/vm"
 	"github.com/tangerine-network/go-tangerine/log"
 	"github.com/tangerine-network/go-tangerine/rpc"
+	dexCore "github.com/tangerine-network/tangerine-consensus/core"
 )
 
 type GovernanceStateFetcher interface {

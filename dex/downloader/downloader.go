@@ -23,7 +23,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	dexCore "github.com/byzantine-lab/dexon-consensus/core"
+	dexCore "github.com/tangerine-network/tangerine-consensus/core"
 
 	ethereum "github.com/tangerine-network/go-tangerine"
 	"github.com/tangerine-network/go-tangerine/common"

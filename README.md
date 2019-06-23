@@ -1,8 +1,12 @@
-## DEXON
+## Tangerine
 
-Official golang implementation of the Tangerine fullnode.
+Official golang implementation of the Tangerine Newtork fullnode.
 
-[![API Reference](https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667)](https://godoc.org/github.com/tangerine-network/go-tangerine)
+Tangerine implementation is based-on the [go-ethereum](https://github.com/ethereum/go-ethereum) project. The consensus layer is replaced with the [Tangerine consensus](https://github.com/tangerine-network/tangerine-consensus) implementation.
+
+[![API Reference](
+https://camo.githubusercontent.com/915b7be44ada53c290eb157634330494ebe3e30a/68747470733a2f2f676f646f632e6f72672f6769746875622e636f6d2f676f6c616e672f6764646f3f7374617475732e737667
+)](https://godoc.org/github.com/tangerine-network/go-tangerine)
 [![Go Report Card](https://goreportcard.com/badge/github.com/tangerine-network/go-tangerine)](https://goreportcard.com/report/github.com/tangerine-network/go-tangerine)
 
 <!--
@@ -91,7 +95,7 @@ Specifying the `--testnet` flag however will reconfigure your Gtan instance a bi
    `gtan attach <datadir>/testnet/gtan.ipc`. Windows users are not affected by this.
  * Instead of connecting the main Tangerine network, the client will connect to the test network,
    which uses different P2P bootnodes, different network IDs and genesis states.
-   
+
 *Note: Although there are some internal protective measures to prevent transactions from crossing
 over between the main network and test network, you should make sure to always use separate accounts
 for play-money and real-money. Unless you manually move accounts, Gtan will by default correctly

@@ -7,10 +7,10 @@ import (
 	"sync/atomic"
 	"time"
 
-	dexCore "github.com/byzantine-lab/dexon-consensus/core"
-	coreEcdsa "github.com/byzantine-lab/dexon-consensus/core/crypto/ecdsa"
-	"github.com/byzantine-lab/dexon-consensus/core/syncer"
-	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
+	dexCore "github.com/tangerine-network/tangerine-consensus/core"
+	coreEcdsa "github.com/tangerine-network/tangerine-consensus/core/crypto/ecdsa"
+	"github.com/tangerine-network/tangerine-consensus/core/syncer"
+	coreTypes "github.com/tangerine-network/tangerine-consensus/core/types"
 
 	"github.com/tangerine-network/go-tangerine/core"
 	"github.com/tangerine-network/go-tangerine/dex/db"

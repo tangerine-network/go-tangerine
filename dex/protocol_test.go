@@ -24,11 +24,11 @@ import (
 	"testing"
 	"time"
 
-	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
-	coreCrypto "github.com/byzantine-lab/dexon-consensus/core/crypto"
-	"github.com/byzantine-lab/dexon-consensus/core/crypto/dkg"
-	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
-	dkgTypes "github.com/byzantine-lab/dexon-consensus/core/types/dkg"
+	coreCommon "github.com/tangerine-network/tangerine-consensus/common"
+	coreCrypto "github.com/tangerine-network/tangerine-consensus/core/crypto"
+	"github.com/tangerine-network/tangerine-consensus/core/crypto/dkg"
+	coreTypes "github.com/tangerine-network/tangerine-consensus/core/types"
+	dkgTypes "github.com/tangerine-network/tangerine-consensus/core/types/dkg"
 
 	"github.com/tangerine-network/go-tangerine/common"
 	"github.com/tangerine-network/go-tangerine/core/types"

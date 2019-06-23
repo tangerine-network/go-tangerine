@@ -10,10 +10,6 @@ import (
 	"testing"
 	"time"
 
-	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
-	coreCrypto "github.com/byzantine-lab/dexon-consensus/core/crypto"
-	coreEcdsa "github.com/byzantine-lab/dexon-consensus/core/crypto/ecdsa"
-	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
 	"github.com/tangerine-network/go-tangerine/common"
 	"github.com/tangerine-network/go-tangerine/common/math"
 	"github.com/tangerine-network/go-tangerine/consensus/dexcon"
@@ -25,6 +21,10 @@ import (
 	"github.com/tangerine-network/go-tangerine/ethdb"
 	"github.com/tangerine-network/go-tangerine/event"
 	"github.com/tangerine-network/go-tangerine/rlp"
+	coreCommon "github.com/tangerine-network/tangerine-consensus/common"
+	coreCrypto "github.com/tangerine-network/tangerine-consensus/core/crypto"
+	coreEcdsa "github.com/tangerine-network/tangerine-consensus/core/crypto/ecdsa"
+	coreTypes "github.com/tangerine-network/tangerine-consensus/core/types"
 )
 
 type singnal int

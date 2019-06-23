@@ -25,10 +25,7 @@ import (
 	"testing"
 	"time"
 
-	dexCore "github.com/byzantine-lab/dexon-consensus/core"
-	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
 	ethereum "github.com/tangerine-network/go-tangerine"
-
 	"github.com/tangerine-network/go-tangerine/common"
 	"github.com/tangerine-network/go-tangerine/consensus/dexcon"
 	"github.com/tangerine-network/go-tangerine/core/state"
@@ -38,6 +35,8 @@ import (
 	"github.com/tangerine-network/go-tangerine/event"
 	"github.com/tangerine-network/go-tangerine/rlp"
 	"github.com/tangerine-network/go-tangerine/trie"
+	dexCore "github.com/tangerine-network/tangerine-consensus/core"
+	coreTypes "github.com/tangerine-network/tangerine-consensus/core/types"
 )
 
 // Reduce some of the parameters to make the tester faster.

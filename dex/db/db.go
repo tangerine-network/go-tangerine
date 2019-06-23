@@ -18,10 +18,10 @@
 package db
 
 import (
-	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
-	coreDKG "github.com/byzantine-lab/dexon-consensus/core/crypto/dkg"
-	coreDb "github.com/byzantine-lab/dexon-consensus/core/db"
-	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
+	coreCommon "github.com/tangerine-network/tangerine-consensus/common"
+	coreDKG "github.com/tangerine-network/tangerine-consensus/core/crypto/dkg"
+	coreDb "github.com/tangerine-network/tangerine-consensus/core/db"
+	coreTypes "github.com/tangerine-network/tangerine-consensus/core/types"
 
 	"github.com/tangerine-network/go-tangerine/common"
 	"github.com/tangerine-network/go-tangerine/core/rawdb"

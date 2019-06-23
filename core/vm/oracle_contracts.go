@@ -34,14 +34,14 @@ import (
 	"github.com/tangerine-network/go-tangerine/params"
 	"github.com/tangerine-network/go-tangerine/rlp"
 
-	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
-	dexCore "github.com/byzantine-lab/dexon-consensus/core"
-	coreCrypto "github.com/byzantine-lab/dexon-consensus/core/crypto"
-	coreUtils "github.com/byzantine-lab/dexon-consensus/core/utils"
+	coreCommon "github.com/tangerine-network/tangerine-consensus/common"
+	dexCore "github.com/tangerine-network/tangerine-consensus/core"
+	coreCrypto "github.com/tangerine-network/tangerine-consensus/core/crypto"
+	coreUtils "github.com/tangerine-network/tangerine-consensus/core/utils"
 
-	"github.com/byzantine-lab/dexon-consensus/core/crypto/ecdsa"
-	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
-	dkgTypes "github.com/byzantine-lab/dexon-consensus/core/types/dkg"
+	"github.com/tangerine-network/tangerine-consensus/core/crypto/ecdsa"
+	coreTypes "github.com/tangerine-network/tangerine-consensus/core/types"
+	dkgTypes "github.com/tangerine-network/tangerine-consensus/core/types/dkg"
 )
 
 type Bytes32 [32]byte

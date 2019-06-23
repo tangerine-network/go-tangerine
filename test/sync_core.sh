@@ -1,3 +1,3 @@
 #!/bin/sh
 
-govendor fetch github.com/byzantine-lab/dexon-consensus/...@master
+govendor fetch github.com/tangerine-network/tangerine-consensus/...@master

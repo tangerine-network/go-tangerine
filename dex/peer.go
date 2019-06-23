@@ -40,10 +40,10 @@ import (
 	"sync"
 	"time"
 
-	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
-	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
-	dkgTypes "github.com/byzantine-lab/dexon-consensus/core/types/dkg"
 	mapset "github.com/deckarep/golang-set"
+	coreCommon "github.com/tangerine-network/tangerine-consensus/common"
+	coreTypes "github.com/tangerine-network/tangerine-consensus/core/types"
+	dkgTypes "github.com/tangerine-network/tangerine-consensus/core/types/dkg"
 
 	"github.com/tangerine-network/go-tangerine/common"
 	"github.com/tangerine-network/go-tangerine/core/types"

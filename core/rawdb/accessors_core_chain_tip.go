@@ -3,9 +3,9 @@ package rawdb
 import (
 	"bytes"
 
-	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
 	"github.com/tangerine-network/go-tangerine/log"
 	"github.com/tangerine-network/go-tangerine/rlp"
+	coreCommon "github.com/tangerine-network/tangerine-consensus/common"
 )
 
 func ReadCoreCompactionChainTipRLP(db DatabaseReader) (rlp.RawValue, error) {

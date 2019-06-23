@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/byzantine-lab/dexon-consensus/core/syncer"
 	"github.com/tangerine-network/go-tangerine/accounts"
 	"github.com/tangerine-network/go-tangerine/consensus"
 	"github.com/tangerine-network/go-tangerine/consensus/dexcon"
@@ -41,6 +40,7 @@ import (
 	"github.com/tangerine-network/go-tangerine/p2p"
 	"github.com/tangerine-network/go-tangerine/params"
 	"github.com/tangerine-network/go-tangerine/rpc"
+	"github.com/tangerine-network/tangerine-consensus/core/syncer"
 )
 
 // Tangerine implements the DEXON fullnode service.

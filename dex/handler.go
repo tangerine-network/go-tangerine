@@ -45,11 +45,11 @@ import (
 	"sync/atomic"
 	"time"
 
-	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
-	dexCore "github.com/byzantine-lab/dexon-consensus/core"
-	coreCrypto "github.com/byzantine-lab/dexon-consensus/core/crypto"
-	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
-	dkgTypes "github.com/byzantine-lab/dexon-consensus/core/types/dkg"
+	coreCommon "github.com/tangerine-network/tangerine-consensus/common"
+	dexCore "github.com/tangerine-network/tangerine-consensus/core"
+	coreCrypto "github.com/tangerine-network/tangerine-consensus/core/crypto"
+	coreTypes "github.com/tangerine-network/tangerine-consensus/core/types"
+	dkgTypes "github.com/tangerine-network/tangerine-consensus/core/types/dkg"
 
 	"github.com/tangerine-network/go-tangerine/common"
 	"github.com/tangerine-network/go-tangerine/consensus"

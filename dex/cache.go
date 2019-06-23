@@ -20,9 +20,9 @@ package dex
 import (
 	"sync"
 
-	coreCommon "github.com/byzantine-lab/dexon-consensus/common"
-	coreDb "github.com/byzantine-lab/dexon-consensus/core/db"
-	coreTypes "github.com/byzantine-lab/dexon-consensus/core/types"
+	coreCommon "github.com/tangerine-network/tangerine-consensus/common"
+	coreDb "github.com/tangerine-network/tangerine-consensus/core/db"
+	coreTypes "github.com/tangerine-network/tangerine-consensus/core/types"
 )
 
 type voteKey struct {

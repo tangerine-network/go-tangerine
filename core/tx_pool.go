@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	dexCore "github.com/byzantine-lab/dexon-consensus/core"
+	dexCore "github.com/tangerine-network/tangerine-consensus/core"
 
 	"github.com/tangerine-network/go-tangerine/common"
 	"github.com/tangerine-network/go-tangerine/common/prque"

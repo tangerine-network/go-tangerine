@@ -99,111 +99,6 @@
 			"revisionTime": "2017-11-28T15:02:46Z"
 		},
 		{
-			"checksumSHA1": "Rls1USg65f0XKk3xOEo23d79nTs=",
-			"path": "github.com/byzantine-lab/bls/ffi/go/bls",
-			"revision": "5e8e1cd9adf37e993a5bea2ad116e107652f0301",
-			"revisionTime": "2019-04-12T05:24:20Z"
-		},
-		{
-			"checksumSHA1": "YNFLm0hecMirCfnG+yC1hwrq63w=",
-			"origin": "gitlab.com/byzantine-lab/dexon-consensus/common",
-			"path": "github.com/byzantine-lab/dexon-consensus/common",
-			"revision": "f05d9c34d6595ebced2de25d9b436f3aac35a53f",
-			"revisionTime": "2019-06-10T16:05:10Z",
-			"version": "master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "mVmTRuUjdKaeLKOIPDr9WlrWbM8=",
-			"origin": "gitlab.com/byzantine-lab/dexon-consensus/core",
-			"path": "github.com/byzantine-lab/dexon-consensus/core",
-			"revision": "f05d9c34d6595ebced2de25d9b436f3aac35a53f",
-			"revisionTime": "2019-06-10T16:05:10Z",
-			"version": "master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "giMmtUvHD7fKNXEyYpXL1bWhZms=",
-			"origin": "gitlab.com/byzantine-lab/dexon-consensus/core/blockdb",
-			"path": "github.com/byzantine-lab/dexon-consensus/core/blockdb",
-			"revision": "56e872f84131348adbc0861afb3554bba4a8e5db",
-			"revisionTime": "2018-12-05T06:29:54Z",
-			"version": "master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "Ta8d9OKIAYDXuh32bHFyqdAzhEM=",
-			"origin": "gitlab.com/byzantine-lab/dexon-consensus/core/crypto",
-			"path": "github.com/byzantine-lab/dexon-consensus/core/crypto",
-			"revision": "f05d9c34d6595ebced2de25d9b436f3aac35a53f",
-			"revisionTime": "2019-06-10T16:05:10Z",
-			"version": "master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "haQqxxRfx8Tk8dhuilDmDMZ6rO8=",
-			"origin": "gitlab.com/byzantine-lab/dexon-consensus/core/crypto/dkg",
-			"path": "github.com/byzantine-lab/dexon-consensus/core/crypto/dkg",
-			"revision": "f05d9c34d6595ebced2de25d9b436f3aac35a53f",
-			"revisionTime": "2019-06-10T16:05:10Z",
-			"version": "master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "0Tj49Z4zfOogG6lEnMaZae11/1s=",
-			"origin": "gitlab.com/byzantine-lab/dexon-consensus/core/crypto/ecdsa",
-			"path": "github.com/byzantine-lab/dexon-consensus/core/crypto/ecdsa",
-			"revision": "f05d9c34d6595ebced2de25d9b436f3aac35a53f",
-			"revisionTime": "2019-06-10T16:05:10Z",
-			"version": "master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "J2Lgj2veHRGtHlfXFyzrM4qnKow=",
-			"origin": "gitlab.com/byzantine-lab/dexon-consensus/core/db",
-			"path": "github.com/byzantine-lab/dexon-consensus/core/db",
-			"revision": "f05d9c34d6595ebced2de25d9b436f3aac35a53f",
-			"revisionTime": "2019-06-10T16:05:10Z",
-			"version": "master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "6VjD99+YZ1DN86I3qg/nKklpT58=",
-			"origin": "gitlab.com/byzantine-lab/dexon-consensus/core/syncer",
-			"path": "github.com/byzantine-lab/dexon-consensus/core/syncer",
-			"revision": "f05d9c34d6595ebced2de25d9b436f3aac35a53f",
-			"revisionTime": "2019-06-10T16:05:10Z",
-			"version": "master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "gSe2rW85N3hdJ8B10xcHboUJq8g=",
-			"origin": "gitlab.com/byzantine-lab/dexon-consensus/core/types",
-			"path": "github.com/byzantine-lab/dexon-consensus/core/types",
-			"revision": "f05d9c34d6595ebced2de25d9b436f3aac35a53f",
-			"revisionTime": "2019-06-10T16:05:10Z",
-			"version": "master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "R6k6vmgePKuYJlQgA05kh9HqCx8=",
-			"origin": "gitlab.com/byzantine-lab/dexon-consensus/core/types/dkg",
-			"path": "github.com/byzantine-lab/dexon-consensus/core/types/dkg",
-			"revision": "f05d9c34d6595ebced2de25d9b436f3aac35a53f",
-			"revisionTime": "2019-06-10T16:05:10Z",
-			"version": "master",
-			"versionExact": "master"
-		},
-		{
-			"checksumSHA1": "orcvISLeKABwd4AGsC2jAMQkd04=",
-			"origin": "gitlab.com/byzantine-lab/dexon-consensus/core/utils",
-			"path": "github.com/byzantine-lab/dexon-consensus/core/utils",
-			"revision": "f05d9c34d6595ebced2de25d9b436f3aac35a53f",
-			"revisionTime": "2019-06-10T16:05:10Z",
-			"version": "master",
-			"versionExact": "master"
-		},
-		{
 			"checksumSHA1": "cDMtzKmdTx4CcIpP4broa+16X9g=",
 			"path": "github.com/cespare/cp",
 			"revision": "165db2f241fd235aec29ba6d9b1ccd5f1c14637c",
@@ -744,6 +639,100 @@
 			"path": "github.com/syndtr/goleveldb/leveldb/util",
 			"revision": "b001fa50d6b27f3f0bb175a87d0cb55426d0a0ae",
 			"revisionTime": "2018-11-28T10:09:59Z"
+		},
+		{
+			"checksumSHA1": "33ilTxSgPt8u9bq1inlxp4BHU9I=",
+			"path": "github.com/tangerine-network/bls/ffi/go/bls",
+			"revision": "5e8e1cd9adf37e993a5bea2ad116e107652f0301",
+			"revisionTime": "2019-04-12T05:24:20Z"
+		},
+		{
+			"checksumSHA1": "NGziGsUc5J8yatLzEkyq+dKHCA8=",
+			"path": "github.com/tangerine-network/tangerine-consensus/common",
+			"revision": "1eecef2512d9c8a2bd3c0ef4af7a7b830fa30a0f",
+			"revisionTime": "2019-09-16T06:50:28Z",
+			"version": "master",
+			"versionExact": "master"
+		},
+		{
+			"checksumSHA1": "q95iobP0KfVuwR8XMlSrdWA6C78=",
+			"path": "github.com/tangerine-network/tangerine-consensus/core",
+			"revision": "1eecef2512d9c8a2bd3c0ef4af7a7b830fa30a0f",
+			"revisionTime": "2019-09-16T06:50:28Z",
+			"version": "master",
+			"versionExact": "master"
+		},
+		{
+			"checksumSHA1": "eo/teMG8zMinYdOWnWiaQwteOoA=",
+			"path": "github.com/tangerine-network/tangerine-consensus/core/blockdb",
+			"revision": "56e872f84131348adbc0861afb3554bba4a8e5db",
+			"revisionTime": "2018-12-05T06:29:54Z",
+			"version": "master",
+			"versionExact": "master"
+		},
+		{
+			"checksumSHA1": "VzMWZGwspZ2Gt5JXovACVGYZniY=",
+			"path": "github.com/tangerine-network/tangerine-consensus/core/crypto",
+			"revision": "1eecef2512d9c8a2bd3c0ef4af7a7b830fa30a0f",
+			"revisionTime": "2019-09-16T06:50:28Z",
+			"version": "master",
+			"versionExact": "master"
+		},
+		{
+			"checksumSHA1": "KBdSQE+vXiz95jvWj22heyE1hCQ=",
+			"path": "github.com/tangerine-network/tangerine-consensus/core/crypto/dkg",
+			"revision": "1eecef2512d9c8a2bd3c0ef4af7a7b830fa30a0f",
+			"revisionTime": "2019-09-16T06:50:28Z",
+			"version": "master",
+			"versionExact": "master"
+		},
+		{
+			"checksumSHA1": "VWknl5zd1YBzJ2LNeto4tdWBZLU=",
+			"path": "github.com/tangerine-network/tangerine-consensus/core/crypto/ecdsa",
+			"revision": "1eecef2512d9c8a2bd3c0ef4af7a7b830fa30a0f",
+			"revisionTime": "2019-09-16T06:50:28Z",
+			"version": "master",
+			"versionExact": "master"
+		},
+		{
+			"checksumSHA1": "Hr5l1o66PisU/ZeVVem/PjWiwRY=",
+			"path": "github.com/tangerine-network/tangerine-consensus/core/db",
+			"revision": "1eecef2512d9c8a2bd3c0ef4af7a7b830fa30a0f",
+			"revisionTime": "2019-09-16T06:50:28Z",
+			"version": "master",
+			"versionExact": "master"
+		},
+		{
+			"checksumSHA1": "KlnATyRvXte2KrNUmokr9ovBZBY=",
+			"path": "github.com/tangerine-network/tangerine-consensus/core/syncer",
+			"revision": "1eecef2512d9c8a2bd3c0ef4af7a7b830fa30a0f",
+			"revisionTime": "2019-09-16T06:50:28Z",
+			"version": "master",
+			"versionExact": "master"
+		},
+		{
+			"checksumSHA1": "iuy80meozpRYuctavnpxtXiqs8c=",
+			"path": "github.com/tangerine-network/tangerine-consensus/core/types",
+			"revision": "1eecef2512d9c8a2bd3c0ef4af7a7b830fa30a0f",
+			"revisionTime": "2019-09-16T06:50:28Z",
+			"version": "master",
+			"versionExact": "master"
+		},
+		{
+			"checksumSHA1": "M6CxB+cb9WpdyphA7Q7WxO2q7LE=",
+			"path": "github.com/tangerine-network/tangerine-consensus/core/types/dkg",
+			"revision": "1eecef2512d9c8a2bd3c0ef4af7a7b830fa30a0f",
+			"revisionTime": "2019-09-16T06:50:28Z",
+			"version": "master",
+			"versionExact": "master"
+		},
+		{
+			"checksumSHA1": "fGYfxHDDS2gbDGdKpMiXSNMxE5w=",
+			"path": "github.com/tangerine-network/tangerine-consensus/core/utils",
+			"revision": "1eecef2512d9c8a2bd3c0ef4af7a7b830fa30a0f",
+			"revisionTime": "2019-09-16T06:50:28Z",
+			"version": "master",
+			"versionExact": "master"
 		},
 		{
 			"checksumSHA1": "nD6S4KB0S+YHxVMDDE+w3PyXaMk=",
