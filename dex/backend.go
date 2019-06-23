@@ -265,7 +265,7 @@ func (s *Tangerine) Start(srvr *p2p.Server) error {
 
 				<-ch
 			}
-			s.bp.Start()
+			s.bp.Start(s)
 		}()
 	}
 	return nil

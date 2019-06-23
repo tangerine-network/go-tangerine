@@ -3,6 +3,7 @@ package dex
 import (
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/tangerine-network/go-tangerine/core"
 	"github.com/tangerine-network/go-tangerine/dex/db"
 	"github.com/tangerine-network/go-tangerine/log"
+	"github.com/tangerine-network/go-tangerine/node"
 	"github.com/tangerine-network/go-tangerine/rlp"
 )
 
@@ -43,7 +45,7 @@ func NewBlockProposer(dex *Tangerine, watchCat *syncer.WatchCat, dMoment time.Ti
 	}
 }
 
-func (b *blockProposer) Start() error {
+func (b *blockProposer) Start(svc node.Service) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 
@@ -74,18 +76,20 @@ func (b *blockProposer) Start() error {
 			return
 		}
 
-		b.run(c)
+		log.Info("Start running consensus core")
+		go c.Run(b.stopCh)
+		atomic.StoreInt32(&b.proposing, 1)
+
+		<-b.stopCh
+		log.Debug("Block proposer receive stop signal")
+
 		log.Info("Block proposer successfully stopped")
+		go func() {
+			svc.Stop()
+			os.Exit(1)
+		}()
 	}()
 	return nil
-}
-
-func (b *blockProposer) run(c *dexCore.Consensus) {
-	log.Info("Start running consensus core")
-	go c.Run()
-	atomic.StoreInt32(&b.proposing, 1)
-	<-b.stopCh
-	log.Debug("Block proposer receive stop signal")
 }
 
 func (b *blockProposer) Stop() {

@@ -312,7 +312,7 @@ func (pm *ProtocolManager) Start(srvr p2pServer, maxPeers int) {
 }
 
 func (pm *ProtocolManager) Stop() {
-	log.Info("Stopping DEXON protocol")
+	log.Info("Stopping protocol manager")
 
 	pm.txsSub.Unsubscribe() // quits txBroadcastLoop
 	pm.chainHeadSub.Unsubscribe()
@@ -337,7 +337,7 @@ func (pm *ProtocolManager) Stop() {
 	// Wait for all peer handler goroutines and the loops to come down.
 	pm.wg.Wait()
 
-	log.Info("DEXON protocol stopped")
+	log.Info("Protocol manager stopped")
 }
 
 func (pm *ProtocolManager) ReceiveChan() <-chan coreTypes.Msg {
@@ -1372,7 +1372,7 @@ func (pm *ProtocolManager) peerSetLoop() {
 // NodeInfo represents a short summary of the Ethereum sub-protocol metadata
 // known about the host peer.
 type NodeInfo struct {
-	Network uint64              `json:"network"` // DEXON network ID (373=Mainnet, 374=Taiwan)
+	Network uint64              `json:"network"` // Network ID (373=Mainnet, 374=Testnet)
 	Number  uint64              `json:"number"`  // Total difficulty of the host's blockchain
 	Genesis common.Hash         `json:"genesis"` // SHA3 hash of the host's genesis block
 	Config  *params.ChainConfig `json:"config"`  // Chain configuration for the fork rules
