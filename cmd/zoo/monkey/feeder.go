@@ -32,18 +32,18 @@ import (
 	"github.com/tangerine-network/go-tangerine/crypto"
 )
 
-var bananaABI abi.ABI
+var tokenABI abi.ABI
 
 func init() {
 	var err error
-	bananaABI, err = abi.JSON(strings.NewReader(bananaABIJSON))
+	tokenABI, err = abi.JSON(strings.NewReader(TestERC20TokenABI))
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (m *Monkey) DistributeBanana(contract common.Address) {
-	fmt.Println("Distributing Banana to random accounts ...")
+func (m *Monkey) DistributeToken(contract common.Address) {
+	fmt.Println("Distributing Token to random accounts ...")
 	address := crypto.PubkeyToAddress(m.source.PublicKey)
 	nonce, err := m.PendingNonceAt(context.Background(), address)
 	if err != nil {
@@ -51,11 +51,10 @@ func (m *Monkey) DistributeBanana(contract common.Address) {
 	}
 
 	ctxs := make([]*client.TransferContext, len(m.keys))
-	amount := new(big.Int)
-	amount.SetString("10000000000000000", 10)
+	amount := new(big.Int).Mul(big.NewInt(1e7), big.NewInt(1e2))
 	for i, key := range m.keys {
 		address := crypto.PubkeyToAddress(key.PublicKey)
-		input, err := bananaABI.Pack("transfer", address, amount)
+		input, err := tokenABI.Pack("transfer", address, amount)
 		if err != nil {
 			panic(err)
 		}
@@ -74,9 +73,10 @@ func (m *Monkey) DistributeBanana(contract common.Address) {
 
 func (m *Monkey) Feed() uint64 {
 	fmt.Println("Deploying contract ...")
-	contract := m.Deploy(m.source, bananaContract, nil, new(big.Int), math.MaxUint64)
+	contract := m.Deploy(
+		m.source, TestERC20TokenBin, nil, new(big.Int), math.MaxUint64)
 	fmt.Println("  Contract deployed: ", contract.String())
-	m.DistributeBanana(contract)
+	m.DistributeToken(contract)
 
 	time.Sleep(5 * time.Second)
 
@@ -87,7 +87,8 @@ loop:
 		ctxs := make([]*client.TransferContext, len(m.keys))
 		for i, key := range m.keys {
 			to := crypto.PubkeyToAddress(m.keys[rand.Int()%len(m.keys)].PublicKey)
-			input, err := bananaABI.Pack("transfer", to, big.NewInt(rand.Int63n(100)+1))
+			input, err := tokenABI.Pack("transfer", to,
+				new(big.Int).Mul(big.NewInt(rand.Int63n(1000)), big.NewInt(1e2)))
 			if err != nil {
 				panic(err)
 			}
