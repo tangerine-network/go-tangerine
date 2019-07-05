@@ -156,11 +156,16 @@ func (c *Client) Deploy(
 		panic(err)
 	}
 
+	gasPrice, err := c.SuggestGasPrice(context.Background())
+	if err != nil {
+		panic(err)
+	}
+
 	tx := types.NewContractCreation(
 		nonce,
 		amount,
 		gas,
-		big.NewInt(1e9),
+		gasPrice,
 		data)
 
 	signer := types.NewEIP155Signer(c.networkID)

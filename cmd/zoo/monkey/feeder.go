@@ -120,6 +120,5 @@ loop:
 		nonce++
 		time.Sleep(time.Duration(config.Sleep) * time.Millisecond)
 	}
-
 	return nonce
 }
