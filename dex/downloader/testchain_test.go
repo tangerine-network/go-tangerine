@@ -332,15 +332,15 @@ func (g *govStateFetcher) SnapshotRound(round uint64, root common.Hash) {
 	g.rootByRound[round] = root
 }
 
-func (g *govStateFetcher) GetStateForConfigAtRound(round uint64) *vm.GovernanceState {
+func (g *govStateFetcher) GetConfigState(round uint64) (*vm.GovernanceState, error) {
 	if root, ok := g.rootByRound[round]; ok {
 		s, err := state.New(root, g.db)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
-		return &vm.GovernanceState{s}
+		return &vm.GovernanceState{s}, nil
 	}
-	return nil
+	return nil, nil
 }
 
 func (g *govStateFetcher) DKGSetNodeKeyAddresses(round uint64) (map[common.Address]struct{}, error) {

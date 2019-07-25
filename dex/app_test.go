@@ -471,7 +471,12 @@ func (t *ppBlockLimitTester) ValidateResults(results []reflect.Value) error {
 			}
 
 			app := t.App.(*DexconApp)
-			blockLimit := app.gov.DexconConfiguration(t.round).BlockGasLimit
+			config, err := app.gov.RawConfiguration(t.round)
+			if err != nil {
+				return fmt.Errorf("unable to get raw configuration: %v", err)
+			}
+
+			blockLimit := config.BlockGasLimit
 			totalGas := uint64(0)
 			for _, tx := range txs {
 				totalGas += tx.Gas()
@@ -2161,7 +2166,11 @@ func (f *TxFactory) Run() {
 	blockchain := f.App.(*DexconApp).blockchain
 	txPool := f.App.(*DexconApp).txPool
 	for {
-		gasPrice := f.App.(*DexconApp).gov.GetHeadState().MinGasPrice()
+		hs, err := f.App.(*DexconApp).gov.GetHeadGovState()
+		if err != nil {
+			panic(err)
+		}
+		gasPrice := hs.MinGasPrice()
 		for i, key := range f.keys {
 			go func(at int, nonce uint64, key *ecdsa.PrivateKey) {
 				f.stopTimeMu.RLock()

@@ -24,8 +24,6 @@ import (
 	"sync"
 	"time"
 
-	dexCore "github.com/tangerine-network/tangerine-consensus/core"
-
 	"github.com/tangerine-network/go-tangerine/common"
 	"github.com/tangerine-network/go-tangerine/common/prque"
 	"github.com/tangerine-network/go-tangerine/core/state"
@@ -375,6 +373,18 @@ func (pool *TxPool) lockedReset(oldHead, newHead *types.Header) {
 	pool.reset(oldHead, newHead)
 }
 
+func (pool *TxPool) GetHeadGovState() (*vm.GovernanceState, error) {
+	return &vm.GovernanceState{pool.currentState}, nil
+}
+
+func (pool *TxPool) StateAt(height uint64) (*state.StateDB, error) {
+	block := pool.chain.GetBlockByNumber(height)
+	if block == nil {
+		return nil, fmt.Errorf("Failed to get block, height = %d", height)
+	}
+	return pool.chain.StateAt(block.Header().Root)
+}
+
 // reset retrieves the current state of the blockchain and ensures the content
 // of the transaction pool is valid with regard to the chain state.
 func (pool *TxPool) reset(oldHead, newHead *types.Header) {
@@ -391,26 +401,12 @@ func (pool *TxPool) reset(oldHead, newHead *types.Header) {
 	pool.pendingState = state.ManageState(statedb)
 	pool.currentMaxGas = newHead.GasLimit
 	if oldHead == nil || oldHead.Round != newHead.Round {
-		round := newHead.Round
-		if round < dexCore.ConfigRoundShift {
-			round = 0
-		} else {
-			round -= dexCore.ConfigRoundShift
-		}
-		state := &vm.GovernanceState{StateDB: statedb}
-		height := state.RoundHeight(new(big.Int).SetUint64((round))).Uint64()
-		block := pool.chain.GetBlockByNumber(height)
-		if block == nil {
-			log.Error("Failed to get block", "round", round, "height", height)
-			panic("cannot get config for new round's min gas price")
-		}
-		configState, err := pool.chain.StateAt(block.Header().Root)
+		gs, err := vm.GovUtil{pool}.GetConfigState(newHead.Round)
 		if err != nil {
-			log.Error("Failed to get txpool state for min gas price", "err", err)
-			panic("cannot get state for new round's min gas price")
+			log.Error("Failed to get config state", "round", newHead.Round, "err", err)
+			panic(err)
 		}
-		govState := &vm.GovernanceState{StateDB: configState}
-		pool.setGovPrice(govState.MinGasPrice())
+		pool.setGovPrice(gs.MinGasPrice())
 	}
 
 	// validate the pool of pending transactions, this will remove

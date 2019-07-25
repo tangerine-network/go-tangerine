@@ -29,6 +29,7 @@ import (
 
 	"github.com/tangerine-network/go-tangerine/accounts/abi"
 	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/state"
 	"github.com/tangerine-network/go-tangerine/core/types"
 	"github.com/tangerine-network/go-tangerine/crypto"
 	"github.com/tangerine-network/go-tangerine/params"
@@ -524,6 +525,16 @@ func (s *GovernanceState) QualifiedNodes() []*nodeInfo {
 			continue
 		}
 		if node.Staked.Cmp(s.MinStake()) >= 0 {
+			nodes = append(nodes, node)
+		}
+	}
+	return nodes
+}
+func (s *GovernanceState) FinedNodes() []*nodeInfo {
+	var nodes []*nodeInfo
+	for i := int64(0); i < int64(s.LenNodes().Uint64()); i++ {
+		node := s.Node(big.NewInt(i))
+		if node.Fined.Cmp(big.NewInt(0)) > 0 {
 			nodes = append(nodes, node)
 		}
 	}
@@ -1274,47 +1285,19 @@ func (s *GovernanceState) emitDKGReset(round *big.Int, blockHeight *big.Int) {
 	})
 }
 
-func getRoundState(evm *EVM, round *big.Int) (*GovernanceState, error) {
-	gs := &GovernanceState{evm.StateDB}
-	height := gs.RoundHeight(round).Uint64()
-	if round.Uint64() > dexCore.ConfigRoundShift {
-		if height == 0 {
-			return nil, errExecutionReverted
-		}
-	}
-	statedb, err := evm.StateAtNumber(height)
-	return &GovernanceState{statedb}, err
-}
-
-func getConfigState(evm *EVM, round *big.Int) (*GovernanceState, error) {
-	configRound := big.NewInt(0)
-	if round.Uint64() > dexCore.ConfigRoundShift {
-		configRound = new(big.Int).Sub(round, big.NewInt(int64(dexCore.ConfigRoundShift)))
-	}
-	return getRoundState(evm, configRound)
-}
-
-type coreDKGUtils interface {
+type coreDKGUtil interface {
 	NewGroupPublicKey(*GovernanceState, *big.Int, int) (tsigVerifierIntf, error)
 }
 type tsigVerifierIntf interface {
 	VerifySignature(coreCommon.Hash, coreCrypto.Signature) bool
 }
 
-// GovernanceContract represents the governance contract of DEXCON.
-type GovernanceContract struct {
-	evm          *EVM
-	state        GovernanceState
-	contract     *Contract
-	coreDKGUtils coreDKGUtils
-}
-
-// defaultCoreDKGUtils implements coreDKGUtils.
-type defaultCoreDKGUtils struct {
+// defaultCoreDKGUtil implements coreDKGUtil.
+type defaultCoreDKGUtil struct {
 	gpk atomic.Value
 }
 
-func (c *defaultCoreDKGUtils) NewGroupPublicKey(
+func (c *defaultCoreDKGUtil) NewGroupPublicKey(
 	state *GovernanceState, round *big.Int, threshold int) (tsigVerifierIntf, error) {
 	var gpk *dkgTypes.GroupPublicKey
 	var err error
@@ -1335,6 +1318,23 @@ func (c *defaultCoreDKGUtils) NewGroupPublicKey(
 	}
 	c.gpk.Store(gpk)
 	return gpk, nil
+}
+
+// GovernanceContract represents the governance contract of DEXCON.
+type GovernanceContract struct {
+	evm         *EVM
+	state       GovernanceState
+	contract    *Contract
+	coreDKGUtil coreDKGUtil
+	util        GovUtil
+}
+
+func (g *GovernanceContract) StateAt(height uint64) (*state.StateDB, error) {
+	return g.evm.StateAtNumber(height)
+}
+
+func (g *GovernanceContract) GetHeadGovState() (*GovernanceState, error) {
+	return &g.state, nil
 }
 
 func (g *GovernanceContract) Address() common.Address {
@@ -1358,7 +1358,7 @@ func (g *GovernanceContract) useGas(gas uint64) ([]byte, error) {
 }
 
 func (g *GovernanceContract) configNotarySetSize(round *big.Int) *big.Int {
-	s, err := getConfigState(g.evm, round)
+	s, err := g.util.GetConfigState(round.Uint64())
 	if err != nil {
 		return big.NewInt(0)
 	}
@@ -1366,34 +1366,15 @@ func (g *GovernanceContract) configNotarySetSize(round *big.Int) *big.Int {
 }
 
 func (g *GovernanceContract) getNotarySet(round *big.Int) map[coreTypes.NodeID]struct{} {
-	crsRound := g.state.CRSRound()
-	var crs common.Hash
-	cmp := round.Cmp(crsRound)
-	if round.Cmp(big.NewInt(int64(dexCore.DKGDelayRound))) <= 0 {
-		state, err := getRoundState(g.evm, big.NewInt(0))
-		if err != nil {
-			return map[coreTypes.NodeID]struct{}{}
-		}
-		crs = state.CRS()
-		for i := uint64(0); i < round.Uint64(); i++ {
-			crs = crypto.Keccak256Hash(crs[:])
-		}
-	} else if cmp > 0 {
+	crs := g.util.CRS(round.Uint64())
+	if crs == (common.Hash{}) {
 		return map[coreTypes.NodeID]struct{}{}
-	} else if cmp == 0 {
-		crs = g.state.CRS()
-	} else {
-		state, err := getRoundState(g.evm, round)
-		if err != nil {
-			return map[coreTypes.NodeID]struct{}{}
-		}
-		crs = state.CRS()
 	}
 
 	target := coreTypes.NewNotarySetTarget(coreCommon.Hash(crs))
 	ns := coreTypes.NewNodeSet()
 
-	state, err := getConfigState(g.evm, round)
+	state, err := g.util.GetConfigState(round.Uint64())
 	if err != nil {
 		return map[coreTypes.NodeID]struct{}{}
 	}
@@ -2000,7 +1981,7 @@ func (g *GovernanceContract) proposeCRS(nextRound *big.Int, signedCRS []byte) ([
 
 	threshold := coreUtils.GetDKGThreshold(&coreTypes.Config{
 		NotarySetSize: uint32(g.state.NotarySetSize().Uint64())})
-	dkgGPK, err := g.coreDKGUtils.NewGroupPublicKey(&g.state, nextRound, threshold)
+	dkgGPK, err := g.coreDKGUtil.NewGroupPublicKey(&g.state, nextRound, threshold)
 	if err != nil {
 		return nil, errExecutionReverted
 	}
@@ -2137,7 +2118,7 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 		new(big.Int).Mul(big.NewInt(100), resetCount))
 
 	roundHeight := g.state.RoundHeight(round)
-	gs, err := getConfigState(g.evm, round)
+	gs, err := g.util.GetConfigState(round.Uint64())
 	if err != nil {
 		return nil, err
 	}
@@ -2167,7 +2148,7 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 
 		// If 2f + 1 of DKG set is finalized, check if DKG succeeded.
 		if g.state.DKGFinalizedsCount().Uint64() >= threshold {
-			gpk, err := g.coreDKGUtils.NewGroupPublicKey(&g.state, nextRound, tsigThreshold)
+			gpk, err := g.coreDKGUtil.NewGroupPublicKey(&g.state, nextRound, tsigThreshold)
 			if gpk, ok := gpk.(*dkgTypes.GroupPublicKey); ok {
 				if len(gpk.QualifyNodeIDs) < coreUtils.GetDKGValidThreshold(&coreTypes.Config{
 					NotarySetSize: uint32(g.configNotarySetSize(nextRound).Uint64())}) {
@@ -2191,7 +2172,7 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 	g.fineFailStopDKG(tsigThreshold)
 
 	// Update CRS.
-	state, err := getRoundState(g.evm, round)
+	state, err := g.util.GetStateAtRound(round.Uint64())
 	if err != nil {
 		return nil, errExecutionReverted
 	}
@@ -2208,7 +2189,7 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 		prevCRS = crypto.Keccak256Hash(prevCRS[:])
 	}
 
-	dkgGPK, err := g.coreDKGUtils.NewGroupPublicKey(state, round,
+	dkgGPK, err := g.coreDKGUtil.NewGroupPublicKey(state, round,
 		coreUtils.GetDKGThreshold(&coreTypes.Config{
 			NotarySetSize: uint32(g.configNotarySetSize(round).Uint64())}))
 	if err != nil {
@@ -2251,6 +2232,7 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 	g.evm = evm
 	g.state = GovernanceState{evm.StateDB}
 	g.contract = contract
+	g.util = GovUtil{g}
 
 	// Parse input.
 	method, exists := GovernanceABI.Sig2Method[string(input[:4])]

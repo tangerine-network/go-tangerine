@@ -35,8 +35,8 @@ type govStateFetcher struct {
 	statedb *state.StateDB
 }
 
-func (g *govStateFetcher) GetStateForConfigAtRound(_ uint64) *vm.GovernanceState {
-	return &vm.GovernanceState{g.statedb}
+func (g *govStateFetcher) GetConfigState(_ uint64) (*vm.GovernanceState, error) {
+	return &vm.GovernanceState{g.statedb}, nil
 }
 
 func (g *govStateFetcher) DKGSetNodeKeyAddresses(round uint64) (map[common.Address]struct{}, error) {

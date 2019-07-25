@@ -19,7 +19,6 @@ import (
 	"github.com/tangerine-network/go-tangerine/common"
 	"github.com/tangerine-network/go-tangerine/core/state"
 	"github.com/tangerine-network/go-tangerine/core/vm"
-	"github.com/tangerine-network/go-tangerine/crypto"
 	"github.com/tangerine-network/go-tangerine/log"
 )
 
@@ -64,6 +63,7 @@ type Governance struct {
 	nodeSetCache *dexCore.NodeSetCache
 	dkgCache     *simplelru.LRU
 	dkgCacheMu   sync.RWMutex
+	util         vm.GovUtil
 }
 
 func NewGovernance(db GovernanceStateDB) *Governance {
@@ -77,113 +77,84 @@ func NewGovernance(db GovernanceStateDB) *Governance {
 		dkgCache: cache,
 	}
 	g.nodeSetCache = dexCore.NewNodeSetCache(g)
+	g.util = vm.GovUtil{g}
 	return g
 }
 
-func (g *Governance) GetHeadState() *vm.GovernanceState {
+func (g *Governance) GetHeadGovState() (*vm.GovernanceState, error) {
 	headState, err := g.db.State()
 	if err != nil {
 		log.Error("Governance head state not ready", "err", err)
-		panic(err)
+		return nil, err
 	}
-	return &vm.GovernanceState{StateDB: headState}
+	return &vm.GovernanceState{StateDB: headState}, nil
 }
 
-func (g *Governance) getHelperAtRound(round uint64) *vm.GovernanceState {
-	height := g.GetRoundHeight(round)
+func (g *Governance) StateAt(height uint64) (*state.StateDB, error) {
+	return g.db.StateAt(height)
+}
 
-	// Sanity check
-	if round != 0 && height == 0 {
-		log.Error("Governance state incorrect", "round", round, "got height", height)
-		panic("round != 0 but height == 0")
-	}
+func (g *Governance) GetConfigState(round uint64) (*vm.GovernanceState, error) {
+	return g.util.GetConfigState(round)
+}
 
-	s, err := g.db.StateAt(height)
+func (g *Governance) GetStateForDKGAtRound(round uint64) (*vm.GovernanceState, error) {
+	gs, err := g.GetHeadGovState()
 	if err != nil {
-		log.Error("Governance state not ready", "round", round, "height", height, "err", err)
-		panic(err)
+		return nil, err
 	}
-	return &vm.GovernanceState{StateDB: s}
-}
-
-func (g *Governance) GetStateForConfigAtRound(round uint64) *vm.GovernanceState {
-	if round < dexCore.ConfigRoundShift {
-		round = 0
-	} else {
-		round -= dexCore.ConfigRoundShift
-	}
-	return g.getHelperAtRound(round)
-}
-
-func (g *Governance) GetStateAtRound(round uint64) *vm.GovernanceState {
-	height := g.GetRoundHeight(round)
-	s, err := g.db.StateAt(height)
-	if err != nil {
-		log.Error("Governance state not ready", "round", round, "height", height, "err", err)
-		panic(err)
-	}
-	return &vm.GovernanceState{StateDB: s}
-}
-
-func (g *Governance) GetStateForDKGAtRound(round uint64) *vm.GovernanceState {
-	dkgRound := g.GetHeadState().DKGRound().Uint64()
+	dkgRound := gs.DKGRound().Uint64()
 	if round > dkgRound {
-		return nil
+		return nil, fmt.Errorf("invalid round input: %d, dkgRound: %d", round, dkgRound)
 	}
 	if round == dkgRound {
-		return g.GetHeadState()
+		return gs, nil
 	}
-	return g.GetStateAtRound(round)
+	return g.util.GetStateAtRound(round)
 }
 
 func (g *Governance) CRSRound() uint64 {
-	return g.GetHeadState().CRSRound().Uint64()
+	gs, err := g.GetHeadGovState()
+	if err != nil {
+		log.Error("Failed to get head governance state", "err", err)
+		return 0
+	}
+	return gs.CRSRound().Uint64()
 }
 
 // CRS returns the CRS for a given round.
 func (g *Governance) CRS(round uint64) coreCommon.Hash {
-	if round <= dexCore.DKGDelayRound {
-		s := g.GetStateAtRound(0)
-		crs := s.CRS()
-		for i := uint64(0); i < round; i++ {
-			crs = crypto.Keccak256Hash(crs[:])
-		}
-		return coreCommon.Hash(crs)
-	}
-	if round > g.CRSRound() {
-		return coreCommon.Hash{}
-	}
-	var s *vm.GovernanceState
-	if round == g.CRSRound() {
-		s = g.GetHeadState()
-	} else {
-		s = g.GetStateAtRound(round)
-	}
-	return coreCommon.Hash(s.CRS())
+	return coreCommon.Hash(g.util.CRS(round))
+}
+
+func (g *Governance) GetRoundHeight(round uint64) uint64 {
+	return g.util.GetRoundHeight(round)
 }
 
 func (g *Governance) Configuration(round uint64) *coreTypes.Config {
-	configHelper := g.GetStateForConfigAtRound(round)
-	c := configHelper.Configuration()
+	s, err := g.util.GetConfigState(round)
+	if err != nil {
+		panic(err)
+	}
+	c := s.Configuration()
 	return &coreTypes.Config{
 		LambdaBA:         time.Duration(c.LambdaBA) * time.Millisecond,
 		LambdaDKG:        time.Duration(c.LambdaDKG) * time.Millisecond,
-		NotarySetSize:    uint32(configHelper.NotarySetSize().Uint64()),
+		NotarySetSize:    uint32(s.NotarySetSize().Uint64()),
 		RoundLength:      c.RoundLength,
 		MinBlockInterval: time.Duration(c.MinBlockInterval) * time.Millisecond,
 	}
 }
 
-func (g *Governance) GetRoundHeight(round uint64) uint64 {
-	return g.GetHeadState().RoundHeight(big.NewInt(int64(round))).Uint64()
-}
-
 // NodeSet returns the current node set.
 func (g *Governance) NodeSet(round uint64) []coreCrypto.PublicKey {
-	s := g.GetStateForConfigAtRound(round)
-	var pks []coreCrypto.PublicKey
+	configState, err := g.util.GetConfigState(round)
+	if err != nil {
+		panic(err)
+	}
 
-	for _, n := range s.QualifiedNodes() {
+	var pks []coreCrypto.PublicKey
+	for _, n := range configState.QualifiedNodes() {
 		pk, err := coreEcdsa.NewPublicKeyFromByteSlice(n.PublicKey)
 		if err != nil {
 			panic(err)
@@ -233,9 +204,9 @@ func (g *Governance) DKGSetNodeKeyAddresses(round uint64) (map[common.Address]st
 }
 
 func (g *Governance) getOrUpdateDKGCache(round uint64) *dkgCacheItem {
-	s := g.GetStateForDKGAtRound(round)
-	if s == nil {
-		log.Error("Failed to get DKG state", "round", round)
+	s, err := g.GetStateForDKGAtRound(round)
+	if err != nil {
+		log.Error("Failed to get DKG state", "round", round, "err", err)
 		return nil
 	}
 	reset := s.DKGResetCount(new(big.Int).SetUint64(round))
@@ -289,8 +260,9 @@ func (g *Governance) DKGMasterPublicKeys(round uint64) []*dkgTypes.MasterPublicK
 }
 
 func (g *Governance) IsDKGMPKReady(round uint64) bool {
-	s := g.GetStateForDKGAtRound(round)
-	if s == nil {
+	s, err := g.GetStateForDKGAtRound(round)
+	if err != nil {
+		log.Error("Failed to get state for DKG", "round", round, "err", err)
 		return false
 	}
 	config := g.Configuration(round)
@@ -300,8 +272,9 @@ func (g *Governance) IsDKGMPKReady(round uint64) bool {
 }
 
 func (g *Governance) IsDKGFinal(round uint64) bool {
-	s := g.GetStateForDKGAtRound(round)
-	if s == nil {
+	s, err := g.GetStateForDKGAtRound(round)
+	if err != nil {
+		log.Error("Failed to get state for DKG", "round", round, "err", err)
 		return false
 	}
 	config := g.Configuration(round)
@@ -311,18 +284,19 @@ func (g *Governance) IsDKGFinal(round uint64) bool {
 }
 
 func (g *Governance) IsDKGSuccess(round uint64) bool {
-	s := g.GetStateForDKGAtRound(round)
-	if s == nil {
+	s, err := g.GetStateForDKGAtRound(round)
+	if err != nil {
+		log.Error("Failed to get state for DKG", "round", round, "err", err)
 		return false
 	}
 	return s.DKGSuccessesCount().Uint64() >=
 		uint64(coreUtils.GetDKGValidThreshold(g.Configuration(round)))
 }
 
-func (g *Governance) MinGasPrice(round uint64) *big.Int {
-	return g.GetStateForConfigAtRound(round).MinGasPrice()
-}
-
 func (g *Governance) DKGResetCount(round uint64) uint64 {
-	return g.GetHeadState().DKGResetCount(big.NewInt(int64(round))).Uint64()
+	gs, err := g.GetHeadGovState()
+	if err != nil {
+		log.Error("Failed to get head governance state", "err", err)
+	}
+	return gs.DKGResetCount(big.NewInt(int64(round))).Uint64()
 }

@@ -187,7 +187,11 @@ func (b *DexAPIBackend) ProtocolVersion() int {
 }
 
 func (b *DexAPIBackend) SuggestPrice(ctx context.Context) (*big.Int, error) {
-	return b.dex.governance.MinGasPrice(b.dex.blockchain.CurrentBlock().Round()), nil
+	gs, err := b.dex.governance.GetConfigState(b.dex.blockchain.CurrentBlock().Round())
+	if err != nil {
+		return nil, err
+	}
+	return gs.MinGasPrice(), nil
 }
 
 func (b *DexAPIBackend) ChainDb() ethdb.Database {

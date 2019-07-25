@@ -425,7 +425,10 @@ func (c *headerVerifierCache) state(round uint64) *vm.GovernanceState {
 	if state, exist := c.stateCache.Get(round); exist {
 		return state.(*vm.GovernanceState)
 	}
-	state := c.gov.GetStateForConfigAtRound(round)
+	state, err := c.gov.GetConfigState(round)
+	if err != nil {
+		panic(err)
+	}
 	c.stateCache.Add(round, state)
 	return state
 }

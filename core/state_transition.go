@@ -24,10 +24,10 @@ import (
 	"sync/atomic"
 
 	"github.com/tangerine-network/go-tangerine/common"
+	"github.com/tangerine-network/go-tangerine/core/state"
 	"github.com/tangerine-network/go-tangerine/core/vm"
 	"github.com/tangerine-network/go-tangerine/log"
 	"github.com/tangerine-network/go-tangerine/params"
-	dexCore "github.com/tangerine-network/tangerine-consensus/core"
 )
 
 var legacyEvm = flag.Bool("legacy-evm", false, "make evm run origin logic")
@@ -190,6 +190,14 @@ func (st *StateTransition) preCheck() error {
 	return st.buyGas()
 }
 
+func (st *StateTransition) GetHeadGovState() (*vm.GovernanceState, error) {
+	return &vm.GovernanceState{st.state}, nil
+}
+
+func (st *StateTransition) StateAt(height uint64) (*state.StateDB, error) {
+	return st.evm.StateAtNumber(height)
+}
+
 func (st *StateTransition) inExtendedRound() bool {
 	// If we are running tests with chian_makers.go, there will be no valid
 	// blockchain instance for st.evm.StateAtNumber to work correctly. Simply
@@ -205,25 +213,18 @@ func (st *StateTransition) inExtendedRound() bool {
 		}
 	}
 
-	gs := vm.GovernanceState{st.state}
-
 	round := st.evm.Round.Uint64()
-	if round < dexCore.ConfigRoundShift {
-		round = 0
-	} else {
-		round -= dexCore.ConfigRoundShift
-	}
 
-	configHeight := gs.RoundHeight(new(big.Int).SetUint64(round))
-	state, err := st.evm.StateAtNumber(configHeight.Uint64())
+	gs := vm.GovernanceState{st.state}
+	rgs, err := vm.GovUtil{st}.GetConfigState(round)
 	if err != nil {
-		panic(err)
+		log.Error("Failed to get config state", "round", round, "err", err)
+		return false
 	}
-	rgs := vm.GovernanceState{state}
 
 	roundEnd := gs.RoundHeight(st.evm.Round).Uint64() + rgs.RoundLength().Uint64()
 
-	// Round 0 starts and height 0 instead of height 1.
+	// Round 0 starts at height 0 instead of height 1.
 	if round == 0 {
 		roundEnd += 1
 	}

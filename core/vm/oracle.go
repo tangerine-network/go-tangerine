@@ -45,7 +45,7 @@ type OracleContract interface {
 var OracleContracts = map[common.Address]func() OracleContract{
 	GovernanceContractAddress: func() OracleContract {
 		return &GovernanceContract{
-			coreDKGUtils: &defaultCoreDKGUtils{},
+			coreDKGUtil: &defaultCoreDKGUtil{},
 		}
 	},
 	RandomContractAddress: func() OracleContract {

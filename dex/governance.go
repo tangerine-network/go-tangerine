@@ -58,9 +58,13 @@ func NewDexconGovernance(backend *DexAPIBackend, chainConfig *params.ChainConfig
 	return g
 }
 
-// DexconConfiguration return raw config in state.
-func (d *DexconGovernance) DexconConfiguration(round uint64) *params.DexconConfig {
-	return d.GetStateForConfigAtRound(round).Configuration()
+// RawConfiguration return raw config in state.
+func (d *DexconGovernance) RawConfiguration(round uint64) (*params.DexconConfig, error) {
+	gs, err := d.GetConfigState(round)
+	if err != nil {
+		return nil, err
+	}
+	return gs.Configuration(), nil
 }
 
 func (d *DexconGovernance) sendGovTx(ctx context.Context, data []byte) error {

@@ -237,7 +237,7 @@ func (g *GovernanceContractTestSuite) SetupTest() {
 func (g *GovernanceContractTestSuite) TearDownTest() {
 	OracleContracts[GovernanceContractAddress] = func() OracleContract {
 		return &GovernanceContract{
-			coreDKGUtils: &defaultCoreDKGUtils{},
+			coreDKGUtil: &defaultCoreDKGUtil{},
 		}
 	}
 }
@@ -1176,7 +1176,7 @@ func (g *GovernanceContractTestSuite) TestResetDKG() {
 	}
 	OracleContracts[GovernanceContractAddress] = func() OracleContract {
 		return &GovernanceContract{
-			coreDKGUtils: mock,
+			coreDKGUtil: mock,
 		}
 	}
 

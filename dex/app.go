@@ -102,9 +102,14 @@ func (d *DexconApp) validateNonce(txs types.Transactions) (map[common.Address]ui
 // validateGasPrice checks if no gas price is lower than minGasPrice defined in
 // governance contract.
 func (d *DexconApp) validateGasPrice(txs types.Transactions, round uint64) bool {
-	minGasPrice := d.gov.MinGasPrice(round)
+	config, err := d.gov.RawConfiguration(round)
+	if err != nil {
+		log.Error("Failed to get configuration", "err", err)
+		return false
+	}
+
 	for _, tx := range txs {
-		if minGasPrice.Cmp(tx.GasPrice()) > 0 {
+		if config.MinGasPrice.Cmp(tx.GasPrice()) > 0 {
 			return false
 		}
 	}
@@ -180,8 +185,12 @@ func (d *DexconApp) preparePayload(ctx context.Context, position coreTypes.Posit
 		return
 	}
 
-	blockGasLimit := new(big.Int).SetUint64(d.gov.DexconConfiguration(position.Round).BlockGasLimit)
-	minGasPrice := d.gov.DexconConfiguration(position.Round).MinGasPrice
+	config, err := d.gov.RawConfiguration(position.Round)
+	if err != nil {
+		return
+	}
+
+	blockGasLimit := new(big.Int).SetUint64(config.BlockGasLimit)
 	blockGasUsed := new(big.Int)
 	allTxs := make([]*types.Transaction, 0, 10000)
 
@@ -217,8 +226,8 @@ addressMap:
 		// Warning: the pending tx will also affect by syncing, so startIndex maybe negative
 		for i := startIndex; i >= 0 && i < len(txs); i++ {
 			tx := txs[i]
-			if minGasPrice.Cmp(tx.GasPrice()) > 0 {
-				log.Error("Invalid gas price minGas(%v) > get(%v)", minGasPrice, tx.GasPrice())
+			if config.MinGasPrice.Cmp(tx.GasPrice()) > 0 {
+				log.Error("Invalid gas price minGas(%v) > get(%v)", config.MinGasPrice, tx.GasPrice())
 				break
 			}
 
@@ -372,8 +381,14 @@ func (d *DexconApp) VerifyBlock(block *coreTypes.Block) coreTypes.BlockVerifySta
 		}
 	}
 
+	config, err := d.gov.RawConfiguration(block.Position.Round)
+	if err != nil {
+		log.Error("Failed to get raw configuration", "err", err)
+		return coreTypes.VerifyRetryLater
+	}
+
 	// Validate if balance is enough for TXs in this block.
-	blockGasLimit := new(big.Int).SetUint64(d.gov.DexconConfiguration(block.Position.Round).BlockGasLimit)
+	blockGasLimit := new(big.Int).SetUint64(config.BlockGasLimit)
 	blockGasUsed := new(big.Int)
 
 	for _, tx := range transactions {
@@ -436,7 +451,10 @@ func (d *DexconApp) BlockDelivered(
 
 	var owner common.Address
 	if !block.IsEmpty() {
-		gs := d.gov.GetStateForConfigAtRound(block.Position.Round)
+		gs, err := d.gov.GetConfigState(block.Position.Round)
+		if err != nil {
+			panic(err)
+		}
 		node, err := gs.GetNodeByID(block.ProposerID)
 		if err != nil {
 			panic(err)
@@ -444,11 +462,16 @@ func (d *DexconApp) BlockDelivered(
 		owner = node.Owner
 	}
 
+	config, err := d.gov.RawConfiguration(block.Position.Round)
+	if err != nil {
+		panic(err)
+	}
+
 	newBlock := types.NewBlock(&types.Header{
 		Number:     new(big.Int).SetUint64(block.Position.Height),
 		Time:       uint64(block.Timestamp.UnixNano() / 1000000),
 		Coinbase:   owner,
-		GasLimit:   d.gov.DexconConfiguration(block.Position.Round).BlockGasLimit,
+		GasLimit:   config.BlockGasLimit,
 		Difficulty: big.NewInt(1),
 		Round:      block.Position.Round,
 		DexconMeta: dexconMeta,

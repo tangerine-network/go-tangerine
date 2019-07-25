@@ -32,7 +32,7 @@ import (
 )
 
 type GovernanceStateFetcher interface {
-	GetStateForConfigAtRound(round uint64) *vm.GovernanceState
+	GetConfigState(round uint64) (*vm.GovernanceState, error)
 	DKGSetNodeKeyAddresses(round uint64) (map[common.Address]struct{}, error)
 }
 
@@ -114,7 +114,10 @@ func (d *Dexcon) Prepare(chain consensus.ChainReader, header *types.Header) erro
 
 func (d *Dexcon) inExtendedRound(header *types.Header, state *state.StateDB) bool {
 	gs := vm.GovernanceState{state}
-	rgs := d.govStateFetcer.GetStateForConfigAtRound(header.Round)
+	rgs, err := d.govStateFetcer.GetConfigState(header.Round)
+	if err != nil {
+		panic(err)
+	}
 
 	roundEnd := gs.RoundHeight(new(big.Int).SetUint64(header.Round)).Uint64() + rgs.RoundLength().Uint64()
 
@@ -126,7 +129,10 @@ func (d *Dexcon) inExtendedRound(header *types.Header, state *state.StateDB) boo
 }
 
 func (d *Dexcon) calculateBlockReward(round uint64) *big.Int {
-	gs := d.govStateFetcer.GetStateForConfigAtRound(round)
+	gs, err := d.govStateFetcer.GetConfigState(round)
+	if err != nil {
+		panic(err)
+	}
 	config := gs.Configuration()
 
 	blocksPerRound := config.RoundLength
@@ -169,7 +175,10 @@ func (d *Dexcon) Finalize(chain consensus.ChainReader, header *types.Header, sta
 				panic(err)
 			}
 
-			gcs := d.govStateFetcer.GetStateForConfigAtRound(header.Round - 1)
+			gcs, err := d.govStateFetcer.GetConfigState(header.Round - 1)
+			if err != nil {
+				panic(err)
+			}
 
 			for addr := range addrs {
 				offset := gcs.NodesOffsetByNodeKeyAddress(addr)
@@ -182,7 +191,7 @@ func (d *Dexcon) Finalize(chain consensus.ChainReader, header *types.Header, sta
 				prevRoundHeight := gs.RoundHeight(big.NewInt(int64(header.Round - 1)))
 
 				if lastHeight.Uint64() < prevRoundHeight.Uint64() {
-					log.Info("Disqualify node", "round", header.Round, "nodePubKey", hex.EncodeToString(node.PublicKey))
+					log.Debug("Disqualify node", "round", header.Round, "nodePubKey", hex.EncodeToString(node.PublicKey))
 					err = gs.Disqualify(node)
 					if err != nil {
 						log.Error("Failed to disqualify node", "err", err)
