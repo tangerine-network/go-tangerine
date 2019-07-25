@@ -881,8 +881,6 @@ func (ps *peerSet) ForgetLabelConnection(label peerLabel) {
 	log.Debug("Forget label connection", "label", label)
 	ps.forgetDirectConn(label)
 	ps.forgetGroupConn(label)
-	delete(ps.directConn, label)
-	delete(ps.groupConnPeers, label)
 	delete(ps.label2Nodes, label)
 }
 

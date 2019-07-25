@@ -1288,10 +1288,9 @@ func (pm *ProtocolManager) SetReceiveCoreMessage(enabled bool) {
 // TODO: finish this
 func (pm *ProtocolManager) peerSetLoop() {
 	round := pm.gov.Round()
-	resetCount := pm.gov.DKGResetCount(round)
+	reset := pm.gov.DKGResetCount(round)
 	log.Debug("ProtocolManager: startup round",
-		"round", round,
-		"reset", resetCount)
+		"round", round, "reset", reset)
 
 	if round < dexCore.DKGDelayRound {
 		for i := round; i <= dexCore.DKGDelayRound; i++ {
@@ -1305,7 +1304,7 @@ func (pm *ProtocolManager) peerSetLoop() {
 	if CRSRound > round {
 		pm.peers.BuildConnection(CRSRound)
 		round = CRSRound
-		resetCount = pm.gov.DKGResetCount(round)
+		reset = pm.gov.DKGResetCount(round)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -1334,22 +1333,22 @@ func (pm *ProtocolManager) peerSetLoop() {
 			if newRound == 0 {
 				break
 			}
-			reset := pm.gov.DKGResetCount(round)
+			newReset := pm.gov.DKGResetCount(round)
 
-			log.Debug("ProtocolManager: new round",
-				"round", newRound,
-				"reset", reset)
-			if newRound <= round && resetCount == reset {
+			if newRound <= round && reset == newReset {
 				break
 			}
+
+			log.Info("ProtocolManager: configuration changed",
+				"round", newRound, "reset", newReset)
 
 			if newRound == round+1 {
 				pm.peers.BuildConnection(newRound)
 				if round >= 1 {
 					pm.peers.ForgetConnection(round - 1)
 				}
-			} else if newRound == round && resetCount+1 == reset {
-				pm.peers.ForgetLabelConnection(peerLabel{set: notaryset, round: newRound})
+			} else if newRound == round && reset+1 == newReset {
+				pm.peers.ForgetLabelConnection(peerLabel{set: notaryset, round: round})
 				pm.gov.PurgeNotarySet(newRound)
 				pm.peers.BuildConnection(newRound)
 			} else {
@@ -1361,8 +1360,9 @@ func (pm *ProtocolManager) peerSetLoop() {
 				}
 				pm.peers.BuildConnection(newRound)
 			}
+
 			round = newRound
-			resetCount = reset
+			reset = newReset
 		case <-pm.chainHeadSub.Err():
 			return
 		}
