@@ -2172,7 +2172,7 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 	g.fineFailStopDKG(tsigThreshold)
 
 	// Update CRS.
-	state, err := g.util.GetStateAtRound(round.Uint64())
+	state, err := g.util.GetRoundState(round.Uint64())
 	if err != nil {
 		return nil, errExecutionReverted
 	}
