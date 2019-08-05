@@ -1980,7 +1980,7 @@ func (g *GovernanceContract) proposeCRS(nextRound *big.Int, signedCRS []byte) ([
 	}
 
 	threshold := coreUtils.GetDKGThreshold(&coreTypes.Config{
-		NotarySetSize: uint32(g.state.NotarySetSize().Uint64())})
+		NotarySetSize: uint32(g.configNotarySetSize(nextRound).Uint64())})
 	dkgGPK, err := g.coreDKGUtil.NewGroupPublicKey(&g.state, nextRound, threshold)
 	if err != nil {
 		return nil, errExecutionReverted
