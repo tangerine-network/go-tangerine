@@ -149,7 +149,7 @@ func (g *GovernanceStateTestSuite) TestDisqualify() {
 	// Disqualify
 	g.s.Disqualify(node)
 	node = g.s.Node(big.NewInt(0))
-	g.Require().Equal(uint64(0xd78ebc5ac6200000), node.Fined.Uint64())
+	g.Require().Equal(uint64(0x6bc75e2d63100000), node.Fined.Uint64())
 
 	// Disqualify none exist node should return error.
 	privKey2, _ := newPrefundAccount(g.stateDB)
