@@ -17,9 +17,12 @@
 package dex
 
 import (
+	"fmt"
+	"io/ioutil"
 	"math"
 	"math/big"
 	"math/rand"
+	"net"
 	"testing"
 
 	"github.com/tangerine-network/go-tangerine/common"
@@ -30,6 +33,7 @@ import (
 	"github.com/tangerine-network/go-tangerine/dex/downloader"
 	"github.com/tangerine-network/go-tangerine/ethdb"
 	"github.com/tangerine-network/go-tangerine/p2p"
+	"github.com/tangerine-network/go-tangerine/p2p/enode"
 	"github.com/tangerine-network/go-tangerine/params"
 )
 
@@ -52,7 +56,7 @@ func TestProtocolCompatibility(t *testing.T) {
 	for i, tt := range tests {
 		ProtocolVersions = []uint{tt.version}
 
-		pm, _, err := newTestProtocolManager(tt.mode, 0, nil, nil)
+		pm, _, err := newTestProtocolManager(tt.mode, 0, nil, nil, params.TestChainConfig)
 		if pm != nil {
 			defer pm.Stop()
 		}
@@ -442,5 +446,76 @@ func testGetReceipt(t *testing.T, protocol int) {
 	p2p.Send(peer.app, 0x0f, hashes)
 	if err := p2p.ExpectMsg(peer.app, 0x10, receipts); err != nil {
 		t.Errorf("receipts mismatch: %v", err)
+	}
+}
+
+func TestHandlerWithConsoritum62(t *testing.T) { testHandlerWithConsoritum(t, 62) }
+func TestHandlerWithConsoritum63(t *testing.T) { testHandlerWithConsoritum(t, 63) }
+
+func testHandlerWithConsoritum(t *testing.T, version int) {
+	key, err := crypto.GenerateKey()
+	if err != nil {
+		t.Errorf("gen key fail %v", err)
+	}
+
+	// set config and create protocol manager
+	config := params.NewTestChainConig()
+	config.ChainID = big.NewInt(int64(DefaultConfig.NetworkId))
+	config.Dexcon = params.NewTestDexonConfig()
+	config.Dexcon.IsConsortium = true
+	pm, _, err := newTestProtocolManager(downloader.FullSync, 0, nil, nil, config)
+	defer pm.Stop()
+	if err != nil {
+		t.Fatalf("Failed to create protocol manager: %v", err)
+	}
+
+	// create peer
+	pipenet1, pipenet2 := p2p.MsgPipe()
+	defer func() {
+		pipenet1.Close()
+		pipenet2.Close()
+	}()
+	node := enode.NewV4(&key.PublicKey, net.IP{}, 0, 0)
+	peer := pm.newPeer(version, p2p.NewPeerWithEnode(node, "handlerTest", nil), pipenet1)
+
+	// try to call handle, and should get permission denied error
+	if err := pm.handle(peer); err != p2p.DiscPermissionDenied {
+		t.Errorf("Expect get DiscPermissionDenied, but get %v", err)
+	}
+
+	// add address to whitelist, and create new pm
+	address := crypto.PubkeyToAddress(key.PublicKey)
+	config.Dexcon.AddressWhitelist = []common.Address{address}
+	pm2, _, err := newTestProtocolManager(downloader.FullSync, 0, nil, nil, config)
+	defer pm2.Stop()
+
+	if err != nil {
+		t.Fatalf("Failed to create protocol manager: %v", err)
+	}
+	handleErr := make(chan error)
+	go func() {
+		handleErr <- pm2.handle(peer)
+	}()
+	// do the handshake
+	msg, err := pipenet2.ReadMsg()
+	ioutil.ReadAll(msg.Payload)
+	p2p.Send(pipenet2, 0,
+		statusData{
+			ProtocolVersion: uint32(version),
+			NetworkId:       config.ChainID.Uint64(),
+			Number:          0,
+			CurrentBlock:    common.Hash{},
+			GenesisBlock:    pm2.blockchain.Genesis().Hash(),
+		},
+	)
+	// send status code to terminate the handleMsg loop
+	p2p.Send(pipenet2, StatusMsg, struct{}{})
+	err = <-handleErr
+	expectError := fmt.Errorf("%v - %v",
+		errorToString[ErrExtraStatusMsg],
+		"uncontrolled status message",
+	)
+	if err.Error() != expectError.Error() {
+		t.Errorf("err not match, expect: %s, but got: %s", expectError, err)
 	}
 }

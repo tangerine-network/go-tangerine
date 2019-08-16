@@ -56,6 +56,60 @@ const GovernanceABIJSON = `
     "type": "function"
   },
   {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "MinStake",
+        "type": "uint256"
+      },
+      {
+        "name": "LockupPeriod",
+        "type": "uint256"
+      },
+      {
+        "name": "MinGasPrice",
+        "type": "uint256"
+      },
+      {
+        "name": "BlockGasLimit",
+        "type": "uint256"
+      },
+      {
+        "name": "LambdaBA",
+        "type": "uint256"
+      },
+      {
+        "name": "LambdaDKG",
+        "type": "uint256"
+      },
+      {
+        "name": "NotaryParamAlpha",
+        "type": "uint256"
+      },
+      {
+        "name": "NotaryParamBeta",
+        "type": "uint256"
+      },
+      {
+        "name": "RoundLength",
+        "type": "uint256"
+      },
+      {
+        "name": "MinBlockInterval",
+        "type": "uint256"
+      },
+      {
+        "name": "FineValues",
+        "type": "uint256[]"
+      }
+    ],
+    "name": "updateConfiguration",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "constant": true,
     "inputs": [],
     "name": "totalSupply",
@@ -63,6 +117,39 @@ const GovernanceABIJSON = `
       {
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "PublicKey",
+        "type": "bytes"
+      }
+    ],
+    "name": "addDKGMasterPublicKey",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "name": "addressWhitelist",
+    "outputs": [
+      {
+        "name": "",
+        "type": "address"
       }
     ],
     "payable": false,
@@ -139,6 +226,20 @@ const GovernanceABIJSON = `
     "type": "function"
   },
   {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "MPKReady",
+        "type": "bytes"
+      }
+    ],
+    "name": "addDKGMPKReady",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "constant": true,
     "inputs": [],
     "name": "miningVelocity",
@@ -150,6 +251,20 @@ const GovernanceABIJSON = `
     ],
     "payable": false,
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "Finalize",
+        "type": "bytes"
+      }
+    ],
+    "name": "addDKGFinalize",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -167,6 +282,42 @@ const GovernanceABIJSON = `
     "type": "function"
   },
   {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "Amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "unstake",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "Type",
+        "type": "uint256"
+      },
+      {
+        "name": "Arg1",
+        "type": "bytes"
+      },
+      {
+        "name": "Arg2",
+        "type": "bytes"
+      }
+    ],
+    "name": "report",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "constant": true,
     "inputs": [],
     "name": "minStake",
@@ -178,6 +329,66 @@ const GovernanceABIJSON = `
     ],
     "payable": false,
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [],
+    "name": "stake",
+    "outputs": [],
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [],
+    "name": "withdraw",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "NodeAddress",
+        "type": "address"
+      }
+    ],
+    "name": "payFine",
+    "outputs": [],
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "NewPublicKey",
+        "type": "bytes"
+      }
+    ],
+    "name": "replaceNodePublicKey",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "NewOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferNodeOwnership",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -223,6 +434,48 @@ const GovernanceABIJSON = `
     "type": "function"
   },
   {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "Success",
+        "type": "bytes"
+      }
+    ],
+    "name": "addDKGSuccess",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "withdrawable",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "NewSignedCRS",
+        "type": "bytes"
+      }
+    ],
+    "name": "resetDKG",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "constant": true,
     "inputs": [
       {
@@ -258,6 +511,20 @@ const GovernanceABIJSON = `
   {
     "constant": true,
     "inputs": [],
+    "name": "whitelistLength",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
     "name": "dkgRound",
     "outputs": [
       {
@@ -267,6 +534,24 @@ const GovernanceABIJSON = `
     ],
     "payable": false,
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "OldOwner",
+        "type": "address"
+      },
+      {
+        "name": "NewOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferNodeOwnershipByFoundation",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -314,6 +599,25 @@ const GovernanceABIJSON = `
     ],
     "payable": false,
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "addr",
+        "type": "address"
+      }
+    ],
+    "name": "removeFromWhitelist",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -371,6 +675,25 @@ const GovernanceABIJSON = `
       {
         "name": "",
         "type": "address"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [
+      {
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "whitelistOffsetByAddress",
+    "outputs": [
+      {
+        "name": "",
+        "type": "int256"
       }
     ],
     "payable": false,
@@ -463,6 +786,20 @@ const GovernanceABIJSON = `
     "type": "function"
   },
   {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "Complaint",
+        "type": "bytes"
+      }
+    ],
+    "name": "addDKGComplaint",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "constant": true,
     "inputs": [
       {
@@ -529,6 +866,50 @@ const GovernanceABIJSON = `
     "type": "function"
   },
   {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "Round",
+        "type": "uint256"
+      },
+      {
+        "name": "SignedCRS",
+        "type": "bytes"
+      }
+    ],
+    "name": "proposeCRS",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "Name",
+        "type": "string"
+      },
+      {
+        "name": "Email",
+        "type": "string"
+      },
+      {
+        "name": "Location",
+        "type": "string"
+      },
+      {
+        "name": "Url",
+        "type": "string"
+      }
+    ],
+    "name": "updateNodeInfo",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "constant": true,
     "inputs": [
       {
@@ -545,6 +926,36 @@ const GovernanceABIJSON = `
     ],
     "payable": false,
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "PublicKey",
+        "type": "bytes"
+      },
+      {
+        "name": "Name",
+        "type": "string"
+      },
+      {
+        "name": "Email",
+        "type": "string"
+      },
+      {
+        "name": "Location",
+        "type": "string"
+      },
+      {
+        "name": "Url",
+        "type": "string"
+      }
+    ],
+    "name": "register",
+    "outputs": [],
+    "payable": true,
+    "stateMutability": "payable",
     "type": "function"
   },
   {
@@ -592,6 +1003,25 @@ const GovernanceABIJSON = `
     ],
     "payable": false,
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "addr",
+        "type": "address"
+      }
+    ],
+    "name": "addToWhitelist",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -659,6 +1089,48 @@ const GovernanceABIJSON = `
       {
         "name": "",
         "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [
+      {
+        "name": "NewOwner",
+        "type": "address"
+      }
+    ],
+    "name": "transferOwnership",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "nodesLength",
+    "outputs": [
+      {
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "payable": false,
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [],
+    "name": "isConsortium",
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool"
       }
     ],
     "payable": false,
@@ -874,374 +1346,6 @@ const GovernanceABIJSON = `
     ],
     "name": "DKGReset",
     "type": "event"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "NewOwner",
-        "type": "address"
-      }
-    ],
-    "name": "transferOwnership",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "MinStake",
-        "type": "uint256"
-      },
-      {
-        "name": "LockupPeriod",
-        "type": "uint256"
-      },
-      {
-        "name": "MinGasPrice",
-        "type": "uint256"
-      },
-      {
-        "name": "BlockGasLimit",
-        "type": "uint256"
-      },
-      {
-        "name": "LambdaBA",
-        "type": "uint256"
-      },
-      {
-        "name": "LambdaDKG",
-        "type": "uint256"
-      },
-      {
-        "name": "NotaryParamAlpha",
-        "type": "uint256"
-      },
-      {
-        "name": "NotaryParamBeta",
-        "type": "uint256"
-      },
-      {
-        "name": "RoundLength",
-        "type": "uint256"
-      },
-      {
-        "name": "MinBlockInterval",
-        "type": "uint256"
-      },
-      {
-        "name": "FineValues",
-        "type": "uint256[]"
-      }
-    ],
-    "name": "updateConfiguration",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "Complaint",
-        "type": "bytes"
-      }
-    ],
-    "name": "addDKGComplaint",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "PublicKey",
-        "type": "bytes"
-      }
-    ],
-    "name": "addDKGMasterPublicKey",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "MPKReady",
-        "type": "bytes"
-      }
-    ],
-    "name": "addDKGMPKReady",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "Finalize",
-        "type": "bytes"
-      }
-    ],
-    "name": "addDKGFinalize",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "Success",
-        "type": "bytes"
-      }
-    ],
-    "name": "addDKGSuccess",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "NodeAddress",
-        "type": "address"
-      }
-    ],
-    "name": "payFine",
-    "outputs": [],
-    "payable": true,
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "nodesLength",
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "Round",
-        "type": "uint256"
-      },
-      {
-        "name": "SignedCRS",
-        "type": "bytes"
-      }
-    ],
-    "name": "proposeCRS",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "Type",
-        "type": "uint256"
-      },
-      {
-        "name": "Arg1",
-        "type": "bytes"
-      },
-      {
-        "name": "Arg2",
-        "type": "bytes"
-      }
-    ],
-    "name": "report",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "NewSignedCRS",
-        "type": "bytes"
-      }
-    ],
-    "name": "resetDKG",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "PublicKey",
-        "type": "bytes"
-      },
-      {
-        "name": "Name",
-        "type": "string"
-      },
-      {
-        "name": "Email",
-        "type": "string"
-      },
-      {
-        "name": "Location",
-        "type": "string"
-      },
-      {
-        "name": "Url",
-        "type": "string"
-      }
-    ],
-    "name": "register",
-    "outputs": [],
-    "payable": true,
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "NewPublicKey",
-        "type": "bytes"
-      }
-    ],
-    "name": "replaceNodePublicKey",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [],
-    "name": "stake",
-    "outputs": [],
-    "payable": true,
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "NewOwner",
-        "type": "address"
-      }
-    ],
-    "name": "transferNodeOwnership",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "OldOwner",
-        "type": "address"
-      },
-      {
-        "name": "NewOwner",
-        "type": "address"
-      }
-    ],
-    "name": "transferNodeOwnershipByFoundation",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "Amount",
-        "type": "uint256"
-      }
-    ],
-    "name": "unstake",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [
-      {
-        "name": "Name",
-        "type": "string"
-      },
-      {
-        "name": "Email",
-        "type": "string"
-      },
-      {
-        "name": "Location",
-        "type": "string"
-      },
-      {
-        "name": "Url",
-        "type": "string"
-      }
-    ],
-    "name": "updateNodeInfo",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": false,
-    "inputs": [],
-    "name": "withdraw",
-    "outputs": [],
-    "payable": false,
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "constant": true,
-    "inputs": [],
-    "name": "withdrawable",
-    "outputs": [
-      {
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "payable": false,
-    "stateMutability": "view",
-    "type": "function"
   }
 ]
 `

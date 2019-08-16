@@ -1022,6 +1022,137 @@ func (g *GovernanceContractTestSuite) TestMiscVariableReading() {
 	g.Require().NoError(err)
 }
 
+func (g *GovernanceContractTestSuite) TestIsConsortium() {
+	var isConsortium bool
+
+	_, addr1 := newPrefundAccount(g.stateDB)
+
+	input, err := GovernanceABI.ABI.Pack("isConsortium")
+	g.Require().NoError(err)
+	res, err := g.call(GovernanceContractAddress, addr1, input, big.NewInt(0))
+	g.Require().NoError(err)
+	err = GovernanceABI.ABI.Unpack(&isConsortium, "isConsortium", res)
+	g.Require().NoError(err)
+	g.Require().Equal(false, isConsortium)
+
+	g.s.EnableConsortium()
+	res, err = g.call(GovernanceContractAddress, addr1, input, big.NewInt(0))
+	g.Require().NoError(err)
+	err = GovernanceABI.ABI.Unpack(&isConsortium, "isConsortium", res)
+	g.Require().NoError(err)
+	g.Require().Equal(true, isConsortium)
+}
+
+func (g *GovernanceContractTestSuite) TestUpdateWhitelist() {
+	checkLength := func(expectLen *big.Int) {
+		var length *big.Int
+
+		lenInput, err := GovernanceABI.ABI.Pack("whitelistLength")
+		g.Require().NoError(err)
+		res, err := g.call(GovernanceContractAddress, g.config.Owner, lenInput, big.NewInt(0))
+		err = GovernanceABI.ABI.Unpack(&length, "whitelistLength", res)
+		g.Require().NoError(err)
+		g.Require().Equal(expectLen.Int64(), length.Int64())
+	}
+	check := func(addr common.Address, offset *big.Int) {
+		var resOffset *big.Int
+		var resAddr common.Address
+
+		value := big.NewInt(0)
+		// check offset
+		input, err := GovernanceABI.ABI.Pack("whitelistOffsetByAddress", addr)
+		g.Require().NoError(err)
+		res, err := g.call(GovernanceContractAddress, addr, input, value)
+		g.Require().NoError(err)
+		err = GovernanceABI.ABI.Unpack(&resOffset, "whitelistOffsetByAddress", res)
+		g.Require().NoError(err)
+		g.Require().Equal(offset.Int64(), resOffset.Int64())
+
+		// check address
+		if offset.Cmp(big.NewInt(0)) >= 0 {
+			input, err = GovernanceABI.ABI.Pack("addressWhitelist", offset)
+			res, err = g.call(GovernanceContractAddress, addr, input, value)
+			g.Require().NoError(err)
+			err = GovernanceABI.ABI.Unpack(&resAddr, "addressWhitelist", res)
+			g.Require().NoError(err)
+			g.Require().Equal(addr, resAddr)
+		}
+	}
+	_, addr1 := newPrefundAccount(g.stateDB)
+	_, addr2 := newPrefundAccount(g.stateDB)
+	_, addr3 := newPrefundAccount(g.stateDB)
+
+	input, err := GovernanceABI.ABI.Pack("addToWhitelist", addr1)
+	g.Require().NoError(err)
+
+	// Call with non-owner.
+	_, err = g.call(GovernanceContractAddress, addr1, input, big.NewInt(0))
+	g.Require().NotNil(err)
+	// Call with owner.
+	_, err = g.call(GovernanceContractAddress, g.config.Owner, input, big.NewInt(0))
+	g.Require().NoError(err)
+	checkLength(big.NewInt(1))
+	// duplicated call should not affect
+	_, err = g.call(GovernanceContractAddress, g.config.Owner, input, big.NewInt(0))
+	g.Require().NoError(err)
+	checkLength(big.NewInt(1))
+	// append addr2
+	input, err = GovernanceABI.ABI.Pack("addToWhitelist", addr2)
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, g.config.Owner, input, big.NewInt(0))
+	g.Require().NoError(err)
+
+	checkLength(big.NewInt(2))
+	check(addr1, big.NewInt(0))
+	check(addr2, big.NewInt(1))
+
+	// delete addr2
+	input, err = GovernanceABI.ABI.Pack("removeFromWhitelist", addr2)
+	g.Require().NoError(err)
+	// Call with non-owner.
+	_, err = g.call(GovernanceContractAddress, addr1, input, big.NewInt(0))
+	g.Require().NotNil(err)
+	// Call with owner
+	_, err = g.call(GovernanceContractAddress, g.config.Owner, input, big.NewInt(0))
+	g.Require().NoError(err)
+	check(addr2, big.NewInt(-1))
+	checkLength(big.NewInt(1))
+
+	// append addr2 back
+	input, err = GovernanceABI.ABI.Pack("addToWhitelist", addr2)
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, g.config.Owner, input, big.NewInt(0))
+	g.Require().NoError(err)
+	checkLength(big.NewInt(2))
+	check(addr1, big.NewInt(0))
+	check(addr2, big.NewInt(1))
+
+	// delete addr1
+	input, err = GovernanceABI.ABI.Pack("removeFromWhitelist", addr1)
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, g.config.Owner, input, big.NewInt(0))
+	g.Require().NoError(err)
+	check(addr1, big.NewInt(-1))
+	check(addr2, big.NewInt(0))
+	checkLength(big.NewInt(1))
+
+	// delete addr2
+	input, err = GovernanceABI.ABI.Pack("removeFromWhitelist", addr2)
+	g.Require().NoError(err)
+	_, err = g.call(GovernanceContractAddress, g.config.Owner, input, big.NewInt(0))
+	g.Require().NoError(err)
+	check(addr1, big.NewInt(-1))
+	check(addr2, big.NewInt(-1))
+	checkLength(big.NewInt(0))
+
+	// duplicated delete addr2
+	input, err = GovernanceABI.ABI.Pack("removeFromWhitelist", addr2)
+	g.Require().NoError(err)
+	// delete not in whitelist address
+	input, err = GovernanceABI.ABI.Pack("removeFromWhitelist", addr3)
+	g.Require().NoError(err)
+}
+
 func (g *GovernanceContractTestSuite) TestHalvingCondition() {
 	// TotalSupply 2.5B reached
 	g.s.MiningHalved()
@@ -1242,6 +1373,66 @@ func (g *GovernanceContractTestSuite) TestResetDKG() {
 
 		addDKG(round+1, false, false)
 	}
+}
+
+func (g *GovernanceContractTestSuite) TestConsortium() {
+	g.Require().False(g.s.IsConsortium())
+	g.s.EnableConsortium()
+	g.Require().True(g.s.IsConsortium())
+}
+
+func (g *GovernanceContractTestSuite) TestAddWhitelist() {
+	_, addr1 := newPrefundAccount(g.stateDB)
+	_, addr2 := newPrefundAccount(g.stateDB)
+	_, addr3 := newPrefundAccount(g.stateDB)
+	// no address in list
+	expectAddress := g.s.AddressWhitelist(big.NewInt(0))
+	g.Require().Equal(common.Address{}, expectAddress)
+	expectAddrList := g.s.AddressWhitelists()
+	g.Require().Equal([]common.Address{}, expectAddrList)
+
+	// insert addr
+	g.s.AddToWhitelist(addr1)
+	g.s.AddToWhitelist(addr1) // duplicated insertion should be ignored
+	expectAddress = g.s.AddressWhitelist(big.NewInt(0))
+	g.Require().Equal(addr1, expectAddress)
+	expectAddrList = g.s.AddressWhitelists()
+	g.Require().Equal([]common.Address{addr1}, expectAddrList)
+
+	g.s.AddToWhitelist(addr2)
+	expectAddress = g.s.AddressWhitelist(big.NewInt(1))
+	g.Require().Equal(addr2, expectAddress)
+	expectAddrList = g.s.AddressWhitelists()
+	g.Require().Equal([]common.Address{addr1, addr2}, expectAddrList)
+
+	offset := g.s.WhitelistOffsetByAddress(addr1)
+	g.Require().Equal(true, offset.Cmp(big.NewInt(0)) == 0)
+	offset = g.s.WhitelistOffsetByAddress(addr2)
+	g.Require().Equal(true, offset.Cmp(big.NewInt(1)) == 0)
+	offset = g.s.WhitelistOffsetByAddress(addr3)
+	g.Require().Equal(true, offset.Cmp(big.NewInt(-1)) == 0)
+
+	// remove addr
+	g.s.DeleteAddressWhitelist(addr1)
+	g.s.DeleteAddressWhitelist(addr1) // duplicated remove should be ignored
+
+	offset = g.s.WhitelistOffsetByAddress(addr1)
+	g.Require().Equal(true, offset.Cmp(big.NewInt(-1)) == 0)
+	offset = g.s.WhitelistOffsetByAddress(addr2)
+	g.Require().Equal(true, offset.Cmp(big.NewInt(0)) == 0)
+
+	expectAddress = g.s.AddressWhitelist(big.NewInt(0))
+	g.Require().Equal(addr2, expectAddress)
+	expectAddrList = g.s.AddressWhitelists()
+	g.Require().Equal([]common.Address{addr2}, expectAddrList)
+
+	g.s.DeleteAddressWhitelist(addr2)
+
+	offset = g.s.WhitelistOffsetByAddress(addr2)
+	g.Require().Equal(true, offset.Cmp(big.NewInt(-1)) == 0)
+
+	expectAddrList = g.s.AddressWhitelists()
+	g.Require().Equal([]common.Address{}, expectAddrList)
 }
 
 func TestGovernanceContract(t *testing.T) {

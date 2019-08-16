@@ -267,22 +267,24 @@ func (c *CliqueConfig) String() string {
 
 // DexconConfig is the consensus engine configs for DEXON consensus.
 type DexconConfig struct {
-	GenesisCRSText    string         `json:"genesisCRSText"`
-	Owner             common.Address `json:"owner"`
-	MinStake          *big.Int       `json:"minStake"`
-	LockupPeriod      uint64         `json:"lockupPeriod"`
-	MiningVelocity    float32        `json:"miningVelocity"`
-	NextHalvingSupply *big.Int       `json:"nextHalvingSupply"`
-	LastHalvedAmount  *big.Int       `json:"lastHalvedAmount"`
-	MinGasPrice       *big.Int       `json:"minGasPrice"`
-	BlockGasLimit     uint64         `json:"blockGasLimit"`
-	LambdaBA          uint64         `json:"lambdaBA"`
-	LambdaDKG         uint64         `json:"lambdaDKG"`
-	NotaryParamAlpha  float32        `json:"notaryParamAlpha"`
-	NotaryParamBeta   float32        `json:"notaryParamBeta"`
-	RoundLength       uint64         `json:"roundLength"`
-	MinBlockInterval  uint64         `json:"minBlockInterval"`
-	FineValues        []*big.Int     `json:"fineValues"`
+	GenesisCRSText    string           `json:"genesisCRSText"`
+	Owner             common.Address   `json:"owner"`
+	MinStake          *big.Int         `json:"minStake"`
+	LockupPeriod      uint64           `json:"lockupPeriod"`
+	MiningVelocity    float32          `json:"miningVelocity"`
+	NextHalvingSupply *big.Int         `json:"nextHalvingSupply"`
+	LastHalvedAmount  *big.Int         `json:"lastHalvedAmount"`
+	MinGasPrice       *big.Int         `json:"minGasPrice"`
+	BlockGasLimit     uint64           `json:"blockGasLimit"`
+	LambdaBA          uint64           `json:"lambdaBA"`
+	LambdaDKG         uint64           `json:"lambdaDKG"`
+	NotaryParamAlpha  float32          `json:"notaryParamAlpha"`
+	NotaryParamBeta   float32          `json:"notaryParamBeta"`
+	RoundLength       uint64           `json:"roundLength"`
+	MinBlockInterval  uint64           `json:"minBlockInterval"`
+	FineValues        []*big.Int       `json:"fineValues"`
+	IsConsortium      bool             `json:"isConsortium"`
+	AddressWhitelist  []common.Address `json:"addressWhitelist"`
 }
 
 type dexconConfigSpecMarshaling struct {
@@ -295,7 +297,7 @@ type dexconConfigSpecMarshaling struct {
 
 // String implements the stringer interface, returning the consensus engine details.
 func (d *DexconConfig) String() string {
-	return fmt.Sprintf("{GenesisCRSText: %v Owner: %v MinStake: %v LockupPeriod: %v MiningVelocity: %v NextHalvingSupply: %v LastHalvedAmount: %v MinGasPrice: %v BlockGasLimit: %v LambdaBA: %v LambdaDKG: %v NotaryParamAlpha: %v NotaryParamBeta: %v RoundLength: %v MinBlockInterval: %v FineValues: %v}",
+	return fmt.Sprintf("{GenesisCRSText: %v Owner: %v MinStake: %v LockupPeriod: %v MiningVelocity: %v NextHalvingSupply: %v LastHalvedAmount: %v MinGasPrice: %v BlockGasLimit: %v LambdaBA: %v LambdaDKG: %v NotaryParamAlpha: %v NotaryParamBeta: %v RoundLength: %v MinBlockInterval: %v FineValues: %v IsConsortium: %v AddressWhitelist: %v}",
 		d.GenesisCRSText,
 		d.Owner,
 		d.MinStake,
@@ -312,6 +314,8 @@ func (d *DexconConfig) String() string {
 		d.RoundLength,
 		d.MinBlockInterval,
 		d.FineValues,
+		d.IsConsortium,
+		d.AddressWhitelist,
 	)
 }
 
@@ -550,5 +554,37 @@ func (c *ChainConfig) Rules(num *big.Int) Rules {
 		IsByzantium:      c.IsByzantium(num),
 		IsConstantinople: c.IsConstantinople(num),
 		IsPetersburg:     c.IsPetersburg(num),
+	}
+}
+
+// NewTestChainConfig is the ChainConfig constructor for test
+func NewTestChainConig() *ChainConfig {
+	return &ChainConfig{big.NewInt(1), 0, big.NewInt(0), nil, false, big.NewInt(0), common.Hash{}, big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), big.NewInt(0), nil, new(EthashConfig), nil, nil, nil}
+}
+
+func NewTestDexonConfig() *DexconConfig {
+	return &DexconConfig{
+		GenesisCRSText:    "Tangerine Testnet",
+		Owner:             common.HexToAddress("0x0D54AF942d6bF13870F5CA65D470954f21D3cBE5"),
+		MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
+		LockupPeriod:      3600,
+		MiningVelocity:    0.18,
+		NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(125e6)),
+		LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(75e6)),
+		MinGasPrice:       new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1)),
+		BlockGasLimit:     210000000,
+		LambdaBA:          250,
+		LambdaDKG:         20000,
+		NotaryParamAlpha:  70.5,
+		NotaryParamBeta:   264,
+		RoundLength:       3600,
+		MinBlockInterval:  1000,
+		FineValues: []*big.Int{
+			new(big.Int).Mul(big.NewInt(1e18), big.NewInt(100)),
+			new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1)),
+			new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
+			new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
+			new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
+		},
 	}
 }

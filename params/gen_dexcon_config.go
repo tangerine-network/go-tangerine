@@ -31,6 +31,8 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 		RoundLength       uint64                  `json:"roundLength"`
 		MinBlockInterval  uint64                  `json:"minBlockInterval"`
 		FineValues        []*math.HexOrDecimal256 `json:"fineValues"`
+		IsConsortium      bool                    `json:"isConsortium"`
+		AddressWhitelist  []common.Address        `json:"addressWhitelist"`
 	}
 	var enc DexconConfig
 	enc.GenesisCRSText = d.GenesisCRSText
@@ -54,6 +56,8 @@ func (d DexconConfig) MarshalJSON() ([]byte, error) {
 			enc.FineValues[k] = (*math.HexOrDecimal256)(v)
 		}
 	}
+	enc.IsConsortium = d.IsConsortium
+	enc.AddressWhitelist = d.AddressWhitelist
 	return json.Marshal(&enc)
 }
 
@@ -76,6 +80,8 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 		RoundLength       *uint64                 `json:"roundLength"`
 		MinBlockInterval  *uint64                 `json:"minBlockInterval"`
 		FineValues        []*math.HexOrDecimal256 `json:"fineValues"`
+		IsConsortium      *bool                   `json:"isConsortium"`
+		AddressWhitelist  []common.Address        `json:"addressWhitelist"`
 	}
 	var dec DexconConfig
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -131,6 +137,12 @@ func (d *DexconConfig) UnmarshalJSON(input []byte) error {
 		for k, v := range dec.FineValues {
 			d.FineValues[k] = (*big.Int)(v)
 		}
+	}
+	if dec.IsConsortium != nil {
+		d.IsConsortium = *dec.IsConsortium
+	}
+	if dec.AddressWhitelist != nil {
+		d.AddressWhitelist = dec.AddressWhitelist
 	}
 	return nil
 }

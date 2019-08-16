@@ -41,6 +41,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -55,6 +56,7 @@ import (
 	"github.com/tangerine-network/go-tangerine/consensus"
 	"github.com/tangerine-network/go-tangerine/core"
 	"github.com/tangerine-network/go-tangerine/core/types"
+	"github.com/tangerine-network/go-tangerine/core/vm"
 	"github.com/tangerine-network/go-tangerine/crypto"
 	dexDB "github.com/tangerine-network/go-tangerine/dex/db"
 	"github.com/tangerine-network/go-tangerine/dex/downloader"
@@ -89,6 +91,7 @@ const (
 
 	maxAgreementResultBroadcast = 3
 	maxFinalizedBlockBroadcast  = 3
+	checkPeerDuration           = 10 * time.Minute
 )
 
 // errIncompatibleConfig is returned if the requested protocols and configs are
@@ -349,6 +352,7 @@ func (pm *ProtocolManager) ReportBadPeerChan() chan<- interface{} {
 }
 
 func (pm *ProtocolManager) badPeerWatchLoop() {
+	go pm.checkPeerInWhitelist(pm.reportBadPeerChan)
 	for {
 		select {
 		case id := <-pm.reportBadPeerChan:
@@ -360,13 +364,42 @@ func (pm *ProtocolManager) badPeerWatchLoop() {
 	}
 }
 
+func (pm *ProtocolManager) checkPeerInWhitelist(reportBadPeerChan chan<- interface{}) {
+	for {
+		for id, p := range pm.peers.peers {
+			if !pm.inWhitelist(p) {
+				reportBadPeerChan <- id
+			}
+		}
+		time.Sleep(checkPeerDuration)
+	}
+}
+
 func (pm *ProtocolManager) newPeer(pv int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
 	return newPeer(pv, p, newMeteredMsgWriter(rw))
+}
+
+func (pm *ProtocolManager) inWhitelist(p *peer) bool {
+	state, err := pm.blockchain.State()
+	if err != nil {
+		p.Log().Debug("get state fail in checking whitelist", "err", err)
+		return false
+	}
+	govState := vm.GovernanceState{StateDB: state}
+	if !govState.IsConsortium() {
+		return true
+	}
+	address := crypto.PubkeyToAddress(*p.Node().Pubkey())
+	return govState.WhitelistOffsetByAddress(address).Cmp(big.NewInt(0)) >= 0
 }
 
 // handle is the callback invoked to manage the life cycle of an eth peer. When
 // this function terminates, the peer is disconnected.
 func (pm *ProtocolManager) handle(p *peer) error {
+	if !pm.inWhitelist(p) {
+		p.Log().Debug("Peer disconnect: permission denied", "name", p.Name())
+		return p2p.DiscPermissionDenied
+	}
 	// Ignore maxPeers if this is a trusted peer
 	if pm.peers.Len() >= pm.maxPeers && !p.Peer.Info().Network.Trusted {
 		return p2p.DiscTooManyPeers

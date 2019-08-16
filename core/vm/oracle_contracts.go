@@ -99,6 +99,9 @@ const (
 	minBlockIntervalLoc
 	fineValuesLoc
 	finedRecordsLoc
+	isConsortiumLoc
+	addressWhitelistLoc
+	whitelistOffsetByAddressLoc
 )
 
 func publicKeyToNodeKeyAddress(pkBytes []byte) (common.Address, error) {
@@ -124,7 +127,7 @@ func IdToAddress(id coreTypes.NodeID) common.Address {
 	return common.BytesToAddress(id.Hash[12:])
 }
 
-// State manipulation helper fro the governance contract.
+// State manipulation helper for the governance contract.
 type GovernanceState struct {
 	StateDB StateDB
 }
@@ -984,6 +987,80 @@ func (s *GovernanceState) SetFineRecords(recordHash Bytes32, status bool) {
 	s.setStateBigInt(loc, big.NewInt(value))
 }
 
+// bool public isConsortium;
+func (s *GovernanceState) IsConsortium() bool {
+	return s.getStateBigInt(big.NewInt(isConsortiumLoc)).Cmp(big.NewInt(0)) > 0
+}
+func (s *GovernanceState) EnableConsortium() {
+	s.setStateBigInt(big.NewInt(isConsortiumLoc), big.NewInt(1))
+}
+
+// address[] public addressWhitelist;
+func (s *GovernanceState) LenWhitelist() *big.Int {
+	return s.getStateBigInt(big.NewInt(addressWhitelistLoc))
+}
+func (s *GovernanceState) AddressWhitelist(index *big.Int) common.Address {
+	arrayBaseLoc := s.getSlotLoc(big.NewInt(addressWhitelistLoc))
+	return common.BigToAddress(s.getStateBigInt(new(big.Int).Add(arrayBaseLoc, index)))
+}
+func (s *GovernanceState) AddressWhitelists() []common.Address {
+	len := s.LenWhitelist()
+	result := make([]common.Address, len.Uint64())
+	for i := 0; i < int(len.Uint64()); i++ {
+		result[i] = s.AddressWhitelist(big.NewInt(int64(i)))
+	}
+	return result
+}
+func (s *GovernanceState) putAddressWhitelist(addr common.Address, offset *big.Int) {
+	arrayBaseLoc := s.getSlotLoc(big.NewInt(addressWhitelistLoc))
+	loc := new(big.Int).Add(arrayBaseLoc, offset)
+	s.setState(common.BigToHash(loc), addr.Hash())
+	s.putWhitelistOffsetByAddress(addr, offset)
+}
+func (s *GovernanceState) AddToWhitelist(addr common.Address) *big.Int {
+	offset := s.WhitelistOffsetByAddress(addr)
+	if offset.Cmp(bigZero) >= 0 {
+		return offset
+	}
+	len := s.getStateBigInt(big.NewInt(addressWhitelistLoc))
+	s.putAddressWhitelist(addr, len)
+	len = new(big.Int).Add(len, big.NewInt(1))
+	s.setStateBigInt(big.NewInt(addressWhitelistLoc), len)
+	return len
+}
+func (s *GovernanceState) DeleteAddressWhitelist(addr common.Address) *big.Int {
+	offset := s.WhitelistOffsetByAddress(addr)
+	if offset.Cmp(bigZero) < 0 {
+		return offset
+	}
+	s.DeleteWhitelistOffsetByAddress(addr)
+	len := s.getStateBigInt(big.NewInt(addressWhitelistLoc))
+	newLen := new(big.Int).Sub(len, big.NewInt(1))
+	if len.Cmp(big.NewInt(1)) > 0 && offset.Cmp(newLen) != 0 {
+		lastAddr := s.AddressWhitelist(newLen)
+		s.putAddressWhitelist(lastAddr, offset)
+	}
+	s.setStateBigInt(
+		big.NewInt(addressWhitelistLoc),
+		newLen,
+	)
+	return len
+}
+
+// mapping(address => int256) whitelistOffsetByAddress
+func (s *GovernanceState) WhitelistOffsetByAddress(addr common.Address) *big.Int {
+	loc := s.getMapLoc(big.NewInt(whitelistOffsetByAddressLoc), addr.Bytes())
+	return new(big.Int).Sub(s.getStateBigInt(loc), big.NewInt(1))
+}
+func (s *GovernanceState) putWhitelistOffsetByAddress(addr common.Address, offset *big.Int) {
+	loc := s.getMapLoc(big.NewInt(whitelistOffsetByAddressLoc), addr.Bytes())
+	s.setStateBigInt(loc, new(big.Int).Add(offset, big.NewInt(1)))
+}
+func (s *GovernanceState) DeleteWhitelistOffsetByAddress(addr common.Address) {
+	loc := s.getMapLoc(big.NewInt(whitelistOffsetByAddressLoc), addr.Bytes())
+	s.setStateBigInt(loc, big.NewInt(0))
+}
+
 // Initialize initializes governance contract state.
 func (s *GovernanceState) Initialize(config *params.DexconConfig, totalSupply *big.Int) {
 	if config.NextHalvingSupply.Cmp(totalSupply) <= 0 {
@@ -1009,6 +1086,22 @@ func (s *GovernanceState) Initialize(config *params.DexconConfig, totalSupply *b
 
 	// Set DKGRound.
 	s.SetDKGRound(big.NewInt(int64(dexCore.DKGDelayRound)))
+
+	// Set Whitelist
+	s.setWhitelist(config.IsConsortium)
+}
+
+func (s *GovernanceState) setWhitelist(isConsortium bool) {
+	if isConsortium {
+		s.EnableConsortium()
+		for _, node := range s.Nodes() {
+			address, err := publicKeyToNodeKeyAddress(node.PublicKey)
+			if err != nil {
+				panic(err)
+			}
+			s.AddToWhitelist(address)
+		}
+	}
 }
 
 // Register is a helper function for creating genesis state.
@@ -1079,6 +1172,8 @@ func (s *GovernanceState) Configuration() *params.DexconConfig {
 		RoundLength:       s.getStateBigInt(big.NewInt(roundLengthLoc)).Uint64(),
 		MinBlockInterval:  s.getStateBigInt(big.NewInt(minBlockIntervalLoc)).Uint64(),
 		FineValues:        s.FineValues(),
+		AddressWhitelist:  s.AddressWhitelists(),
+		IsConsortium:      s.getStateBigInt(big.NewInt(isConsortiumLoc)).Uint64() != 0,
 	}
 }
 
@@ -1098,7 +1193,11 @@ func (s *GovernanceState) UpdateConfiguration(cfg *params.DexconConfig) {
 	s.setStateBigInt(big.NewInt(roundLengthLoc), big.NewInt(int64(cfg.RoundLength)))
 	s.setStateBigInt(big.NewInt(minBlockIntervalLoc), big.NewInt(int64(cfg.MinBlockInterval)))
 	s.SetFineValues(cfg.FineValues)
-
+	if cfg.IsConsortium {
+		for _, addr := range cfg.AddressWhitelist {
+			s.AddToWhitelist(addr)
+		}
+	}
 	// Calculate set size.
 	s.CalNotarySetSize()
 }
@@ -2274,6 +2373,20 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return g.addDKGSuccess(Success)
+	case "addToWhitelist":
+		var address common.Address
+		if err := method.Inputs.Unpack(&address, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		offset, err := g.addToWhitelist(address)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		res, err := method.Outputs.Pack(offset)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	case "nodesLength":
 		res, err := method.Outputs.Pack(g.state.LenNodes())
 		if err != nil {
@@ -2295,6 +2408,20 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return g.proposeCRS(args.Round, args.SignedCRS)
+	case "removeFromWhitelist":
+		var address common.Address
+		if err := method.Inputs.Unpack(&address, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		offset, err := g.removeFromWhitelist(address)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		res, err := method.Outputs.Pack(offset)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	case "report":
 		args := struct {
 			Type *big.Int
@@ -2371,6 +2498,12 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return g.updateNodeInfo(args.Name, args.Email, args.Location, args.Url)
+	case "whitelistLength":
+		res, err := method.Outputs.Pack(g.state.LenWhitelist())
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	case "withdraw":
 		return g.withdraw()
 	case "withdrawable":
@@ -2379,11 +2512,21 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return res, nil
-
 	// --------------------------------
 	// Solidity auto generated methods.
 	// --------------------------------
 
+	case "addressWhitelist":
+		offset := new(big.Int)
+		if err := method.Inputs.Unpack(&offset, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		address := g.state.AddressWhitelist(offset)
+		res, err := method.Outputs.Pack(address)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	case "blockGasLimit":
 		res, err := method.Outputs.Pack(g.state.BlockGasLimit())
 		if err != nil {
@@ -2534,6 +2677,12 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 		}
 		value := g.state.FineValue(index)
 		res, err := method.Outputs.Pack(value)
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
+	case "isConsortium":
+		res, err := method.Outputs.Pack(g.state.IsConsortium())
 		if err != nil {
 			return nil, errExecutionReverted
 		}
@@ -2694,7 +2843,18 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 			return nil, errExecutionReverted
 		}
 		return res, nil
+	case "whitelistOffsetByAddress":
+		address := common.Address{}
+		if err := method.Inputs.Unpack(&address, arguments); err != nil {
+			return nil, errExecutionReverted
+		}
+		res, err := method.Outputs.Pack(g.state.WhitelistOffsetByAddress(address))
+		if err != nil {
+			return nil, errExecutionReverted
+		}
+		return res, nil
 	}
+
 	return nil, errExecutionReverted
 }
 
@@ -2799,6 +2959,22 @@ func (g *GovernanceContract) replaceNodePublicKey(newPublicKey []byte) ([]byte, 
 	g.state.emitNodePublicKeyReplaced(caller, newPublicKey)
 
 	return nil, nil
+}
+
+func (g *GovernanceContract) addToWhitelist(addr common.Address) (*big.Int, error) {
+	// Only owner can update whitelist.
+	if g.contract.Caller() != g.state.Owner() {
+		return nil, errExecutionReverted
+	}
+	return g.state.AddToWhitelist(addr), nil
+}
+
+func (g *GovernanceContract) removeFromWhitelist(addr common.Address) (*big.Int, error) {
+	// Only owner can update whitelist.
+	if g.contract.Caller() != g.state.Owner() {
+		return nil, errExecutionReverted
+	}
+	return g.state.DeleteAddressWhitelist(addr), nil
 }
 
 func PackProposeCRS(round uint64, signedCRS []byte) ([]byte, error) {
