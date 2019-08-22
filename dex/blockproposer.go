@@ -148,7 +148,7 @@ func (b *blockProposer) syncConsensus() (*dexCore.Consensus, error) {
 
 	blocksToSync := func(coreHeight, height uint64) []*coreTypes.Block {
 		var blocks []*coreTypes.Block
-		for coreHeight < height {
+		for len(blocks) < 1024 && coreHeight < height {
 			var block coreTypes.Block
 			b := b.dex.blockchain.GetBlockByNumber(coreHeight + 1)
 			if err := rlp.DecodeBytes(b.Header().DexconMeta, &block); err != nil {
@@ -203,9 +203,11 @@ ListenLoop:
 	for {
 		select {
 		case ev := <-ch:
-			blocks := blocksToSync(coreHeight, ev.Block.NumberU64())
-
-			if len(blocks) > 0 {
+			for {
+				blocks := blocksToSync(coreHeight, ev.Block.NumberU64())
+				if len(blocks) == 0 {
+					break
+				}
 				b.watchCat.Feed(blocks[len(blocks)-1].Position)
 				log.Debug("Filling compaction chain", "num", len(blocks),
 					"first", blocks[0].Position.Height,
