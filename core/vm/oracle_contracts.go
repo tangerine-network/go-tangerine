@@ -1915,6 +1915,10 @@ func (g *GovernanceContract) stake() ([]byte, error) {
 }
 
 func (g *GovernanceContract) unstake(amount *big.Int) ([]byte, error) {
+	if g.contract.Value().Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
+	}
+
 	caller := g.contract.Caller()
 
 	offset := g.state.NodesOffsetByAddress(caller)
@@ -1951,6 +1955,10 @@ func (g *GovernanceContract) unstake(amount *big.Int) ([]byte, error) {
 func (g *GovernanceContract) updateNodeInfo(
 	name, email, location, url string) ([]byte, error) {
 
+	if g.contract.Value().Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
+	}
+
 	caller := g.contract.Caller()
 
 	offset := g.state.NodesOffsetByAddress(caller)
@@ -1974,6 +1982,10 @@ func (g *GovernanceContract) updateNodeInfo(
 }
 
 func (g *GovernanceContract) withdraw() ([]byte, error) {
+	if g.contract.Value().Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
+	}
+
 	if !g.withdrawable() {
 		return nil, errExecutionReverted
 	}
@@ -2064,6 +2076,10 @@ func (g *GovernanceContract) payFine(nodeAddr common.Address) ([]byte, error) {
 }
 
 func (g *GovernanceContract) proposeCRS(nextRound *big.Int, signedCRS []byte) ([]byte, error) {
+	if g.contract.Value().Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
+	}
+
 	if nextRound.Uint64() != g.evm.Round.Uint64()+1 ||
 		g.state.CRSRound().Uint64() == nextRound.Uint64() {
 		return nil, errExecutionReverted
@@ -2141,6 +2157,10 @@ func (g *GovernanceContract) fine(nodeAddr common.Address, amount *big.Int, payl
 }
 
 func (g *GovernanceContract) report(reportType *big.Int, arg1, arg2 []byte) ([]byte, error) {
+	if g.contract.Value().Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
+	}
+
 	typeEnum := FineType(reportType.Uint64())
 	var reportedNodeID coreTypes.NodeID
 
@@ -2192,6 +2212,10 @@ func (g *GovernanceContract) report(reportType *big.Int, arg1, arg2 []byte) ([]b
 }
 
 func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
+	if g.contract.Value().Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
+	}
+
 	round := g.evm.Round
 	nextRound := new(big.Int).Add(round, big.NewInt(1))
 
@@ -2859,6 +2883,10 @@ func (g *GovernanceContract) Run(evm *EVM, input []byte, contract *Contract) (re
 }
 
 func (g *GovernanceContract) transferOwnership(newOwner common.Address) ([]byte, error) {
+	if g.contract.Value().Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
+	}
+
 	// Only owner can update configuration.
 	if g.contract.Caller() != g.state.Owner() {
 		return nil, errExecutionReverted
@@ -2871,6 +2899,10 @@ func (g *GovernanceContract) transferOwnership(newOwner common.Address) ([]byte,
 }
 
 func (g *GovernanceContract) transferNodeOwnership(newOwner common.Address) ([]byte, error) {
+	if g.contract.Value().Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
+	}
+
 	if newOwner == (common.Address{}) {
 		return nil, errExecutionReverted
 	}
@@ -2899,6 +2931,10 @@ func (g *GovernanceContract) transferNodeOwnership(newOwner common.Address) ([]b
 }
 
 func (g *GovernanceContract) transferNodeOwnershipByFoundation(oldOwner, newOwner common.Address) ([]byte, error) {
+	if g.contract.Value().Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
+	}
+
 	// Only owner can update configuration.
 	if g.contract.Caller() != g.state.Owner() {
 		return nil, errExecutionReverted
@@ -2931,6 +2967,10 @@ func (g *GovernanceContract) transferNodeOwnershipByFoundation(oldOwner, newOwne
 }
 
 func (g *GovernanceContract) replaceNodePublicKey(newPublicKey []byte) ([]byte, error) {
+	if g.contract.Value().Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
+	}
+
 	caller := g.contract.Caller()
 
 	offset := g.state.NodesOffsetByAddress(caller)
@@ -2962,6 +3002,10 @@ func (g *GovernanceContract) replaceNodePublicKey(newPublicKey []byte) ([]byte, 
 }
 
 func (g *GovernanceContract) addToWhitelist(addr common.Address) (*big.Int, error) {
+	if g.contract.Value().Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
+	}
+
 	// Only owner can update whitelist.
 	if g.contract.Caller() != g.state.Owner() {
 		return nil, errExecutionReverted
@@ -2970,6 +3014,10 @@ func (g *GovernanceContract) addToWhitelist(addr common.Address) (*big.Int, erro
 }
 
 func (g *GovernanceContract) removeFromWhitelist(addr common.Address) (*big.Int, error) {
+	if g.contract.Value().Cmp(big.NewInt(0)) > 0 {
+		return nil, errExecutionReverted
+	}
+
 	// Only owner can update whitelist.
 	if g.contract.Caller() != g.state.Owner() {
 		return nil, errExecutionReverted
