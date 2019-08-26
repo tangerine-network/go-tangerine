@@ -347,6 +347,14 @@ func (pm *ProtocolManager) ReceiveChan() <-chan coreTypes.Msg {
 	return pm.receiveCh
 }
 
+func (pm *ProtocolManager) sendCoreMsg(msg *coreTypes.Msg) {
+	select {
+	case pm.receiveCh <- *msg:
+	default:
+		log.Warn("ReceiveChan full, dropping", "message", msg)
+	}
+}
+
 func (pm *ProtocolManager) ReportBadPeerChan() chan<- interface{} {
 	return pm.reportBadPeerChan
 }
@@ -895,10 +903,10 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		}
 		pm.cache.addBlocks(blocks)
 		for _, block := range blocks {
-			pm.receiveCh <- coreTypes.Msg{
+			pm.sendCoreMsg(&coreTypes.Msg{
 				PeerID:  p.ID().String(),
 				Payload: block,
-			}
+			})
 		}
 	case msg.Code == VoteMsg:
 		if atomic.LoadInt32(&pm.receiveCoreMessage) == 0 {
@@ -912,10 +920,10 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			if vote.Type >= coreTypes.VotePreCom {
 				pm.cache.addVote(vote)
 			}
-			pm.receiveCh <- coreTypes.Msg{
+			pm.sendCoreMsg(&coreTypes.Msg{
 				PeerID:  p.ID().String(),
 				Payload: vote,
-			}
+			})
 		}
 	case msg.Code == AgreementMsg:
 		if atomic.LoadInt32(&pm.receiveCoreMessage) == 0 {
@@ -933,10 +941,10 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			block[0].Randomness = agreement.Randomness
 			pm.cache.addFinalizedBlock(block[0])
 		}
-		pm.receiveCh <- coreTypes.Msg{
+		pm.sendCoreMsg(&coreTypes.Msg{
 			PeerID:  p.ID().String(),
 			Payload: &agreement,
-		}
+		})
 	case msg.Code == DKGPrivateShareMsg:
 		if atomic.LoadInt32(&pm.receiveCoreMessage) == 0 {
 			break
@@ -947,10 +955,10 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
 		p.MarkDKGPrivateShares(rlpHash(ps))
-		pm.receiveCh <- coreTypes.Msg{
+		pm.sendCoreMsg(&coreTypes.Msg{
 			PeerID:  p.ID().String(),
 			Payload: &ps,
-		}
+		})
 	case msg.Code == DKGPartialSignatureMsg:
 		if atomic.LoadInt32(&pm.receiveCoreMessage) == 0 {
 			break
@@ -960,10 +968,10 @@ func (pm *ProtocolManager) handleMsg(p *peer) error {
 		if err := msg.Decode(&psig); err != nil {
 			return errResp(ErrDecode, "msg %v: %v", msg, err)
 		}
-		pm.receiveCh <- coreTypes.Msg{
+		pm.sendCoreMsg(&coreTypes.Msg{
 			PeerID:  p.ID().String(),
 			Payload: &psig,
-		}
+		})
 	case msg.Code == PullBlocksMsg:
 		if atomic.LoadInt32(&pm.receiveCoreMessage) == 0 {
 			break
