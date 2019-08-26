@@ -26,7 +26,7 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0x2ab080a9ff5d0bbdcdc9e6938f4e17268b4bdd2be857cb522aa104e29e5a54b4")
+	MainnetGenesisHash = common.HexToHash("0x756c14f977abb9fee60f55684c0407190ac79eba77b2155b1d654a59b27002ca")
 	TestnetGenesisHash = common.HexToHash("0x456c5ee9fbae8b48d2c58756f84a2e6842e20ccead724e3328973aaed639eb3b")
 )
 
@@ -41,35 +41,34 @@ var (
 	// MainnetChainConfig is the chain parameters to run a node on the main network.
 	MainnetChainConfig = &ChainConfig{
 		ChainID:             big.NewInt(373),
-		DMoment:             1556150400,
+		DMoment:             1569726000,
 		HomesteadBlock:      big.NewInt(0),
 		DAOForkBlock:        big.NewInt(0),
 		DAOForkSupport:      true,
 		EIP150Block:         big.NewInt(0),
-		EIP150Hash:          common.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000"),
 		EIP155Block:         big.NewInt(0),
 		EIP158Block:         big.NewInt(0),
 		ByzantiumBlock:      big.NewInt(0),
 		ConstantinopleBlock: big.NewInt(0),
 		PetersburgBlock:     big.NewInt(0),
 		Dexcon: &DexconConfig{
-			GenesisCRSText:    "In DEXON, we trust.",
-			Owner:             common.HexToAddress("0x2D9f82B399113De36c718BEf361528a856208057"),
+			GenesisCRSText:    "Tangerine Mainnet",
+			Owner:             common.HexToAddress("0x4Ba5BB2f830A15DfAfA5099b42024fF363395f68"),
 			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			LockupPeriod:      86400,
-			MiningVelocity:    0.1875,
-			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(2.5e9)),
-			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1.5e9)),
-			MinGasPrice:       new(big.Int).Mul(big.NewInt(1e9), big.NewInt(24)),
+			MiningVelocity:    0.18,
+			NextHalvingSupply: new(big.Int).Mul(big.NewInt(1e18), big.NewInt(125e6)),
+			LastHalvedAmount:  new(big.Int).Mul(big.NewInt(1e18), big.NewInt(75e6)),
+			MinGasPrice:       new(big.Int).Mul(big.NewInt(1e9), big.NewInt(1)),
 			BlockGasLimit:     210000000,
 			LambdaBA:          250,
-			LambdaDKG:         10000,
+			LambdaDKG:         20000,
 			NotaryParamAlpha:  70.5,
 			NotaryParamBeta:   264,
 			RoundLength:       3600,
 			MinBlockInterval:  1000,
 			FineValues: []*big.Int{
-				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(200)),
+				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(100)),
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1)),
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 				new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
@@ -77,7 +76,7 @@ var (
 			},
 		},
 		Recovery: &RecoveryConfig{
-			Contract:     common.HexToAddress("0x55bca9AcEE38cfB111cE290f5ce9a6bD3699D790"),
+			Contract:     common.HexToAddress("0xF0cD256f2d12b6043E5fbd23A19f8fc47F6cD71b"),
 			Timeout:      120,
 			Confirmation: 5,
 		},
@@ -88,7 +87,7 @@ var (
 		ChainID:             big.NewInt(374),
 		DMoment:             1564996300,
 		HomesteadBlock:      big.NewInt(0),
-		DAOForkBlock:        nil,
+		DAOForkBlock:        big.NewInt(0),
 		DAOForkSupport:      true,
 		EIP150Block:         big.NewInt(0),
 		EIP155Block:         big.NewInt(0),
