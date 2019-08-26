@@ -2043,7 +2043,7 @@ func (g *GovernanceContract) withdrawable() bool {
 	}
 
 	// Can not withdraw if there are no pending withdrawal.
-	if node.Unstaked.Cmp(big.NewInt(0)) == 0 {
+	if node.UnstakedAt.Cmp(big.NewInt(0)) == 0 {
 		return false
 	}
 
