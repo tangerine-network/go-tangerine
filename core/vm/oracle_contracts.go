@@ -1572,10 +1572,11 @@ func (g *GovernanceContract) addDKGComplaint(comp []byte) ([]byte, error) {
 	}
 
 	// Calculate 2f + 1
-	threshold := 2*g.configNotarySetSize(g.evm.Round).Uint64()/3 + 1
+	threshold := coreUtils.GetDKGThreshold(&coreTypes.Config{
+		NotarySetSize: uint32(g.configNotarySetSize(g.evm.Round).Uint64())})
 
 	// If 2f + 1 of DKG set is finalized, one can not propose complaint anymore.
-	if g.state.DKGFinalizedsCount().Uint64() >= threshold {
+	if g.state.DKGFinalizedsCount().Uint64() >= uint64(threshold) {
 		return nil, errExecutionReverted
 	}
 
@@ -1672,10 +1673,11 @@ func (g *GovernanceContract) addDKGMasterPublicKey(mpk []byte) ([]byte, error) {
 	}
 
 	// Calculate 2f + 1
-	threshold := 2*g.configNotarySetSize(g.evm.Round).Uint64()/3 + 1
+	threshold := coreUtils.GetDKGThreshold(&coreTypes.Config{
+		NotarySetSize: uint32(g.configNotarySetSize(g.evm.Round).Uint64())})
 
 	// If 2f + 1 of DKG set is mpk ready, one can not propose mpk anymore.
-	if g.state.DKGMPKReadysCount().Uint64() >= threshold {
+	if g.state.DKGMPKReadysCount().Uint64() >= uint64(threshold) {
 		return nil, errExecutionReverted
 	}
 
@@ -1765,12 +1767,13 @@ func (g *GovernanceContract) addDKGFinalize(finalize []byte) ([]byte, error) {
 		g.state.IncDKGFinalizedsCount()
 	}
 
-	threshold := 2*g.configNotarySetSize(g.evm.Round).Uint64()/3 + 1
+	threshold := coreUtils.GetDKGThreshold(&coreTypes.Config{
+		NotarySetSize: uint32(g.configNotarySetSize(g.evm.Round).Uint64())})
 
-	if g.state.DKGFinalizedsCount().Uint64() == threshold {
-		tsigThreshold := coreUtils.GetDKGThreshold(&coreTypes.Config{
+	if g.state.DKGFinalizedsCount().Uint64() == uint64(threshold) {
+		nackThreshold := coreUtils.GetDKGNackThreshold(&coreTypes.Config{
 			NotarySetSize: uint32(g.configNotarySetSize(g.evm.Round).Uint64())})
-		g.fineFailStopDKG(tsigThreshold)
+		g.fineFailStopDKG(nackThreshold)
 	}
 
 	return g.useGas(GovernanceActionGasCost)
@@ -2258,8 +2261,6 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 		return nil, errExecutionReverted
 	}
 
-	tsigThreshold := coreUtils.GetDKGThreshold(&coreTypes.Config{
-		NotarySetSize: uint32(g.configNotarySetSize(nextRound).Uint64())})
 	// Check if next DKG has not enough of success.
 	if g.state.DKGSuccessesCount().Uint64() >=
 		uint64(coreUtils.GetDKGValidThreshold(&coreTypes.Config{
@@ -2267,11 +2268,12 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 		})) {
 		// Check if next DKG did not success.
 		// Calculate 2f + 1
-		threshold := 2*g.configNotarySetSize(nextRound).Uint64()/3 + 1
+		threshold := coreUtils.GetDKGThreshold(&coreTypes.Config{
+			NotarySetSize: uint32(g.configNotarySetSize(nextRound).Uint64())})
 
 		// If 2f + 1 of DKG set is finalized, check if DKG succeeded.
-		if g.state.DKGFinalizedsCount().Uint64() >= threshold {
-			gpk, err := g.coreDKGUtil.NewGroupPublicKey(&g.state, nextRound, tsigThreshold)
+		if g.state.DKGFinalizedsCount().Uint64() >= uint64(threshold) {
+			gpk, err := g.coreDKGUtil.NewGroupPublicKey(&g.state, nextRound, threshold)
 			if gpk, ok := gpk.(*dkgTypes.GroupPublicKey); ok {
 				if len(gpk.QualifyNodeIDs) < coreUtils.GetDKGValidThreshold(&coreTypes.Config{
 					NotarySetSize: uint32(g.configNotarySetSize(nextRound).Uint64())}) {
@@ -2292,7 +2294,9 @@ func (g *GovernanceContract) resetDKG(newSignedCRS []byte) ([]byte, error) {
 	}
 
 	// Fine fail stop DKGs.
-	g.fineFailStopDKG(tsigThreshold)
+	nackThreshold := coreUtils.GetDKGNackThreshold(&coreTypes.Config{
+		NotarySetSize: uint32(g.configNotarySetSize(nextRound).Uint64())})
+	g.fineFailStopDKG(nackThreshold)
 
 	// Update CRS.
 	state, err := g.util.GetRoundState(round.Uint64())
