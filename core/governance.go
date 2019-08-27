@@ -110,7 +110,7 @@ func (g *Governance) GetStateForDKGAtRound(round uint64) (*vm.GovernanceState, e
 	if round == dkgRound {
 		return gs, nil
 	}
-	return g.util.GetRoundState(round)
+	return g.util.GetStateAtRound(round)
 }
 
 func (g *Governance) CRSRound() uint64 {
