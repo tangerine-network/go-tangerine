@@ -92,6 +92,8 @@ const (
 	maxAgreementResultBroadcast = 3
 	maxFinalizedBlockBroadcast  = 3
 	checkPeerDuration           = 10 * time.Minute
+
+	receiveChannelSize = 2048
 )
 
 // errIncompatibleConfig is returned if the requested protocols and configs are
@@ -184,7 +186,7 @@ func NewProtocolManager(
 		noMorePeers:        make(chan struct{}),
 		txsyncCh:           make(chan *txsync),
 		quitSync:           make(chan struct{}),
-		receiveCh:          make(chan coreTypes.Msg, 1024),
+		receiveCh:          make(chan coreTypes.Msg, receiveChannelSize),
 		reportBadPeerChan:  make(chan interface{}, 128),
 		receiveCoreMessage: 0,
 		isBlockProposer:    isBlockProposer,
@@ -348,11 +350,7 @@ func (pm *ProtocolManager) ReceiveChan() <-chan coreTypes.Msg {
 }
 
 func (pm *ProtocolManager) sendCoreMsg(msg *coreTypes.Msg) {
-	select {
-	case pm.receiveCh <- *msg:
-	default:
-		log.Warn("ReceiveChan full, dropping", "message", msg)
-	}
+	pm.receiveCh <- *msg
 }
 
 func (pm *ProtocolManager) ReportBadPeerChan() chan<- interface{} {
