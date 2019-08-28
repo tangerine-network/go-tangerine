@@ -11,7 +11,7 @@ fail()
 
 endpoint=http://127.0.0.1:8545
 
-timeout=300
+timeout=700
 
 echo "Wait for recovery"
 if ! go run build/testtool/testtool.go waitForRecovery $endpoint $timeout; then
