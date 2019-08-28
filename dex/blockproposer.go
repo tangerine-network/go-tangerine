@@ -132,23 +132,9 @@ func (b *blockProposer) syncConsensus() (*dexCore.Consensus, error) {
 	consensusSync := syncer.NewConsensus(cb.NumberU64(), b.dMoment, b.dex.app,
 		b.dex.governance, db, b.dex.network, privkey, log.Root())
 
-	// Start the watchCat.
-	b.watchCat.Start()
-	defer b.watchCat.Stop()
-	log.Info("Started sync watchCat")
-
-	// Feed the current block we have in local blockchain.
-	if cb.NumberU64() > 0 {
-		var block coreTypes.Block
-		if err := rlp.DecodeBytes(cb.Header().DexconMeta, &block); err != nil {
-			panic(err)
-		}
-		b.watchCat.Feed(block.Position)
-	}
-
 	blocksToSync := func(coreHeight, height uint64) []*coreTypes.Block {
 		var blocks []*coreTypes.Block
-		for len(blocks) < 1024 && coreHeight < height {
+		for len(blocks) < 2048 && coreHeight < height {
 			var block coreTypes.Block
 			b := b.dex.blockchain.GetBlockByNumber(coreHeight + 1)
 			if err := rlp.DecodeBytes(b.Header().DexconMeta, &block); err != nil {
@@ -166,7 +152,7 @@ func (b *blockProposer) syncConsensus() (*dexCore.Consensus, error) {
 Loop:
 	for {
 		currentBlock := b.dex.blockchain.CurrentBlock()
-		log.Debug("Syncing compaction chain", "core height", coreHeight,
+		log.Info("Syncing compaction chain", "core height", coreHeight,
 			"height", currentBlock.NumberU64())
 		blocks := blocksToSync(coreHeight, currentBlock.NumberU64())
 
@@ -174,7 +160,6 @@ Loop:
 			log.Debug("No new block to sync", "current", currentBlock.NumberU64())
 			break Loop
 		}
-		b.watchCat.Feed(blocks[len(blocks)-1].Position)
 
 		log.Debug("Filling compaction chain", "num", len(blocks),
 			"first", blocks[0].Position.Height,
@@ -192,11 +177,23 @@ Loop:
 		}
 	}
 
+	// Start the watchCat.
+	b.watchCat.Start()
+	defer b.watchCat.Stop()
+	log.Info("Started sync WatchCat")
+
+	// Feed the current block we have in local blockchain.
+	if cb.NumberU64() > 0 {
+		var block coreTypes.Block
+		if err := rlp.DecodeBytes(cb.Header().DexconMeta, &block); err != nil {
+			panic(err)
+		}
+		b.watchCat.Feed(block.Position)
+	}
+
 	ch := make(chan core.ChainHeadEvent)
 	sub := b.dex.blockchain.SubscribeChainHeadEvent(ch)
 	defer sub.Unsubscribe()
-
-	log.Debug("Listen chain head event until synced")
 
 	// Listen chain head event until synced.
 ListenLoop:
