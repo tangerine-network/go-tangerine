@@ -388,15 +388,15 @@ func (pm *ProtocolManager) newPeer(pv int, p *p2p.Peer, rw p2p.MsgReadWriter) *p
 }
 
 func (pm *ProtocolManager) inWhitelist(p *peer) bool {
+	if pm.chainconfig.Dexcon == nil || !pm.chainconfig.Dexcon.IsConsortium {
+		return true
+	}
 	state, err := pm.blockchain.State()
 	if err != nil {
 		p.Log().Debug("get state fail in checking whitelist", "err", err)
 		return false
 	}
 	govState := vm.GovernanceState{StateDB: state}
-	if !govState.IsConsortium() {
-		return true
-	}
 	address := crypto.PubkeyToAddress(*p.Node().Pubkey())
 	return govState.WhitelistOffsetByAddress(address).Cmp(big.NewInt(0)) >= 0
 }
