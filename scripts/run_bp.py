@@ -40,7 +40,7 @@ except Exception:
 
 CONTAINER_NAME = 'tangerine'
 NUM_SLOTS = 5
-POLLING_INTERVAL = 1
+POLLING_INTERVAL = 30
 SLEEP_RAND_RANGE = 1800
 TANGERINE_IMAGE_TMPL = 'byzantinelab/go-tangerine:latest-%s-%d'
 TOOLS_IMAGE = 'byzantinelab/tangerine-tools'
