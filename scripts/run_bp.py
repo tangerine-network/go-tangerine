@@ -76,7 +76,7 @@ def get_time_delta():
     """Compare time with NTP and return time delta."""
     c = ntplib.NTPClient()
     response = c.request('tw.pool.ntp.org', version=3)
-    return response.offset
+    return abs(response.offset)
 
 
 def generate_node_key(nodekey):
