@@ -130,7 +130,7 @@ var (
 	}
 	NetworkIdFlag = cli.Uint64Flag{
 		Name:  "networkid",
-		Usage: "Network identifier (integer, 373=Mainnet, 374=Testnet) (default: 373)",
+		Usage: "Network identifier (integer, 411=Mainnet, 374=Testnet) (default: 411)",
 		Value: dex.DefaultConfig.NetworkId,
 	}
 	TestnetFlag = cli.BoolFlag{

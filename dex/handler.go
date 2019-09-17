@@ -1411,7 +1411,7 @@ func (pm *ProtocolManager) peerSetLoop() {
 // NodeInfo represents a short summary of the Ethereum sub-protocol metadata
 // known about the host peer.
 type NodeInfo struct {
-	Network uint64              `json:"network"` // Network ID (373=Mainnet, 374=Testnet)
+	Network uint64              `json:"network"` // Network ID (411=Mainnet, 374=Testnet)
 	Number  uint64              `json:"number"`  // Total difficulty of the host's blockchain
 	Genesis common.Hash         `json:"genesis"` // SHA3 hash of the host's genesis block
 	Config  *params.ChainConfig `json:"config"`  // Chain configuration for the fork rules
