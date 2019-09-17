@@ -2,7 +2,7 @@ image: "registry.gitlab.com/byzantine-lab/go-tangerine/ci-testbed:latest"
 
 before_script:
   - mkdir -p /go/src/github.com/tangerine-network
-  - ln -s /builds/tangerine-network/go-tangerine /go/src/github.com/tangerine-network
+  - ln -s /builds/byzantine-lab/go-tangerine /go/src/github.com/tangerine-network
   - cd /go/src/github.com/tangerine-network/go-tangerine
 
 stages:
