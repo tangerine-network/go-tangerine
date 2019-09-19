@@ -26,7 +26,7 @@ import (
 
 // Genesis hashes to enforce below configs on.
 var (
-	MainnetGenesisHash = common.HexToHash("0x756c14f977abb9fee60f55684c0407190ac79eba77b2155b1d654a59b27002ca")
+	MainnetGenesisHash = common.HexToHash("0xcbfc86c8cf68d0207a1dff32b7397d9ecfef91371af0725509d78d9d578b405d")
 	TestnetGenesisHash = common.HexToHash("0xf13824fa7d40d1697a37248c8b03d6e026079b108ad2d1916e74da41e1b6f877")
 )
 
@@ -53,7 +53,7 @@ var (
 		PetersburgBlock:     big.NewInt(0),
 		Dexcon: &DexconConfig{
 			GenesisCRSText:    "Tangerine Mainnet",
-			Owner:             common.HexToAddress("0x4Ba5BB2f830A15DfAfA5099b42024fF363395f68"),
+			Owner:             common.HexToAddress("0xee3670D4179361600d58aBF5a19C5f74C70e9f47"),
 			MinStake:          new(big.Int).Mul(big.NewInt(1e18), big.NewInt(1e6)),
 			LockupPeriod:      86400,
 			MiningVelocity:    0.18,
