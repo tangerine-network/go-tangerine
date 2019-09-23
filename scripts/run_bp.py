@@ -211,7 +211,7 @@ def main():
     if not os.path.exists(args.nodekey):
         res = input('No node key found, generate a new one? [y/N] ')
         if res == 'y':
-            generate_node_key()
+            generate_node_key(args.nodekey)
         else:
             print('Abort.')
             sys.exit(1)
