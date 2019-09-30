@@ -499,6 +499,7 @@ func (cc *configurationChain) runDKG(
 				default:
 				}
 
+				cc.logger.Info("## RunDKG", "phase", cc.dkg.step)
 				err := cc.dkgRunPhases[cc.dkg.step](round, reset)
 				if err == nil || err == ErrSkipButNoError {
 					err = nil
@@ -509,6 +510,9 @@ func (cc *configurationChain) runDKG(
 							"step", cc.dkg.step,
 							"error", err)
 					}
+				}
+				if err != nil {
+					cc.logger.Info("## RunDKG error", "phase", cc.dkg.step, "err", err)
 				}
 				if err != nil && dkgError == nil {
 					dkgError = err

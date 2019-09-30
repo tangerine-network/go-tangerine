@@ -1383,16 +1383,16 @@ func (pm *ProtocolManager) peerSetLoop() {
 
 			if newRound == round+1 {
 				pm.peers.BuildConnection(newRound)
-				if round >= 1 {
-					pm.peers.ForgetConnection(round - 1)
-				}
+				//if round >= 1 {
+				//	pm.peers.ForgetConnection(round - 1)
+				//}
 			} else if newRound == round && reset+1 == newReset {
-				pm.peers.ForgetLabelConnection(peerLabel{set: notaryset, round: round})
+				//pm.peers.ForgetLabelConnection(peerLabel{set: notaryset, round: round})
 				pm.gov.PurgeNotarySet(newRound)
 				pm.peers.BuildConnection(newRound)
 			} else {
 				// just forget all network connection and rebuild.
-				pm.peers.ForgetConnection(round)
+				//pm.peers.ForgetConnection(round)
 
 				if newRound >= 1 {
 					pm.peers.BuildConnection(newRound - 1)

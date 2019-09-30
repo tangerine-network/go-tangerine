@@ -422,7 +422,7 @@ func (recv *consensusDKGReceiver) ProposeDKGComplaint(
 		recv.logger.Error("Failed to sign DKG complaint", "error", err)
 		return
 	}
-	recv.logger.Debug("Calling Governace.AddDKGComplaint",
+	recv.logger.Info("Calling Governace.AddDKGComplaint",
 		"complaint", complaint)
 	recv.gov.AddDKGComplaint(complaint)
 }
@@ -434,7 +434,7 @@ func (recv *consensusDKGReceiver) ProposeDKGMasterPublicKey(
 		recv.logger.Error("Failed to sign DKG master public key", "error", err)
 		return
 	}
-	recv.logger.Debug("Calling Governance.AddDKGMasterPublicKey", "key", mpk)
+	recv.logger.Info("Calling Governance.AddDKGMasterPublicKey", "key", mpk)
 	recv.gov.AddDKGMasterPublicKey(mpk)
 }
 
@@ -483,7 +483,7 @@ func (recv *consensusDKGReceiver) ProposeDKGMPKReady(ready *typesDKG.MPKReady) {
 		recv.logger.Error("Failed to sign DKG ready", "error", err)
 		return
 	}
-	recv.logger.Debug("Calling Governance.AddDKGMPKReady", "ready", ready)
+	recv.logger.Info("Calling Governance.AddDKGMPKReady", "ready", ready)
 	recv.gov.AddDKGMPKReady(ready)
 }
 
@@ -493,7 +493,7 @@ func (recv *consensusDKGReceiver) ProposeDKGFinalize(final *typesDKG.Finalize) {
 		recv.logger.Error("Failed to sign DKG finalize", "error", err)
 		return
 	}
-	recv.logger.Debug("Calling Governance.AddDKGFinalize", "final", final)
+	recv.logger.Info("Calling Governance.AddDKGFinalize", "final", final)
 	recv.gov.AddDKGFinalize(final)
 }
 
@@ -503,7 +503,7 @@ func (recv *consensusDKGReceiver) ProposeDKGSuccess(success *typesDKG.Success) {
 		recv.logger.Error("Failed to sign DKG successize", "error", err)
 		return
 	}
-	recv.logger.Debug("Calling Governance.AddDKGSuccess", "success", success)
+	recv.logger.Info("Calling Governance.AddDKGSuccess", "success", success)
 	recv.gov.AddDKGSuccess(success)
 }
 
