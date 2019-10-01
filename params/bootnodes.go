@@ -25,7 +25,7 @@ var MainnetBootnodes = []string{
 // TestnetBootnodes are the enode URLs of the P2P bootstrap nodes running on the
 // Taiwan test network.
 var TestnetBootnodes = []string{
-	"enode://3914afa7fdf6c62d50e56b1d27d4ce181d718930e1011103e21954d616083ce2d257a38a0e7f174045dc8f4d941586a090b01c2265a3a27920ff902b384fa2e8@34.83.238.227:30301",
+	"enode://3914afa7fdf6c62d50e56b1d27d4ce181d718930e1011103e21954d616083ce2d257a38a0e7f174045dc8f4d941586a090b01c2265a3a27920ff902b384fa2e8@35.221.242.57:30301",
 }
 
 // TaipeiBootnodes are the enode URLs of the P2P bootstrap nodes running on the
