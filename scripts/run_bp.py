@@ -177,7 +177,7 @@ def start(args, force=False):
            '--datadir=/mnt/datadir',
            '--syncmode=fast',
            '--cache=1024',
-           '--verbosity=3',
+           '--verbosity=%s' % args.verbosity,
            '--gcmode=archive',
            '--port=%d' % port]
 
@@ -228,6 +228,11 @@ def main():
     parser.add_argument('--testnet', default=False, action='store_true',
                         dest='testnet',
                         help='Whether or not to run a testnet node')
+    parser.add_argument('--force', default=False, action='store_true',
+                        dest='force',
+                        help='Force restart a node')
+    parser.add_argument('--verbosity', default=3, dest='verbosity',
+                        help='Verbosity level')
 
     args = parser.parse_args()
 
@@ -244,7 +249,7 @@ def main():
             print('Abort.')
             sys.exit(1)
 
-    start(args)
+    start(args, args.force)
     monitor(args)
 
 
