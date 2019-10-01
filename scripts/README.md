@@ -6,7 +6,4 @@ docker image.
 
 ## Updating
 
-Whenever `run_bp.py` is changed, `run_bp.py.sha1` needs to be updated
-correspondingly with:
-
-    sha1sum run_bp.py | awk '{ print $1 }' > run_bp.py.sha1
+Your commit must be signed whenever `run_bp.py` is changed. Check the [GitHub Help](https://help.github.com/en/articles/signing-commits) to set it up.
