@@ -44,6 +44,11 @@ _SCRIPT_BRANCH = 'master'
 _SCRIPT_PATH = 'scripts/run_bp.py'
 _SCRIPT_SRC = ('https://raw.githubusercontent.com/'
                '%s/%s/%s/%s' % (_SCRIPT_ORG, _SCRIPT_REPO, _SCRIPT_BRANCH, _SCRIPT_PATH))
+_SCRIPT_APPROVE_PATH_TMPL = _SCRIPT_PATH + '.%s'
+_SCRIPT_APPROVE_SRC_TMPL = ('https://raw.githubusercontent.com/'
+                            '%s/%s/%%s/%s' % (_SCRIPT_ORG, _SCRIPT_REPO, _SCRIPT_APPROVE_PATH_TMPL))
+_SCRIPT_APPROVER = ['aitjcize', 'popodidi', 'JM00oo', 'Spiderpowa']
+_SCRIPT_APPROVE_THRESHOLD = int(len(_SCRIPT_APPROVER)/2)
 
 _GITHUB_API = 'https://api.github.com'
 
@@ -164,6 +169,33 @@ def github_get_commits(path):
     return '%s/repos/%s/%s/commits?path=%s&sha=%s' % (_GITHUB_API, _SCRIPT_ORG, _SCRIPT_REPO, path, _SCRIPT_BRANCH)
 
 
+def github_get_approved_commit(commit, approver):
+    with urllib.request.urlopen(github_get_commits(_SCRIPT_APPROVE_PATH_TMPL % approver),
+                                timeout=_REQUEST_TIMEOUT) as f:
+        if f.getcode() != 200:
+            raise RuntimeError('unable to get approver metadata')
+        for item in json.loads(f.read()):
+            if not item['commit']['verification']['verified']:
+                continue
+            if item['author']['login'] != approver:
+                continue
+            with urllib.request.urlopen(_SCRIPT_APPROVE_SRC_TMPL % (commit, approver),
+                                        timeout=_REQUEST_TIMEOUT) as f2:
+                if f2.getcode() != 200:
+                    raise RuntimeError('unable to get approver file')
+                if f2.read().decode('utf-8') == commit:
+                    return True
+    return False
+
+
+def github_get_approve_status(commit):
+    approved = 0
+    for approver in _SCRIPT_APPROVER:
+        if github_get_approved_commit(commit, approver):
+            approved += 1
+    return approved >= _SCRIPT_APPROVE_THRESHOLD
+
+
 def check_for_update():
     """Check for script update."""
     script_path = os.path.abspath(sys.argv[0])
@@ -183,6 +215,8 @@ def check_for_update():
             raise RuntimeError('unable to get upgrade metadata')
         for item in json.loads(f.read()):
             if not item['commit']['verification']['verified']:
+                continue
+            if not github_get_approve_status(item['sha']):
                 continue
             tree_url = item['commit']['tree']['url']
             for segment in _SCRIPT_PATH.split('/'):
