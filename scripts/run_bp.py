@@ -29,6 +29,7 @@ import socket
 import subprocess
 import sys
 import time
+import urllib.request
 
 
 try:
@@ -38,33 +39,40 @@ except Exception:
     sys.exit(1)
 
 
-CONTAINER_NAME_BASE = 'tangerine'
-NUM_SLOTS = 5
-POLLING_INTERVAL = 30
-SLEEP_RAND_RANGE = 1800
-TANGERINE_IMAGE_TMPL = 'byzantinelab/go-tangerine:latest-%s-%d'
-TOOLS_IMAGE = 'byzantinelab/tangerine-tools'
-WHITELISTED_FILES = [
+_SCRIPT_SRC = ('https://raw.githubusercontent.com/'
+               'tangerine-network/go-tangerine/master/scripts/run_bp.py')
+
+_REQUEST_TIMEOUT = 5
+_CONTAINER_NAME_BASE = 'tangerine'
+_NUM_SLOTS = 5
+_POLLING_INTERVAL = 60
+_SLEEP_RAND_RANGE = 1800
+_TANGERINE_IMAGE_TMPL = 'byzantinelab/go-tangerine:latest-%s-%d'
+_TOOLS_IMAGE = 'byzantinelab/tangerine-tools'
+_WHITELISTED_FILES = [
     os.path.basename(sys.argv[0]),
     'datadir',
     'node.key'
 ]
 
+# Current executing script sha1sum
+sha1sum = None
+
 
 def get_container_name(testnet):
-    return (CONTAINER_NAME_BASE
-            if not testnet else CONTAINER_NAME_BASE + '-testnet')
+    return (_CONTAINER_NAME_BASE
+            if not testnet else _CONTAINER_NAME_BASE + '-testnet')
 
 
 def get_shard_id(nodekey):
     """Return shard ID.
 
     Shard ID is calculate as (first byte of sha3 of Node Key address) mode
-    NUM_SLOTS.
+    _NUM_SLOTS.
     """
     wd = os.getcwd()
     p = subprocess.Popen(['docker', 'run', '-v', '%s:/mnt' % wd, '--rm',
-                          '-t', TOOLS_IMAGE,
+                          '-t', _TOOLS_IMAGE,
                           'nodekey', 'inspect', '/mnt/%s' % nodekey],
                          stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = p.communicate()
@@ -72,13 +80,13 @@ def get_shard_id(nodekey):
     address = re.search('^Node Address: (0x[0-9a-fA-F]{40})',
                         stdout.decode('utf-8')).group(1)
     return int(hashlib.sha256(
-        address.encode('utf-8')).hexdigest()[0], base=16) % NUM_SLOTS
+        address.encode('utf-8')).hexdigest()[0], base=16) % _NUM_SLOTS
 
 
 def get_tangerine_image(args):
     """Return the tangerine image by shard-ID."""
-    return TANGERINE_IMAGE_TMPL % ('testnet' if args.testnet else 'mainnet',
-                                   get_shard_id(args.nodekey))
+    return _TANGERINE_IMAGE_TMPL % ('testnet' if args.testnet else 'mainnet',
+                                    get_shard_id(args.nodekey))
 
 
 def get_time_delta():
@@ -95,7 +103,7 @@ def generate_node_key(nodekey):
 
     wd = os.getcwd()
     subprocess.Popen(['docker', 'run', '-v', '%s:/mnt' % wd, '--rm',
-                      '-t', TOOLS_IMAGE,
+                      '-t', _TOOLS_IMAGE,
                       'nodekey', 'generate', '/mnt/%s' % nodekey]).wait()
 
     print('Node key generated')
@@ -123,13 +131,21 @@ def update_image(image):
 def check_environment():
     """Check execution environment."""
     for f in os.listdir(os.getcwd()):
-        if f not in WHITELISTED_FILES:
+        if f not in _WHITELISTED_FILES:
             raise RuntimeError('please execute this script in an empty '
                                'directory, abort')
 
-    if get_time_delta() > 0.05:
-        raise RuntimeError('please sync your network time by installing a '
-                           'NTP client')
+    for i in range(5):
+        try:
+            if get_time_delta() > 0.05:
+                raise RuntimeError('please sync your network time by '
+                                   'installing a NTP client')
+        except ntplib.NTPException as e:
+            print('Error: %s' % e)
+            print('Retrying in 10 seconds ...')
+            time.sleep(10)
+        else:
+            break
 
     if platform.system() == 'Linux':
         p1 = subprocess.Popen('ps aux | grep -q "[n]tp"', shell=True).wait()
@@ -137,6 +153,40 @@ def check_environment():
         if p1 != 0 and p2 != 0:
             raise RuntimeError('please install ntpd or chrony to synchronize '
                                'system time')
+
+
+def check_for_update():
+    """Check for script update."""
+    script_path = os.path.abspath(sys.argv[0])
+    global sha1sum
+
+    if sha1sum is None:
+        with open(script_path, 'r') as f:
+            sha1sum = hashlib.sha1(f.read().encode('utf-8')).hexdigest()
+
+    with urllib.request.urlopen(_SCRIPT_SRC + '.sha1',
+                                timeout=_REQUEST_TIMEOUT) as f:
+        if f.getcode() != 200:
+            raise RuntimeError('unable to get upgrade metadata')
+        update_sha1sum = f.read().strip().decode('utf-8')
+
+    if sha1sum != update_sha1sum:
+        print('Script upgrade found, performing upgrade ...')
+    else:
+        return
+
+    with urllib.request.urlopen(_SCRIPT_SRC, timeout=_REQUEST_TIMEOUT) as f:
+        script_data = f.read()
+        new_sha1sum = hashlib.sha1(script_data).hexdigest()
+
+    if new_sha1sum != update_sha1sum:
+        raise RuntimeError('failed to verify upgrade payload, aborted')
+
+    with open(script_path, 'w') as f:
+        f.write(script_data.decode('utf-8'))
+
+    os.execve(script_path,
+              [script_path] + sys.argv[1:] + ['--skip-env-check'], os.environ)
 
 
 def start(args, force=False):
@@ -202,7 +252,7 @@ def monitor(args):
         new_image = get_image_version(tangerine_image)
 
         if new_image != old_image:
-            sleep_time = random.randint(0, SLEEP_RAND_RANGE)
+            sleep_time = random.randint(0, _SLEEP_RAND_RANGE)
             print('New image found, sleeping for %s seconds before '
                   'updating ...' % sleep_time)
             time.sleep(sleep_time)
@@ -214,7 +264,12 @@ def monitor(args):
 
             old_image = new_image
 
-        time.sleep(POLLING_INTERVAL)
+        time.sleep(_POLLING_INTERVAL)
+
+        try:
+            check_for_update()
+        except Exception as e:
+            print('Error: %s' % e)
 
 
 def main():
@@ -233,10 +288,15 @@ def main():
                         help='Force restart a node')
     parser.add_argument('--verbosity', default=3, dest='verbosity',
                         help='Verbosity level')
+    parser.add_argument('--skip-env-check', default=False,
+                        dest='skip_env_check', action='store_true',
+                        help='Skip environment check, should only be '
+                             'used for AU mechanism')
 
     args = parser.parse_args()
 
-    check_environment()
+    if not args.skip_env_check:
+        check_environment()
 
     if args.identity is None:
         raise RuntimeError("please specify identity (node name)")
@@ -250,7 +310,12 @@ def main():
             sys.exit(1)
 
     start(args, args.force)
-    monitor(args)
+
+    pid = os.fork()
+    if pid == 0:
+        monitor(args)
+    else:
+        print('Daemon process running ...')
 
 
 if __name__ == '__main__':
