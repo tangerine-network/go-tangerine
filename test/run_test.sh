@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 cd "$(dirname "$0")"
 
@@ -104,7 +104,7 @@ for i in $(seq 0 $(($NUM_NODES - 1))); do
   $GDEX \
     ${BOOTNODE_FLAGS} \
     --bp \
-    --verbosity=4 \
+    --verbosity=3 \
     --nat=none \
     --gcmode=archive \
     --datadir=$datadir --nodekey=keystore/test$i.key \

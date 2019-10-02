@@ -336,7 +336,7 @@ func doTest(cmdline []string) {
 
 	packageForLegacyEvm := []string{}
 	for i := 0; i < len(packages); i++ {
-		if strings.HasSuffix(packages[i], "dexon/tests") {
+		if strings.HasSuffix(packages[i], "go-tangerine/tests") {
 			packageForLegacyEvm = append(packageForLegacyEvm, packages[i])
 			packages = append(packages[:i], packages[i+1:]...)
 			i--
