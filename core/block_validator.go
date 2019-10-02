@@ -111,8 +111,7 @@ func (v *BlockValidator) ValidateWitnessData(height uint64, blockHash common.Has
 	}
 
 	if b.Hash() != blockHash {
-		log.Error("invalid witness block %s vs %s",
-			b.Hash().String(), blockHash.String())
+		log.Error("invalid witness block", "first", b.Hash().String(), "second", blockHash.String())
 		return consensus.ErrWitnessMismatch
 	}
 	return nil

@@ -55,6 +55,11 @@ func NewEVMContext(msg Message, header *types.Header, chain ChainContext, author
 		beneficiary = *author
 	}
 
+	ts := header.Time
+	if !*legacyEvm {
+		ts /= 1000
+	}
+
 	return vm.Context{
 		CanTransfer:    CanTransfer,
 		Transfer:       Transfer,
@@ -64,7 +69,7 @@ func NewEVMContext(msg Message, header *types.Header, chain ChainContext, author
 		Origin:         msg.From(),
 		Coinbase:       beneficiary,
 		BlockNumber:    new(big.Int).Set(header.Number),
-		Time:           new(big.Int).SetUint64(header.Time / 1000), // seconds.
+		Time:           new(big.Int).SetUint64(ts),
 		Randomness:     header.Randomness,
 		Difficulty:     new(big.Int).Set(header.Difficulty),
 		Round:          new(big.Int).SetUint64(header.Round),
