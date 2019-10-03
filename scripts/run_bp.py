@@ -43,11 +43,18 @@ _SCRIPT_REPO = 'go-tangerine'
 _SCRIPT_BRANCH = 'master'
 _SCRIPT_PATH = 'scripts/run_bp.py'
 _SCRIPT_SRC = ('https://raw.githubusercontent.com/'
-               '%s/%s/%s/%s' % (_SCRIPT_ORG, _SCRIPT_REPO, _SCRIPT_BRANCH, _SCRIPT_PATH))
+               '%s/%s/%s/%s' %
+               (_SCRIPT_ORG,
+                _SCRIPT_REPO,
+                _SCRIPT_BRANCH,
+                _SCRIPT_PATH))
 _SCRIPT_APPROVE_PATH_TMPL = _SCRIPT_PATH + '.%s'
 _SCRIPT_APPROVE_SRC_TMPL = ('https://raw.githubusercontent.com/'
-                            '%s/%s/%%s/%s' % (_SCRIPT_ORG, _SCRIPT_REPO, _SCRIPT_APPROVE_PATH_TMPL))
-_SCRIPT_APPROVER = ['aitjcize', 'popodidi', 'JM00oo', 'Spiderpowa']
+                            '%s/%s/%%s/%s' %
+                            (_SCRIPT_ORG,
+                             _SCRIPT_REPO,
+                             _SCRIPT_APPROVE_PATH_TMPL))
+_SCRIPT_APPROVER = ['aitjcize', 'JM00oo', 'Spiderpowa']
 _SCRIPT_APPROVE_THRESHOLD = int(len(_SCRIPT_APPROVER)/2)
 
 _GITHUB_API = 'https://api.github.com'
@@ -166,12 +173,18 @@ def check_environment():
 
 
 def github_get_commits(path):
-    return '%s/repos/%s/%s/commits?path=%s&sha=%s' % (_GITHUB_API, _SCRIPT_ORG, _SCRIPT_REPO, path, _SCRIPT_BRANCH)
+    return ('%s/repos/%s/%s/commits?path=%s&sha=%s' %
+            (_GITHUB_API,
+             _SCRIPT_ORG,
+             _SCRIPT_REPO,
+             path,
+             _SCRIPT_BRANCH))
 
 
 def github_get_approved_commit(commit, approver):
-    with urllib.request.urlopen(github_get_commits(_SCRIPT_APPROVE_PATH_TMPL % approver),
-                                timeout=_REQUEST_TIMEOUT) as f:
+    with urllib.request.urlopen(
+            github_get_commits(_SCRIPT_APPROVE_PATH_TMPL % approver),
+            timeout=_REQUEST_TIMEOUT) as f:
         if f.getcode() != 200:
             raise RuntimeError('unable to get approver metadata')
         for item in json.loads(f.read()):
@@ -179,8 +192,9 @@ def github_get_approved_commit(commit, approver):
                 continue
             if item['author']['login'] != approver:
                 continue
-            with urllib.request.urlopen(_SCRIPT_APPROVE_SRC_TMPL % (commit, approver),
-                                        timeout=_REQUEST_TIMEOUT) as f2:
+            with urllib.request.urlopen(
+                    _SCRIPT_APPROVE_SRC_TMPL % (commit, approver),
+                    timeout=_REQUEST_TIMEOUT) as f2:
                 if f2.getcode() != 200:
                     raise RuntimeError('unable to get approver file')
                 if f2.read().decode('utf-8') == commit:
@@ -206,7 +220,8 @@ def check_for_update():
             data = f.read()
             size = len(data)
             sha1sum = hashlib.sha1(
-                ('blob ' + str(size) + "\0" + data.decode('utf-8')).encode('utf-8')).hexdigest()
+                ('blob ' + str(size) + "\0" +
+                 data.decode('utf-8')).encode('utf-8')).hexdigest()
 
     found = False
     with urllib.request.urlopen(github_get_commits(_SCRIPT_PATH),
@@ -248,7 +263,8 @@ def check_for_update():
         script_data = f.read()
         size = len(script_data)
         new_sha1sum = hashlib.sha1(
-            ('blob ' + str(size) + "\0" + script_data.decode('utf-8')).encode('utf-8')).hexdigest()
+            ('blob ' + str(size) + "\0" +
+             script_data.decode('utf-8')).encode('utf-8')).hexdigest()
 
     if new_sha1sum != update_sha1sum:
         raise RuntimeError('failed to verify upgrade payload, aborted')
