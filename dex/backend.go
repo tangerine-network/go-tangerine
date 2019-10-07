@@ -22,12 +22,14 @@ import (
 	"time"
 
 	"github.com/tangerine-network/go-tangerine/accounts"
+	"github.com/tangerine-network/go-tangerine/common"
 	"github.com/tangerine-network/go-tangerine/consensus"
 	"github.com/tangerine-network/go-tangerine/consensus/dexcon"
 	"github.com/tangerine-network/go-tangerine/core"
 	"github.com/tangerine-network/go-tangerine/core/bloombits"
 	"github.com/tangerine-network/go-tangerine/core/rawdb"
 	"github.com/tangerine-network/go-tangerine/core/vm"
+	"github.com/tangerine-network/go-tangerine/crypto"
 	"github.com/tangerine-network/go-tangerine/dex/downloader"
 	"github.com/tangerine-network/go-tangerine/eth/filters"
 	"github.com/tangerine-network/go-tangerine/eth/gasprice"
@@ -77,6 +79,8 @@ type Tangerine struct {
 
 	networkID     uint64
 	netRPCService *ethapi.PublicNetAPI
+
+	etherbase common.Address
 
 	indexer indexer.Indexer
 }
@@ -187,6 +191,8 @@ func New(ctx *node.ServiceContext, config *Config) (*Tangerine, error) {
 		time.Duration(chainConfig.Recovery.Timeout)*time.Second, log.Root())
 
 	dex.bp = NewBlockProposer(dex, watchCat, dMoment)
+
+	dex.etherbase = crypto.PubkeyToAddress(config.PrivateKey.PublicKey)
 	return dex, nil
 }
 
@@ -203,6 +209,11 @@ func (s *Tangerine) APIs() []rpc.API {
 	// Append all the local APIs and return
 	return append(apis, []rpc.API{
 		{
+			Namespace: "eth",
+			Version:   "1.0",
+			Service:   NewPublicEthereumAPI(s),
+			Public:    true,
+		}, {
 			Namespace: "eth",
 			Version:   "1.0",
 			Service:   downloader.NewPublicDownloaderAPI(s.protocolManager.downloader, s.eventMux),
@@ -317,3 +328,4 @@ func (d *Tangerine) Engine() consensus.Engine          { return d.engine }
 func (d *Tangerine) ChainDb() ethdb.Database           { return d.chainDb }
 func (d *Tangerine) Downloader() ethapi.Downloader     { return d.protocolManager.downloader }
 func (d *Tangerine) NetVersion() uint64                { return d.networkID }
+func (d *Tangerine) Etherbase() common.Address         { return d.etherbase }
