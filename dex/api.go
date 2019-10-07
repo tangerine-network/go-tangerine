@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"os"
 	"strings"
 
@@ -37,6 +38,36 @@ import (
 	"github.com/tangerine-network/go-tangerine/rpc"
 	"github.com/tangerine-network/go-tangerine/trie"
 )
+
+// PublicEthereumAPI provides an API to access Ethereum full node-related
+// information.
+type PublicEthereumAPI struct {
+	dex *Tangerine
+}
+
+// NewPublicEthereumAPI creates a new Ethereum protocol API for full nodes.
+func NewPublicEthereumAPI(e *Tangerine) *PublicEthereumAPI {
+	return &PublicEthereumAPI{e}
+}
+
+// Etherbase is the address that mining rewards will be send to
+func (api *PublicEthereumAPI) Etherbase() (common.Address, error) {
+	return api.dex.Etherbase(), nil
+}
+
+// Coinbase is the address that mining rewards will be send to (alias for Etherbase)
+func (api *PublicEthereumAPI) Coinbase() (common.Address, error) {
+	return api.dex.Etherbase(), nil
+}
+
+// ChainId is the EIP-155 replay-protection chain id for the current ethereum chain config.
+func (api *PublicEthereumAPI) ChainId() hexutil.Uint64 {
+	chainID := new(big.Int)
+	if config := api.dex.chainConfig; config.IsEIP155(api.dex.blockchain.CurrentBlock().Number()) {
+		chainID = config.ChainID
+	}
+	return (hexutil.Uint64)(chainID.Uint64())
+}
 
 // PrivateAdminAPI is the collection of Ethereum full node-related APIs
 // exposed over the private admin endpoint.
