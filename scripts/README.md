@@ -6,7 +6,6 @@ docker image.
 
 ## Updating
 
-Whenever `run_bp.py` is changed, `run_bp.py.sha1` needs to be updated
-correspondingly with:
+The commit updating the script must be signed whenever `run_bp.py` is changed. Check the [GitHub Help](https://help.github.com/en/articles/signing-commits) to set it up.
 
-    sha1sum run_bp.py | awk '{ print $1 }' > run_bp.py.sha1
+After committing the file, several approvers(check `_SCRIPT_APPROVER` and `_SCRIPT_APPROVE_THRESHOLD` in the script) then update their `run_bp.py.APPROVER_GITHUB_ID` with the commit hash of the `run_bp.py`. Note that the approver's commit must be signed to be considered a valid approval.

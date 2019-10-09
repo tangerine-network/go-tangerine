@@ -38,9 +38,26 @@ except Exception:
     print('Please run `pip3 install ntplib\'')
     sys.exit(1)
 
-
+_SCRIPT_ORG = 'tangerine-network'
+_SCRIPT_REPO = 'go-tangerine'
+_SCRIPT_BRANCH = 'master'
+_SCRIPT_PATH = 'scripts/run_bp.py'
 _SCRIPT_SRC = ('https://raw.githubusercontent.com/'
-               'tangerine-network/go-tangerine/master/scripts/run_bp.py')
+               '%s/%s/%s/%s' %
+               (_SCRIPT_ORG,
+                _SCRIPT_REPO,
+                _SCRIPT_BRANCH,
+                _SCRIPT_PATH))
+_SCRIPT_APPROVE_PATH_TMPL = _SCRIPT_PATH + '.%s'
+_SCRIPT_APPROVE_SRC_TMPL = ('https://raw.githubusercontent.com/'
+                            '%s/%s/%%s/%s' %
+                            (_SCRIPT_ORG,
+                             _SCRIPT_REPO,
+                             _SCRIPT_APPROVE_PATH_TMPL))
+_SCRIPT_APPROVER = ['aitjcize', 'JM00oo', 'Spiderpowa']
+_SCRIPT_APPROVE_THRESHOLD = int(len(_SCRIPT_APPROVER)/2)
+
+_GITHUB_API = 'https://api.github.com'
 
 _REQUEST_TIMEOUT = 5
 _CONTAINER_NAME_BASE = 'tangerine'
@@ -155,20 +172,87 @@ def check_environment():
                                'system time')
 
 
+def github_get_commits(path):
+    return ('%s/repos/%s/%s/commits?path=%s&sha=%s' %
+            (_GITHUB_API,
+             _SCRIPT_ORG,
+             _SCRIPT_REPO,
+             path,
+             _SCRIPT_BRANCH))
+
+
+def github_get_approved_commit(commit, approver):
+    with urllib.request.urlopen(
+            github_get_commits(_SCRIPT_APPROVE_PATH_TMPL % approver),
+            timeout=_REQUEST_TIMEOUT) as f:
+        if f.getcode() != 200:
+            raise RuntimeError('unable to get approver metadata')
+        for item in json.loads(f.read()):
+            if not item['commit']['verification']['verified']:
+                continue
+            if item['author']['login'] != approver:
+                continue
+            with urllib.request.urlopen(
+                    _SCRIPT_APPROVE_SRC_TMPL % (commit, approver),
+                    timeout=_REQUEST_TIMEOUT) as f2:
+                if f2.getcode() != 200:
+                    raise RuntimeError('unable to get approver file')
+                if f2.read().decode('utf-8') == commit:
+                    return True
+    return False
+
+
+def github_get_approve_status(commit):
+    approved = 0
+    for approver in _SCRIPT_APPROVER:
+        if github_get_approved_commit(commit, approver):
+            approved += 1
+    return approved >= _SCRIPT_APPROVE_THRESHOLD
+
+
 def check_for_update():
     """Check for script update."""
     script_path = os.path.abspath(sys.argv[0])
     global sha1sum
 
     if sha1sum is None:
-        with open(script_path, 'r') as f:
-            sha1sum = hashlib.sha1(f.read().encode('utf-8')).hexdigest()
+        with open(script_path, 'rb') as f:
+            data = f.read()
+            size = len(data)
+            sha1sum = hashlib.sha1(
+                ('blob ' + str(size) + "\0" +
+                 data.decode('utf-8')).encode('utf-8')).hexdigest()
 
-    with urllib.request.urlopen(_SCRIPT_SRC + '.sha1',
+    found = False
+    with urllib.request.urlopen(github_get_commits(_SCRIPT_PATH),
                                 timeout=_REQUEST_TIMEOUT) as f:
         if f.getcode() != 200:
             raise RuntimeError('unable to get upgrade metadata')
-        update_sha1sum = f.read().strip().decode('utf-8')
+        for item in json.loads(f.read()):
+            if not item['commit']['verification']['verified']:
+                continue
+            if not github_get_approve_status(item['sha']):
+                continue
+            tree_url = item['commit']['tree']['url']
+            for segment in _SCRIPT_PATH.split('/'):
+                with urllib.request.urlopen(tree_url,
+                                            timeout=_REQUEST_TIMEOUT) as furl:
+                    if f.getcode() != 200:
+                        raise RuntimeError('error finding upgrade metadata')
+                    found_segment = False
+                    for item in json.loads(furl.read())['tree']:
+                        if item['path'] == segment:
+                            tree_url = item['url']
+                            update_sha1sum = item['sha']
+                            found_segment = True
+                            break
+                    if not found_segment:
+                        raise RuntimeError('unable to find upgrade metadata')
+            found = True
+            break
+
+    if not found:
+        raise RuntimeError('unable to find a valid upgrade metadata')
 
     if sha1sum != update_sha1sum:
         print('Script upgrade found, performing upgrade ...')
@@ -177,7 +261,10 @@ def check_for_update():
 
     with urllib.request.urlopen(_SCRIPT_SRC, timeout=_REQUEST_TIMEOUT) as f:
         script_data = f.read()
-        new_sha1sum = hashlib.sha1(script_data).hexdigest()
+        size = len(script_data)
+        new_sha1sum = hashlib.sha1(
+            ('blob ' + str(size) + "\0" +
+             script_data.decode('utf-8')).encode('utf-8')).hexdigest()
 
     if new_sha1sum != update_sha1sum:
         raise RuntimeError('failed to verify upgrade payload, aborted')
