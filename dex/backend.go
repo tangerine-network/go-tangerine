@@ -140,11 +140,13 @@ func New(ctx *node.ServiceContext, config *Config) (*Tangerine, error) {
 	}
 	dex.bloomIndexer.Start(dex.blockchain)
 
+	log.Info("!!!! config", "config", config, "Indexer", config.Indexer)
 	if config.Indexer.Enable {
 		dex.indexer = indexer.NewIndexerFromConfig(
 			indexer.NewROBlockChain(dex.blockchain),
 			config.Indexer,
 		)
+		log.Info("!!!! indexer start")
 		dex.indexer.Start()
 	}
 
