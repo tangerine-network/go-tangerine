@@ -699,14 +699,19 @@ func (bc *BlockChain) GetBlockByNumber(number uint64) *types.Block {
 
 // GetReceiptsByHash retrieves the receipts for all transactions in a given block.
 func (bc *BlockChain) GetReceiptsByHash(hash common.Hash) types.Receipts {
+	logger := log.New("!!!!!!!!!GetReceiptsByHash", "")
+	logger.Info("in the function body")
 	if receipts, ok := bc.receiptsCache.Get(hash); ok {
+		logger.Info("GetReceiptsByHash cache hit", "len(receipts)", len(receipts.(types.Receipts)))
 		return receipts.(types.Receipts)
 	}
 	number := rawdb.ReadHeaderNumber(bc.db, hash)
 	if number == nil {
+		logger.Info("number == nil")
 		return nil
 	}
 	receipts := rawdb.ReadReceipts(bc.db, hash, *number)
+	logger.Info("len(receipts)", "len(receipts)", len(receipts))
 	bc.receiptsCache.Add(hash, receipts)
 	return receipts
 }
