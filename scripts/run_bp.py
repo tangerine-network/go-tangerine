@@ -229,7 +229,8 @@ def start(args, force=False):
            '--cache=1024',
            '--verbosity=%s' % args.verbosity,
            '--gcmode=archive',
-           '--port=%d' % port]
+           '--port=%d' % port,
+           '--recovery.network-rpc=%s' % args.recovery_network_rpc]
 
     if args.testnet:
         cmd.append('--testnet')
@@ -292,6 +293,10 @@ def main():
                         dest='skip_env_check', action='store_true',
                         help='Skip environment check, should only be '
                              'used for AU mechanism')
+    parser.add_argument('--recovery-network-rpc',
+                        default='https://mainnet.infura.io',
+                        dest='recovery_network_rpc',
+                        help='Recovery network endpoint')
 
     args = parser.parse_args()
 
