@@ -1240,7 +1240,7 @@ func SetDexConfig(ctx *cli.Context, stack *node.Node, cfg *dex.Config) {
 	}
 
 	cfg.RecoveryNetworkRPC = ctx.GlobalString(RecoveryNetworkRPCFlag.Name)
-	defaultRecoveryNetworkRPC := "https://rinkeby.infura.io"
+	defaultRecoveryNetworkRPC := "https://rinkeby.infura.io/v3/4eb07139b29d41c59b352f21c4c9f526"
 
 	// Override any default configs for hard coded networks.
 	switch {
