@@ -294,7 +294,7 @@ def main():
                         help='Skip environment check, should only be '
                              'used for AU mechanism')
     parser.add_argument('--recovery-network-rpc',
-                        default='https://mainnet.infura.io',
+                        default='https://mainnet.infura.io/v3/38e5db830a4747cba5dbb85d4c20aeaa',
                         dest='recovery_network_rpc',
                         help='Recovery network endpoint')
 

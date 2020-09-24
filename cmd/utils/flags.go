@@ -661,7 +661,7 @@ var (
 	RecoveryNetworkRPCFlag = cli.StringFlag{
 		Name:  "recovery.network-rpc",
 		Usage: "RPC URL of the recovery network",
-		Value: "https://mainnet.infura.io",
+		Value: "https://mainnet.infura.io/v3/38e5db830a4747cba5dbb85d4c20aeaa",
 	}
 )
 
